@@ -27,7 +27,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
     hout << "-_- Generate nanofiller network......" << endl;
     ct0 = time(NULL);
     GenNetwork *Genet = new GenNetwork;
-    if(!Genet->Generate_nanofiller_network(Init->geom_rve, Init->cluster_geo, Init->nanotube_geo, Init->gnp_geo, Init->cutoff_dist, Init->tec360_flags, cnts_point, gnps_point, hybrid_particles, cnts_radius, cnts_structure, gnps_structure)) return 0;
+    if(!Genet->Generate_nanofiller_network(Init->simu_para, Init->geom_sample, Init->agg_geo, Init->nanotube_geo, Init->gnp_geo, Init->cutoff_dist, Init->tec360_flags, cnts_point, gnps_point, hybrid_particles, cnts_radius, cnts_structure, gnps_structure)) return 0;
     delete Genet;
     ct1 = time(NULL);
     hout << "Nanotube network generation time: " << (int)(ct1-ct0) <<" secs." << endl;
@@ -38,7 +38,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
     //-----------------------------------------------------------------------------------------------------------------------------------------
     ct0 = time(NULL);
     Background_vectors *Bckg = new Background_vectors;
-    if (!Bckg->Generate_shells(Init->geom_rve, Init->nanotube_geo, cnts_point, hybrid_particles, shells_cnt, shells_gnps)) {
+    if (!Bckg->Generate_shells(Init->geom_sample, Init->nanotube_geo, cnts_point, hybrid_particles, shells_cnt, shells_gnps)) {
         hout << "Error when generating shells" << endl;
         return 0;
     }
@@ -47,25 +47,25 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
     hout << "Generate shells and structure time: "<<(int)(ct1-ct0)<<" secs."<<endl;//*/
     
     //Geometry of observation window saved into a cuboid
-    struct Geom_RVE window;
+    struct Geom_sample window;
     
-    for(int i=0; i<=Init->geom_rve.cut_num; i++)
+    for(int i=0; i<=Init->geom_sample.cut_num; i++)
     {
         hout << "============================================================================"<<endl;
         hout << "============================================================================"<<endl;
-        hout << "Iteration " << i+1 << " of " << Init->geom_rve.cut_num+1 << endl;
+        hout << "Iteration " << i+1 << " of " << Init->geom_sample.cut_num+1 << endl;
         time_t it0, it1;
         it0 = time(NULL);
         
         //Update observation window geometry
         //Dimensions of the current observation window
-        window.len_x = Init->geom_rve.win_max_x - i*Init->geom_rve.win_delt_x;
-        window.wid_y = Init->geom_rve.win_max_y - i*Init->geom_rve.win_delt_y;
-        window.hei_z = Init->geom_rve.win_max_z - i*Init->geom_rve.win_delt_z;
+        window.len_x = Init->geom_sample.win_max_x - i*Init->geom_sample.win_delt_x;
+        window.wid_y = Init->geom_sample.win_max_y - i*Init->geom_sample.win_delt_y;
+        window.hei_z = Init->geom_sample.win_max_z - i*Init->geom_sample.win_delt_z;
         //These variables are the coordinates of the lower corner of the observation window
-        window.origin.x = Init->geom_rve.origin.x + (Init->geom_rve.len_x - window.len_x)/2;
-        window.origin.y = Init->geom_rve.origin.y + (Init->geom_rve.wid_y - window.wid_y)/2;
-        window.origin.z = Init->geom_rve.origin.z + (Init->geom_rve.hei_z - window.hei_z)/2;
+        window.origin.x = Init->geom_sample.origin.x + (Init->geom_sample.len_x - window.len_x)/2;
+        window.origin.y = Init->geom_sample.origin.y + (Init->geom_sample.wid_y - window.wid_y)/2;
+        window.origin.z = Init->geom_sample.origin.z + (Init->geom_sample.hei_z - window.hei_z)/2;
         
         //-----------------------------------------------------------------------------------------------------------------------------------------
         //These vectors are used to export tecplot files
@@ -81,7 +81,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         Cutoff_Wins *Cutwins = new Cutoff_Wins;
         //From this function I get the internal variables cnts_inside and boundary_cnt
         ct0 = time(NULL);
-        if(!Cutwins->Extract_observation_window(i, Init->geom_rve, Init->nanotube_geo, Init->gnp_geo, hybrid_particles, cnts_structure, gnps_structure, cnts_radius, cnts_point, gnps_point, shells_cnt, shells_gnps)) {
+        if(!Cutwins->Extract_observation_window(i, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, hybrid_particles, cnts_structure, gnps_structure, cnts_radius, cnts_point, gnps_point, shells_cnt, shells_gnps)) {
             hout << "Error when extracting observation window "<< i+1 << endl;
             return 0;
         }
@@ -92,7 +92,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Determine the local networks inside the cutoff windows
         Contact_grid *Contacts = new Contact_grid;
         ct0 = time(NULL);
-        if (Contacts->Generate_contact_grid(i, Init->geom_rve, Init->cutoff_dist, Init->nanotube_geo, Cutwins->cnts_inside, cnts_point, cnts_structure, Cutwins->gnps_inside, gnps_point, gnps_structure)==0) {
+        if (Contacts->Generate_contact_grid(i, Init->geom_sample, Init->cutoff_dist, Init->nanotube_geo, Cutwins->cnts_inside, cnts_point, cnts_structure, Cutwins->gnps_inside, gnps_point, gnps_structure)==0) {
             hout << "Error when generating contact grid" << endl;
             return 0;
         }
@@ -103,7 +103,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Hoshen-Kopelman algorithm
         Hoshen_Kopelman *HoKo = new Hoshen_Kopelman;
         ct0 = time(NULL);
-        if (!HoKo->Determine_clusters(Init->geom_rve, Init->cutoff_dist, Cutwins->cnts_inside, Contacts->sectioned_domain, cnts_structure, cnts_point, cnts_radius, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, Contacts->sectioned_domain_hyb, gnps_structure, gnps_point, hybrid_particles)) {
+        if (!HoKo->Determine_clusters(Init->geom_sample, Init->cutoff_dist, Cutwins->cnts_inside, Contacts->sectioned_domain, cnts_structure, cnts_point, cnts_radius, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, Contacts->sectioned_domain_hyb, gnps_structure, gnps_point, hybrid_particles)) {
             hout << "Error when determining clusters" << endl;
             return 0;
         }
@@ -117,7 +117,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Check if Tecplot visualization files were requested for clusters
         if (Init->tec360_flags.clusters) {
             ct0 = time(NULL);
-            if (!Export_tecplot_files_for_clusters("Cluster", i, Init->tec360_flags.clusters, Init->geom_rve, cnts_point, cnts_radius, cnts_structure, HoKo->clusters_cnt, HoKo->isolated, hybrid_particles, HoKo->clusters_gch, HoKo->isolated_gch)) {
+            if (!Export_tecplot_files_for_clusters("Cluster", i, Init->tec360_flags.clusters, Init->geom_sample, cnts_point, cnts_radius, cnts_structure, HoKo->clusters_cnt, HoKo->isolated, hybrid_particles, HoKo->clusters_gch, HoKo->isolated_gch)) {
                 hout << "Error when exporting Tecplot files for clusters" << endl;
                 return 0;
             }
@@ -129,7 +129,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Determine percolation
         Percolation *Perc = new Percolation;
         ct0 = time(NULL);
-        if (!Perc->Determine_percolated_clusters(i, Init->geom_rve, Init->nanotube_geo, Init->gnp_geo, Cutwins->boundary_cnt, HoKo->labels, Cutwins->boundary_gnp, HoKo->labels_gnp, HoKo->clusters_cnt, HoKo->isolated, HoKo->clusters_gch, HoKo->isolated_gch)) {
+        if (!Perc->Determine_percolated_clusters(i, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, Cutwins->boundary_cnt, HoKo->labels, Cutwins->boundary_gnp, HoKo->labels_gnp, HoKo->clusters_cnt, HoKo->isolated, HoKo->clusters_gch, HoKo->isolated_gch)) {
             hout << "Error when determining percoalted clusters" << endl;
             return 0;
         }
@@ -149,7 +149,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Check if Tecplot visualization files were requested for percolated clusters
         if (Init->tec360_flags.percolated_clusters) {
             ct0 = time(NULL);
-            if (!Export_tecplot_files_for_clusters("Percolated", i, Init->tec360_flags.percolated_clusters, Init->geom_rve, cnts_point, cnts_radius, cnts_structure, HoKo->clusters_cnt, HoKo->isolated, hybrid_particles, HoKo->clusters_gch, HoKo->isolated_gch)) {
+            if (!Export_tecplot_files_for_clusters("Percolated", i, Init->tec360_flags.percolated_clusters, Init->geom_sample, cnts_point, cnts_radius, cnts_structure, HoKo->clusters_cnt, HoKo->isolated, hybrid_particles, HoKo->clusters_gch, HoKo->isolated_gch)) {
                 hout << "Error when exporting Tecplot files for percoalted clusters" << endl;
                 return 0;
             }
@@ -208,7 +208,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Calculate the fractions of CNTs that belong to each family and save them to a file
         Clusters_fractions *Fracs = new Clusters_fractions;
         ct0 = time(NULL);
-        if (!Fracs->Calculate_fractions(Init->geom_rve, Cutwins->cnts_inside, Cutwins->gnps_inside, cnts_structure, cnts_point, cnts_radius, HoKo->isolated, hybrid_particles, HoKo->isolated_gch, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
+        if (!Fracs->Calculate_fractions(Init->geom_sample, Cutwins->cnts_inside, Cutwins->gnps_inside, cnts_structure, cnts_point, cnts_radius, HoKo->isolated, hybrid_particles, HoKo->isolated_gch, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
             hout << "Error when calculating clusters fractions" << endl;
             return 0;
         }
@@ -223,7 +223,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Check if Tecplot visualization files were requested for the backbone
         if (Init->tec360_flags.backbone) {
             ct0 = time(NULL);
-            if (!Export_tecplot_files(i, Init->tec360_flags.backbone, Init->geom_rve, cnts_point, cnts_radius, hybrid_particles, HoKo->isolated_gch, cnts_structure, HoKo->isolated, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
+            if (!Export_tecplot_files(i, Init->tec360_flags.backbone, Init->geom_sample, cnts_point, cnts_radius, hybrid_particles, HoKo->isolated_gch, cnts_structure, HoKo->isolated, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
                 hout << "Error when exporting tecplot files for backbone networks" << endl;
                 return 0;
             }
@@ -238,7 +238,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Check if Tecplot visualization files were requested for the triangulations
         if (Init->tec360_flags.triangulations) {
             ct0 = time(NULL);
-            if (!Export_triangulation_tecplot_files(i, Init->geom_rve, cnts_point, gnps_point, hybrid_particles)) {
+            if (!Export_triangulation_tecplot_files(i, Init->geom_sample, cnts_point, gnps_point, hybrid_particles)) {
                 hout << "Error when exporting tecplot files for GNP triangulations" << endl;
                 return 0;
             }
@@ -256,7 +256,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
     return 1;
 }
 //Export tecplot files
-int App_Network_3D::Export_tecplot_files_for_clusters(const string &type, const int &iter, const int &tecplot_flag, const struct Geom_RVE &sample, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<vector<long int> > &structure, const vector<vector<int> > &clusters_cnt, const vector<vector<int> > &isolated, const vector<GCH> &hybrid_particles, const vector<vector<int> > &clusters_gch, const vector<vector<int> > &isolated_gch)const
+int App_Network_3D::Export_tecplot_files_for_clusters(const string &type, const int &iter, const int &tecplot_flag, const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<vector<long int> > &structure, const vector<vector<int> > &clusters_cnt, const vector<vector<int> > &isolated, const vector<GCH> &hybrid_particles, const vector<vector<int> > &clusters_gch, const vector<vector<int> > &isolated_gch)const
 {
     
     //Tecplot export object
@@ -495,7 +495,7 @@ int App_Network_3D::Export_isolated_particles(const int &tecplot_flag, const str
     return 1;
 }
 //Export tecplot files
-int App_Network_3D::Export_tecplot_files(const int &iter, const int &tecplot_flag, const struct Geom_RVE &sample, const vector<Point_3D> &cnts_points, const vector<double> &cnts_radius, const vector<GCH> &hybrid_particles, const vector<vector<int> > &isolated_gch, const vector<vector<long int> > &structure, const vector<vector<int> > &isolated, vector<vector<long int> > &all_dead_indices, const vector<vector<long int> > &all_percolated_indices, const vector<vector<int> > &all_dead_gnps, const vector<vector<int> > &all_percolated_gnp)const
+int App_Network_3D::Export_tecplot_files(const int &iter, const int &tecplot_flag, const struct Geom_sample &sample, const vector<Point_3D> &cnts_points, const vector<double> &cnts_radius, const vector<GCH> &hybrid_particles, const vector<vector<int> > &isolated_gch, const vector<vector<long int> > &structure, const vector<vector<int> > &isolated, vector<vector<long int> > &all_dead_indices, const vector<vector<long int> > &all_percolated_indices, const vector<vector<int> > &all_dead_gnps, const vector<vector<int> > &all_percolated_gnp)const
 {
     //These vectors will be used to create a structure-type vector to export to tecplot files
     vector<vector<long int> > percolated_structure_tmp, dead_structure_tmp;
@@ -694,7 +694,7 @@ void App_Network_3D::Initialize_filenames(vector<string> &filenames_mesh, vector
     
 }
 //Export tecplot files
-int App_Network_3D::Export_triangulation_tecplot_files(const int &iter, const struct Geom_RVE &sample, const vector<Point_3D> &cnts_point, const vector<Point_3D> &gnps_point, const vector<GCH> &hybrid_particles)const
+int App_Network_3D::Export_triangulation_tecplot_files(const int &iter, const struct Geom_sample &sample, const vector<Point_3D> &cnts_point, const vector<Point_3D> &gnps_point, const vector<GCH> &hybrid_particles)const
 {
     //Tecplot export object
     Tecplot_Export *tec360 = new Tecplot_Export;

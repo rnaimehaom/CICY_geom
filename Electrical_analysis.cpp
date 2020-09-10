@@ -7,7 +7,7 @@
 
 #include "Electrical_analysis.h"
 
-int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistance_flag, const vector<int> &family, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure, const vector<Point_3D> &point_list, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &point_list_gnp, const struct Geom_RVE &window, const struct Electric_para &electric_param, const struct Cutoff_dist &cutoffs, vector<GCH> &hybrid_particles, vector<vector<long int> > &all_dead_indices, vector<vector<long int> > &all_indices, vector<vector<int> > &gnp_dead_indices, vector<vector<int> > &gnp_indices)
+int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistance_flag, const vector<int> &family, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure, const vector<Point_3D> &point_list, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &point_list_gnp, const struct Geom_sample &window, const struct Electric_para &electric_param, const struct Cutoff_dist &cutoffs, vector<GCH> &hybrid_particles, vector<vector<long int> > &all_dead_indices, vector<vector<long int> > &all_indices, vector<vector<int> > &gnp_dead_indices, vector<vector<int> > &gnp_indices)
 {
     //Time variables
     time_t ct0, ct1;
@@ -695,7 +695,7 @@ double Electrical_analysis::Current_of_edges_in_boundary(const int &side, Direct
     return I_edges;
 }
 //This function calculates the matrix resistance, depending on the direction of the applied voltage
-int Electrical_analysis::Calculate_matrix_resistances(const double &matrix_resistivity, const struct Geom_RVE &window, vector<double> &matrix_resistances)
+int Electrical_analysis::Calculate_matrix_resistances(const double &matrix_resistivity, const struct Geom_sample &window, vector<double> &matrix_resistances)
 {
     //The resistance is calculated as rho*l/A
     double length, A;
@@ -721,7 +721,7 @@ int Electrical_analysis::Calculate_matrix_resistances(const double &matrix_resis
     return 1;
 }
 //This function calculates the resistance on each direction from the vector of parallel resistors
-int Electrical_analysis::Calculate_resistances_and_resistivities(const struct Geom_RVE &window, const vector<double> &matrix_resistances, const vector<vector<double> > &paralel_resistors, vector<double> &resistors, vector<double> &resistivities)
+int Electrical_analysis::Calculate_resistances_and_resistivities(const struct Geom_sample &window, const vector<double> &matrix_resistances, const vector<vector<double> > &paralel_resistors, vector<double> &resistors, vector<double> &resistivities)
 {
     //Scan each direction
     //Note that matrix_resistances and paralel_resistors have the same size

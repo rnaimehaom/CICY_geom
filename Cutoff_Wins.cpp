@@ -13,7 +13,7 @@
         List with all CNTs grouped into sub-regions in order to reduce computational cost of finding the CNTs intersected by the boundaries of the observation window
     int window
         Current sub-region that contains the CNTs to be trimmed
-    struct Geom_RVE sample
+    struct Geom_sample sample
         Geometry of the generated sample
     struct Nanotube_Geo cnts
         Geometry of the CNTs
@@ -55,7 +55,7 @@
 
 //This function removes the points that are outside the observation window.
 //The vector cnts_inside is created so only the CNTs inside the obseration window are considered in other functions
-int Cutoff_Wins::Extract_observation_window(const int &window, const struct Geom_RVE &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, vector<GCH> &hybrid_particles, vector<vector<long int> > &structure, vector<vector<long int> > &structure_gnp, vector<double> &radii, vector<Point_3D> &points_in, vector<Point_3D> &points_gnp, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnp)
+int Cutoff_Wins::Extract_observation_window(const int &window, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, vector<GCH> &hybrid_particles, vector<vector<long int> > &structure, vector<vector<long int> > &structure_gnp, vector<double> &radii, vector<Point_3D> &points_in, vector<Point_3D> &points_gnp, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnp)
 {
     if (!Set_global_variables_for_geometry(sample, window)) {
         hout << "Error in Extract_observation_window when calling Set_global_variables_for_geometry" << endl;
@@ -138,7 +138,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const struct Geom
     return 1;
 }
 //This function sets global variables
-int Cutoff_Wins::Set_global_variables_for_geometry(const struct Geom_RVE &sample, const int &window)
+int Cutoff_Wins::Set_global_variables_for_geometry(const struct Geom_sample &sample, const int &window)
 {
     //These are variables for the geometry of the observation window
     //Dimensions of the current observation window
@@ -233,7 +233,7 @@ int Cutoff_Wins::Compare_seeds(vector<GCH> &hybrid_particles, const vector<vecto
     return 1;
 }
 
-int Cutoff_Wins::Trim_boundary_cnts(vector<vector<int> > &shells_cnt, const int &window, const struct Geom_RVE &sample, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<double> &radii)
+int Cutoff_Wins::Trim_boundary_cnts(vector<vector<int> > &shells_cnt, const int &window, const struct Geom_sample &sample, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<double> &radii)
 {
     //These variables will help me find the point location with respect to the box
     string currentPoint;

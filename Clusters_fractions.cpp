@@ -10,7 +10,7 @@
 
 //This function calcultes the fractions of the percolated families. It also calculates the lengths of the non-percolated CNTs
 //There is a check of the total length
-int Clusters_fractions::Calculate_fractions(const struct Geom_RVE &sample, const vector<int> &cnts_inside, const vector<int> &gnps_inside, const vector<vector<long int> > &structure, const vector<Point_3D> points_in, const vector<double> &radii, const vector<vector<int> > &isolated, const vector<GCH> &hybrid_particles, const vector<vector<int> > &isolated_gnp, const vector<vector<long int> > &all_dead_indices, const vector<vector<long int> > &all_percolated_indices, const vector<vector<int> > &all_dead_gnps, const vector<vector<int> > &all_percolated_gnps)
+int Clusters_fractions::Calculate_fractions(const struct Geom_sample &sample, const vector<int> &cnts_inside, const vector<int> &gnps_inside, const vector<vector<long int> > &structure, const vector<Point_3D> points_in, const vector<double> &radii, const vector<vector<int> > &isolated, const vector<GCH> &hybrid_particles, const vector<vector<int> > &isolated_gnp, const vector<vector<long int> > &all_dead_indices, const vector<vector<long int> > &all_percolated_indices, const vector<vector<int> > &all_dead_gnps, const vector<vector<int> > &all_percolated_gnps)
 {
     
     //Variables to store the volumes of particles
@@ -197,7 +197,7 @@ double Clusters_fractions::CNT_indices_volume(const vector<long int> &indices, c
     return volume;
 }
 //
-int Clusters_fractions::Calculate_volumes_gnp(const struct Geom_RVE &sample, const vector<int> &gnps_inside, const vector<GCH> &hybrid_particles, const vector<vector<int> > &isolated_gnps, const vector<vector<int> > &all_dead_gnps, const vector<vector<int> > &all_percolated_gnps, vector<double> &volumes_gnp, vector<double> &dead_gnps, double &gnp_volume)
+int Clusters_fractions::Calculate_volumes_gnp(const struct Geom_sample &sample, const vector<int> &gnps_inside, const vector<GCH> &hybrid_particles, const vector<vector<int> > &isolated_gnps, const vector<vector<int> > &all_dead_gnps, const vector<vector<int> > &all_percolated_gnps, vector<double> &volumes_gnp, vector<double> &dead_gnps, double &gnp_volume)
 {
     //Generate cuboid to use function that approximates GNP volume
     struct cuboid gvcub;

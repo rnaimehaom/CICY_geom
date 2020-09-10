@@ -14,7 +14,7 @@
  The task of finding overlapping points can be computationally expensive. To reduce computational cost, the sample was divided into smaller cubic sub-regions. The cubic sample of size $[a \times a \times a ]$ was divided into $m$ segments in each direction resulting in $m^3$ cubic sub-regions. Then, overlapping points are searched for only on each smaller sub-region rather than in the whole sample. It may happen that two overlapping points belong to different sub-regions. In order to take into account these overlapping points, each sub-region is ``extended". If a point lies exactly at a boundary, then an overlapping point can be at a maximum distance equal to $r_{max}+r_{max}+d_W = 2r_{max}+d_W$ from the boundary. Here, $r_{max}$ is the maximum radii of the CNTs. Then, each boundary plane of each cubic sub-region is translated externally to a parallel plane at a distance $2r_{max}+d_W$.
  
  Input:
-    struct Geom_RVE sample
+    struct Geom_sample sample
         Goemetry of the simulated sample
     struct Cutoff_dist cutoffs
         Structure that contains the cutoff for tunneling and overlapping
@@ -37,10 +37,10 @@
  
  */
 
-int Contact_grid::Generate_contact_grid(const int &window, const struct Geom_RVE &sample, const struct Cutoff_dist &cutoffs, const struct Nanotube_Geo &cnts, const vector<int> &cnts_inside, vector<Point_3D> &points_in, const vector<vector<long int> > &structure, const vector<int> &gnps_inside, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp)
+int Contact_grid::Generate_contact_grid(const int &window, const struct Geom_sample &sample, const struct Cutoff_dist &cutoffs, const struct Nanotube_Geo &cnts, const vector<int> &cnts_inside, vector<Point_3D> &points_in, const vector<vector<long int> > &structure, const vector<int> &gnps_inside, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp)
 {
     //Generate the window geometry
-    struct Geom_RVE window_geom;
+    struct Geom_sample window_geom;
     if (!Generate_window_geometry(window, sample, window_geom)) {
         hout << "Error in Generate_contact_grid when calling Generate_window_geometry" << endl;
         return 0;
@@ -91,7 +91,7 @@ int Contact_grid::Generate_contact_grid(const int &window, const struct Geom_RVE
     return 1;
 }
 //
-int Contact_grid::Generate_window_geometry(const int &window, const struct Geom_RVE &sample, struct Geom_RVE &window_geom)
+int Contact_grid::Generate_window_geometry(const int &window, const struct Geom_sample &sample, struct Geom_sample &window_geom)
 {
     //Dimensions of the current observation window
     window_geom.len_x = sample.win_max_x - ((double)window)*sample.win_delt_x;
@@ -129,7 +129,7 @@ int Contact_grid::Generate_window_geometry(const int &window, const struct Geom_
     return 1;
 }
 //
-int Contact_grid::Adjust_regions_if_needed(const double &cutoff, struct Geom_RVE &window_geom, int &sx, int &sy, int &sz)
+int Contact_grid::Adjust_regions_if_needed(const double &cutoff, struct Geom_sample &window_geom, int &sx, int &sy, int &sz)
 {
     //hout << "sx = " << sx << '\t' << "dx = " << window_geom.gs_minx << "\n";
     //hout << "sy = " << sy << '\t' << "dy = " << window_geom.gs_miny << "\n";
@@ -155,7 +155,7 @@ int Contact_grid::Adjust_regions_if_needed(const double &cutoff, struct Geom_RVE
     return 1;
 }
 //
-int Contact_grid::Fill_sectioned_domain(const struct Geom_RVE &window_geom, const vector<int> &particles_inside, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const double &cutoff, const int &sx, const int &sy, const int &sz, vector<vector< long int> > &sectioned_domain)
+int Contact_grid::Fill_sectioned_domain(const struct Geom_sample &window_geom, const vector<int> &particles_inside, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const double &cutoff, const int &sx, const int &sy, const int &sz, vector<vector< long int> > &sectioned_domain)
 {
     //There will be sx*sy*sz different regions
     sectioned_domain.clear();
@@ -208,7 +208,7 @@ int Contact_grid::Fill_sectioned_domain(const struct Geom_RVE &window_geom, cons
     return 1;
 }
 //
-int Contact_grid::Calculate_region_coordinates(const struct Geom_RVE &window_geom, const Point_3D &point, const int &sx, const int &sy, const int &sz, int &a, int &b, int &c)
+int Contact_grid::Calculate_region_coordinates(const struct Geom_sample &window_geom, const Point_3D &point, const int &sx, const int &sy, const int &sz, int &a, int &b, int &c)
 {
     
     //Calculate the region-coordinates
@@ -234,7 +234,7 @@ int Contact_grid::Calculate_region_coordinates(const struct Geom_RVE &window_geo
     return 1;
 }
 //
-int Contact_grid::Calculate_postion_flags(const struct Geom_RVE &window_geom, const Point_3D &point, const double &cutoff, const int &a, const int &b, const int &c, const int &sx, const int &sy, const int &sz, int &fx, int &fy, int &fz)
+int Contact_grid::Calculate_postion_flags(const struct Geom_sample &window_geom, const Point_3D &point, const double &cutoff, const int &a, const int &b, const int &c, const int &sx, const int &sy, const int &sz, int &fx, int &fy, int &fz)
 {
     //Coordinates of non-overlaping region the point belongs to
     double x1 = a*window_geom.gs_minx +  window_geom.origin.x;
@@ -290,7 +290,7 @@ int Contact_grid::Calculate_t(const int &a, const int &b, const int &c, const in
     return a + b*sx + c*sx*sy;
 }
 //
-int Contact_grid::Fill_sectioned_domain(const struct Geom_RVE &window_geom, const vector<int> &hybs_inside, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const double &cutoff, const int &sx, const int &sy, const int &sz, vector<vector<int> > &sectioned_domain_hyb)
+int Contact_grid::Fill_sectioned_domain(const struct Geom_sample &window_geom, const vector<int> &hybs_inside, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const double &cutoff, const int &sx, const int &sy, const int &sz, vector<vector<int> > &sectioned_domain_hyb)
 {
     //There will be sx*sy*sz different regions
     sectioned_domain_hyb.clear();

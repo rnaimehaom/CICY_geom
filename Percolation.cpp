@@ -7,7 +7,7 @@
 
 #include "Percolation.h"
 
-int Percolation::Determine_percolated_clusters(const int &window, const struct Geom_RVE &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, const vector<vector<int> > &boundary_cnt, const vector<int> &labels_cnt, const vector<vector<int> > &boundary_gnp, const vector<int> &labels_gnp, vector<vector<int> > &clusters_cnt, vector<vector<int> > &isolated_cnt, vector<vector<int> > &clusters_gnp, vector<vector<int> > &isolated_gnp)
+int Percolation::Determine_percolated_clusters(const int &window, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, const vector<vector<int> > &boundary_cnt, const vector<int> &labels_cnt, const vector<vector<int> > &boundary_gnp, const vector<int> &labels_gnp, vector<vector<int> > &clusters_cnt, vector<vector<int> > &isolated_cnt, vector<vector<int> > &clusters_gnp, vector<vector<int> > &isolated_gnp)
 {
     //flag to ignore variables for second particle
     int ignore_particle = 1;
@@ -175,7 +175,7 @@ int Percolation::Check_percolation_single_cluster(const vector<short int> &clust
 //It assumed that this function is called when the CNTs have a lenth equal or grater than the dimensions of the sample
 //In this function, the vector of isolated CNTs is scanned to look for percolated CNTs.
 //A single CNT can only percolate on X, Y or Z.
-int Percolation::Single_particle_percolation(const int &window, const struct Geom_RVE &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, const vector<vector<int> > &boundary, const vector<int> &labels, vector<vector<int> > &clusters, vector<vector<int> > &isolated)
+int Percolation::Single_particle_percolation(const int &window, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, const vector<vector<int> > &boundary, const vector<int> &labels, vector<vector<int> > &clusters, vector<vector<int> > &isolated)
 {
     
     //These variables are flags to determine in which directions there might be percolation by a single CNT
@@ -212,7 +212,7 @@ int Percolation::Single_particle_percolation(const int &window, const struct Geo
     }
     return 1;
 }
-int Percolation::Determine_direction_flags(const int &window, const struct Geom_RVE &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, int &px, int &py, int &pz)
+int Percolation::Determine_direction_flags(const int &window, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, int &px, int &py, int &pz)
 {
     //These are variables for the geometry of the observation window
     //Dimensions of the current observation window

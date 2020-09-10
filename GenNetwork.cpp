@@ -15,7 +15,7 @@
 //3) When adding the new_cnt vector to the global vector of CNTs, split it into segments. This operation is completely useless with a non-periodic sample and was causing some errors when using the penetrating model so I just deleted it.
 
 //Generate 3D nantube networks with ovelapping
-int GenNetwork::Generate_nanofiller_network(const struct Geom_RVE &geom_rve, const struct Cluster_Geo &clust_geo, const struct Nanotube_Geo &nanotube_geo, const struct GNP_Geo &gnp_geo, const struct Cutoff_dist &cutoffs, const struct Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<Point_3D> &gpoints, vector<GCH> &hybrid_particles, vector<double> &cnts_radius, vector<vector<long int> > &cstructures, vector<vector<long int> > &gstructures)const
+int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct GNP_Geo &gnp_geo, const struct Cutoff_dist &cutoffs, const struct Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<Point_3D> &gpoints, vector<GCH> &hybrid_particles, vector<double> &cnts_radius, vector<vector<long int> > &cstructures, vector<vector<long int> > &gstructures)const
 {
     //Define a two-dimensional vector of three-dimensional points for storing the CNT threads
     vector<vector<Point_3D> > cnts_points;
@@ -23,35 +23,35 @@ int GenNetwork::Generate_nanofiller_network(const struct Geom_RVE &geom_rve, con
     vector<vector<Point_3D> > gnps_points;
     
     double carbon_vol = 0, carbon_weight = 0;
-    if (geom_rve.particle_type == "CNT_wires") {
+    if (simu_para.particle_type == "CNT_wires") {
         //Generate a network defined by points and connections
         //Use the Mersenne Twister for the random number generation
-        if (!Generate_cnt_network_threads_mt(geom_rve, clust_geo, nanotube_geo, cutoffs, cnts_points, cnts_radius)) {
+        if (!Generate_cnt_network_threads_mt(simu_para, geom_sample, agg_geo, nanotube_geo, cutoffs, cnts_points, cnts_radius)) {
             hout << "Error in generating a CNT network" << endl;
             return 0;
         }
         
-    } else if (geom_rve.particle_type == "GNP_cuboids") {
+    } else if (simu_para.particle_type == "GNP_cuboids") {
         //Generate a network defined by cuboids and points
-        if (!Generate_gnp_network_mt(gnp_geo, geom_rve, cutoffs, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
+        if (!Generate_gnp_network_mt(gnp_geo, geom_sample, cutoffs, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
             hout << "Error in generating a GNP network" << endl;
             return 0;
         }
         
-    } else if (geom_rve.particle_type == "Hybrid_particles") {
+    } else if (simu_para.particle_type == "Hybrid_particles") {
         //Generate a network defined by cuboids and points
-        if (!Generate_gnp_network_mt(gnp_geo, geom_rve, cutoffs, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
+        if (!Generate_gnp_network_mt(gnp_geo, geom_sample, cutoffs, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
             hout << "Error in generating a GNP network" << endl;
             return 0;
         }
-        if (!Generate_cnt_network_threads_over_gnps_mt(gnp_geo, geom_rve, nanotube_geo, cutoffs, cnts_points, gnps_points, hybrid_particles, cnts_radius)) {
+        if (!Generate_cnt_network_threads_over_gnps_mt(gnp_geo, geom_sample, nanotube_geo, cutoffs, cnts_points, gnps_points, hybrid_particles, cnts_radius)) {
             hout << "Error in generating a CNT network on GNPs" << endl;
             return 0;
         }
         
-    } else if (geom_rve.particle_type == "GNP_CNT_mix") {
+    } else if (simu_para.particle_type == "GNP_CNT_mix") {
         //Generate a network defined by cuboids and points
-        if (!Generate_gnp_network_mt(gnp_geo, geom_rve, cutoffs, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
+        if (!Generate_gnp_network_mt(gnp_geo, geom_sample, cutoffs, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
             hout << "Error in generating a GNP network" << endl;
             return 0;
         }
@@ -60,13 +60,13 @@ int GenNetwork::Generate_nanofiller_network(const struct Geom_RVE &geom_rve, con
         //==========================
         //GNP_CNT_mix works only with penetrating model in CNTs (oct 30 2016)
         //WILL BE CHANGED FOR THE HYBRID PARTICLE FUNCTION?
-        if (!Generate_cnt_network_threads_mt(geom_rve, clust_geo, nanotube_geo, cutoffs, cnts_points, cnts_radius)) {
+        if (!Generate_cnt_network_threads_mt(simu_para, geom_sample, agg_geo, nanotube_geo, cutoffs, cnts_points, cnts_radius)) {
             hout << "Error in generating a CNT network mixed with GNPs" << endl;
             return 0;
         }
 
     } else {
-        hout << "Error: the type of particles shoud be one of the following: CNT_wires, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input value was: " << geom_rve.particle_type << endl;
+        hout << "Error: the type of particles shoud be one of the following: CNT_wires, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input value was: " << simu_para.particle_type << endl;
         return 0;
     }
     
@@ -88,10 +88,10 @@ int GenNetwork::Generate_nanofiller_network(const struct Geom_RVE &geom_rve, con
         
         //Generate a cuboid for RVE
         struct cuboid cub;
-        cub.poi_min = geom_rve.ex_origin;
-        cub.len_x = geom_rve.ex_len;
-        cub.wid_y = geom_rve.ey_wid;
-        cub.hei_z = geom_rve.ez_hei;
+        cub.poi_min = geom_sample.ex_origin;
+        cub.len_x = geom_sample.ex_len;
+        cub.wid_y = geom_sample.ey_wid;
+        cub.hei_z = geom_sample.ez_hei;
         
         if (tec360_flags.generated_cnts == 1) {
             
@@ -121,10 +121,10 @@ int GenNetwork::Generate_nanofiller_network(const struct Geom_RVE &geom_rve, con
         for (int i = 1; i < (int)hybrid_particles.size(); i++)
             cluster_gch[i] = i;
         struct cuboid gvcub;
-        gvcub.poi_min = geom_rve.origin;
-        gvcub.len_x = geom_rve.len_x;
-        gvcub.wid_y = geom_rve.wid_y;
-        gvcub.hei_z = geom_rve.hei_z;
+        gvcub.poi_min = geom_sample.origin;
+        gvcub.len_x = geom_sample.len_x;
+        gvcub.wid_y = geom_sample.wid_y;
+        gvcub.hei_z = geom_sample.hei_z;
         if(Tecexpt->Export_cuboid(otec, gvcub)==0) return 0;
         string zone_name = "as_generated";
         if(Tecexpt->Export_randomly_oriented_gnps(otec, hybrid_particles, cluster_gch,zone_name)==0) return 0;
@@ -136,14 +136,14 @@ int GenNetwork::Generate_nanofiller_network(const struct Geom_RVE &geom_rve, con
 }
 //Generate a network defined by points and connections
 //Use the Mersenne Twister for the random number generation
-int GenNetwork::Generate_cnt_network_threads_mt(const struct Geom_RVE &geom_rve, const struct Cluster_Geo &clust_geo, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points,  vector<double> &cnts_radius)const
+int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points,  vector<double> &cnts_radius)const
 {
     // Use random_device to generate seeds for Mersenne twister engines.
     std::random_device rd;
     
-    //Initial seeds, if any are in network_seeds within geom_rve.
-    //However, geom_rve cannot be modified, so copy the seeds to a new vector
-    vector<unsigned int> net_seeds(geom_rve.network_seeds);
+    //Initial seeds, if any are in network_seeds within geom_sample.
+    //However, geom_sample cannot be modified, so copy the seeds to a new vector
+    vector<unsigned int> net_seeds(simu_para.network_seeds);
    
     //If there are no seeds, generate them
     if (!net_seeds.size()) {
@@ -189,18 +189,18 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Geom_RVE &geom_rve,
     
     //---------------------------------------------------------------------------
     //Generate the data for nanotube clusters limited in ellipsoid surfaces (each ellipsoid is within the RVE and is separated with each other)
-    if(clust_geo.vol_fra_criterion>0.0)
+    if(agg_geo.vol_fra_criterion>0.0)
     {
         struct cuboid cub;										//Generate a cuboid for RVE
-        cub.poi_min = geom_rve.origin;
-        cub.len_x = geom_rve.len_x;
-        cub.wid_y = geom_rve.wid_y;
-        cub.hei_z = geom_rve.hei_z;
+        cub.poi_min = geom_sample.origin;
+        cub.len_x = geom_sample.len_x;
+        cub.wid_y = geom_sample.wid_y;
+        cub.hei_z = geom_sample.hei_z;
         cub.volume = cub.len_x*cub.wid_y*cub.hei_z;
         
-        if(Get_ellip_clusters(cub, clust_geo)==0) return 0;
+        if(Get_ellip_clusters(cub, agg_geo)==0) return 0;
         //Generate a number of sperical clusters in regular arrangement
-        //		if(Get_spherical_clusters_regular_arrangement(cub, clust_geo)==0) return 0;
+        //		if(Get_spherical_clusters_regular_arrangement(cub, agg_geo)==0) return 0;
     }
     
     //---------------------------------------------------------------------------
@@ -226,7 +226,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Geom_RVE &geom_rve,
     //Define cutoff for overlapping
     double overlap_max_cutoff = 2*nanotube_geo.rad_max + cutoffs.van_der_Waals_dist;
     //Initialize the vector sub-regions
-    Initialize_subregions(geom_rve, n_subregions, sectioned_domain);
+    Initialize_subregions(geom_sample, n_subregions, sectioned_domain);
     //This flag will be used to skip overlapping functions
     //1 = non-penetrating model
     //0 = penetrating model
@@ -235,16 +235,16 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Geom_RVE &geom_rve,
     //Generate cuboids that represent the extended domain and the composite domain
     //To calculate the effective portion (length) which falls into the given region (RVE)
     struct cuboid gvcub;					//generate a cuboid to represent the composite domain
-    gvcub.poi_min = geom_rve.origin;
-    gvcub.len_x = geom_rve.len_x;
-    gvcub.wid_y = geom_rve.wid_y;
-    gvcub.hei_z = geom_rve.hei_z;
-    gvcub.volume = geom_rve.volume;
+    gvcub.poi_min = geom_sample.origin;
+    gvcub.len_x = geom_sample.len_x;
+    gvcub.wid_y = geom_sample.wid_y;
+    gvcub.hei_z = geom_sample.hei_z;
+    gvcub.volume = geom_sample.volume;
     struct cuboid excub;					//generate a cuboid to represent the extended domain
-    excub.poi_min = geom_rve.ex_origin;
-    excub.len_x = geom_rve.ex_len;
-    excub.wid_y = geom_rve.ey_wid;
-    excub.hei_z = geom_rve.ez_hei;
+    excub.poi_min = geom_sample.ex_origin;
+    excub.len_x = geom_sample.ex_len;
+    excub.wid_y = geom_sample.ey_wid;
+    excub.hei_z = geom_sample.ez_hei;
     excub.volume = excub.len_x*excub.wid_y*excub.hei_z;
     
     //Get the time when generation started
@@ -298,7 +298,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Geom_RVE &geom_rve,
         
         //Check overlapping of the intial point
         int counter = 1;
-        while (penetrating_model_flag && !Check_penetration(geom_rve, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
+        while (penetrating_model_flag && !Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
             if(Get_seed_point_mt(excub, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
             cnt_seed_count++;					//record the number of seed generations
             //hout << "Seed deleted" << endl;
@@ -345,7 +345,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Geom_RVE &geom_rve,
             
             //---------------------------------------------------------------------------
             //If a CNT penetrates the ellipsoidal surface of a cluster from inside, the growth of this CNT will be headed back in the cluster in a probability p, (0<=p<=1).
-            if(clust_geo.ellips.size()>0)
+            if(agg_geo.ellips.size()>0)
             {
                 return 0;
             }
@@ -363,7 +363,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Geom_RVE &geom_rve,
             //---------------------------------------------------------------------------
             //Check for overlapping
             //hout << "Check overlapping ";
-            if (!penetrating_model_flag || Check_penetration(geom_rve, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
+            if (!penetrating_model_flag || Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
                 
                 //---------------------------------------------------------------------------
                 //If the overlapping model is used or if overlapping was successfully solved, then proceed as usual
@@ -445,7 +445,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Geom_RVE &geom_rve,
                     global_coordinates.back().push_back(CNT);
                     global_coordinates.back().push_back(ii);
                     //Add point to an overlapping region in the vector sectioned_domain
-                    Add_to_overlapping_regions(geom_rve, overlap_max_cutoff, new_cnt[ii], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
+                    Add_to_overlapping_regions(geom_sample, overlap_max_cutoff, new_cnt[ii], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
                     
                 }
             }
@@ -470,11 +470,11 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Geom_RVE &geom_rve,
     
     //Output the CNT content generated
     if(nanotube_geo.criterion == "wt") {
-        hout << "The weight fraction of generated CNTs is: " << wt_sum/(geom_rve.volume*geom_rve.density) << endl;
+        hout << "The weight fraction of generated CNTs is: " << wt_sum/(geom_sample.volume*geom_sample.polymer_density) << endl;
         hout << ", the target weight fraction was " << nanotube_geo.weight_fraction << endl << endl;
 
     } else if(nanotube_geo.criterion == "vol") {
-        hout << endl << "The volume fraction of generated CNTs was " << vol_sum/geom_rve.volume;
+        hout << endl << "The volume fraction of generated CNTs was " << vol_sum/geom_sample.volume;
         hout << ", the target volume fraction was " << nanotube_geo.volume_fraction << endl << endl;
     }
     
@@ -491,7 +491,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Geom_RVE &geom_rve,
             Pz = cnts_points[i][j].z;
             //Apply rotation
             cnts_points[i][j].x = Px;
-            cnts_points[i][j].y = -Pz + geom_rve.wid_y;
+            cnts_points[i][j].y = -Pz + geom_sample.wid_y;
             cnts_points[i][j].z = Py;
         }
     }//*/
@@ -510,7 +510,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Geom_RVE &geom_rve,
 //---------------------------------------------------------------------------
 //Generate a GNP network
 //Use the Mersenne Twister for the random number generation
-int GenNetwork::Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const struct Geom_RVE &geom_rve, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const
+int GenNetwork::Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const
 {
     //---------------------------------------------------------------------------
     //Set up the Mersenne Twisters used for the different variables
@@ -549,7 +549,7 @@ int GenNetwork::Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const str
     //n_subregions[2] is the number of subregions along z
     vector<int> n_subregions;
     //Initialize the vector sub-regions
-    Initialize_subregions(geom_rve, n_subregions, sectioned_domain);
+    Initialize_subregions(geom_sample, n_subregions, sectioned_domain);
     //This flag will be used to skip overlapping functions
     //1 = non-penetrating model
     //0 = penetrating model
@@ -559,18 +559,18 @@ int GenNetwork::Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const str
     //Generate cuboids that represent the extended domain and the composite domain
     //To calculate the effective portion (length) which falls into the given region (RVE)
     struct cuboid gvcub;					//generate a cuboid to represent the composite domain
-    gvcub.poi_min = geom_rve.origin;
-    gvcub.len_x = geom_rve.len_x;
-    gvcub.wid_y = geom_rve.wid_y;
-    gvcub.hei_z = geom_rve.hei_z;
+    gvcub.poi_min = geom_sample.origin;
+    gvcub.len_x = geom_sample.len_x;
+    gvcub.wid_y = geom_sample.wid_y;
+    gvcub.hei_z = geom_sample.hei_z;
     struct cuboid excub;					//generate a cuboid to represent the extended domain
-    excub.poi_min = geom_rve.origin - Point_3D(gnp_geo.len_max/2,gnp_geo.len_max/2,gnp_geo.len_max/2);
-    excub.len_x = geom_rve.len_x + gnp_geo.len_max;
-    excub.wid_y = geom_rve.wid_y + gnp_geo.len_max;
-    excub.hei_z = geom_rve.hei_z + gnp_geo.len_max;
+    excub.poi_min = geom_sample.origin - Point_3D(gnp_geo.len_max/2,gnp_geo.len_max/2,gnp_geo.len_max/2);
+    excub.len_x = geom_sample.len_x + gnp_geo.len_max;
+    excub.wid_y = geom_sample.wid_y + gnp_geo.len_max;
+    excub.hei_z = geom_sample.hei_z + gnp_geo.len_max;
     excub.volume = excub.len_x*excub.wid_y*excub.hei_z;
     
-    gvcub.volume = geom_rve.volume;
+    gvcub.volume = geom_sample.volume;
     
     //---------------------------------------------------------------------------
     while((gnp_geo.criterion == "vol"&&vol_sum < gnp_geo.real_volume)||
@@ -633,13 +633,13 @@ int GenNetwork::Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const str
     carbon_vol = vol_sum;
     carbon_weight = wt_sum;
     
-    if (geom_rve.particle_type != "Hybrid_particles") {
+    if (geom_sample.particle_type != "Hybrid_particles") {
         //Print the number of GNPs when GNPs only or mixed fillers are generated
         if(gnp_geo.criterion == "wt") {
-            hout << "The weight fraction of generated GNPs is: " << wt_sum/(geom_rve.volume*geom_rve.density) << endl;
+            hout << "The weight fraction of generated GNPs is: " << wt_sum/(geom_sample.volume*geom_sample.polymer_density) << endl;
             hout << ", the target weight fraction was " << gnp_geo.weight_fraction << endl << endl;
         } else if(gnp_geo.criterion == "vol") {
-            hout << endl << "The volume fraction of generated GNPs was " << vol_sum/geom_rve.volume;
+            hout << endl << "The volume fraction of generated GNPs was " << vol_sum/geom_sample.volume;
             hout << ", the target volume fraction was " << gnp_geo.volume_fraction << endl;
         }
         
@@ -654,7 +654,7 @@ int GenNetwork::Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const str
 //---------------------------------------------------------------------------
 //Generate a network defined by points and connections
 //Use the Mersenne Twister for the random number generation
-int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &gnp_geo, const struct Geom_RVE &geom_rve, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, vector<double> &cnts_radius)const
+int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, vector<double> &cnts_radius)const
 {
     //Generate random seed in terms of local time
     //unsigned int time_seed = 1453384844;
@@ -706,7 +706,7 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
     //Define cutoff for overlapping
     double overlap_max_cutoff = 2*nanotube_geo.rad_max + cutoffs.van_der_Waals_dist;
     //Initialize the vector sub-regions
-    Initialize_subregions(geom_rve, n_subregions, sectioned_domain);
+    Initialize_subregions(geom_sample, n_subregions, sectioned_domain);
     //This flag will be used to skip overlapping functions
     //1 = non-penetrating model
     //0 = penetrating model
@@ -716,16 +716,16 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
     //Generate cuboids that represent the extended domain and the composite domain
     //To calculate the effective portion (length) which falls into the given region (RVE)
     struct cuboid gvcub;					//generate a cuboid to represent the composite domain
-    gvcub.poi_min = geom_rve.origin;
-    gvcub.len_x = geom_rve.len_x;
-    gvcub.wid_y = geom_rve.wid_y;
-    gvcub.hei_z = geom_rve.hei_z;
-    gvcub.volume = geom_rve.volume;
+    gvcub.poi_min = geom_sample.origin;
+    gvcub.len_x = geom_sample.len_x;
+    gvcub.wid_y = geom_sample.wid_y;
+    gvcub.hei_z = geom_sample.hei_z;
+    gvcub.volume = geom_sample.volume;
     struct cuboid excub;					//generate a cuboid to represent the extended domain
-    excub.poi_min = geom_rve.ex_origin;
-    excub.len_x = geom_rve.ex_len;
-    excub.wid_y = geom_rve.ey_wid;
-    excub.hei_z = geom_rve.ez_hei;
+    excub.poi_min = geom_sample.ex_origin;
+    excub.len_x = geom_sample.ex_len;
+    excub.wid_y = geom_sample.ey_wid;
+    excub.hei_z = geom_sample.ez_hei;
     excub.volume = excub.len_x*excub.wid_y*excub.hei_z;
     
     //---------------------------------------------------------------------------
@@ -739,7 +739,7 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
     //These subregions are only used for the current hybrid, after a hybrid is succesfully generated, the valiable should be cleared
     vector<vector<long int> > sect_domain_hybrid;
     //Initialize the vector sub-regions
-    Initialize_subregions(geom_rve, n_subregions, sect_domain_hybrid);
+    Initialize_subregions(geom_sample, n_subregions, sect_domain_hybrid);
     
     for (int i = 0; i < (int)hybrid_praticles.size(); i++) {
         //hout << "Hybrid " << i << endl;
@@ -777,7 +777,7 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
         //Check if CNTs will grow parallel or independent
         if (gnp_geo.growth_type == "independent") {
             //Grow CNTs in the "top" surface
-            if (!Grow_cnts_on_gnp_surface(geom_rve, excub, hybrid_praticles[i], nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, cnts_radius, n_subregions, cnt_rad, cnt_length, overlap_max_cutoff, penetrating_model_flag, num_seeds, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_x, engine_y, engine_sita, engine_pha, dist)) {
+            if (!Grow_cnts_on_gnp_surface(geom_sample, excub, hybrid_praticles[i], nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, cnts_radius, n_subregions, cnt_rad, cnt_length, overlap_max_cutoff, penetrating_model_flag, num_seeds, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_x, engine_y, engine_sita, engine_pha, dist)) {
                 //
                 hout << "Error while growing CNTs on top surface of GNP " << i << endl;
                 return 0;
@@ -801,7 +801,7 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
             hybrid_praticles[i].rotation = rotation_bottom;
             
             //Grow CNTs in the "bottom" surface
-            if (!Grow_cnts_on_gnp_surface(geom_rve, excub, hybrid_praticles[i], nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, cnts_radius, n_subregions, cnt_rad, cnt_length, overlap_max_cutoff, penetrating_model_flag, num_seeds, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_x, engine_y, engine_sita, engine_pha, dist)) {
+            if (!Grow_cnts_on_gnp_surface(geom_sample, excub, hybrid_praticles[i], nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, cnts_radius, n_subregions, cnt_rad, cnt_length, overlap_max_cutoff, penetrating_model_flag, num_seeds, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_x, engine_y, engine_sita, engine_pha, dist)) {
                 //
                 hout << "Error while growing CNTs on bottom surface of GNP " << i << endl;
                 return 0;
@@ -825,7 +825,7 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
         }
         
         //Add hybrid particle to global data structure
-        if (Add_CNTs_to_global_structure(geom_rve, particle, cnts_points, global_coordinates, sectioned_domain, n_subregions, cnts_radius, cnt_rad, overlap_max_cutoff, penetrating_model_flag)==0) return 0;
+        if (Add_CNTs_to_global_structure(geom_sample, particle, cnts_points, global_coordinates, sectioned_domain, n_subregions, cnts_radius, cnt_rad, overlap_max_cutoff, penetrating_model_flag)==0) return 0;
         
         //Add generated volume fraction of CNTs to the cumulative variables
         if (Calculate_generated_volume(gnp_geo, gvcub, hybrid_praticles[i], particle, step_vol_para, step_wei_para, vol_sum_cnt, wt_sum_cnt, vol_sum_gnp, wt_sum_gnp, vol_sum, wt_sum)==0) return 0;
@@ -843,14 +843,14 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
 
     
     if(nanotube_geo.criterion == "wt") {
-        hout << "The weight fraction of generated CNTs is: " << wt_sum_cnt/(geom_rve.volume*geom_rve.density) << endl;
-        hout << "The weight fraction of generated GNPs is: " << wt_sum_gnp/(geom_rve.volume*geom_rve.density) << endl;
-        hout << "The weight fraction of generated hybrid particles is: " << (wt_sum_gnp+wt_sum_cnt)/(geom_rve.volume*geom_rve.density) << ", the target weight fraction was " << nanotube_geo.weight_fraction+gnp_geo.weight_fraction << endl;
+        hout << "The weight fraction of generated CNTs is: " << wt_sum_cnt/(geom_sample.volume*geom_sample.polymer_density) << endl;
+        hout << "The weight fraction of generated GNPs is: " << wt_sum_gnp/(geom_sample.volume*geom_sample.polymer_density) << endl;
+        hout << "The weight fraction of generated hybrid particles is: " << (wt_sum_gnp+wt_sum_cnt)/(geom_sample.volume*geom_sample.polymer_density) << ", the target weight fraction was " << nanotube_geo.weight_fraction+gnp_geo.weight_fraction << endl;
         hout << "The CNT/GNP mass ratio is " << wt_sum_cnt/wt_sum_gnp << ", the target mass ratio was " << gnp_geo.mass_ratio  << endl << endl;
     } else if(nanotube_geo.criterion == "vol") {
-        hout << "The volume fraction of generated CNTs was " << vol_sum_cnt/geom_rve.volume << endl;
-        hout << "The volume fraction of generated GNPs was " << vol_sum_gnp/geom_rve.volume << endl;
-        hout << "The volume fraction of generated hybrid particles was " << (vol_sum_gnp+vol_sum_cnt)/geom_rve.volume << ", the target volume fraction was " << nanotube_geo.volume_fraction << endl; //The total volume fraction of hybrids is stored in the CNT variable
+        hout << "The volume fraction of generated CNTs was " << vol_sum_cnt/geom_sample.volume << endl;
+        hout << "The volume fraction of generated GNPs was " << vol_sum_gnp/geom_sample.volume << endl;
+        hout << "The volume fraction of generated hybrid particles was " << (vol_sum_gnp+vol_sum_cnt)/geom_sample.volume << ", the target volume fraction was " << nanotube_geo.volume_fraction << endl; //The total volume fraction of hybrids is stored in the CNT variable
         
         hout << "The CNT/GNP mass ratio is " << (vol_sum_cnt*nanotube_geo.density)/(vol_sum_gnp*gnp_geo.density);
         //Compare with target mass ratio when necessary
@@ -1135,7 +1135,7 @@ int GenNetwork::Check_seed_overlapping(const vector<Point_3D> &seeds, const doub
     return 0;
 }
 //This function generates all CNTs in one side of a GNP. CNTs grow independently of each other
-int GenNetwork::Grow_cnts_on_gnp_surface(const struct Geom_RVE &geom_rve, const struct cuboid &excub, const GCH &hybrid, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, vector<double> &cnts_radius, const vector<int> &n_subregions, const double &cnt_rad, const double  &cnt_length, const double &overlap_max_cutoff, const int &penetrating_model_flag, const int &ns, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
+int GenNetwork::Grow_cnts_on_gnp_surface(const struct Geom_sample &geom_sample, const struct cuboid &excub, const GCH &hybrid, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, vector<double> &cnts_radius, const vector<int> &n_subregions, const double &cnt_rad, const double  &cnt_length, const double &overlap_max_cutoff, const int &penetrating_model_flag, const int &ns, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
 {
     //---------------------------------------------------------------------------
     //Initialize a point to be used in the rest of the function
@@ -1178,7 +1178,7 @@ int GenNetwork::Grow_cnts_on_gnp_surface(const struct Geom_RVE &geom_rve, const 
                 
                 //Grow CNT
                 //hout << "CNT growth start" << endl;
-                if (Grow_single_cnt_on_gnp(geom_rve, excub, nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, new_cnt, cnts_radius, n_subregions, hybrid.rotation, cnt_rad, cnt_length, penetrating_model_flag, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_sita, engine_pha, dist)) {
+                if (Grow_single_cnt_on_gnp(geom_sample, excub, nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, new_cnt, cnts_radius, n_subregions, hybrid.rotation, cnt_rad, cnt_length, penetrating_model_flag, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_sita, engine_pha, dist)) {
                     //If CNT was grown succesfully, set the flag to 1 to break the while loop
                     success = 1;
                     
@@ -1186,7 +1186,7 @@ int GenNetwork::Grow_cnts_on_gnp_surface(const struct Geom_RVE &geom_rve, const 
                     
                     //Add new CNT to the vectors for overlapping (global_coord_hybrid, sect_domain_hybrid)
                     if (penetrating_model_flag) {
-                        if (Add_CNTs_to_hybrid_structure(geom_rve, particle, new_cnt, global_coord_hybrid, sect_domain_hybrid, n_subregions, overlap_max_cutoff)==0) {
+                        if (Add_CNTs_to_hybrid_structure(geom_sample, particle, new_cnt, global_coord_hybrid, sect_domain_hybrid, n_subregions, overlap_max_cutoff)==0) {
                             hout << "Error in Grow_cnts_on_gnp_surface when calling Add_CNTs_to_hybrid_structure"<<endl;
                             return 0;
                         }
@@ -1231,7 +1231,7 @@ int GenNetwork::Grow_cnts_on_gnp_surface(const struct Geom_RVE &geom_rve, const 
     return 1;
 }
 //This function generates all CNTs in one side of a GNP. CNTs grow parallel
-int GenNetwork::Grow_CNTs_on_GNP_surface_parallel(const struct Geom_RVE &geom_rve, const struct cuboid &excub, const struct cuboid &gnp, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, vector<Point_3D> &gnp_discrete, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, vector<double> &cnts_radius, const vector<int> &n_subregions, const MathMatrix &multiplier, const Point_3D &gnp_poi, const double &cnt_rad, const double  &cnt_length, const int &penetrating_model_flag, const int &ns, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
+int GenNetwork::Grow_CNTs_on_GNP_surface_parallel(const struct Geom_sample &geom_sample, const struct cuboid &excub, const struct cuboid &gnp, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, vector<Point_3D> &gnp_discrete, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, vector<double> &cnts_radius, const vector<int> &n_subregions, const MathMatrix &multiplier, const Point_3D &gnp_poi, const double &cnt_rad, const double  &cnt_length, const int &penetrating_model_flag, const int &ns, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
 {
     //---------------------------------------------------------------------------
     //Initialize a point to be used in the rest of the function
@@ -1255,7 +1255,7 @@ int GenNetwork::Grow_CNTs_on_GNP_surface_parallel(const struct Geom_RVE &geom_rv
     
     //Grow intial CNT
     //hout << "CNT growth start" << endl;
-    if (Grow_single_cnt_on_gnp(geom_rve, excub, nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, initial_cnt, cnts_radius, n_subregions, multiplier, cnt_rad, cnt_length, penetrating_model_flag, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_sita, engine_pha, dist)==0) return 0;
+    if (Grow_single_cnt_on_gnp(geom_sample, excub, nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, initial_cnt, cnts_radius, n_subregions, multiplier, cnt_rad, cnt_length, penetrating_model_flag, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_sita, engine_pha, dist)==0) return 0;
     //hout << "CNT growth end" << endl;
     //Add the initial CNT to the vector of points for the current particle
     particle.push_back(initial_cnt);
@@ -1341,7 +1341,7 @@ int GenNetwork::Copy_CNT(const vector<Point_3D> &initial_cnt, vector<Point_3D> &
 //This function will be used to "grow" the CNTs in the surface of a GNP
 //1: successfully grown CNT
 //0: could not solve penetration of CNT
-int GenNetwork::Grow_single_cnt_on_gnp(const struct Geom_RVE &geom_rve, const struct cuboid &excub, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<vector<int> > &global_coord_hybrid, const vector<vector<long int> > &sect_domain_hybrid, vector<Point_3D> &new_cnt, vector<double> &cnts_radius, const vector<int> &n_subregions, const MathMatrix &seed_multiplier, const double &cnt_rad, const double  &cnt_length, const int &penetrating_model_flag, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
+int GenNetwork::Grow_single_cnt_on_gnp(const struct Geom_sample &geom_sample, const struct cuboid &excub, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<vector<int> > &global_coord_hybrid, const vector<vector<long int> > &sect_domain_hybrid, vector<Point_3D> &new_cnt, vector<double> &cnts_radius, const vector<int> &n_subregions, const MathMatrix &seed_multiplier, const double &cnt_rad, const double  &cnt_length, const int &penetrating_model_flag, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
 {
     //Initialize the multiplier matrix with the initial rotation
     MathMatrix multiplier = seed_multiplier;
@@ -1399,7 +1399,7 @@ int GenNetwork::Grow_single_cnt_on_gnp(const struct Geom_RVE &geom_rve, const st
     return 1;
 }
 //This functions adds to the global structure the CNTs generated for a hybrid particle
-int GenNetwork::Add_CNTs_to_hybrid_structure(const struct Geom_RVE &geom_rve, const vector<vector<Point_3D> > &particle, vector<Point_3D> &new_cnt, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, const vector<int> &n_subregions, const double &overlap_max_cutoff)const
+int GenNetwork::Add_CNTs_to_hybrid_structure(const struct Geom_sample &geom_sample, const vector<vector<Point_3D> > &particle, vector<Point_3D> &new_cnt, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, const vector<int> &n_subregions, const double &overlap_max_cutoff)const
 {
     int CNT_number = (int)particle.size();
     //Loop over the generated CNTs, i.e. over particle.size()
@@ -1412,13 +1412,13 @@ int GenNetwork::Add_CNTs_to_hybrid_structure(const struct Geom_RVE &geom_rve, co
         global_coord_hybrid.back().push_back(CNT_number);
         global_coord_hybrid.back().push_back(j);
         //Add point to an overlapping region in the vector sectioned_domain
-        Add_to_overlapping_regions(geom_rve, overlap_max_cutoff, new_cnt[j], (long int)global_coord_hybrid.size()-1, n_subregions, sect_domain_hybrid);
+        Add_to_overlapping_regions(geom_sample, overlap_max_cutoff, new_cnt[j], (long int)global_coord_hybrid.size()-1, n_subregions, sect_domain_hybrid);
         
     }
     return 1;
 }
 //This functions adds to the global structure the CNTs generated for a hybrid particle
-int GenNetwork::Add_CNTs_to_global_structure(const struct Geom_RVE &geom_rve, const vector<vector<Point_3D> > &particle, vector<vector<Point_3D> > &cnts_points, vector<vector<int> > &global_coordinates, vector<vector<long int> > &sectioned_domain, vector<int> &n_subregions, vector<double> &cnts_radius, double &cnt_rad, double &overlap_max_cutoff, int &penetrating_model_flag)const
+int GenNetwork::Add_CNTs_to_global_structure(const struct Geom_sample &geom_sample, const vector<vector<Point_3D> > &particle, vector<vector<Point_3D> > &cnts_points, vector<vector<int> > &global_coordinates, vector<vector<long int> > &sectioned_domain, vector<int> &n_subregions, vector<double> &cnts_radius, double &cnt_rad, double &overlap_max_cutoff, int &penetrating_model_flag)const
 {
     //Loop over the generated CNTs, i.e. over particle.size()
     for (int j = 0; j < (int)particle.size(); j++) {
@@ -1436,7 +1436,7 @@ int GenNetwork::Add_CNTs_to_global_structure(const struct Geom_RVE &geom_rve, co
                 global_coordinates.back().push_back(CNT_number);
                 global_coordinates.back().push_back(i);
                 //Add point to an overlapping region in the vector sectioned_domain
-                Add_to_overlapping_regions(geom_rve, overlap_max_cutoff, particle[j][i], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
+                Add_to_overlapping_regions(geom_sample, overlap_max_cutoff, particle[j][i], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
                 
             }
         }
@@ -1703,10 +1703,10 @@ int GenNetwork::Discretize_gnp(const GCH &hybrid, const double &step, vector<Poi
 //   b) No need to check for penetration (point is in boundary layer or there are no other points in the same sub-region)
 //   c) There was penetration but it was succesfully resolved
 //0: There was penetration but could not be resolved
-int GenNetwork::Check_penetration_in_gch(const struct Geom_RVE &geom_rve, const struct Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<Point_3D> > &gnps_points, const vector<vector<Point_3D> > &particle, const vector<Point_3D> &gnp_discrete, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<vector<int> > &global_coord_hybrid, const vector<vector<long int> > &sect_domain_hybrid, const vector<double> &radii, const vector<Point_3D> &cnt_new, const vector<int> &n_subregions, const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
+int GenNetwork::Check_penetration_in_gch(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<Point_3D> > &gnps_points, const vector<vector<Point_3D> > &particle, const vector<Point_3D> &gnp_discrete, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<vector<int> > &global_coord_hybrid, const vector<vector<long int> > &sect_domain_hybrid, const vector<double> &radii, const vector<Point_3D> &cnt_new, const vector<int> &n_subregions, const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
 {
     //Get the sub-region the point belongs to
-    int subregion = Get_subregion(geom_rve, n_subregions, point);
+    int subregion = Get_subregion(geom_sample, n_subregions, point);
     
     //If the sub-region is -1, then the point is in te boundary layer, so there is no need to check penetration
     if (subregion == -1) {
@@ -1767,7 +1767,7 @@ int GenNetwork::Check_penetration_in_gch(const struct Geom_RVE &geom_rve, const 
             //hout << "Point " << cnt_new.size() << " in CNT " << particle.size() << " in hybrid " << gnps_points.size() << " is overlapping." <<endl;
             //hout << "affected_points="<<affected_points.size()<<" cutoffs_p="<<cutoffs_p.size()<<" distances="<<distances.size()<<endl;
             //hout << "Moved a point from initial position (" << point.x << ", " << point.y << ", " << point.z << ")." << endl;
-            Move_point(geom_rve, nanotube_geo, cnt_new, point, cutoffs_p, distances, affected_points);
+            Move_point(geom_sample, nanotube_geo, cnt_new, point, cutoffs_p, distances, affected_points);
             //hout << "Moved a point to final position (" << point.x << ", " << point.y << ", " << point.z << ")." << endl;
             
             //Check that the new point is within the permited orientation repect to the previous segment
@@ -1779,7 +1779,7 @@ int GenNetwork::Check_penetration_in_gch(const struct Geom_RVE &geom_rve, const 
             }
             
             //Need to update point sub-region as it could be relocated to a new sub-region
-            subregion = Get_subregion(geom_rve, n_subregions, point);
+            subregion = Get_subregion(geom_sample, n_subregions, point);
             //Check if after moving the point it is now in the boundary layer
             if (subregion == -1) {
                 //If the point is now in the boundary layer, terminate the function
@@ -2028,22 +2028,22 @@ int GenNetwork::Get_normal_direction_mt(const double &omega, double &cnt_sita, d
 //
 //The vector sectioned_domain contains the sub-regions to look for overlapping
 //It is initialized with the number of sub-regions in the sample
-void GenNetwork::Initialize_subregions(const struct Geom_RVE &geom_rve, vector<int> &nsubregions, vector<vector<long int> > &sectioned_domain)const
+void GenNetwork::Initialize_subregions(const struct Geom_sample &geom_sample, vector<int> &nsubregions, vector<vector<long int> > &sectioned_domain)const
 {
     //Initialize nsubregions
     
     //variable to store the number of subregions
     int s;
     //Number of subregions along x
-    s = (int)(geom_rve.len_x/geom_rve.gs_minx);
+    s = (int)(geom_sample.len_x/geom_sample.gs_minx);
     //Add the number of sub-regions to the vector
     nsubregions.push_back(s);
     //Number of subregions along y
-    s = (int)(geom_rve.wid_y/geom_rve.gs_miny);
+    s = (int)(geom_sample.wid_y/geom_sample.gs_miny);
     //Add the number of sub-regions to the vector
     nsubregions.push_back(s);
     //Number of subregions along z
-    s = (int)(geom_rve.hei_z/geom_rve.gs_minz);
+    s = (int)(geom_sample.hei_z/geom_sample.gs_minz);
     //Add the number of sub-regions to the vector
     nsubregions.push_back(s);
     
@@ -2056,10 +2056,10 @@ void GenNetwork::Initialize_subregions(const struct Geom_RVE &geom_rve, vector<i
 //   b) No need to check for penetration (point is in boundary layer or there are no other points in the same sub-region)
 //   c) There was penetration but it was succesfully resolved
 //0: There was penetration but could not be resolved
-int GenNetwork::Check_penetration(const struct Geom_RVE &geom_rve, const struct Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const vector<int> &n_subregions, const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
+int GenNetwork::Check_penetration(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const vector<int> &n_subregions, const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
 {
     //Get the sub-region the point belongs to
-    int subregion = Get_subregion(geom_rve, n_subregions, point);
+    int subregion = Get_subregion(geom_sample, n_subregions, point);
     
     //If the sub-region is -1, then the point is in the boundary layer, so there is no need to check penetration
     if (subregion == -1) {
@@ -2101,7 +2101,7 @@ int GenNetwork::Check_penetration(const struct Geom_RVE &geom_rve, const struct 
             //Find the new point
             //hout << "Point " << global_coordinates.size()-1+cnt_new.size() << " in CNT " << cnts.size() << " is overlapping." <<endl;
             //hout << "Moved a point from initial position (" << point.x << ", " << point.y << ", " << point.z << ")." << endl;
-            Move_point(geom_rve, nanotube_geo, cnt_new, point, cutoffs_p, distances, affected_points);
+            Move_point(geom_sample, nanotube_geo, cnt_new, point, cutoffs_p, distances, affected_points);
             //hout << "Moved a point to final position (" << point.x << ", " << point.y << ", " << point.z << ")." << endl;
             
             //Check that the new point is within the permited orientation repect to the previous segment
@@ -2113,7 +2113,7 @@ int GenNetwork::Check_penetration(const struct Geom_RVE &geom_rve, const struct 
             }
             
             //Need to update point sub-region as it could be relocated to a new sub-region
-            subregion = Get_subregion(geom_rve, n_subregions, point);
+            subregion = Get_subregion(geom_sample, n_subregions, point);
             //Check if after moving the point it is now in the boundary layer
             if (subregion == -1) {
                 //If the point is now in the boundary layer, terminate the function
@@ -2136,19 +2136,19 @@ int GenNetwork::Check_penetration(const struct Geom_RVE &geom_rve, const struct 
 }
 //---------------------------------------------------------------------------
 //This function returns the subregion a point belongs to
-int GenNetwork::Get_subregion(const struct Geom_RVE &geom_rve, const vector<int> &n_subregions, const Point_3D &point)const
+int GenNetwork::Get_subregion(const struct Geom_sample &geom_sample, const vector<int> &n_subregions, const Point_3D &point)const
 {
-    if (Judge_RVE_including_point(geom_rve, point)) {
+    if (Judge_RVE_including_point(geom_sample, point)) {
         //These variables will give me the region cordinates of the region that a point belongs to
         int a, b, c;
         //Calculate the region-coordinates
-        a = (int)((point.x-geom_rve.origin.x)/geom_rve.gs_minx);
+        a = (int)((point.x-geom_sample.origin.x)/geom_sample.gs_minx);
         //Limit the value of a as it has to go from 0 to n_subregions[0]-1
         if (a == n_subregions[0]) a--;
-        b = (int)((point.y-geom_rve.origin.y)/geom_rve.gs_miny);
+        b = (int)((point.y-geom_sample.origin.y)/geom_sample.gs_miny);
         //Limit the value of b as it has to go from 0 to n_subregions[1]-1
         if (b == n_subregions[1]) b--;
-        c = (int)((point.z-geom_rve.origin.z)/geom_rve.gs_minz);
+        c = (int)((point.z-geom_sample.origin.z)/geom_sample.gs_minz);
         //Limit the value of c as it has to go from 0 to n_subregions[2]-1
         if (c == n_subregions[2]) c--;
         
@@ -2196,7 +2196,7 @@ void GenNetwork::Get_penetrating_points(const vector<vector<Point_3D> > &cnts, c
     //hout << "Check6 " << endl;
 }
 //This function moves a point according to the number of points it is overlapping
-void GenNetwork::Move_point(const struct Geom_RVE &geom_rve, const struct Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point, vector<double> &cutoffs, vector<double> &distances, vector<Point_3D> &affected_points)const
+void GenNetwork::Move_point(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point, vector<double> &cutoffs, vector<double> &distances, vector<Point_3D> &affected_points)const
 {
     //The number of overlapings will determine how the new point is moved
     //However, first I need to eliminate invalid-points, which are the points of perfect overlapping, i.e.
@@ -2221,7 +2221,7 @@ void GenNetwork::Move_point(const struct Geom_RVE &geom_rve, const struct Nanotu
         //If after cheking for points in the same position there are no ovelappings,
         //then all points are overlapping are in the same location
         //hout << "ovelappings == 0"<<endl;
-        Overlapping_points_same_position(geom_rve, nanotube_geo, cnt_new, point);
+        Overlapping_points_same_position(geom_sample, nanotube_geo, cnt_new, point);
         hout << "There were " << initial_overlappings - overlappings << " points overlapping in exactly the same location: ";
         hout << "P("<<point.x<<", "<<point.y<<", "<<point.z<<")."<<endl;
     }
@@ -2248,15 +2248,15 @@ int GenNetwork::Check_points_in_same_position(vector<double> &cutoffs, vector<do
 //Move the point when all points are in the same location
 //After solving the bug that caused multiple points to be in the same location,
 //probably this function is not needed. I leave it here just in case
-void GenNetwork::Overlapping_points_same_position(const struct Geom_RVE &geom_rve, const struct Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point)const
+void GenNetwork::Overlapping_points_same_position(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point)const
 {
     //The new point will be moved depending on wheter it is the first point, second point or other point after the second
     if (!cnt_new.size()) {
         //Point is the first point
         //Move the point to a random location
-        point.x = ((double)rand()/RAND_MAX)*geom_rve.ex_len + geom_rve.ex_origin.x;
-        point.y = ((double)rand()/RAND_MAX)*geom_rve.ey_wid + geom_rve.ex_origin.y;
-        point.z = ((double)rand()/RAND_MAX)*geom_rve.ez_hei + geom_rve.ex_origin.z;
+        point.x = ((double)rand()/RAND_MAX)*geom_sample.ex_len + geom_sample.ex_origin.x;
+        point.y = ((double)rand()/RAND_MAX)*geom_sample.ey_wid + geom_sample.ex_origin.y;
+        point.z = ((double)rand()/RAND_MAX)*geom_sample.ez_hei + geom_sample.ex_origin.z;
     } else if (cnt_new.size() == 1) {
         //point is the second point
         //If there is only one point, just move the new point to a new direction
@@ -2469,11 +2469,11 @@ double GenNetwork::Segment_angle_discriminant(const Point_3D &first, const Point
     return (a2 + b2 - c2);
 }
 //This function adds a point to a region so penetration can be checked
-void GenNetwork::Add_to_overlapping_regions(const struct Geom_RVE &geom_rve, double overlap_max_cutoff, Point_3D point, long int global_num, const vector<int> &n_subregions, vector<vector<long int> > &sectioned_domain)const
+void GenNetwork::Add_to_overlapping_regions(const struct Geom_sample &geom_sample, double overlap_max_cutoff, Point_3D point, long int global_num, const vector<int> &n_subregions, vector<vector<long int> > &sectioned_domain)const
 {
     //A point is added only if it is in the composite domain
     //If the point is in the boundary layer, overlapping is not important
-    if (Judge_RVE_including_point(geom_rve, point)) {
+    if (Judge_RVE_including_point(geom_sample, point)) {
         //Save coordinates of the point
         double x = point.x;
         double y = point.y;
@@ -2482,28 +2482,28 @@ void GenNetwork::Add_to_overlapping_regions(const struct Geom_RVE &geom_rve, dou
         //These variables will give me the region cordinates of the region that a point belongs to
         int a, b, c;
         //Calculate the region-coordinates
-        a = (int)((x-geom_rve.origin.x)/geom_rve.gs_minx);
+        a = (int)((x-geom_sample.origin.x)/geom_sample.gs_minx);
         //Limit the value of a as it has to go from 0 to n_subregions[0]-1
         if (a == n_subregions[0]) a--;
-        b = (int)((y-geom_rve.origin.y)/geom_rve.gs_miny);
+        b = (int)((y-geom_sample.origin.y)/geom_sample.gs_miny);
         //Limit the value of b as it has to go from 0 to n_subregions[1]-1
         if (b == n_subregions[1]) b--;
-        c = (int)((z-geom_rve.origin.z)/geom_rve.gs_minz);
+        c = (int)((z-geom_sample.origin.z)/geom_sample.gs_minz);
         //Limit the value of c as it has to go from 0 to n_subregions[2]-1
         if (c == n_subregions[2]) c--;
         
         //These variables are the coordinates of the lower corner of the RVE that defines its geometry
-        double xmin = geom_rve.origin.x;
-        double ymin = geom_rve.origin.y;
-        double zmin = geom_rve.origin.z;
+        double xmin = geom_sample.origin.x;
+        double ymin = geom_sample.origin.y;
+        double zmin = geom_sample.origin.z;
         
         //Coordinates of non-overlaping region the point belongs to
-        double x1 = (double)a*geom_rve.gs_minx +  xmin;
-        double x2 = x1 + geom_rve.gs_minx;
-        double y1 = (double)b*geom_rve.gs_miny +  ymin;
-        double y2 = y1 + geom_rve.gs_miny;
-        double z1 = (double)c*geom_rve.gs_minz +  zmin;
-        double z2 = z1 + geom_rve.gs_minz;
+        double x1 = (double)a*geom_sample.gs_minx +  xmin;
+        double x2 = x1 + geom_sample.gs_minx;
+        double y1 = (double)b*geom_sample.gs_miny +  ymin;
+        double y2 = y1 + geom_sample.gs_miny;
+        double z1 = (double)c*geom_sample.gs_minz +  zmin;
+        double z2 = z1 + geom_sample.gs_minz;
         
         //Initialize flags for overlaping regions
         int fx = 0;
@@ -2557,7 +2557,7 @@ int GenNetwork::Calculate_t(int a, int b, int c, int sx, int sy)const
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //Generate a number of ellipsoids
-int GenNetwork::Get_ellip_clusters(const struct cuboid &cub, const struct Cluster_Geo &clust_geo)const
+int GenNetwork::Get_ellip_clusters(const struct cuboid &cub, const struct Agglomerate_Geo &agg_geo)const
 {
     double epsilon = 0.01;						//A ratio for extending ellipsoids
     double ellip_volume = 0.0;
@@ -2579,12 +2579,12 @@ int GenNetwork::Get_ellip_clusters(const struct cuboid &cub, const struct Cluste
         ell_temp.z=cub.poi_min.z + ((double)rand()/RAND_MAX)*cub.hei_z;
         
         //Generate the lengths of half-axes of an ellipsoid
-        ell_temp.a=clust_geo.amin + ((double)rand()/RAND_MAX)*(clust_geo.amax - clust_geo.amin);
-        if(!(clust_geo.bmin==0&&clust_geo.cmin==0))
+        ell_temp.a=agg_geo.amin + ((double)rand()/RAND_MAX)*(agg_geo.amax - agg_geo.amin);
+        if(!(agg_geo.bmin==0&&agg_geo.cmin==0))
         {
-            ell_temp.b = clust_geo.bmin + ((double)rand()/RAND_MAX)*(ell_temp.a - clust_geo.bmin);
+            ell_temp.b = agg_geo.bmin + ((double)rand()/RAND_MAX)*(ell_temp.a - agg_geo.bmin);
             
-            ell_temp.c = clust_geo.cmin + ((double)rand()/RAND_MAX)*(ell_temp.b - clust_geo.cmin);
+            ell_temp.c = agg_geo.cmin + ((double)rand()/RAND_MAX)*(ell_temp.b - agg_geo.cmin);
         }
         else
         {
@@ -2733,7 +2733,7 @@ int GenNetwork::Get_ellip_clusters(const struct cuboid &cub, const struct Cluste
         ellip_volume += 4*PI*ell_temp.a*ell_temp.b*ell_temp.c/(3*pow(1+epsilon, 3.0));
         real_volume_fraction = ellip_volume/cub.volume;
     gen_again:	;
-    }while(times<=N_times&&real_volume_fraction<clust_geo.vol_fra_criterion);
+    }while(times<=N_times&&real_volume_fraction<agg_geo.vol_fra_criterion);
     
     //---------------------------------------------------------------------
     //Shrink back to original ellipsoids
@@ -2745,11 +2745,11 @@ int GenNetwork::Get_ellip_clusters(const struct cuboid &cub, const struct Cluste
     }
     //---------------------------------------------------------------------
     //Print the ellipsoid surfaces by grids
-    if(clust_geo.print_key ==2)	Export_cluster_ellipsoids_mesh(cub, ellips);
+    if(agg_geo.print_key ==2)	Export_cluster_ellipsoids_mesh(cub, ellips);
     
     //---------------------------------------------------------------------
     //Export the data of ellipsoid surfaces
-    if(clust_geo.print_key==1||clust_geo.print_key==2)	Export_cluster_ellipsoids_data(ellips, real_volume_fraction);
+    if(agg_geo.print_key==1||agg_geo.print_key==2)	Export_cluster_ellipsoids_data(ellips, real_volume_fraction);
     
     //To print the number of ellipsoids and volume fraction
     hout << "    The number of clusters and the sum of their volume fraction:" << (int)ellips.size() << "  " << real_volume_fraction << endl;
@@ -2840,13 +2840,13 @@ void GenNetwork::Export_cluster_ellipsoids_data(const vector<struct elliparam> &
 }
 //---------------------------------------------------------------------------
 //Generate a number of sperical clusters in regular arrangement (Increase the number of clusters which cannot be achieved by random distribution)
-int GenNetwork::Get_spherical_clusters_regular_arrangement(const struct cuboid &cub, struct Cluster_Geo &clust_geo)const
+int GenNetwork::Get_spherical_clusters_regular_arrangement(const struct cuboid &cub, struct Agglomerate_Geo &agg_geo)const
 {
     int snum = 2;			//The number of spheres on each side of RVE
     double sd_x = 0.5*cub.len_x/snum;
     double sd_y = 0.5*cub.wid_y/snum;
     double sd_z = 0.5*cub.hei_z/snum;
-    if(sd_x<=clust_geo.amin||sd_y<=clust_geo.amin||sd_z<=clust_geo.amin) { hout << "Error: the number of spheres on each side of RVE is too many, please check again." << endl; return 0; }
+    if(sd_x<=agg_geo.amin||sd_y<=agg_geo.amin||sd_z<=agg_geo.amin) { hout << "Error: the number of spheres on each side of RVE is too many, please check again." << endl; return 0; }
     
     double real_volume_fraction;				//Define the real volume fraction of ellips in the RVE
     double ellip_volume = 0.0;
@@ -2862,7 +2862,7 @@ int GenNetwork::Get_spherical_clusters_regular_arrangement(const struct cuboid &
                 ell_temp.y	=	(2*j+1)*sd_y;
                 ell_temp.z	=	(2*i+1)*sd_z;
                 
-                ell_temp.a=clust_geo.amin;
+                ell_temp.a=agg_geo.amin;
                 ell_temp.b = ell_temp.a;
                 ell_temp.c = ell_temp.a;
                 
@@ -2918,20 +2918,20 @@ int GenNetwork::Get_spherical_clusters_regular_arrangement(const struct cuboid &
             }
     
     //To check if the volume fraction is less than the criterion value
-    if(real_volume_fraction<clust_geo.vol_fra_criterion)
+    if(real_volume_fraction<agg_geo.vol_fra_criterion)
     {
         hout << "The sum of volume fraction of spheres: " << real_volume_fraction;
-        hout << " which is less than the criterion value: " << clust_geo.vol_fra_criterion << " , please check it again!" << endl;
+        hout << " which is less than the criterion value: " << agg_geo.vol_fra_criterion << " , please check it again!" << endl;
         return 0;
     }
     
     //---------------------------------------------------------------------
     //Print the ellipsoid surfaces by grids
-    if(clust_geo.print_key==2)	Export_cluster_ellipsoids_mesh(cub, ellips);
+    if(agg_geo.print_key==2)	Export_cluster_ellipsoids_mesh(cub, ellips);
     
     //---------------------------------------------------------------------
     //Export the data of ellipsoid surfaces
-    if(clust_geo.print_key==1||clust_geo.print_key==2)	Export_cluster_ellipsoids_data(ellips, real_volume_fraction);
+    if(agg_geo.print_key==1||agg_geo.print_key==2)	Export_cluster_ellipsoids_data(ellips, real_volume_fraction);
     
     //To print the number of ellipsoids and volume fraction
     hout << "    The number of clusters and the sum of their volume fraction:" << (int)ellips.size() << "  " << real_volume_fraction << endl;
@@ -2988,11 +2988,11 @@ int GenNetwork::Judge_RVE_including_point(const struct cuboid &cub, const Point_
 }
 //---------------------------------------------------------------------------
 //To judge if a point is included in a RVE
-int GenNetwork::Judge_RVE_including_point(const struct Geom_RVE &geom_rve, const Point_3D &point)const
+int GenNetwork::Judge_RVE_including_point(const struct Geom_sample &geom_sample, const Point_3D &point)const
 {
-    if(point.x<geom_rve.origin.x||point.x>geom_rve.origin.x+geom_rve.len_x||
-       point.y<geom_rve.origin.y||point.y>geom_rve.origin.y+geom_rve.wid_y||
-       point.z<geom_rve.origin.z||point.z>geom_rve.origin.z+geom_rve.hei_z) return 0;
+    if(point.x<geom_sample.origin.x||point.x>geom_sample.origin.x+geom_sample.len_x||
+       point.y<geom_sample.origin.y||point.y>geom_sample.origin.y+geom_sample.wid_y||
+       point.z<geom_sample.origin.z||point.z>geom_sample.origin.z+geom_sample.hei_z) return 0;
     
     return 1;
 }

@@ -17,7 +17,7 @@
  The last shell region will be the boundary layer. This will be used for the first element of the vector
  
  Input:
-    struct Geom_RVE sample
+    struct Geom_sample sample
         Geometry of the generated sample
     struct Nanotube_Geo cnts
         Geometry of the CNTs
@@ -31,7 +31,7 @@
  
  */
 
-int Background_vectors::Generate_shells(const struct Geom_RVE &sample, const struct Nanotube_Geo &cnts, const vector<Point_3D> &points_in, const vector<GCH> &hybrid_particles, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnps)
+int Background_vectors::Generate_shells(const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const vector<Point_3D> &points_in, const vector<GCH> &hybrid_particles, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnps)
 {
     //Initialize the shells_cnt vector
     //Empty vector to initialize the shells_cnt vector
@@ -68,7 +68,7 @@ int Background_vectors::Generate_shells(const struct Geom_RVE &sample, const str
 
 //This function finds the corresponding shell sub-region where the point is located. Then it adds the CNT number to the
 //corresponding vector in the 2D vector shells_cnt
-int Background_vectors::Add_to_shell(const struct Geom_RVE &sample, const Point_3D &point, vector<vector<int> > &shells_cnt)
+int Background_vectors::Add_to_shell(const struct Geom_sample &sample, const Point_3D &point, vector<vector<int> > &shells_cnt)
 {
     //Number of shells
     int num_shells = (int)shells_cnt.size();
@@ -88,7 +88,7 @@ int Background_vectors::Add_to_shell(const struct Geom_RVE &sample, const Point_
 
 //This function finds the shell to which one point belongs to
 //So it uses three times the function that finds the shell to which one coordinate belongs to
-int Background_vectors::Find_minimum_shell(const struct Geom_RVE &sample, const Point_3D &point, const int &num_shells)
+int Background_vectors::Find_minimum_shell(const struct Geom_sample &sample, const Point_3D &point, const int &num_shells)
 {
     //Find the shell based on the x coordinate
     //hout << "x_in=";
@@ -154,7 +154,7 @@ int Background_vectors::Find_shell(const double &x_in, const double &x_0, const 
 
 //This function finds the corresponding shell sub-region where the point is located. Then it adds the CNT number to the
 //corresponding vector in the 2D vector shells_cnt
-int Background_vectors::Add_to_shells(const struct Geom_RVE &sample, const GCH &hybrid, vector<vector<int> > &shells_gnp)
+int Background_vectors::Add_to_shells(const struct Geom_sample &sample, const GCH &hybrid, vector<vector<int> > &shells_gnp)
 {
     //Number of shells
     int num_shells = (int)shells_gnp.size();

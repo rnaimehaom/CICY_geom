@@ -1,7 +1,7 @@
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Please input the name of application case
-Application_Name
-App_Electrical_Network_3D
+Application
+3D_Electrical_Network
 %
 %
 %
@@ -15,12 +15,21 @@ Test
 %Please input the number of samples
 1
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%This is a switch that defines if the structure of the CNTs is created or read from a file. There are two possible options: 'Create_Network' and 'Read_Network'
-%Create_Network:	to create a new structure
-%Read_Network:	to read the data of network from a file
+%Define the type of particles inside the sample:
+%CNT_wires for CNTs,
+%GNP_cuboids for GNPs,
+%GNP_CNT_mix for CNTs and GNPs non-hybrid mixed fillers, or
+%Hybrid_particles for GNP-CNT hybrid particles
+Hybrid_particles
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
+%This keyword defines if the nanoparticle network is created or read from a file.
+%There are three possible options: 'Create_Network', 'Read_Network', and 'Network_From_Seeds'
+%Create_Network: to generate a new structure
+%Read_Network: to read the data of network from a file
+%Network_From_Seeds: to generate a new structure from specific seeds (positive integers) for the
+%random number generators. All seeds need to be specified in the next line separated by a space
 Create_Network
-%Read_Network
-%
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Flag to avoid calculating the resistance of the network
 %When set to 1, the backbone networks are found but not the resistance of the cubic sample
 %This can be useful when only a geometric study or visualizations are needed
@@ -34,30 +43,22 @@ Create_Network
 %
 %
 %========================================================================================================
-%-------------------------------- AMC
-%Define the geometric and related parameters of RVE
-RVE_Geometry
+%Define the geometric and related parameters of the sample
+Sample_Geometry
 %--------------------------------Start
-%Define the type of particles inside the RVE: 
-%CNT_wires for CNTs,
-%GNP_cuboids for GNPs,
-%GNP_CNT_mix for CNTs and GNPs non-hybrid mixed fillers, or 
-%Hybrid_particles for GNP-CNT hybrid particles
-Hybrid_particles
-%CNT_wires
-%Define the domain of RVE: the lower-left corner point of RVE and the length, width and height of RVE
+%Define the domain of the sample: the lower-left corner of the sample and its length, width and height
 0 0 0 2.000000 2.000000 2.000000
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define the size range of the observation window and decrement by every step in x, y and z directions: 
-%Max_length, Max_width, Max_height (this value could be less than the size of RVE)
+%Define the decrement step, maximum and minimum values of the observation window for each direction:
+%Max_length, Max_width, Max_height (this value could be less than the size of the sample)
 %delta_length, delta_width, delta_height
 %Min_length, Min_width, Min_height
-%The cutoff widows have the same centers of RVE
+%Observation widows have the same center of the sample
 2.00000 2.00000 2.00000
 0.250000 0.250000 0.250000
 2.000000 2.000000 2.000000
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define minimum size for background grids (looking for contact points)
+%Define minimum size for background grids (used for searching contact points)
 0.05000 0.05000 0.05000
 %--------------------------------End
 %
@@ -67,123 +68,129 @@ Hybrid_particles
 %Define the geometric parameters of nanotubes
 Nanotube_Geometry
 %--------------------------------Start
-%Define the initial growth direction type (random or specific) in a RVE
-%If you input "random", that means the initial growth directions of nanotubes are random
-%If you input "specific", that means the initial growth directions of nanotubes are along a specific direction
-%and please input the direction angles (in spherical coordinates) if you input "specific" type, for example: specific 0 0
+%Define the initial growth direction type (random or specific) of CNTs
+%random: the initial growth directions of nanotubes are random
+%specific: the initial growth directions of nanotubes are along a specific direction
+%and please input the direction angles (in spherical coordinates), for example: specific 0 0
 random
 %specific 0 0
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define the normal distribution range [-omega, omega] of the growth direction
 %PI/2=1.5707963267948966; PI/4=0.7853981633974483; PI/6=0.5235987755982989; PI/12=0.2617993877991494; PI/36=0.087266462599716479; PI/60=0.05235987755982981
-%Please input the angle omega
-%0
 1.5707963267948966
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define the step length (unit: micrometer) of nanotube growth
+%Define the step length (in microns) of nanotube growth
 0.01
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define the distribution type (uniform or normal) of the length (unit: micrometer) of nanotubes and the length range (min, max) of nanotubes in a RVE
-%If you input "uniform", that means it satisfies the uniform distribution, or if you input "normal", that means it satisfies the normal distribution
+%Define the distribution type (uniform or normal) of the nanotube length (in microns) and its minimum and maximum values
+%uniform: for uniform distribution
+%normal: for normal distribution
 uniform 1.000000 1.000000
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define the distribution type (uniform or normal) of the radius (unit: micrometer) of nanotubes and the radius range (min, max) of nanotubes in a RVE
-%If you input "uniform", that means it satisfies the uniform distribution, or if you input "normal", that means it satisfies the normal distribution
+%Define the distribution type (uniform or normal) of the nanotube radius (in microns) and its minimum and maximum values
+%uniform: for uniform distribution
+%normal: for normal distribution
 uniform 0.005000 0.005000
-%Define the density of the CNTs (unit: gm/cm3)
+%Define the density of the CNTs (in gm/cm3)
 1.78
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define the volume or weight fraction of nanotubes in the RVE
-%If you input "vol", the volume fraction is the criterion and the mode of accumulation, for example: vol 0.01 0
-%or if you input "wt", the weight fraction is the criterion and the mode of accumulation and the linear density (1E-12g/'nu'm) of CNT and the density (1E-12g/'nu'm^3)of polymer are needed.
-%the mode of accumulation: 0 means every sample uses the same fraction; 1 or 2 mean every sample uses the accumulated fraction by different ways
-%wt 0.005 0 5.8E-5 1.06
-vol 0.001000 0
+%Define how the CNT content is measured (volume or weight fraction)
+%vol: for volume fraction, especify the value after 'vol', for example: vol 0.01
+%wt: for weight fraction, especify the value after 'wt' but also the nanotube linear density
+% (1E-12g/micron) and the polymer density are needed (in g/cm3), for example wt 0.005 1E-12 1.05
+%wt 0.005 5.8E-5 1.06
+vol 0.001000
 %--------------------------------End
 %
 %
 %
 %========================================================================================================
-%Define the geometric parameters of ellipsoid cluster of CNTs
-%Cluster_Geometry
+%Define the geometric parameters of ellipsoid agglomerates of CNTs
+CNT_Agglomerate_Geometry
 %--------------------------------Start
-%Please input the volume fraction of ellipsoid, the length of axes of ellipsoids and the growth probability of a cnt in the cluster, and the volume fraction of cnt in the cluster and the print key: 
-% v amin amax bmin cmin p vc key, such as 0.05 0.1 0.1 0 0 1 0.4774648 2
-%where the long axis a of ellipsoid obeys the uniform distribution among (amin, amax), the middle axis b obeys the uniform distribution among (bmin, a),
-%and the short axis c obeys the uniform distribution among (cmin, b);
-%if bmin=cmin=0, then the spheres will be produced with radii among (amin, amax)
-%the growth probability p of a cnt in a cluster: 0 <= p <= 1
-%the volume fraction of cnt in the cluster, it usually bigger than the volume fraction in the RVE
-%the print key: 0 denotes "no print"; 1 denotes "only print the nanotubes in the ellipsoids"; 2 denotes "print the nanotubes in the ellipsoids and the surfaces of all ellipsoids"
+%Please input the volume fraction of agglomerates, which are approximated as ellipsoids
+%If a negative number is input, it is understood that there are no agglomerates
+%The same happens if a 0 is input, but fur numerical stability it is better to use a negative number instead of 0
+%In case agglomerates are needed, the following needs to be especified in a single line (in that order):
+% v amin amax bmin cmin p vc key
+%where:
+%v: volume fraction of ellipsoids
+%amin: minimum value of ellipsoid's longest axis
+%amax: maximum value of ellipsoid's longest axis
+%   the longest axis obeys a uniform distribution in (amin, amax)
+%bmin: minimum value of ellipsoid's middle axis which obeys a uniform distribution in (bmin, a)
+%cmin: minimum value of ellipsoid's shortest axis which obeys a uniform distribution in (cmin, b)
+%   if bmin=cmin=0, then spheres will be generated with radii in (amin, amax)
+%p: growth probability of a CNT in an ellipsoid (agglomerate), 0 <= p <= 1
+%vc: volume fraction of cnts in the ellipsoid (agglomerate)
+%key: print key, where 0 is for "no print"; 1 for "only print the nanotubes in the ellipsoids"; 2 for "print the nanotubes in the ellipsoids and the surfaces of all ellipsoids"
+%example: 0.05 0.1 0.1 0 0 1 0.4774648 2
 %0.00418879 0.1 0.1 0 0 1 0.4774648 2
-%0
+-1
 %--------------------------------End
 %
 %
 %
 %========================================================================================================
-%-------------------------------- AMC
 %Define the geometric parameters of the GNPs
 GNP_Geometry
 %--------------------------------Start
 %Define if the generation of the CNTs on the GNP surface should be parallel or independent
 independent
-%Define the GNP orientation type (random or specific) in a RVE
-%If you input "random", that means the GNP orientation is random
-%If you input "specific", that means the GNP orientation is along a specific direction
-%and please input the direction angles (in spherical coordinates) if you input "specific" type, for example: specific 0 0
+%Define the GNP orientation type (random or specific)
+%random: GNP orientation is random
+%specific: GNP orientation is along a specific direction, and please input the direction angles (in spherical coordinates), for example: specific 0 0
 random
 %specific 0 0
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define the step length (unit: micrometer) for discretization of the GNP
+%Define the step length (in microns) discretization of the GNP
 0.01
-%Define the distribution type (uniform or normal) of the length and width (unit: micrometer) of GNPs and the range (min, max) of GNPs in a RVE
-%If you input "uniform", that means it satisfies the uniform distribution, or if you input "normal", that means it satisfies the normal distribution
+%Define the distribution type (uniform or normal) of the GNP side length (in microns) and maximum and minimum values
+%uniform: uniform distribution
+%normal: normal distribution
 uniform 4.000000 4.000000
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define the distribution type (uniform or normal) of the thickness (unit: micrometer) of GNPs and the thickness range (min, max) of GNPs in a RVE
-%If you input "uniform", that means it satisfies the uniform distribution, or if you input "normal", that means it satisfies the normal distribution
+%Define the distribution type (uniform or normal) of the GNP thickness (in microns) and maximum and minimum values
+%uniform: uniform distribution
+%normal: normal distribution
 uniform 0.03 0.03
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define the mass ratio of CNTs/GNPs in the RVE
+%Define the CNT/GNP mass ratio
 1.0
-%Define the density of the GNPs (unit: gm/cm3)
+%Define the GNP density (in gm/cm3)
 2.25
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define the volume or weight fraction of GNPs in the RVE
-%If you input "vol", the volume fraction is the criterion, for example: vol 0.01
-%or if you input "wt", the weight fraction is the criterion 
+%Define how the GNP content is measured (volume or weight fraction)
+%vol: for volume fraction, especify the value after 'vol', for example: vol 0.01
+%wt: for weight fraction, especify the value after 'wt', for example: wt 0.01
 %wt 0.005
-vol 0.001000 
+vol 0.001000
 %--------------------------------End
 %
 %========================================================================================================
-%-------------------------------- AMC
-%Define the geometry of the GNP
+%Define the values for the cutoff distances
 Cutoff_Distances
 %--------------------------------Start
-%Define van der Waals distance
-0.000340
-%------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define cutoff distance for tunneling
-0.001800
+%Define the cutoff distances in the same line separated by spaces in the following order:
+%van der Waals distance
+%cutoff distance for tunneling
+0.000340 0.001800
 %--------------------------------End
 %
 %
 %
 %========================================================================================================
-%-------------------------------- AMC
 %Define the electrical parameters
 Electrical_Parameters
 %--------------------------------Start
-%Provide the magnitude of the applied voltage
-1
+%Define the magnitude of the applied voltage
+10
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Provide the value of resistivity of the carbon fiber (Ohm.micron)
+%Define the value of resistivity of the nanotubes (Ohm.micron)
 20
-%Provide the value of sheet resistance (Ohm/square) and resistivities (thickness, surface; in Ohm.micron) of the GNP
+%Define the value of sheet resistance (Ohm/square) and resistivities (thickness, surface; in Ohm.micron) of the GNP
 10 1e-2 1e-7
-%Provide the value of resistivity of the polymer matrix (Ohm.micron)
+%Define the value of resistivity of the polymer matrix (Ohm.micron)
 1.03e20
 %Li et al approach
 %Electrical constants: electron charge (C), permittivity of vacuum (F/m), CNT work function (V), dielectric constant of polymer 
@@ -193,39 +200,40 @@ Electrical_Parameters
 6.62606957 1.60217662 9.10938291 2.0
 %--------------------------------End
 %========================================================================================================
-%-------------------------------- AMC
-%Define the electrical parameters
+%Define flags for Tecplot visualization files
 Tecplot_flags
 %--------------------------------Start
 %
 %Flag to export generated CNTs:
+% 0: do not export Tecplot files
 % 1: wires
 % 2: singlezone meshes
 % 3: multizone meshes
-%Do not export if flag set to 0
 0
-%Flag to export generated GNPs if set to 1
-%Do not export if flag set to 0
+%Flag to export generated GNPs
+% 0: do not export Tecplot files
+% 1: export GNPs as brick elements
 0
 %Flag to export clusters as obtained from the Hoshen-Kopelman algorithm:
+% 0: do not export Tecplot files
 % 1: wires (3D lines)
 % 2: meshes
 % 3: wires (3D lines) & meshes
-%Do not export if flag set to 0
 0
 %Flag to export percolated clusters:
+% 0: do not export Tecplot files
 % 1: wires (3D lines)
 % 2: meshes
 % 3: wires (3D lines) & meshes
-%Do not export if flag set to 0
-0   
-%Flag to export the backbone:
-% 1: wires (3D lines)
-% 2: meshes
-% 3: wires (3D lines) & meshes
-%Do not export if flag set to 0
 0
-%Flag to export triangulations if set to 1
-%Do not export if flag set to 0
+%Flag to export the backbone:
+% 0: do not export Tecplot files
+% 1: wires (3D lines)
+% 2: meshes
+% 3: wires (3D lines) & meshes
+0
+%Flag to export triangulations
+% 0: do not export Tecplot files
+% 1: export triangulations
 0
 %-------------------------------- End

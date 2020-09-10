@@ -138,7 +138,7 @@ void Printer::Print_2d_vec(const vector<vector<double> > &num_mat, const string 
     otec.close();
 }
 
-void Printer::Print_CNTs_in_window(const struct Geom_RVE &sample, const vector<Point_3D> &points_in, const vector<int> &cnts_inside, const vector<vector<long int> > &structure, const int &window)
+void Printer::Print_CNTs_in_window(const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<int> &cnts_inside, const vector<vector<long int> > &structure, const int &window)
 {
     //Filename
     ofstream otec("CNT_Wires.dat");
@@ -153,7 +153,7 @@ void Printer::Print_CNTs_in_window(const struct Geom_RVE &sample, const vector<P
     
 }
 
-void Printer::Window_geometry(ofstream &otec, const struct Geom_RVE &sample, const int &window)
+void Printer::Window_geometry(ofstream &otec, const struct Geom_sample &sample, const int &window)
 {
     //These are variables for the geometry of the observation window
     //Dimensions of the current observation window

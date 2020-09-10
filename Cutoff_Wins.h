@@ -31,15 +31,15 @@ public:
     Cutoff_Wins(){};
     
     //Member Functions
-    int Extract_observation_window(const int &window, const struct Geom_RVE &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, vector<GCH> &hybrid_particles, vector<vector<long int> > &structure, vector<vector<long int> > &structure_gnp, vector<double> &radii, vector<Point_3D> &points_in, vector<Point_3D> &points_gnp, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnp);
-    int Set_global_variables_for_geometry(const struct Geom_RVE &sample, const int &window);
+    int Extract_observation_window(const int &window, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, vector<GCH> &hybrid_particles, vector<vector<long int> > &structure, vector<vector<long int> > &structure_gnp, vector<double> &radii, vector<Point_3D> &points_in, vector<Point_3D> &points_gnp, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnp);
+    int Set_global_variables_for_geometry(const struct Geom_sample &sample, const int &window);
     int Save_seeds(const vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, vector<long int> &seeds);
     int Compare_seeds(vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, const vector<long int> &seeds);
-    int Trim_boundary_cnts(vector<vector<int> > &shells_cnt, const int &window, const struct Geom_RVE &sample, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<double> &radii);
+    int Trim_boundary_cnts(vector<vector<int> > &shells_cnt, const int &window, const struct Geom_sample &sample, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<double> &radii);
     int First_index(vector<Point_3D> &points_in, vector<long int> &structure_CNT, int &new_CNT, int &index1);
     int Second_index(vector<Point_3D> &points_in, vector<long int> &structure_CNT, int &new_CNT, int &index2);
     string Where_is(Point_3D point);
-    int New_boundary_point(struct Geom_RVE sample, vector<Point_3D> &points_in, vector<vector<long int> > &structure, long int insidePoint, long int outsidePoint, int CNT, string currentLocation);
+    int New_boundary_point(struct Geom_sample sample, vector<Point_3D> &points_in, vector<vector<long int> > &structure, long int insidePoint, long int outsidePoint, int CNT, string currentLocation);
     int Substitute_boundary_point(vector<Point_3D> &points_in, long int global_i, long int global_o);
     int Get_intersecting_point_RVE_surface(const Point_3D &point0, const Point_3D &point1, vector<Point_3D> &ipoi_vec);
     void Add_to_boundary_vectors(Point_3D point3d, long int point, int new_CNT);
