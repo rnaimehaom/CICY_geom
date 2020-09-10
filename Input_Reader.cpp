@@ -155,8 +155,7 @@ int Input::Data_Initialization()
 	//Initialize the geometric parameters of the RVE
 	geom_sample.keywords = "Sample_Geometry";
 	geom_sample.mark = false;
-    geom_sample.particle_type = "CNT_wires";
-	geom_sample.origin.x = 0.0;
+    geom_sample.origin.x = 0.0;
 	geom_sample.origin.y = 0.0;
 	geom_sample.origin.z = 0.0;
 	geom_sample.origin.flag = 0;
@@ -305,7 +304,7 @@ int Input::Read_simulation_parameters(struct Simu_para &simu_para, ifstream &inf
     //GNP_CNT_mix for mixed CNT and GNP without hybridizing
     istringstream istr_perticle_type(Get_Line(infile));
     istr_perticle_type >> simu_para.particle_type;
-    if (simu_para.particle_type != "CNT_wires" && geom_sample.particle_type != "GNP_cuboids" && simu_para.particle_type != "Hybrid_particles" && geom_sample.particle_type != "GNP_CNT_mix") {
+    if (simu_para.particle_type != "CNT_wires" && simu_para.particle_type != "GNP_cuboids" && simu_para.particle_type != "Hybrid_particles" && simu_para.particle_type != "GNP_CNT_mix") {
         hout << "Error: the type of particles shoud be one of the following: CNT_wires, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input was: "<<simu_para.particle_type<< endl;
         return 0;
     }
@@ -497,7 +496,7 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     istr.str(Get_Line(infile));
 	istr >> nanotube_geo.angle_max;
 	if(nanotube_geo.angle_max>0.5*PI){ hout << "Error: The angle omega is not in the valid range of (-PI/2, PI/2). Input was: "<<nanotube_geo.angle_max << endl;	 return 0; }
-
+    
 	//----------------------------------------------------------------------
 	//Read the step length (in microns) of nanotube growth
 	istr.str(Get_Line(infile));
@@ -529,7 +528,7 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
 	   nanotube_geo.rad_min>3*nanotube_geo.step_length||nanotube_geo.rad_max>0.05*nanotube_geo.len_min)
 	{
         hout << "Error: The radius must be non-negative, the minimum radius must be smaller than the maximum radius, the minimum radius must be smaller than 3*step_length and the maximum radius must be smaller than 0.05*len_min. Input for minimum was "<<nanotube_geo.rad_min<<" and for maximum was "<<nanotube_geo.rad_max<< endl; return 0; }
-
+    
     //---------------------------------------------------------------------------------------
     //Read the density of the CNTs (in gm/cm3)
     istr.str(Get_Line(infile));
@@ -872,7 +871,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     //Define the CNTs/GNPs mass ratio
     istr.str(Get_Line(infile));
     istr >> gnp_geo.mass_ratio;
-    if(gnp_geo.mass_ratio <= 0 && geom_sample.particle_type != "Hybrid_particles") {
+    if(gnp_geo.mass_ratio <= 0 && simu_para.particle_type != "Hybrid_particles") {
         hout << "Error: The CNT/GNP mass ratio must be a value greater than zero when generating GNPs only." << endl; return 0; }
     
     //----------------------------------------------------------------------

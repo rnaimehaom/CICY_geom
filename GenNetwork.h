@@ -60,7 +60,7 @@ public:
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
-    int Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const;
+    int Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Cutoff_dist &cutoffs, const string &particle_type, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const;
     int Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, vector<double> &cnts_radius)const;
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------

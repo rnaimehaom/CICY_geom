@@ -57,7 +57,6 @@ struct Geom_sample{
     double win_min_x, win_min_y, win_min_z;
     double win_delt_x, win_delt_y, win_delt_z;
     int cut_num;														//Define the number of cutoff times (0: the maxmum size, n: the maxmum size - n*step_length(delta), n>=1)
-    string particle_type;
     
 };
 //The nanotube parameters in a network

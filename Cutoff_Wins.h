@@ -31,7 +31,7 @@ public:
     Cutoff_Wins(){};
     
     //Member Functions
-    int Extract_observation_window(const int &window, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, vector<GCH> &hybrid_particles, vector<vector<long int> > &structure, vector<vector<long int> > &structure_gnp, vector<double> &radii, vector<Point_3D> &points_in, vector<Point_3D> &points_gnp, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnp);
+    int Extract_observation_window(const int &window, const string &particle_type, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, vector<GCH> &hybrid_particles, vector<vector<long int> > &structure, vector<vector<long int> > &structure_gnp, vector<double> &radii, vector<Point_3D> &points_in, vector<Point_3D> &points_gnp, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnp);
     int Set_global_variables_for_geometry(const struct Geom_sample &sample, const int &window);
     int Save_seeds(const vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, vector<long int> &seeds);
     int Compare_seeds(vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, const vector<long int> &seeds);

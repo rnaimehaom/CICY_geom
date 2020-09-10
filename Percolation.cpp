@@ -7,12 +7,12 @@
 
 #include "Percolation.h"
 
-int Percolation::Determine_percolated_clusters(const int &window, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, const vector<vector<int> > &boundary_cnt, const vector<int> &labels_cnt, const vector<vector<int> > &boundary_gnp, const vector<int> &labels_gnp, vector<vector<int> > &clusters_cnt, vector<vector<int> > &isolated_cnt, vector<vector<int> > &clusters_gnp, vector<vector<int> > &isolated_gnp)
+int Percolation::Determine_percolated_clusters(const int &window, const string &particle_type, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, const vector<vector<int> > &boundary_cnt, const vector<int> &labels_cnt, const vector<vector<int> > &boundary_gnp, const vector<int> &labels_gnp, vector<vector<int> > &clusters_cnt, vector<vector<int> > &isolated_cnt, vector<vector<int> > &clusters_gnp, vector<vector<int> > &isolated_gnp)
 {
     //flag to ignore variables for second particle
     int ignore_particle = 1;
     //Determine percoaltion in clusters made of only CNTs
-    if (sample.particle_type == "CNT_wires") {
+    if (particle_type == "CNT_wires") {
         //Check if any CNT cluster percolates
         //CNT vectors go first so GNP vectors are ignored
         if (!Cluster_percolation(ignore_particle, boundary_cnt, labels_cnt, clusters_cnt, isolated_cnt, boundary_gnp, labels_gnp, clusters_gnp, isolated_gnp)) {
@@ -20,13 +20,13 @@ int Percolation::Determine_percolated_clusters(const int &window, const struct G
             return 0;
         }
         //Check if single CNTs percolate
-        if (!Single_particle_percolation(window, sample, cnts, gnps, boundary_cnt, labels_cnt, clusters_cnt, isolated_cnt)) {
+        if (!Single_particle_percolation(window, particle_type, sample, cnts, gnps, boundary_cnt, labels_cnt, clusters_cnt, isolated_cnt)) {
             hout << "Error in Determine_percolating_clusters when calling Single_particle_percolation for CNTs" << endl;
             return 0;
         }
     }
     //Determine percoaltion in clusters made of only GNPs
-    else if (sample.particle_type == "GNP_cuboids") {
+    else if (particle_type == "GNP_cuboids") {
         //Check if any GNP cluster percolates
         //GNP vectors go first so CNT vectors are ignored
         if (!Cluster_percolation(ignore_particle, boundary_gnp, labels_gnp, clusters_gnp, isolated_gnp, boundary_cnt, labels_cnt, clusters_cnt, isolated_cnt)) {
@@ -175,13 +175,28 @@ int Percolation::Check_percolation_single_cluster(const vector<short int> &clust
 //It assumed that this function is called when the CNTs have a lenth equal or grater than the dimensions of the sample
 //In this function, the vector of isolated CNTs is scanned to look for percolated CNTs.
 //A single CNT can only percolate on X, Y or Z.
-int Percolation::Single_particle_percolation(const int &window, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, const vector<vector<int> > &boundary, const vector<int> &labels, vector<vector<int> > &clusters, vector<vector<int> > &isolated)
+int Percolation::Single_particle_percolation(const int &window, const string &particle_type, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, const vector<vector<int> > &boundary, const vector<int> &labels, vector<vector<int> > &clusters, vector<vector<int> > &isolated)
 {
     
     //These variables are flags to determine in which directions there might be percolation by a single CNT
     //hout << "0 ";
     int px = 0, py= 0, pz = 0;
-    if (!Determine_direction_flags(window, sample, cnts, gnps, px, py, pz)) {
+    
+    //Variable to store the maximum characteristic length of the nanoparticle
+    double max_length = 0.0;
+    
+    //Get the maximum length depending on the particle type
+    if (particle_type == "CNT_wires") {
+        //Use the characteristic length of CNTs
+        max_length = cnts.len_max;
+    }
+    //Check GNP geometry if the sample has only GNPs
+    else if (particle_type == "GNP_cuboids") {
+        //Use the characteristic length of GNPs
+        max_length = gnps.len_max;
+    }
+    
+    if (!Determine_direction_flags(window, sample, max_length, px, py, pz)) {
         //If in all three directions the particles are smaller than the dimensions of the observation window, then there is nothing more
         //to do in this function. This happens when px, px and py are zero, so the only way the sum is zero is when all three are zero.
         //Then, since Determine_direction_flags returns the sum of the flags, when the sum is zero, terminate the function
@@ -212,7 +227,7 @@ int Percolation::Single_particle_percolation(const int &window, const struct Geo
     }
     return 1;
 }
-int Percolation::Determine_direction_flags(const int &window, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, int &px, int &py, int &pz)
+int Percolation::Determine_direction_flags(const int &window, const struct Geom_sample &sample, const double &max_length, int &px, int &py, int &pz)
 {
     //These are variables for the geometry of the observation window
     //Dimensions of the current observation window
@@ -230,27 +245,15 @@ int Percolation::Determine_direction_flags(const int &window, const struct Geom_
         w_z = sample.win_min_z;
     }
     
-    //Check CNT geometry if the sample has only CNTs
-    if (sample.particle_type == "CNT_wires") {
-        if (cnts.len_max >= w_x)
-            px = 1;
-        if (cnts.len_max >= w_y)
-            py = 1;
-        if (cnts.len_max >= w_z)
-            pz = 1;
-    }
+    //Check if the maximum characteristic length is larger than the observation window
+    if (max_length >= w_x)
+        px = 1;
+    if (max_length >= w_y)
+        py = 1;
+    if (max_length >= w_z)
+        pz = 1;
     
-    //Check GNP geometry if the sample has only GNPs
-    else if (sample.particle_type == "GNP_cuboids") {
-        if (gnps.len_max >= w_x)
-            px = 1;
-        if (gnps.len_max >= w_y)
-            py = 1;
-        if (gnps.len_max >= w_z)
-            pz = 1;
-    }
-    
-    //Return the sum of the percoaltion diraction flags
+    //Return the sum of the percolation direction flags
     return (px+py+pz);
 }
 int Percolation::Determine_isolated_labels(const vector<vector<int> > &isolated, vector<int> &labels_iso)

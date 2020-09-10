@@ -37,7 +37,7 @@
  
  */
 
-int Contact_grid::Generate_contact_grid(const int &window, const struct Geom_sample &sample, const struct Cutoff_dist &cutoffs, const struct Nanotube_Geo &cnts, const vector<int> &cnts_inside, vector<Point_3D> &points_in, const vector<vector<long int> > &structure, const vector<int> &gnps_inside, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp)
+int Contact_grid::Generate_contact_grid(const int &window, const string &particle_type, const struct Geom_sample &sample, const struct Cutoff_dist &cutoffs, const struct Nanotube_Geo &cnts, const vector<int> &cnts_inside, vector<Point_3D> &points_in, const vector<vector<long int> > &structure, const vector<int> &gnps_inside, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp)
 {
     //Generate the window geometry
     struct Geom_sample window_geom;
@@ -63,7 +63,7 @@ int Contact_grid::Generate_contact_grid(const int &window, const struct Geom_sam
     
     //Fill the vector for the sectioned domain for CNTs only when there are CNTs in the structure
     //Equivalently, this is done when the structure is not made of only GNPs
-    if (sample.particle_type != "GNP_cuboids") {
+    if (particle_type != "GNP_cuboids") {
         
         if (!Fill_sectioned_domain(window_geom, cnts_inside, structure, points_in, cutoff, sx, sy, sz, sectioned_domain)) {
             hout << "Error in Generate_contact_grid when calling Generate_sectioned_domain_cnts" << endl;
@@ -73,7 +73,7 @@ int Contact_grid::Generate_contact_grid(const int &window, const struct Geom_sam
     
     //Fill the vector for the sectioned domain for discrete GNPs only when there are GNPs in the structure
     //Equivalently, this is done when the structure is not made of only CNTs
-    if (sample.particle_type != "CNT_wires") {
+    if (particle_type != "CNT_wires") {
         
         //Fill the sectioned domain corresponding to GNP points
         if (!Fill_sectioned_domain(window_geom, gnps_inside, structure_gnp, points_gnp, cutoff, sx, sy, sz, sectioned_domain_gnps)) {

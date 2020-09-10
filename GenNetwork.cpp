@@ -33,14 +33,14 @@ int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, c
         
     } else if (simu_para.particle_type == "GNP_cuboids") {
         //Generate a network defined by cuboids and points
-        if (!Generate_gnp_network_mt(gnp_geo, geom_sample, cutoffs, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
+        if (!Generate_gnp_network_mt(gnp_geo, geom_sample, cutoffs, simu_para.particle_type, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
             hout << "Error in generating a GNP network" << endl;
             return 0;
         }
         
     } else if (simu_para.particle_type == "Hybrid_particles") {
         //Generate a network defined by cuboids and points
-        if (!Generate_gnp_network_mt(gnp_geo, geom_sample, cutoffs, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
+        if (!Generate_gnp_network_mt(gnp_geo, geom_sample, cutoffs, simu_para.particle_type, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
             hout << "Error in generating a GNP network" << endl;
             return 0;
         }
@@ -51,7 +51,7 @@ int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, c
         
     } else if (simu_para.particle_type == "GNP_CNT_mix") {
         //Generate a network defined by cuboids and points
-        if (!Generate_gnp_network_mt(gnp_geo, geom_sample, cutoffs, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
+        if (!Generate_gnp_network_mt(gnp_geo, geom_sample, cutoffs, simu_para.particle_type, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
             hout << "Error in generating a GNP network" << endl;
             return 0;
         }
@@ -510,7 +510,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
 //---------------------------------------------------------------------------
 //Generate a GNP network
 //Use the Mersenne Twister for the random number generation
-int GenNetwork::Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const
+int GenNetwork::Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Cutoff_dist &cutoffs, const string &particle_type, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const
 {
     //---------------------------------------------------------------------------
     //Set up the Mersenne Twisters used for the different variables
@@ -633,7 +633,7 @@ int GenNetwork::Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const str
     carbon_vol = vol_sum;
     carbon_weight = wt_sum;
     
-    if (geom_sample.particle_type != "Hybrid_particles") {
+    if (particle_type != "Hybrid_particles") {
         //Print the number of GNPs when GNPs only or mixed fillers are generated
         if(gnp_geo.criterion == "wt") {
             hout << "The weight fraction of generated GNPs is: " << wt_sum/(geom_sample.volume*geom_sample.polymer_density) << endl;

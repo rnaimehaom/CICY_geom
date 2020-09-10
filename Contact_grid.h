@@ -25,7 +25,7 @@ public:
     Contact_grid(){};
     
     //Member Functions
-    int Generate_contact_grid(const int &window, const struct Geom_sample &sample, const struct Cutoff_dist &cutoffs, const struct Nanotube_Geo &cnts, const vector<int> &cnts_inside, vector<Point_3D> &points_in, const vector<vector<long int> > &structure, const vector<int> &gnps_inside, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp);
+    int Generate_contact_grid(const int &window, const string &particle_type, const struct Geom_sample &sample, const struct Cutoff_dist &cutoffs, const struct Nanotube_Geo &cnts, const vector<int> &cnts_inside, vector<Point_3D> &points_in, const vector<vector<long int> > &structure, const vector<int> &gnps_inside, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp);
     int Generate_window_geometry(const int &window, const struct Geom_sample &sample, struct Geom_sample &window_geom);
     int Adjust_regions_if_needed(const double &cutoff, struct Geom_sample &window_geom, int &sx, int &sy, int &sz);
     int Fill_sectioned_domain(const struct Geom_sample &window_geom, const vector<int> &particles_inside, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const double &cutoff, const int &sx, const int &sy, const int &sz, vector<vector< long int> > &sectioned_domain);

@@ -55,7 +55,7 @@
 
 //This function removes the points that are outside the observation window.
 //The vector cnts_inside is created so only the CNTs inside the obseration window are considered in other functions
-int Cutoff_Wins::Extract_observation_window(const int &window, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, vector<GCH> &hybrid_particles, vector<vector<long int> > &structure, vector<vector<long int> > &structure_gnp, vector<double> &radii, vector<Point_3D> &points_in, vector<Point_3D> &points_gnp, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnp)
+int Cutoff_Wins::Extract_observation_window(const int &window, const string &particle_type, const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, vector<GCH> &hybrid_particles, vector<vector<long int> > &structure, vector<vector<long int> > &structure_gnp, vector<double> &radii, vector<Point_3D> &points_in, vector<Point_3D> &points_gnp, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnp)
 {
     if (!Set_global_variables_for_geometry(sample, window)) {
         hout << "Error in Extract_observation_window when calling Set_global_variables_for_geometry" << endl;
@@ -71,7 +71,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const struct Geom
     //Save the initial points of the CNTs that are attached to the GNP
     //Check if particle type is the hybrid
     //hout << "Save seeds" << endl;
-    if (sample.particle_type == "Hybrid_particles") {
+    if (particle_type == "Hybrid_particles") {
         if (!Save_seeds(hybrid_particles, structure, seeds)) {
             hout << "Error in Extract_observation_window when calling Save_seeds" << endl;
             return 0;
@@ -80,7 +80,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const struct Geom
     
     //Trim the CNTs if there are CNTs in the structure
     //Check if the generated structure has CNTs, this happens when the particle type is not GNPs
-    if (sample.particle_type != "GNP_cuboids") {
+    if (particle_type != "GNP_cuboids") {
         
         //Scan every Nanotube that is the boundary region. Delete and trim CNTs when needed.
         if (!Trim_boundary_cnts(shells_cnt, window, sample, points_in, structure, radii)){
@@ -101,7 +101,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const struct Geom
     
     //Update the CNTs attached to the GNP
     //Check if particle type is hybrid
-    if (sample.particle_type == "Hybrid_particles") {
+    if (particle_type == "Hybrid_particles") {
         
         //hout << "Compare_seeds" << endl;
         //Compare the initial points of the CNTs attached to the GNPs
@@ -117,7 +117,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const struct Geom
     
     //Remove GNPs that are outside the observation window
     //Check if the structure has GNPs, this happens when the particle type is not CNT
-    if (sample.particle_type != "CNT_wires") {
+    if (particle_type != "CNT_wires") {
         //Scan every GNP that is the boundary region. Delete GNPs and GNP points when needed.
         if (!Trim_boundary_gnps(hybrid_flag, gnps, hybrid_particles, shells_gnp[window], points_gnp, structure_gnp)){
             hout << "Error in Extract_observation_window when calling Trim_boundary_gnps" << endl;

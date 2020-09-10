@@ -81,7 +81,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         Cutoff_Wins *Cutwins = new Cutoff_Wins;
         //From this function I get the internal variables cnts_inside and boundary_cnt
         ct0 = time(NULL);
-        if(!Cutwins->Extract_observation_window(i, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, hybrid_particles, cnts_structure, gnps_structure, cnts_radius, cnts_point, gnps_point, shells_cnt, shells_gnps)) {
+        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, hybrid_particles, cnts_structure, gnps_structure, cnts_radius, cnts_point, gnps_point, shells_cnt, shells_gnps)) {
             hout << "Error when extracting observation window "<< i+1 << endl;
             return 0;
         }
@@ -92,7 +92,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Determine the local networks inside the cutoff windows
         Contact_grid *Contacts = new Contact_grid;
         ct0 = time(NULL);
-        if (Contacts->Generate_contact_grid(i, Init->geom_sample, Init->cutoff_dist, Init->nanotube_geo, Cutwins->cnts_inside, cnts_point, cnts_structure, Cutwins->gnps_inside, gnps_point, gnps_structure)==0) {
+        if (Contacts->Generate_contact_grid(i, Init->simu_para.particle_type, Init->geom_sample, Init->cutoff_dist, Init->nanotube_geo, Cutwins->cnts_inside, cnts_point, cnts_structure, Cutwins->gnps_inside, gnps_point, gnps_structure)==0) {
             hout << "Error when generating contact grid" << endl;
             return 0;
         }
@@ -103,7 +103,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Hoshen-Kopelman algorithm
         Hoshen_Kopelman *HoKo = new Hoshen_Kopelman;
         ct0 = time(NULL);
-        if (!HoKo->Determine_clusters(Init->geom_sample, Init->cutoff_dist, Cutwins->cnts_inside, Contacts->sectioned_domain, cnts_structure, cnts_point, cnts_radius, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, Contacts->sectioned_domain_hyb, gnps_structure, gnps_point, hybrid_particles)) {
+        if (!HoKo->Determine_clusters(Init->simu_para, Init->cutoff_dist, Cutwins->cnts_inside, Contacts->sectioned_domain, cnts_structure, cnts_point, cnts_radius, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, Contacts->sectioned_domain_hyb, gnps_structure, gnps_point, hybrid_particles)) {
             hout << "Error when determining clusters" << endl;
             return 0;
         }
@@ -129,7 +129,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Determine percolation
         Percolation *Perc = new Percolation;
         ct0 = time(NULL);
-        if (!Perc->Determine_percolated_clusters(i, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, Cutwins->boundary_cnt, HoKo->labels, Cutwins->boundary_gnp, HoKo->labels_gnp, HoKo->clusters_cnt, HoKo->isolated, HoKo->clusters_gch, HoKo->isolated_gch)) {
+        if (!Perc->Determine_percolated_clusters(i, Init->simu_para.particle_type, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, Cutwins->boundary_cnt, HoKo->labels, Cutwins->boundary_gnp, HoKo->labels_gnp, HoKo->clusters_cnt, HoKo->isolated, HoKo->clusters_gch, HoKo->isolated_gch)) {
             hout << "Error when determining percoalted clusters" << endl;
             return 0;
         }

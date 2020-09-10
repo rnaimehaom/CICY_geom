@@ -65,13 +65,13 @@
  */
 
 //To determinate hybrid particle clusters using Hoshen Kopelman Algorithm
-int Hoshen_Kopelman::Determine_clusters(const struct Geom_sample &sample, const struct Cutoff_dist &cutoffs, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<int> &gnps_inside, const vector<vector<long int> > &sectioned_domain_gnp, const vector<vector<int> > &sectioned_domain_hyb, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, const vector<GCH> &hybrid_particles)
+int Hoshen_Kopelman::Determine_clusters(const struct Simu_para &simu_para, const struct Cutoff_dist &cutoffs, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<int> &gnps_inside, const vector<vector<long int> > &sectioned_domain_gnp, const vector<vector<int> > &sectioned_domain_hyb, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, const vector<GCH> &hybrid_particles)
 {
     //There are three distinct cases to make clusters: CNTs, GNPs or having both (either hybrid or mixed
     //============================================================================================
-    if (sample.particle_type == "CNT_wires") {
+    if (simu_para.particle_type == "CNT_wires") {
         //Label the CNTs and make the data structures for the direct electrifying algorithm
-        if (!Scan_sub_regions_cnt(sample, points_in, gnps_inside, hybrid_particles, radii, cutoffs.tunneling_dist, sectioned_domain, structure)){
+        if (!Scan_sub_regions_cnt(simu_para, points_in, gnps_inside, hybrid_particles, radii, cutoffs.tunneling_dist, sectioned_domain, structure)){
             hout << "Error in Determine_clusters when calling Scan_sub_regions_cnt." <<endl;
             return 0;
         }
@@ -84,7 +84,7 @@ int Hoshen_Kopelman::Determine_clusters(const struct Geom_sample &sample, const 
         
     }
     //============================================================================================
-    else if (sample.particle_type == "GNP_cuboids") {
+    else if (simu_para.particle_type == "GNP_cuboids") {
         //Label the GNPs and make the data structures for the direct electrifying algorithm
         if (!Scan_sub_regions_gnp(points_gnp, hybrid_particles, cutoffs.tunneling_dist, sectioned_domain_gnp)){
             hout << "Error in Determine_clusters when calling Scan_sub_regions_gnp." <<endl;
@@ -105,7 +105,7 @@ int Hoshen_Kopelman::Determine_clusters(const struct Geom_sample &sample, const 
         
         ct0 = time(NULL);
         //Label the CNTs and make the data structures for the direct electrifying algorithm
-        if (!Scan_sub_regions_cnt(sample, points_in, gnps_inside, hybrid_particles, radii, cutoffs.tunneling_dist, sectioned_domain, structure)){
+        if (!Scan_sub_regions_cnt(simu_para, points_in, gnps_inside, hybrid_particles, radii, cutoffs.tunneling_dist, sectioned_domain, structure)){
             hout << "Error in Determine_clusters when calling Scan_sub_regions_cnt." <<endl;
             return 0;
         }
@@ -126,7 +126,7 @@ int Hoshen_Kopelman::Determine_clusters(const struct Geom_sample &sample, const 
         vector<int> labels_labels_mixed;
         ct0 = time(NULL);
         //Search for mixed contacts
-        if (!Scan_sub_regions_cnt_and_gnp(sample, cutoffs.tunneling_dist, points_in, radii, sectioned_domain, structure, points_gnp, hybrid_particles, gnps_inside, sectioned_domain_gnp, sectioned_domain_hyb, labels_mixed, labels_labels_mixed)) {
+        if (!Scan_sub_regions_cnt_and_gnp(simu_para, cutoffs.tunneling_dist, points_in, radii, sectioned_domain, structure, points_gnp, hybrid_particles, gnps_inside, sectioned_domain_gnp, sectioned_domain_hyb, labels_mixed, labels_labels_mixed)) {
             hout << "Error in Determine_clusters when calling Scan_sub_regions_cnt_and_gnp" << endl;
             return 0;
         }
@@ -158,7 +158,7 @@ int Hoshen_Kopelman::Determine_clusters(const struct Geom_sample &sample, const 
 }
 //This function scans all the subregions to look for points close enough for tunneling to happen, i.e. points that are in contact.
 //When points are in contact use the Hoshen-Kopelman algorithm
-int Hoshen_Kopelman::Scan_sub_regions_cnt(const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<int> &gnps_inside, const vector<GCH> &hybrid_particles, const vector<double> &radii, const double &tunnel, const vector<vector<long int> > &sectioned_domain, const vector<vector<long int> > &structure)
+int Hoshen_Kopelman::Scan_sub_regions_cnt(const struct Simu_para &simu_para, const vector<Point_3D> &points_in, const vector<int> &gnps_inside, const vector<GCH> &hybrid_particles, const vector<double> &radii, const double &tunnel, const vector<vector<long int> > &sectioned_domain, const vector<vector<long int> > &structure)
 {
     //These ints are just to store the global point number and the CNTs they belong to.
     //They are just intermediate variables and I only use them to make the code more readable
@@ -181,7 +181,7 @@ int Hoshen_Kopelman::Scan_sub_regions_cnt(const struct Geom_sample &sample, cons
     
     //Hybrid particle pre-processing
     //Set the flag for hybrid particles if the particle type is hybrid
-    int hybrids_flag = sample.particle_type == "Hybrid_particles";
+    int hybrids_flag = simu_para.particle_type == "Hybrid_particles";
     //If there are hybrid particles the pre-processing functon is called
     if (hybrids_flag) {
         if (!Group_cnts_in_gnp(hybrid_particles, gnps_inside, new_label)) {
@@ -614,7 +614,7 @@ int Hoshen_Kopelman::Cleanup_labels(vector<int> &labels, vector<int> &labels_lab
 }
 //This function scans all the subregions to look for points close enough for tunneling to happen, i.e. points that are in contact.
 //When points are in contact use the Hoshen-Kopelman algorithm
-int Hoshen_Kopelman::Scan_sub_regions_cnt_and_gnp(const struct Geom_sample &sample, const double &tunnel, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain, const vector<vector<long int> > &structure, const vector<Point_3D> &points_gnp, const vector<GCH> &hybrid_particles, const vector<int> &gnps_inside, const vector<vector<long int> > &sectioned_domain_gnp, const vector<vector<int> > &sectioned_domain_hyb, vector<int> &labels_mixed, vector<int> &labels_labels_mixed)
+int Hoshen_Kopelman::Scan_sub_regions_cnt_and_gnp(const struct Simu_para &simu_para, const double &tunnel, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain, const vector<vector<long int> > &structure, const vector<Point_3D> &points_gnp, const vector<GCH> &hybrid_particles, const vector<int> &gnps_inside, const vector<vector<long int> > &sectioned_domain_gnp, const vector<vector<int> > &sectioned_domain_hyb, vector<int> &labels_mixed, vector<int> &labels_labels_mixed)
 {
     //These ints are just to store the global point number and the CNTs they belong to.
     //They are just intermediate variables and I only use them to make the code more readable
@@ -649,7 +649,7 @@ int Hoshen_Kopelman::Scan_sub_regions_cnt_and_gnp(const struct Geom_sample &samp
     int new_label = (int)labels_labels_mixed.size();
     
     //If hybrid particles are used, cluster together GNPs with their CNTs
-    if (sample.particle_type == "Hybrid_particles") {
+    if (simu_para.particle_type == "Hybrid_particles") {
         if (!Cluster_gnps_and_cnts(hybrid_particles, gnps_inside, labels_mixed, labels_labels_mixed, new_label)) {
             hout << "Error in Scan_sub_regions_cnt_and_gnp when calling Cluster_gnps_and_cnts" << endl;
             return 0;
