@@ -121,7 +121,7 @@ double Backbone_Network::Zero_current(const int &n_cluster, const int &R_flag, D
                     //If R_flag is 1, then use the actual resistance
                     
                     //Calculate the Resistance of the CNT segment
-                    double Re = DEA->Calculate_resistance_cnt(point_list, P1, P2, radii[CNT], electric_param.resistivity_CF);
+                    double Re = DEA->Calculate_resistance_cnt(point_list, P1, P2, radii[CNT], electric_param.resistivity_CNT);
                     //Calculate current
                     I = I/Re;
                 }

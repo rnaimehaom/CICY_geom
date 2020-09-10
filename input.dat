@@ -191,8 +191,8 @@ Electrical_Parameters
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define the value of resistivity of the nanotubes (Ohm.micron)
 20
-%Define the value of sheet resistance (Ohm/square) and resistivities (thickness, surface; in Ohm.micron) of the GNP
-10 1e-2 1e-7
+%Define the value of resistivities (thickness, surface; in Ohm.micron) of the GNP
+1e-2 1e-7
 %Define the value of resistivity of the polymer matrix (Ohm.micron)
 1.03e20
 %Li et al approach

@@ -648,7 +648,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const vector<v
             //Calculate resistance depending of the R_flag
             double Re;
             if (R_flag == 1) {
-                Re = Calculate_resistance_cnt(point_list, P1, P2, radii[CNT], electric_param.resistivity_CF);
+                Re = Calculate_resistance_cnt(point_list, P1, P2, radii[CNT], electric_param.resistivity_CNT);
             } else if (R_flag == 0) {
                 Re = 1.0;
             } else {
@@ -669,7 +669,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const vector<v
             
             //Re-calcualte the resistance if needed
             if (R_flag == 1) {
-                Re = Calculate_resistance_cnt(point_list, P2, P3, radii[CNT], electric_param.resistivity_CF);
+                Re = Calculate_resistance_cnt(point_list, P2, P3, radii[CNT], electric_param.resistivity_CNT);
             }
             
             //For the second segment add the contributions to the stiffness matrix without calling the function
@@ -707,7 +707,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const vector<v
                 if (node1 != node2) {
                     double Re;
                     if (R_flag == 1) {
-                        Re = Calculate_resistance_cnt(point_list, P1, P2, radii[CNT], electric_param.resistivity_CF);
+                        Re = Calculate_resistance_cnt(point_list, P1, P2, radii[CNT], electric_param.resistivity_CNT);
                     } else if (R_flag == 0) {
                         Re = 1.0;
                     } else {

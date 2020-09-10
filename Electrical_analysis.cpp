@@ -570,9 +570,9 @@ double Electrical_analysis::Current_of_element_in_boundary(const long int &P1, c
             //Check if the resistor is at the back of the CNT, since in that case the calculated resistance will be zero;
             //this because if P1 > P2, the function that calculates the resistance does not find points after P1
             //When the resistor is at the back of the elemnt P1 > P2, so in that case invert the point numbers
-            Re = DEA->Calculate_resistance_cnt(point_list, P2, P1, radius, electric_param.resistivity_CF);
+            Re = DEA->Calculate_resistance_cnt(point_list, P2, P1, radius, electric_param.resistivity_CNT);
         else
-            Re = DEA->Calculate_resistance_cnt(point_list, P1, P2, radius, electric_param.resistivity_CF);
+            Re = DEA->Calculate_resistance_cnt(point_list, P1, P2, radius, electric_param.resistivity_CNT);
         //Calculate current and add it to the total current
         //hout << " Re=" << Re << " I=" << V/Re << endl;
         return V/Re;

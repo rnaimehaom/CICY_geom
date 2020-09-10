@@ -126,8 +126,8 @@ struct Electric_para{
     string keywords;
     bool mark;
     double applied_voltage;			//Define the magnitude of the applied voltage
-    double resistivity_CF;			//Define the resistivity value of the carbon fiber
-    double sheet_resitance_GNP, resistivity_GNP_t, resistivity_GNP_surf; //Define the resistivity value of the GNP along the thicknes direction and along the surface
+    double resistivity_CNT;			//Define the resistivity value of the carbon fiber
+    double resistivity_GNP_t, resistivity_GNP_surf; //Define the resistivity value of the GNP along the thicknes direction and along the surface
     double resistivity_matrix;      //Define the resistivity of the polymer matrix
     //Constants for tunneling
     double e_charge;

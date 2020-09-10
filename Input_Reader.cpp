@@ -228,7 +228,7 @@ int Input::Data_Initialization()
 	electric_para.keywords = "Electrical_Parameters";
 	electric_para.mark = false;
 	electric_para.applied_voltage = 1.0;
-	electric_para.resistivity_CF = 0.001;
+	electric_para.resistivity_CNT = 0.001;
     
     //Initialize tecplot flags (do not export anything)
     tec360_flags.keywords = "Tecplot_flags";
@@ -681,18 +681,18 @@ int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstr
     
     //Carbon nanotube resistivity
     istringstream istr1(Get_Line(infile));
-    istr1 >> electric_para.resistivity_CF;
-    if (electric_para.resistivity_CF <= 0) {
-        hout<<"Error: CNT resistivity cannot be negative. Input was: "<<electric_para.resistivity_CF<<endl;
+    istr1 >> electric_para.resistivity_CNT;
+    if (electric_para.resistivity_CNT <= 0) {
+        hout<<"Error: CNT resistivity cannot be negative. Input was: "<<electric_para.resistivity_CNT<<endl;
         return 0;
     }
     
     //GNP resistivities
     istringstream istr2(Get_Line(infile));
-    istr2 >> electric_para.sheet_resitance_GNP >> electric_para.resistivity_GNP_t >> electric_para.resistivity_GNP_surf;
+    istr2 >> electric_para.resistivity_GNP_t >> electric_para.resistivity_GNP_surf;
     //hout << electric_para.resistivity_GNP_t <<" ,"<<electric_para.resistivity_GNP_surf<<endl;
-    if (electric_para.sheet_resitance_GNP <= 0 || electric_para.resistivity_GNP_t <= 0 || electric_para.resistivity_GNP_surf <= 0) {
-        hout<<"Error: GNP resistivities cannot be negative. Input was: "<<electric_para.sheet_resitance_GNP<<", "<<electric_para.resistivity_GNP_t<<", "<<electric_para.resistivity_GNP_surf<<endl;
+    if (electric_para.resistivity_GNP_t <= 0 || electric_para.resistivity_GNP_surf <= 0) {
+        hout<<"Error: GNP resistivities cannot be negative. Input was: "<<electric_para.resistivity_GNP_t<<", "<<electric_para.resistivity_GNP_surf<<endl;
         return 0;
     }
     
