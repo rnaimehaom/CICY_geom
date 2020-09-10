@@ -60,6 +60,9 @@ Sample_Geometry
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define minimum size for background grids (used for searching contact points)
 0.05000 0.05000 0.05000
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
+%Define the matrix density (g/cm3)
+1.03
 %--------------------------------End
 %
 %
@@ -97,8 +100,8 @@ uniform 0.005000 0.005000
 %Define how the CNT content is measured (volume or weight fraction)
 %vol: for volume fraction, especify the value after 'vol', for example: vol 0.01
 %wt: for weight fraction, especify the value after 'wt' but also the nanotube linear density
-% (1E-12g/micron) and the polymer density are needed (in g/cm3), for example wt 0.005 1E-12 1.05
-%wt 0.005 5.8E-5 1.06
+% (1E-12g/micron), for example wt 0.005 1E-12
+%wt 0.005 5.8E-5
 vol 0.001000
 %--------------------------------End
 %

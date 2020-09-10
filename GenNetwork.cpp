@@ -59,7 +59,7 @@ int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, c
         //Use the Mersenne Twister for the random number generation
         //==========================
         //GNP_CNT_mix works only with penetrating model in CNTs (oct 30 2016)
-        //WILL BE CHANGED FOR THE HYBRID PARTICLE FUNCTION?
+        //TO IMPLEMENT NON-PENETRATING MODEL FOR MIXED NANOPARTICLES A NEW FUNCTION IS NEEDED
         if (!Generate_cnt_network_threads_mt(simu_para, geom_sample, agg_geo, nanotube_geo, cutoffs, cnts_points, cnts_radius)) {
             hout << "Error in generating a CNT network mixed with GNPs" << endl;
             return 0;
@@ -476,7 +476,11 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
     
     //Output the CNT content generated
     if(nanotube_geo.criterion == "wt") {
-        hout << "The weight fraction of generated CNTs is: " << wt_sum/(geom_sample.volume*geom_sample.polymer_density) << endl;
+        
+        //Calculate matrix weight
+        double matrix_weight = (geom_sample.volume - vol_sum)*geom_sample.matrix_density;
+        
+        hout << "The weight fraction of generated CNTs is: " << wt_sum/(matrix_weight + wt_sum) << endl;
         hout << ", the target weight fraction was " << nanotube_geo.weight_fraction << endl << endl;
 
     } else if(nanotube_geo.criterion == "vol") {
@@ -639,10 +643,14 @@ int GenNetwork::Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const str
     carbon_vol = vol_sum;
     carbon_weight = wt_sum;
     
-    if (particle_type != "Hybrid_particles") {
+    if (particle_type == "GNP_cuboids") {
         //Print the number of GNPs when GNPs only or mixed fillers are generated
         if(gnp_geo.criterion == "wt") {
-            hout << "The weight fraction of generated GNPs is: " << wt_sum/(geom_sample.volume*geom_sample.polymer_density) << endl;
+            
+            //Calculate matrix weight
+            double matrix_weight = (geom_sample.volume - vol_sum)*geom_sample.matrix_density;
+            
+            hout << "The weight fraction of generated GNPs is: " << wt_sum/(matrix_weight + wt_sum) << endl;
             hout << ", the target weight fraction was " << gnp_geo.weight_fraction << endl << endl;
         } else if(gnp_geo.criterion == "vol") {
             hout << endl << "The volume fraction of generated GNPs was " << vol_sum/geom_sample.volume;
@@ -849,11 +857,17 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
 
     
     if(nanotube_geo.criterion == "wt") {
-        hout << "The weight fraction of generated CNTs is: " << wt_sum_cnt/(geom_sample.volume*geom_sample.polymer_density) << endl;
-        hout << "The weight fraction of generated GNPs is: " << wt_sum_gnp/(geom_sample.volume*geom_sample.polymer_density) << endl;
-        hout << "The weight fraction of generated hybrid particles is: " << (wt_sum_gnp+wt_sum_cnt)/(geom_sample.volume*geom_sample.polymer_density) << ", the target weight fraction was " << nanotube_geo.weight_fraction+gnp_geo.weight_fraction << endl;
+        
+        //Calculate matrix weight
+        double matrix_weight = (geom_sample.volume - vol_sum_gnp - vol_sum_cnt)*geom_sample.matrix_density;
+        
+        hout << "The weight fraction of generated CNTs is: " << wt_sum_cnt/matrix_weight << endl;
+        hout << "The weight fraction of generated GNPs is: " << wt_sum_gnp/matrix_weight << endl;
+        hout << "The weight fraction of generated hybrid particles is: " << (wt_sum_gnp+wt_sum_cnt)/matrix_weight << ", the target weight fraction was " << nanotube_geo.weight_fraction+gnp_geo.weight_fraction << endl;
         hout << "The CNT/GNP mass ratio is " << wt_sum_cnt/wt_sum_gnp << ", the target mass ratio was " << gnp_geo.mass_ratio  << endl << endl;
+        
     } else if(nanotube_geo.criterion == "vol") {
+        
         hout << "The volume fraction of generated CNTs was " << vol_sum_cnt/geom_sample.volume << endl;
         hout << "The volume fraction of generated GNPs was " << vol_sum_gnp/geom_sample.volume << endl;
         hout << "The volume fraction of generated hybrid particles was " << (vol_sum_gnp+vol_sum_cnt)/geom_sample.volume << ", the target volume fraction was " << nanotube_geo.volume_fraction << endl; //The total volume fraction of hybrids is stored in the CNT variable

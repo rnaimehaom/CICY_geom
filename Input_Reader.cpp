@@ -170,7 +170,7 @@ int Input::Data_Initialization()
 	geom_sample.ey_wid = 1.0;
 	geom_sample.ez_hei = 1.0;
 	geom_sample.volume = geom_sample.len_x*geom_sample.wid_y*geom_sample.hei_z;
-	geom_sample.polymer_density = 1.0;
+	geom_sample.matrix_density = 1.0;
 	geom_sample.gs_minx = 1.0;
 	geom_sample.gs_miny = 1.0;
 	geom_sample.gs_minz = 1.0;
@@ -203,7 +203,6 @@ int Input::Data_Initialization()
 	nanotube_geo.real_volume = 0.0;
 	nanotube_geo.weight_fraction = 0.0;
 	nanotube_geo.real_weight = 0.0;
-	nanotube_geo.matrix_density = 1.06;
 	nanotube_geo.linear_density = 5.8E-5;
 
 	//Initialize the geometric paramters of nanotube clusters
@@ -365,7 +364,7 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
 	else geom_sample.mark = true;
     
     //----------------------------------------------------------------------
-	//Define the domain of the sample: the lower-left corner point of the sample and the length, width and height of the sample
+	//Read the lower-left corner of the sample, its length, width and height
 	istringstream istr0(Get_Line(infile));
 	istr0 >> geom_sample.origin.x >> geom_sample.origin.y >> geom_sample.origin.z;
 	istr0 >> geom_sample.len_x >> geom_sample.wid_y >> geom_sample.hei_z;
@@ -377,7 +376,7 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
 	geom_sample.volume = geom_sample.len_x*geom_sample.wid_y*geom_sample.hei_z;
 
 	//----------------------------------------------------------------------
-	//Define the maxmimum and minimum side lengths of the observation window and decrement in x, y and z directions
+	//Read the maxmimum and minimum side lengths of the observation window and decrement in x, y and z directions
     istringstream istr1(Get_Line(infile));
 	istr1 >> geom_sample.win_max_x >> geom_sample.win_max_y >> geom_sample.win_max_z;
 	istringstream istr2(Get_Line(infile));
@@ -441,7 +440,7 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
     }
 
 	//----------------------------------------------------------------------
-	//Define the minimum size for background grids (looking for contact points)
+	//Read the minimum size for background grids (looking for contact points)
 	istringstream istr4(Get_Line(infile));
 	istr4 >> geom_sample.gs_minx >> geom_sample.gs_miny >> geom_sample.gs_minz;
 	if(geom_sample.gs_minx<=0||geom_sample.gs_miny<=0||geom_sample.gs_minz<=0)
@@ -456,6 +455,11 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
 		hout << "Error: The number of divisions for background grids is too large (>500). When the number of divisions for background grids in any direction is large (>500) there is a memory error. " << endl;
 		return 0;	
 	}
+    
+    //----------------------------------------------------------------------
+    //Read the density of the polymer matrix
+    istringstream istr5(Get_Line(infile));
+    istr5 >> geom_sample.matrix_density;
 
 	return 1;
 }
@@ -564,14 +568,9 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
 		istr6 >> nanotube_geo.linear_density;
 		if(nanotube_geo.linear_density<0){
             hout << "Error: The linear density of nanotubes should be non-negetive. Input was: "<<nanotube_geo.linear_density<< endl; return 0; }
-		
-        //Read the density of the polymer
-		istr6 >> geom_sample.polymer_density;
-		if(geom_sample.polymer_density<0){
-            hout << "Error: the polymer density should be non-negetive. Input was: "<<geom_sample.polymer_density<< endl; return 0; }
         
 		//Calculate actual weight of nanotubes
-		nanotube_geo.real_weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.polymer_density;
+		nanotube_geo.real_weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
 	}
 	else { hout << "Error: The content of nanotubes can only be specified in volume (vol) or weight (wt) fraction. Input was: "<<nanotube_geo.criterion<< endl; return 0; }
     
@@ -966,7 +965,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
             //Adjust the CNT weight fraction
             nanotube_geo.weight_fraction = nanotube_geo.weight_fraction - gnp_geo.weight_fraction;
             //Adjust the real weight of nanotubes
-            nanotube_geo.real_weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.polymer_density;
+            nanotube_geo.real_weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
             
             hout << "    Given the CNT/GNP mass ratio of " << gnp_geo.mass_ratio << ", the CNT weight fraction was adjusted to " << nanotube_geo.weight_fraction << endl;
             hout << "    The GNP weight fraction is " << gnp_geo.weight_fraction <<endl;
@@ -979,7 +978,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
         }
         
         //Calculate the actual weight of GNPs
-        gnp_geo.real_weight = gnp_geo.weight_fraction*geom_sample.volume*geom_sample.polymer_density;
+        gnp_geo.real_weight = gnp_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
     }
     else {
         hout << "Error: the criterion of generation is neither 'vol' nor 'wt'. Input was: "<< gnp_geo.criterion << endl;

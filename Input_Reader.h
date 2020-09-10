@@ -51,7 +51,7 @@ struct Geom_sample{
     Point_3D ex_origin;											//Define an origin point for an extended sample to generate network with an acurrate control
     double ex_len, ey_wid, ez_hei;							//Define length, width and height for an extended sample for generation with an acurrate control
     double volume;
-    double polymer_density;
+    double matrix_density;            //Define the density of matrix
     double gs_minx, gs_miny, gs_minz;					//Define the minimum size for background grids (looking for contact points)
     double win_max_x, win_max_y, win_max_z;		//Define the size range of the cutoff window and descrement by every step in x, y and z directions
     double win_min_x, win_min_y, win_min_z;
@@ -78,7 +78,6 @@ struct Nanotube_Geo{
     double real_weight;				//Define the real weight of nanotubes
     double linear_density;			//Define the linear density of nanotubes
     double density;			//Define the density of nanotubes
-    double matrix_density;			//Define the density of matrix
 };
 //The nanotube parameters in a network
 struct GNP_Geo{
