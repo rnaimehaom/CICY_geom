@@ -143,10 +143,16 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
     
     //Initial seeds, if any are in network_seeds within geom_sample.
     //However, geom_sample cannot be modified, so copy the seeds to a new vector
-    vector<unsigned int> net_seeds(simu_para.network_seeds);
-   
-    //If there are no seeds, generate them
-    if (!net_seeds.size()) {
+    vector<unsigned int> net_seeds(7, 0);
+    
+    //If seeds have been specified, copy them
+    if (simu_para.network_seeds.size()) {
+        for (size_t i = 0; i < simu_para.network_seeds.size(); i++) {
+            net_seeds[i] = simu_para.network_seeds[i];
+        }
+    }
+    //If seeds have not been specified, generate them
+     else {
         
         //7 seeds are needed
         net_seeds.assign(7, 0);
