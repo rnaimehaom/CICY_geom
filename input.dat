@@ -163,9 +163,13 @@ uniform 0.03 0.03
 %Define the GNP density (in gm/cm3)
 2.25
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define how the GNP content is measured (volume or weight fraction)
+%Define how the GNP content is measured (volume, weight fraction or by the CNTs density per unit area)
 %vol: for volume fraction, especify the value after 'vol', for example: vol 0.01
 %wt: for weight fraction, especify the value after 'wt', for example: wt 0.01
+%dens: for the CNT density per unit area in [CNTs/micron2], for example: dens 200
+%      NOTE: 'dens' option is only valid when Hybrid_particles is selected as particle type
+%      NOTE: 'dens' option will result in recalculating the mass ratio, input value for mass ratio will be ignored,
+%            and with the new mass ratio the volume/weight fraction of GNPs is calculated
 %wt 0.005
 vol 0.001000
 %--------------------------------End

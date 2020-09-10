@@ -640,6 +640,253 @@ int Input::Read_agg_geo_parameters(struct Agglomerate_Geo &agg_geo, ifstream &in
 	return 1;
 }
 //---------------------------------------------------------------------------
+//Readi the geometric parameters of GNPs
+int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
+{
+    if(gnp_geo.mark)
+    {
+        //Output a message that the keyword has already been iput
+        Warning_message_already_input(gnp_geo.keywords);
+        return 0;
+    }
+    else gnp_geo.mark = true;
+
+    //----------------------------------------------------------------------
+    //Read the type of generation of CNTs on the GNP surface (parallel or independent)
+    istringstream istr0(Get_Line(infile));
+    istr0 >> gnp_geo.growth_type;
+    if (gnp_geo.growth_type != "parallel" && gnp_geo.growth_type != "independent") {
+        hout << "Error: The growth type of the CNTs on the GNP surface should be either parallel or independent. Input was: " << gnp_geo.growth_type << endl;
+        return 0;
+    }
+    
+    //----------------------------------------------------------------------
+    //Read the GNP orientation type (random or specific)
+    istringstream istr1(Get_Line(infile));
+    istr1 >> gnp_geo.orient_distrib_type;
+    if(gnp_geo.orient_distrib_type!="random"&&gnp_geo.orient_distrib_type!="specific"){
+        hout << "Error: The GNP orientation type must be either random or specific. Input was: " << gnp_geo.orient_distrib_type << endl;
+        return 0; }
+    if(gnp_geo.orient_distrib_type=="specific")
+    {
+        istr1  >> gnp_geo.ini_sita >> gnp_geo.ini_pha;
+        if(gnp_geo.ini_sita<0||gnp_geo.ini_sita>PI)
+        {
+            hout << "Error: The range specified for theta is not in the valid range of (0, PI)." << endl;
+            return 0;
+        }
+        if(gnp_geo.ini_pha<0||gnp_geo.ini_pha>=2*PI)
+        {
+            hout << "Error: The range specified phi is not in the valid range of (0, 2PI)." << endl;
+            return 0;
+        }
+    }
+    
+    //----------------------------------------------------------------------
+    //Read the step length (in microns) discretization of the GNP
+    istringstream istr2(Get_Line(infile));
+    istr2 >> gnp_geo.discr_step_length;
+    if(gnp_geo.discr_step_length<=0||
+       gnp_geo.discr_step_length>=0.25*geom_sample.len_x||
+       gnp_geo.discr_step_length>=0.25*geom_sample.wid_y||
+       gnp_geo.discr_step_length>=0.25*geom_sample.hei_z) {
+        hout << "Error: the step length must be positive and upto 0.25 times the side length of the sample. Input was: "<<gnp_geo.discr_step_length<< endl;    return 0; }
+    
+    //----------------------------------------------------------------------
+    //Read the distribution type (uniform or normal) of the GNP side length (in microns) and maximum and minimum values
+    istringstream istr3(Get_Line(infile));
+    istr3 >> gnp_geo.size_distrib_type;
+    if(gnp_geo.size_distrib_type!="uniform"&&gnp_geo.size_distrib_type!="normal"){
+        hout << "Error: The distribution of the length should be either normal or uniform." << endl;    return 0; }
+    istr3 >> gnp_geo.len_min >> gnp_geo.len_max;
+    if(gnp_geo.len_min<0||gnp_geo.len_max<0||gnp_geo.len_max<gnp_geo.len_min){
+        hout << "Error: The maximum and minimum values of GNP side length must be non-negative and the minimum value must be smaller than the maximum value. Input for minimum was "<<gnp_geo.len_min<<" and for maximum was "<<gnp_geo.len_max<< endl; return 0; }
+    
+    //----------------------------------------------------------------------
+    //Define the distribution type (uniform or normal) of the GNP thickness (in microns) and maximum and minimum values
+    istringstream istr4(Get_Line(infile));
+    istr4 >> gnp_geo.thick_distrib_type;
+    if(gnp_geo.thick_distrib_type!="uniform"&&gnp_geo.thick_distrib_type!="normal"){
+        hout << "Error: The distribution of the GNP thickness should be either normal or uniform. Input was: "<<gnp_geo.thick_distrib_type<< endl;    return 0; }
+    istr4 >> gnp_geo.t_min >> gnp_geo.t_max;
+    if(gnp_geo.t_min<0||gnp_geo.t_max<0||gnp_geo.t_max<gnp_geo.t_min) {
+        hout << "Error: The maximum and minimum values of GNP thickness must be non-negative and the minimum value must be smaller than the maximum value. Input for minimum was "<<gnp_geo.t_min<<" and for maximum was "<<gnp_geo.t_max<< endl; return 0; }
+    
+    //----------------------------------------------------------------------
+    //Define the CNTs/GNPs mass ratio
+    istringstream istr5(Get_Line(infile));
+    istr5 >> gnp_geo.mass_ratio;
+    if(gnp_geo.mass_ratio <= 0) {
+        hout << "Error: The CNT/GNP mass ratio must be greater than zero. Input was: "<<gnp_geo.mass_ratio<< endl; return 0; }
+    
+    //----------------------------------------------------------------------
+    //Define the GNP density (in gm/cm3)
+    istringstream istr6(Get_Line(infile));
+    istr6 >> gnp_geo.density;
+    if (gnp_geo.density <= 0) {
+        hout << "Error: The GNP density has to be a value greater than zero. Input was:" << nanotube_geo.density<< endl;
+        return 0;
+    }
+    
+    //----------------------------------------------------------------------
+    //Define how the GNP content is measured (volume or weight fraction)
+    istringstream istr7(Get_Line(infile));
+    istr7 >> gnp_geo.criterion;
+    if(gnp_geo.criterion=="vol")
+    {
+        //Check the particle type
+        //If mixed CNTs+GNPs or hybrid particles are used, then the fraction of GNPs needs to be calculated from the CNT fraction
+        //Then the CNT fraction needs to be adjusted
+        if (simu_para.particle_type == "GNP_CNT_mix" ) {
+            
+            if (nanotube_geo.criterion != "vol") {
+                hout << "Error: When the particle type is "<<simu_para.particle_type<<", CNT content and GNP content must be measured in the same way. CNT content is measured in  "<<nanotube_geo.criterion<<",  GNP content is measured in "<<gnp_geo.criterion<< endl;
+                return 0;
+            }
+            
+            //The volume fraction input for CNTs is now the total carbon volume fraction
+            double total_vol_frac = nanotube_geo.volume_fraction;
+            
+            //Calculate the GNP volume fraction from the total carbon volume fraction
+            gnp_geo.volume_fraction = nanotube_geo.density*total_vol_frac/(gnp_geo.mass_ratio*gnp_geo.density + nanotube_geo.density);
+            
+            //Adjust the CNT volume fraction
+            nanotube_geo.volume_fraction = total_vol_frac - gnp_geo.volume_fraction;
+            
+            //Adjust the total nanotube volume
+            nanotube_geo.real_volume = nanotube_geo.volume_fraction*geom_sample.volume;
+            
+            hout << "    Given the CNT/GNP mass ratio of " << gnp_geo.mass_ratio << ", the CNT volume fraction was adjusted to " << nanotube_geo.volume_fraction << endl;
+            hout << "    The GNP volume fraction is " << gnp_geo.volume_fraction <<endl;
+        }
+        else if(simu_para.particle_type == "Hybrid_particles") {
+            
+            //The volume fraction input for CNTs is now the total carbon volume fraction
+            double total_vol_frac = nanotube_geo.volume_fraction;
+            
+            //Calculate the GNP volume fraction
+            gnp_geo.volume_fraction = nanotube_geo.density*total_vol_frac/(gnp_geo.mass_ratio*gnp_geo.density + nanotube_geo.density);
+            
+            //NOTE: I AM NOT SURE WHY THIS ADJUSTMENT IS NOT DONE FOR HYBRID PARTICLES
+            //FOR SOME REASON I KEEP THE TOTAL CARBON CONTENT IN nanotube_geo.volume_fraction
+            //(LOOK AT HOW THE OUTPUT FOR CNT VOLUME FRACTION IS DONE)
+            //PROBABLY THE ANSWER TO THIS IS IN THE CODE FOR GENERATING HYBRID PARTICLES
+            //I WILL LEAVE THE CODE LIKE THIS FOR NOW (10-SEPT-2020)
+            //[SEE NOTES BELOW for 'wt' and 'dens']
+            //Adjust the CNT volume fraction
+            //nanotube_geo.volume_fraction = nanotube_geo.volume_fraction - gnp_geo.volume_fraction;
+            
+            //Adjust the total volume of the nanotube network
+            //nanotube_geo.real_volume = nanotube_geo.volume_fraction*geom_sample.volume;
+            
+            hout << "    Given the CNT/GNP mass ratio of " << gnp_geo.mass_ratio << ", the CNT volume fraction is " << (nanotube_geo.volume_fraction - gnp_geo.volume_fraction) << endl;
+            hout << "    The GNP volume fraction is " << gnp_geo.volume_fraction <<endl;
+            
+        }
+        else {
+            
+            istr7 >> gnp_geo.volume_fraction;
+            //Check that the volume fraction is between 0 and 1
+            if(gnp_geo.volume_fraction>1||gnp_geo.volume_fraction<0) {
+                hout << "Error: The volume fraction must be between 0 and 1. Input was: "<<gnp_geo.volume_fraction<< endl;
+                return 0;
+            }
+            
+        }
+        
+        //Calculate the actual volume of GNPs
+        gnp_geo.real_volume = gnp_geo.volume_fraction*geom_sample.volume;
+    }
+    else if(gnp_geo.criterion=="wt")
+    {
+        
+        //Check the particle type
+        //If mixed CNTs+GNPs or hybrid particles are used, then the fraction of GNPs needs to be calculated from the CNT fraction
+        //Then the CNT fraction needs to be adjusted
+        if (simu_para.particle_type == "GNP_CNT_mix" || simu_para.particle_type == "Hybrid_particles") {
+            
+            //The weight fraction input for CNTs is now the total carbon weight fraction
+            double total_wt_frac = nanotube_geo.weight_fraction;
+            
+            //Calculate the GNP weight fraction
+            gnp_geo.weight_fraction = total_wt_frac/(1+gnp_geo.mass_ratio);
+            
+            //NOTE: FOR WEIGHT FRACTION I DO THIS ADJUSTMENT BELOW FOR BOTH MIXED PARTICLES AND HYBRID
+            //PARTICLES. IS IT AN ERROR IN THE SENSE THAT SINCE I DID NOT USE WEIGHT FRACTION THEN I
+            //FORGOT TO CORRECT IT HERE? OR THE ERROR IS IN VOL?
+            //AS IN THE NOTE BEFORE, PROBABLY THE ANSWER IS IN THE CODE FOR GENERATION OF HYBRID
+            //PARTICLES (10-SEP-2020)
+            //Adjust the CNT weight fraction
+            nanotube_geo.weight_fraction = total_wt_frac - gnp_geo.weight_fraction;
+            //Adjust the real weight of nanotubes
+            nanotube_geo.real_weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
+            
+            hout << "    Given the CNT/GNP mass ratio of " << gnp_geo.mass_ratio << ", the CNT weight fraction was adjusted to " << nanotube_geo.weight_fraction << endl;
+            hout << "    The GNP weight fraction is " << gnp_geo.weight_fraction <<endl;
+        } else {
+            
+            istr7 >> gnp_geo.weight_fraction;
+            if(gnp_geo.weight_fraction>1||gnp_geo.weight_fraction<0){
+                hout << "Error: the weight fraction must be between 0 and 1." << endl; return 0;
+            }
+            hout << "    The weight fraction is " << gnp_geo.weight_fraction << endl;
+        }
+        
+        //Calculate the actual weight of GNPs
+        gnp_geo.real_weight = gnp_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
+    }
+    else if(gnp_geo.criterion=="dens") {
+        
+        if(simu_para.particle_type == "Hybrid_particles")  {
+            
+            double CNT_dens;
+            istr7 >> CNT_dens;
+            
+            if (CNT_dens<=Zero) {
+                hout << "Error: CNT density per unit are must be greater than zero. Input was: "<< CNT_dens<< endl;
+                return 0;
+            }
+            
+            //Calculate the mass ratio from the CNT density and CNT density per unit area
+            //Use the smallest CNT geometry and largest GNP thickness to minimize mas ratio M
+            //A minimum M will result in a maximum volume of GNP
+            double M = 2*nanotube_geo.density*PI*nanotube_geo.rad_min*nanotube_geo.rad_min*nanotube_geo.len_min*CNT_dens;
+            M = M/(gnp_geo.density*gnp_geo.t_max);
+            
+            hout << "Calculated mass ratio is " << M << endl;
+
+            
+            //NOTE: IT SEEMS THAT HERE I KEEP THE TOTAL CNT CONTENT IN nanotube_geo.volume_fraction
+            //IN CONTRAST TO WHAT WAS OBSERVED IN THE NOTE ABOVE (10-SEP-2020)
+            if (nanotube_geo.criterion=="vol") {
+                
+                //Calculate the GNP volume fraction
+                gnp_geo.volume_fraction = nanotube_geo.volume_fraction*nanotube_geo.density/(M*gnp_geo.density);
+            }
+            else {
+                
+                //At this point of the code for sure nanotube_geo.criterion is either 'vol' or 'wt'
+                
+                //Calculate the GNP weight fraction
+                gnp_geo.weight_fraction = nanotube_geo.weight_fraction/M;
+            }
+            
+            
+        }
+        else {
+            hout << "Error: When GNP content is specified in 'dens', particle type can only be 'Hybrid_particles'. Particle type was: "<< simu_para.particle_type << endl;
+            return 0;
+        }
+    }
+    else {
+        hout << "Error: GNP content can only be specified in 'vol', 'wt' or from 'dens'. Input was: "<< gnp_geo.criterion << endl;
+        return 0;
+    }
+    
+    
+    return 1;
+}
+//---------------------------------------------------------------------------
 //Read cutoff distances
 int Input::Read_cutoff_distances(struct Cutoff_dist &cutoff_dist, ifstream &infile)
 {
@@ -794,199 +1041,6 @@ int Input::Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infi
     }
     
 	return 1;
-}
-//---------------------------------------------------------------------------
-//Readi the geometric parameters of GNPs
-int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
-{
-    if(gnp_geo.mark)
-    {
-        //Output a message that the keyword has already been iput
-        Warning_message_already_input(gnp_geo.keywords);
-        return 0;
-    }
-    else gnp_geo.mark = true;
-
-    //----------------------------------------------------------------------
-    //Read the type of generation of CNTs on the GNP surface (parallel or independent)
-    istringstream istr0(Get_Line(infile));
-    istr0 >> gnp_geo.growth_type;
-    if (gnp_geo.growth_type != "parallel" && gnp_geo.growth_type != "independent") {
-        hout << "Error: The growth type of the CNTs on the GNP surface should be either parallel or independent. Input was: " << gnp_geo.growth_type << endl;
-        return 0;
-    }
-    
-    //----------------------------------------------------------------------
-    //Read the GNP orientation type (random or specific)
-    istringstream istr1(Get_Line(infile));
-    istr1 >> gnp_geo.orient_distrib_type;
-    if(gnp_geo.orient_distrib_type!="random"&&gnp_geo.orient_distrib_type!="specific"){
-        hout << "Error: The GNP orientation type must be either random or specific. Input was: " << gnp_geo.orient_distrib_type << endl;
-        return 0; }
-    if(gnp_geo.orient_distrib_type=="specific")
-    {
-        istr1  >> gnp_geo.ini_sita >> gnp_geo.ini_pha;
-        if(gnp_geo.ini_sita<0||gnp_geo.ini_sita>PI)
-        {
-            hout << "Error: The range specified for theta is not in the valid range of (0, PI)." << endl;
-            return 0;
-        }
-        if(gnp_geo.ini_pha<0||gnp_geo.ini_pha>=2*PI)
-        {
-            hout << "Error: The range specified phi is not in the valid range of (0, 2PI)." << endl;
-            return 0;
-        }
-    }
-    
-    //----------------------------------------------------------------------
-    //Read the step length (in microns) discretization of the GNP
-    istringstream istr2(Get_Line(infile));
-    istr2 >> gnp_geo.discr_step_length;
-    if(gnp_geo.discr_step_length<=0||
-       gnp_geo.discr_step_length>=0.25*geom_sample.len_x||
-       gnp_geo.discr_step_length>=0.25*geom_sample.wid_y||
-       gnp_geo.discr_step_length>=0.25*geom_sample.hei_z) {
-        hout << "Error: the step length must be positive and upto 0.25 times the side length of the sample. Input was: "<<gnp_geo.discr_step_length<< endl;	return 0; }
-    
-    //----------------------------------------------------------------------
-    //Read the distribution type (uniform or normal) of the GNP side length (in microns) and maximum and minimum values
-    istringstream istr3(Get_Line(infile));
-    istr3 >> gnp_geo.size_distrib_type;
-    if(gnp_geo.size_distrib_type!="uniform"&&gnp_geo.size_distrib_type!="normal"){
-        hout << "Error: The distribution of the length should be either normal or uniform." << endl;	return 0; }
-    istr3 >> gnp_geo.len_min >> gnp_geo.len_max;
-    if(gnp_geo.len_min<0||gnp_geo.len_max<0||gnp_geo.len_max<gnp_geo.len_min){
-        hout << "Error: The maximum and minimum values of GNP side length must be non-negative and the minimum value must be smaller than the maximum value. Input for minimum was "<<gnp_geo.len_min<<" and for maximum was "<<gnp_geo.len_max<< endl; return 0; }
-    
-    //----------------------------------------------------------------------
-    //Define the distribution type (uniform or normal) of the GNP thickness (in microns) and maximum and minimum values
-    istringstream istr4(Get_Line(infile));
-    istr4 >> gnp_geo.thick_distrib_type;
-    if(gnp_geo.thick_distrib_type!="uniform"&&gnp_geo.thick_distrib_type!="normal"){
-        hout << "Error: The distribution of the GNP thickness should be either normal or uniform. Input was: "<<gnp_geo.thick_distrib_type<< endl;	return 0; }
-    istr4 >> gnp_geo.t_min >> gnp_geo.t_max;
-    if(gnp_geo.t_min<0||gnp_geo.t_max<0||gnp_geo.t_max<gnp_geo.t_min) {
-        hout << "Error: The maximum and minimum values of GNP thickness must be non-negative and the minimum value must be smaller than the maximum value. Input for minimum was "<<gnp_geo.t_min<<" and for maximum was "<<gnp_geo.t_max<< endl; return 0; }
-    
-    //----------------------------------------------------------------------
-    //Define the CNTs/GNPs mass ratio
-    istringstream istr5(Get_Line(infile));
-    istr5 >> gnp_geo.mass_ratio;
-    if(gnp_geo.mass_ratio <= 0 && simu_para.particle_type != "Hybrid_particles") {
-        hout << "Error: The CNT/GNP mass ratio must be a value greater than zero when generating GNPs only." << endl; return 0; }
-    
-    //----------------------------------------------------------------------
-    //Define the CNT density (in gm/cm3)
-    istringstream istr6(Get_Line(infile));
-    istr6 >> gnp_geo.density;
-    if (gnp_geo.density <= 0) {
-        hout << "Error: The GNP density has to be a value greater than zero. Input was:" << nanotube_geo.density<< endl;
-        return 0;
-    }
-    
-    //----------------------------------------------------------------------
-    //Define how the GNP content is measured (volume or weight fraction)
-    istringstream istr7(Get_Line(infile));
-    istr7 >> gnp_geo.criterion;
-    if(gnp_geo.criterion=="vol")
-    {
-        //Check the particle type
-        //If mixed CNTs+GNPs or hybrid particles are used, then the fraction of GNPs needs to be calculated from the CNT fraction
-        //Then the CNT fraction needs to be adjusted
-        if (simu_para.particle_type == "GNP_CNT_mix" ) {
-            
-            //Calculate the GNP volume fraction
-            gnp_geo.volume_fraction = nanotube_geo.density*nanotube_geo.volume_fraction/(gnp_geo.mass_ratio*gnp_geo.density + nanotube_geo.density);
-            
-            //Adjust the CNT volume fraction
-            nanotube_geo.volume_fraction = nanotube_geo.volume_fraction - gnp_geo.volume_fraction;
-            //Adjust the total volume of the nanotube network
-            nanotube_geo.real_volume = nanotube_geo.volume_fraction*geom_sample.volume;
-            
-            hout << "    Given the CNT/GNP mass ratio of " << gnp_geo.mass_ratio << ", the CNT volume fraction was adjusted to " << nanotube_geo.volume_fraction << endl;
-            hout << "    The GNP volume fraction is " << gnp_geo.volume_fraction <<endl;
-        }
-        else if(simu_para.particle_type == "Hybrid_particles") {
-            
-            //If the mass ratio is positive proceed as with mixed particles
-            if (gnp_geo.mass_ratio > Zero) {
-                
-                //Calculate the GNP volume fraction
-                gnp_geo.volume_fraction = nanotube_geo.density*nanotube_geo.volume_fraction/(gnp_geo.mass_ratio*gnp_geo.density + nanotube_geo.density);
-                
-                //Adjust the CNT volume fraction
-                //nanotube_geo.volume_fraction = nanotube_geo.volume_fraction - gnp_geo.volume_fraction;
-                
-                //Adjust the total volume of the nanotube network
-                //nanotube_geo.real_volume = nanotube_geo.volume_fraction*geom_sample.volume;
-                
-                hout << "    Given the CNT/GNP mass ratio of " << gnp_geo.mass_ratio << ", the CNT volume fraction is " << (nanotube_geo.volume_fraction - gnp_geo.volume_fraction) << endl;
-                hout << "    The GNP volume fraction is " << gnp_geo.volume_fraction <<endl;
-            }
-            //If the mass ratio is negative, then the absolute value is used as CNT density and only calculate the fraction of GNPs
-            else {
-                //Calculate the mass ratio from the CNT density
-                //Use the smallest CNT geometry and largest GNP thickness to minimize mas ratio M
-                //A minimum M will result in a maximum volume of GNP
-                double M = 2*nanotube_geo.density*PI*nanotube_geo.rad_min*nanotube_geo.rad_min*nanotube_geo.len_min*abs(gnp_geo.mass_ratio);
-                M = M/(gnp_geo.density*gnp_geo.t_max);
-                
-                hout << "Calculated mass ratio is " << M << endl;
-                
-                //Calculate the GNP volume fraction
-                gnp_geo.volume_fraction = nanotube_geo.volume_fraction/M;
-            }
-            
-        }
-        else {
-            
-            istr7 >> gnp_geo.volume_fraction;
-            //Check that the volume fraction is between 0 and 1
-            if(gnp_geo.volume_fraction>1||gnp_geo.volume_fraction<0) {
-                hout << "Error: the volume fraction must be between 0 and 1. Input was: "<<gnp_geo.volume_fraction<< endl;
-                return 0;
-            }
-            
-        }
-        
-        //Calculate the actual volume of GNPs
-        gnp_geo.real_volume = gnp_geo.volume_fraction*geom_sample.volume;
-    }
-    else if(gnp_geo.criterion=="wt")
-    {
-        
-        //Check the particle type
-        //If mixed CNTs+GNPs or hybrid particles are used, then the fraction of GNPs needs to be calculated from the CNT fraction
-        //Then the CNT fraction needs to be adjusted
-        if (simu_para.particle_type == "GNP_CNT_mix" || simu_para.particle_type == "Hybrid_particles") {
-            //Calculate the GNP weight fraction
-            gnp_geo.weight_fraction = nanotube_geo.weight_fraction/(1+gnp_geo.mass_ratio);
-            
-            //Adjust the CNT weight fraction
-            nanotube_geo.weight_fraction = nanotube_geo.weight_fraction - gnp_geo.weight_fraction;
-            //Adjust the real weight of nanotubes
-            nanotube_geo.real_weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
-            
-            hout << "    Given the CNT/GNP mass ratio of " << gnp_geo.mass_ratio << ", the CNT weight fraction was adjusted to " << nanotube_geo.weight_fraction << endl;
-            hout << "    The GNP weight fraction is " << gnp_geo.weight_fraction <<endl;
-        } else {
-            
-            istr7 >> gnp_geo.weight_fraction;
-            if(gnp_geo.weight_fraction>1||gnp_geo.weight_fraction<0){
-                hout << "Error: the weight fraction must be between 0 and 1." << endl; return 0; }
-            hout << "    The weight fraction is " << gnp_geo.weight_fraction << endl;
-        }
-        
-        //Calculate the actual weight of GNPs
-        gnp_geo.real_weight = gnp_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
-    }
-    else {
-        hout << "Error: the criterion of generation is neither 'vol' nor 'wt'. Input was: "<< gnp_geo.criterion << endl;
-        return 0;
-    }
-    
-    
-    return 1;
 }
 //---------------------------------------------------------------------------
 //Read the input data in a whole line (to skip over the comment line starting with a '%')
