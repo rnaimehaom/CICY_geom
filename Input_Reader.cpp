@@ -287,12 +287,12 @@ int Input::Read_simulation_parameters(struct Simu_para &simu_para, ifstream &inf
 	else simu_para.mark = true;
     
     //Read the name of simulation
-    istringstream istr(Get_Line(infile));
-	istr >> simu_para.simu_name;
+    istringstream istr0(Get_Line(infile));
+	istr0 >> simu_para.simu_name;
     
     //Read the number of samples
-	istr.str(Get_Line(infile));
-	istr >> simu_para.sample_num;
+	istringstream istr1(Get_Line(infile));
+	istr1 >> simu_para.sample_num;
 	if(simu_para.sample_num<1)	 {
         hout << "Error: the number of samples cannot be less than 1. Input was: "<<simu_para.sample_num<< endl; return 0; }
     
@@ -310,8 +310,8 @@ int Input::Read_simulation_parameters(struct Simu_para &simu_para, ifstream &inf
     }
     
     //Read keyword for creating a new network or reading a network from a file
-	istr.str(Get_Line(infile));
-	istr >> simu_para.create_read_network;
+	istringstream istr2(Get_Line(infile));
+	istr2 >> simu_para.create_read_network;
 	if(simu_para.create_read_network!="Create_Network"&&simu_para.create_read_network!="Read_Network"&&simu_para.create_read_network!="Network_From_Seeds")
 	{
         hout << "Error: Invalid keyword. Valid options are 'Create_Network', 'Read_Network', or 'Network_From_Seeds'. Input was: " << simu_para.create_read_network << endl; return 0; }
@@ -344,8 +344,8 @@ int Input::Read_simulation_parameters(struct Simu_para &simu_para, ifstream &inf
     //This can be useful when only a geometric study or visualizations are needed
     // 1: Avoid calculating the resistance of the network
     // 0: Calculate the resistance of the network
-    istr.str(Get_Line(infile));
-    istr >> simu_para.avoid_resistance;
+    istringstream istr3(Get_Line(infile));
+    istr3 >> simu_para.avoid_resistance;
     if (simu_para.avoid_resistance < 0 || simu_para.avoid_resistance > 1) {
         hout << "Error: Invalid value for network resistance calculation. Valid options are 0 (avoid calculating network resistance) or 1 (calculate network resistance). Input was: " << simu_para.avoid_resistance << endl; return 0;
     }
@@ -366,9 +366,9 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
     
     //----------------------------------------------------------------------
 	//Define the domain of the sample: the lower-left corner point of the sample and the length, width and height of the sample
-	istringstream istr(Get_Line(infile));
-	istr >> geom_sample.origin.x >> geom_sample.origin.y >> geom_sample.origin.z;
-	istr >> geom_sample.len_x >> geom_sample.wid_y >> geom_sample.hei_z;
+	istringstream istr0(Get_Line(infile));
+	istr0 >> geom_sample.origin.x >> geom_sample.origin.y >> geom_sample.origin.z;
+	istr0 >> geom_sample.len_x >> geom_sample.wid_y >> geom_sample.hei_z;
 	if(geom_sample.len_x<=0||geom_sample.wid_y<=0||geom_sample.hei_z<=0)
 	{
 		hout << "Error: the dimensions of the sample along each direction should be positive." << endl;
@@ -378,12 +378,12 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
 
 	//----------------------------------------------------------------------
 	//Define the maxmimum and minimum side lengths of the observation window and decrement in x, y and z directions
-    istr.str(Get_Line(infile));
-	istr >> geom_sample.win_max_x >> geom_sample.win_max_y >> geom_sample.win_max_z;
-	istr.str(Get_Line(infile));
-	istr >> geom_sample.win_delt_x >> geom_sample.win_delt_y >> geom_sample.win_delt_z;
-	istr.str(Get_Line(infile));
-	istr >> geom_sample.win_min_x >> geom_sample.win_min_y >> geom_sample.win_min_z;
+    istringstream istr1(Get_Line(infile));
+	istr1 >> geom_sample.win_max_x >> geom_sample.win_max_y >> geom_sample.win_max_z;
+	istringstream istr2(Get_Line(infile));
+	istr2 >> geom_sample.win_delt_x >> geom_sample.win_delt_y >> geom_sample.win_delt_z;
+	istringstream istr3(Get_Line(infile));
+	istr3 >> geom_sample.win_min_x >> geom_sample.win_min_y >> geom_sample.win_min_z;
 
 	if(geom_sample.win_max_x<=0.0||geom_sample.win_max_y<=0.0||geom_sample.win_max_z<=0.0||
 	   geom_sample.win_max_x>geom_sample.len_x||geom_sample.win_max_y>geom_sample.wid_y||geom_sample.win_max_y>geom_sample.hei_z)
@@ -442,8 +442,8 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
 
 	//----------------------------------------------------------------------
 	//Define the minimum size for background grids (looking for contact points)
-	istr.str(Get_Line(infile));
-	istr >> geom_sample.gs_minx >> geom_sample.gs_miny >> geom_sample.gs_minz;
+	istringstream istr4(Get_Line(infile));
+	istr4 >> geom_sample.gs_minx >> geom_sample.gs_miny >> geom_sample.gs_minz;
 	if(geom_sample.gs_minx<=0||geom_sample.gs_miny<=0||geom_sample.gs_minz<=0)
 	{
 		hout << "Error: the number of divisions for background grids in each direction of the sample should be positive." << endl;
@@ -473,12 +473,12 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
 
 	//----------------------------------------------------------------------
 	//Read the initial growth direction type (random or specific) of CNTs
-	istringstream istr(Get_Line(infile));
-	istr >> nanotube_geo.dir_distrib_type;
+	istringstream istr0(Get_Line(infile));
+	istr0 >> nanotube_geo.dir_distrib_type;
 	if(nanotube_geo.dir_distrib_type!="random"&&nanotube_geo.dir_distrib_type!="specific"){ hout << "Error: the type of growth direction must be either random or specific. Input was: " <<nanotube_geo.dir_distrib_type<< endl;	return 0; }
 	if(nanotube_geo.dir_distrib_type=="specific")
 	{
-		istr  >> nanotube_geo.ini_sita >> nanotube_geo.ini_pha;
+		istr0  >> nanotube_geo.ini_sita >> nanotube_geo.ini_pha;
 		if(nanotube_geo.ini_sita<0||nanotube_geo.ini_sita>PI)
 		{
 			hout << "Error: Specific growth direction was chosen, but the value of theta is not in the valid range of (0, PI). Input was: " <<nanotube_geo.ini_sita<< endl;
@@ -493,14 +493,14 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
 
 	//----------------------------------------------------------------------
 	//Read the normal distribution range [-omega, omega] of the growth direction
-    istr.str(Get_Line(infile));
-	istr >> nanotube_geo.angle_max;
+    istringstream istr1(Get_Line(infile));
+	istr1 >> nanotube_geo.angle_max;
 	if(nanotube_geo.angle_max>0.5*PI){ hout << "Error: The angle omega is not in the valid range of (-PI/2, PI/2). Input was: "<<nanotube_geo.angle_max << endl;	 return 0; }
     
 	//----------------------------------------------------------------------
 	//Read the step length (in microns) of nanotube growth
-	istr.str(Get_Line(infile));
-	istr >> nanotube_geo.step_length;
+	istringstream istr2(Get_Line(infile));
+	istr2 >> nanotube_geo.step_length;
 	if(nanotube_geo.step_length<=0||
 	   nanotube_geo.step_length>=0.25*geom_sample.len_x||
 	   nanotube_geo.step_length>=0.25*geom_sample.wid_y||
@@ -509,21 +509,21 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
 
 	//----------------------------------------------------------------------
     //Read the distribution type (uniform or normal) of the nanotube length (in microns) and its minimum and maximum values
-    istr.str(Get_Line(infile));
-    istr >> nanotube_geo.len_distrib_type;
+    istringstream istr3(Get_Line(infile));
+    istr3 >> nanotube_geo.len_distrib_type;
     if(nanotube_geo.len_distrib_type!="uniform"&&nanotube_geo.len_distrib_type!="normal"){
         hout << "Error: The distribution of the nanotube length can only be either normal or uniform. Input was: "<<nanotube_geo.len_distrib_type << endl;	return 0; }
-    istr >> nanotube_geo.len_min >> nanotube_geo.len_max;
+    istr3 >> nanotube_geo.len_min >> nanotube_geo.len_max;
     if(nanotube_geo.len_min<0||nanotube_geo.len_max<0||nanotube_geo.len_max<nanotube_geo.len_min){
         hout << "Error: The nanotube length must be non-negative and the minimum lengths must be smaller than the maximum length. Input for minimum was "<< nanotube_geo.len_min<<" and for maximum was "<<nanotube_geo.len_max<<endl; return 0; }
 
 	//----------------------------------------------------------------------
 	//Read the distribution type (uniform or normal) of the nanotube radius (in microns) and its minimum and maximum values
-    istr.str(Get_Line(infile));
-    istr >> nanotube_geo.rad_distrib_type;
+    istringstream istr4(Get_Line(infile));
+    istr4 >> nanotube_geo.rad_distrib_type;
     if(nanotube_geo.rad_distrib_type!="uniform"&&nanotube_geo.rad_distrib_type!="normal"){
         hout << "Error: The distribution of the nanotube radius can only be either normal or uniform. Input was: "<<nanotube_geo.rad_distrib_type<< endl;	return 0; }
-    istr >> nanotube_geo.rad_min >> nanotube_geo.rad_max;
+    istr4 >> nanotube_geo.rad_min >> nanotube_geo.rad_max;
     if(nanotube_geo.rad_min<0||nanotube_geo.rad_max<0||nanotube_geo.rad_max<nanotube_geo.rad_min||
 	   nanotube_geo.rad_min>3*nanotube_geo.step_length||nanotube_geo.rad_max>0.05*nanotube_geo.len_min)
 	{
@@ -531,8 +531,8 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     
     //---------------------------------------------------------------------------------------
     //Read the density of the CNTs (in gm/cm3)
-    istr.str(Get_Line(infile));
-    istr >> nanotube_geo.density;
+    istringstream istr5(Get_Line(infile));
+    istr5 >> nanotube_geo.density;
     if (nanotube_geo.density <= 0) {
         hout << "Error: The nanotube density has to be greater than zero. Input was: " << nanotube_geo.density<< endl;
         return 0;
@@ -540,11 +540,12 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     
     //----------------------------------------------------------------------
 	//Read how the CNT content is measured (volume or weight fraction)
-	istr.str(Get_Line(infile));
-    istr >> nanotube_geo.criterion;
+	istringstream istr6(Get_Line(infile));
+    istr6 >> nanotube_geo.criterion;
 	if(nanotube_geo.criterion=="vol")
 	{
-		istr >> nanotube_geo.volume_fraction;
+		istr6 >> nanotube_geo.volume_fraction;
+        
 		if(nanotube_geo.volume_fraction>1||nanotube_geo.volume_fraction<0){
             hout << "Error: The volume fraction must be between 0 and 1. Input was: "<<nanotube_geo.volume_fraction<<endl; return 0; }
 		hout << "    The CNT volume fraction is "<< nanotube_geo.volume_fraction << endl;
@@ -554,17 +555,18 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
 	}
 	else if(nanotube_geo.criterion=="wt")
 	{
-		istr >> nanotube_geo.weight_fraction;
+		istr6 >> nanotube_geo.weight_fraction;
+        
 		if(nanotube_geo.weight_fraction>1||nanotube_geo.weight_fraction<0){ hout << "Error: The weight fraction must be between 0 and 1. Input was:"<<nanotube_geo.weight_fraction<< endl; return 0; }
 		hout << "    The weight fraction is " << nanotube_geo.weight_fraction << endl;
         
         //Read the linear density of a nanotube
-		istr >> nanotube_geo.linear_density;
+		istr6 >> nanotube_geo.linear_density;
 		if(nanotube_geo.linear_density<0){
             hout << "Error: The linear density of nanotubes should be non-negetive. Input was: "<<nanotube_geo.linear_density<< endl; return 0; }
 		
         //Read the density of the polymer
-		istr >> geom_sample.polymer_density;
+		istr6 >> geom_sample.polymer_density;
 		if(geom_sample.polymer_density<0){
             hout << "Error: the polymer density should be non-negetive. Input was: "<<geom_sample.polymer_density<< endl; return 0; }
         
@@ -671,24 +673,24 @@ int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstr
     else electric_para.mark = true;
     
     //Read applied voltage
-    istringstream istr(Get_Line(infile));
-    istr >> electric_para.applied_voltage;
+    istringstream istr0(Get_Line(infile));
+    istr0 >> electric_para.applied_voltage;
     if (electric_para.applied_voltage <= 0) {
         hout<<"Error: Voltage cannot be negative. Input was: "<<electric_para.applied_voltage<<endl;
         return 0;
     }
     
     //Carbon nanotube resistivity
-    istr.str(Get_Line(infile));
-    istr >> electric_para.resistivity_CF;
+    istringstream istr1(Get_Line(infile));
+    istr1 >> electric_para.resistivity_CF;
     if (electric_para.resistivity_CF <= 0) {
         hout<<"Error: CNT resistivity cannot be negative. Input was: "<<electric_para.resistivity_CF<<endl;
         return 0;
     }
     
     //GNP resistivities
-    istr.str(Get_Line(infile));
-    istr >> electric_para.sheet_resitance_GNP >> electric_para.resistivity_GNP_t >> electric_para.resistivity_GNP_surf;
+    istringstream istr2(Get_Line(infile));
+    istr2 >> electric_para.sheet_resitance_GNP >> electric_para.resistivity_GNP_t >> electric_para.resistivity_GNP_surf;
     //hout << electric_para.resistivity_GNP_t <<" ,"<<electric_para.resistivity_GNP_surf<<endl;
     if (electric_para.sheet_resitance_GNP <= 0 || electric_para.resistivity_GNP_t <= 0 || electric_para.resistivity_GNP_surf <= 0) {
         hout<<"Error: GNP resistivities cannot be negative. Input was: "<<electric_para.sheet_resitance_GNP<<", "<<electric_para.resistivity_GNP_t<<", "<<electric_para.resistivity_GNP_surf<<endl;
@@ -696,8 +698,8 @@ int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstr
     }
     
     //Polymer matrix resistivity
-    istr.str(Get_Line(infile));
-    istr >> electric_para.resistivity_matrix;
+    istringstream istr3(Get_Line(infile));
+    istr3 >> electric_para.resistivity_matrix;
     if (electric_para.resistivity_matrix <= 0) {
         hout<<"Error: Polymer resistivity cannot be negative. Input was: "<<electric_para.resistivity_matrix<<endl;
         return 0;
@@ -708,8 +710,8 @@ int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstr
     //istr3 >> electric_para.e_charge >> electric_para.e0_vacuum >> electric_para.CNT_work_function >> electric_para.K_polymer;
     
     //Electrical constants:Planck’s constant (m2kg/s), electron charge (C), electron mass (Kg), height barrier (eV)
-    istr.str(Get_Line(infile));
-    istr >> electric_para.h_plank >> electric_para.e_charge >> electric_para.e_mass >> electric_para.lambda_barrier;
+    istringstream istr4(Get_Line(infile));
+    istr4 >> electric_para.h_plank >> electric_para.e_charge >> electric_para.e_mass >> electric_para.lambda_barrier;
     if (electric_para.h_plank<=0||electric_para.e_charge<=0||electric_para.e_mass<=0||electric_para.lambda_barrier<=0) {
         hout<<"Error: Electric parameters cannot be negative. Input was: "<<electric_para.h_plank<<", "<<electric_para.e_charge<<", "<<electric_para.e_mass<<", "<<electric_para.lambda_barrier<<endl;
         return 0;
@@ -735,8 +737,8 @@ int Input::Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infi
     // 1: wires
     // 2: singlezone meshes
     // 3: multizone meshes
-    istringstream istr(Get_Line(infile));
-	istr >> tec360_flags.generated_cnts;
+    istringstream istr0(Get_Line(infile));
+	istr0 >> tec360_flags.generated_cnts;
     if (tec360_flags.generated_cnts<0||tec360_flags.generated_cnts>3) {
         hout<<"Error: Flag to export generated CNTs can only be an integer in [0,3]. Input was: "<<tec360_flags.generated_cnts<<endl;
     }
@@ -744,8 +746,8 @@ int Input::Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infi
     //Flag to export generated GNPs
     // 0: do not export Tecplot files
     // 1: export GNPs as brick elements
-    istr.str(Get_Line(infile));
-    istr >> tec360_flags.generated_gnps;
+    istringstream istr1(Get_Line(infile));
+    istr1 >> tec360_flags.generated_gnps;
     if (tec360_flags.generated_gnps<0||tec360_flags.generated_gnps>1) {
         hout<<"Error: Flag to export generated GNPs can only be 0 or 1. Input was: "<<tec360_flags.generated_gnps<<endl;
     }
@@ -755,8 +757,8 @@ int Input::Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infi
     // 1: wires (3D lines)
     // 2: meshes
     // 3: wires (3D lines) & meshes
-    istr.str(Get_Line(infile));
-    istr >> tec360_flags.clusters;
+    istringstream istr2(Get_Line(infile));
+    istr2 >> tec360_flags.clusters;
     if (tec360_flags.clusters<0||tec360_flags.clusters>3) {
         hout<<"Error: Flag to export clusters (from HK76 algorithm) can only be an integer in [0,3]. Input was: "<<tec360_flags.clusters<<endl;
     }
@@ -766,8 +768,8 @@ int Input::Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infi
     // 1: wires (3D lines)
     // 2: meshes
     // 3: wires (3D lines) & meshes
-    istr.str(Get_Line(infile));
-    istr >> tec360_flags.percolated_clusters;
+    istringstream istr3(Get_Line(infile));
+    istr3 >> tec360_flags.percolated_clusters;
     if (tec360_flags.percolated_clusters<0||tec360_flags.percolated_clusters>3) {
         hout<<"Error: Flag to export percolated clusters can only be an integer in [0,3]. Input was: "<<tec360_flags.percolated_clusters<<endl;
     }
@@ -777,8 +779,8 @@ int Input::Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infi
     // 1: wires (3D lines)
     // 2: meshes
     // 3: wires (3D lines) & meshes
-    istr.str(Get_Line(infile));
-    istr >> tec360_flags.backbone;
+    istringstream istr4(Get_Line(infile));
+    istr4 >> tec360_flags.backbone;
     if (tec360_flags.backbone<0||tec360_flags.backbone>3) {
         hout<<"Error: Flag to export the backbone clusters can only be an integer in [0,3]. Input was: "<<tec360_flags.backbone<<endl;
     }
@@ -786,8 +788,8 @@ int Input::Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infi
     //Flag to export triangulations if set to 1
     // 0: do not export Tecplot files
     // 1: export triangulations
-    istr.str(Get_Line(infile));
-    istr >> tec360_flags.triangulations;
+    istringstream istr5(Get_Line(infile));
+    istr5 >> tec360_flags.triangulations;
     if (tec360_flags.triangulations<0||tec360_flags.triangulations>1) {
         hout<<"Error: Flag to export triangulation can only be 0 or 1. Input was: "<<tec360_flags.triangulations<<endl;
     }
@@ -808,8 +810,8 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
 
     //----------------------------------------------------------------------
     //Read the type of generation of CNTs on the GNP surface (parallel or independent)
-    istringstream istr(Get_Line(infile));
-    istr >> gnp_geo.growth_type;
+    istringstream istr0(Get_Line(infile));
+    istr0 >> gnp_geo.growth_type;
     if (gnp_geo.growth_type != "parallel" && gnp_geo.growth_type != "independent") {
         hout << "Error: The growth type of the CNTs on the GNP surface should be either parallel or independent. Input was: " << gnp_geo.growth_type << endl;
         return 0;
@@ -817,14 +819,14 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     
     //----------------------------------------------------------------------
     //Read the GNP orientation type (random or specific)
-    istr.str(Get_Line(infile));
-    istr >> gnp_geo.orient_distrib_type;
+    istringstream istr1(Get_Line(infile));
+    istr1 >> gnp_geo.orient_distrib_type;
     if(gnp_geo.orient_distrib_type!="random"&&gnp_geo.orient_distrib_type!="specific"){
         hout << "Error: The GNP orientation type must be either random or specific. Input was: " << gnp_geo.orient_distrib_type << endl;
         return 0; }
     if(gnp_geo.orient_distrib_type=="specific")
     {
-        istr  >> gnp_geo.ini_sita >> gnp_geo.ini_pha;
+        istr1  >> gnp_geo.ini_sita >> gnp_geo.ini_pha;
         if(gnp_geo.ini_sita<0||gnp_geo.ini_sita>PI)
         {
             hout << "Error: The range specified for theta is not in the valid range of (0, PI)." << endl;
@@ -839,8 +841,8 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     
     //----------------------------------------------------------------------
     //Read the step length (in microns) discretization of the GNP
-    istr.str(Get_Line(infile));
-    istr >> gnp_geo.discr_step_length;
+    istringstream istr2(Get_Line(infile));
+    istr2 >> gnp_geo.discr_step_length;
     if(gnp_geo.discr_step_length<=0||
        gnp_geo.discr_step_length>=0.25*geom_sample.len_x||
        gnp_geo.discr_step_length>=0.25*geom_sample.wid_y||
@@ -849,35 +851,35 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     
     //----------------------------------------------------------------------
     //Read the distribution type (uniform or normal) of the GNP side length (in microns) and maximum and minimum values
-    istr.str(Get_Line(infile));
-    istr >> gnp_geo.size_distrib_type;
+    istringstream istr3(Get_Line(infile));
+    istr3 >> gnp_geo.size_distrib_type;
     if(gnp_geo.size_distrib_type!="uniform"&&gnp_geo.size_distrib_type!="normal"){
         hout << "Error: The distribution of the length should be either normal or uniform." << endl;	return 0; }
-    istr >> gnp_geo.len_min >> gnp_geo.len_max;
+    istr3 >> gnp_geo.len_min >> gnp_geo.len_max;
     if(gnp_geo.len_min<0||gnp_geo.len_max<0||gnp_geo.len_max<gnp_geo.len_min){
         hout << "Error: The maximum and minimum values of GNP side length must be non-negative and the minimum value must be smaller than the maximum value. Input for minimum was "<<gnp_geo.len_min<<" and for maximum was "<<gnp_geo.len_max<< endl; return 0; }
     
     //----------------------------------------------------------------------
     //Define the distribution type (uniform or normal) of the GNP thickness (in microns) and maximum and minimum values
-    istr.str(Get_Line(infile));
-    istr >> gnp_geo.thick_distrib_type;
+    istringstream istr4(Get_Line(infile));
+    istr4 >> gnp_geo.thick_distrib_type;
     if(gnp_geo.thick_distrib_type!="uniform"&&gnp_geo.thick_distrib_type!="normal"){
         hout << "Error: The distribution of the GNP thickness should be either normal or uniform. Input was: "<<gnp_geo.thick_distrib_type<< endl;	return 0; }
-    istr >> gnp_geo.t_min >> gnp_geo.t_max;
+    istr4 >> gnp_geo.t_min >> gnp_geo.t_max;
     if(gnp_geo.t_min<0||gnp_geo.t_max<0||gnp_geo.t_max<gnp_geo.t_min) {
         hout << "Error: The maximum and minimum values of GNP thickness must be non-negative and the minimum value must be smaller than the maximum value. Input for minimum was "<<gnp_geo.t_min<<" and for maximum was "<<gnp_geo.t_max<< endl; return 0; }
     
     //----------------------------------------------------------------------
     //Define the CNTs/GNPs mass ratio
-    istr.str(Get_Line(infile));
-    istr >> gnp_geo.mass_ratio;
+    istringstream istr5(Get_Line(infile));
+    istr5 >> gnp_geo.mass_ratio;
     if(gnp_geo.mass_ratio <= 0 && simu_para.particle_type != "Hybrid_particles") {
         hout << "Error: The CNT/GNP mass ratio must be a value greater than zero when generating GNPs only." << endl; return 0; }
     
     //----------------------------------------------------------------------
     //Define the CNT density (in gm/cm3)
-    istr.str(Get_Line(infile));
-    istr >> gnp_geo.density;
+    istringstream istr6(Get_Line(infile));
+    istr6 >> gnp_geo.density;
     if (gnp_geo.density <= 0) {
         hout << "Error: The GNP density has to be a value greater than zero. Input was:" << nanotube_geo.density<< endl;
         return 0;
@@ -885,8 +887,8 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     
     //----------------------------------------------------------------------
     //Define how the GNP content is measured (volume or weight fraction)
-    istr.str(Get_Line(infile));
-    istr >> gnp_geo.criterion;
+    istringstream istr7(Get_Line(infile));
+    istr7 >> gnp_geo.criterion;
     if(gnp_geo.criterion=="vol")
     {
         //Check the particle type
@@ -939,7 +941,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
         }
         else {
             
-            istr >> gnp_geo.volume_fraction;
+            istr7 >> gnp_geo.volume_fraction;
             //Check that the volume fraction is between 0 and 1
             if(gnp_geo.volume_fraction>1||gnp_geo.volume_fraction<0) {
                 hout << "Error: the volume fraction must be between 0 and 1. Input was: "<<gnp_geo.volume_fraction<< endl;
@@ -970,7 +972,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
             hout << "    The GNP weight fraction is " << gnp_geo.weight_fraction <<endl;
         } else {
             
-            istr >> gnp_geo.volume_fraction;
+            istr7 >> gnp_geo.weight_fraction;
             if(gnp_geo.weight_fraction>1||gnp_geo.weight_fraction<0){
                 hout << "Error: the weight fraction must be between 0 and 1." << endl; return 0; }
             hout << "    The weight fraction is " << gnp_geo.weight_fraction << endl;
