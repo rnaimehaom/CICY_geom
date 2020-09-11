@@ -384,20 +384,20 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
 	istringstream istr3(Get_Line(infile));
 	istr3 >> geom_sample.win_min_x >> geom_sample.win_min_y >> geom_sample.win_min_z;
 
-	if(geom_sample.win_max_x<=0.0||geom_sample.win_max_y<=0.0||geom_sample.win_max_z<=0.0||
+	if(geom_sample.win_max_x<=Zero||geom_sample.win_max_y<=Zero||geom_sample.win_max_z<=Zero||
 	   geom_sample.win_max_x>geom_sample.len_x||geom_sample.win_max_y>geom_sample.wid_y||geom_sample.win_max_y>geom_sample.hei_z)
 	{
 		hout << "Error: the maximum side lenght of the observation window in each direction (win_max) should be positive and smaller than the size of the sample." << endl;
 		return 0;
 	}
     
-	if(geom_sample.win_min_x<=0.0||geom_sample.win_min_y<=0.0||geom_sample.win_min_z<=0.0||
+	if(geom_sample.win_min_x<=Zero||geom_sample.win_min_y<=Zero||geom_sample.win_min_z<=Zero||
 	   geom_sample.win_min_x>geom_sample.win_max_x||geom_sample.win_min_y>geom_sample.win_max_y||geom_sample.win_min_z>geom_sample.win_max_z)
 	{
 		hout << "Error: the minimum side lenght of the observation window in each direction (win_min) should be positive and smaller than the size of the sample." << endl;
 		return 0;
 	}
-	if(geom_sample.win_delt_x<=0.0||geom_sample.win_delt_y<=0.0||geom_sample.win_delt_z<=0.0)
+	if(geom_sample.win_delt_x<=Zero||geom_sample.win_delt_y<=Zero||geom_sample.win_delt_z<=Zero)
 	{
 		hout << "Error: the decrement of the observation window in each direction (win_delt) should be positive." << endl;
 		return 0;
@@ -443,7 +443,7 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
 	//Read the minimum size for background grids (looking for contact points)
 	istringstream istr4(Get_Line(infile));
 	istr4 >> geom_sample.gs_minx >> geom_sample.gs_miny >> geom_sample.gs_minz;
-	if(geom_sample.gs_minx<=0||geom_sample.gs_miny<=0||geom_sample.gs_minz<=0)
+	if(geom_sample.gs_minx<=Zero||geom_sample.gs_miny<=Zero||geom_sample.gs_minz<=Zero)
 	{
 		hout << "Error: the number of divisions for background grids in each direction of the sample should be positive." << endl;
 		return 0;
@@ -505,7 +505,7 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
 	//Read the step length (in microns) of nanotube growth
 	istringstream istr2(Get_Line(infile));
 	istr2 >> nanotube_geo.step_length;
-	if(nanotube_geo.step_length<=0||
+	if(nanotube_geo.step_length<=Zero||
 	   nanotube_geo.step_length>=0.25*geom_sample.len_x||
 	   nanotube_geo.step_length>=0.25*geom_sample.wid_y||
        nanotube_geo.step_length>=0.25*geom_sample.hei_z)
@@ -518,7 +518,7 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     if(nanotube_geo.len_distrib_type!="uniform"&&nanotube_geo.len_distrib_type!="normal"){
         hout << "Error: The distribution of the nanotube length can only be either normal or uniform. Input was: "<<nanotube_geo.len_distrib_type << endl;	return 0; }
     istr3 >> nanotube_geo.len_min >> nanotube_geo.len_max;
-    if(nanotube_geo.len_min<0||nanotube_geo.len_max<0||nanotube_geo.len_max<nanotube_geo.len_min){
+    if(nanotube_geo.len_min<Zero||nanotube_geo.len_max<Zero||nanotube_geo.len_max<nanotube_geo.len_min){
         hout << "Error: The nanotube length must be non-negative and the minimum lengths must be smaller than the maximum length. Input for minimum was "<< nanotube_geo.len_min<<" and for maximum was "<<nanotube_geo.len_max<<endl; return 0; }
 
 	//----------------------------------------------------------------------
@@ -528,7 +528,7 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     if(nanotube_geo.rad_distrib_type!="uniform"&&nanotube_geo.rad_distrib_type!="normal"){
         hout << "Error: The distribution of the nanotube radius can only be either normal or uniform. Input was: "<<nanotube_geo.rad_distrib_type<< endl;	return 0; }
     istr4 >> nanotube_geo.rad_min >> nanotube_geo.rad_max;
-    if(nanotube_geo.rad_min<0||nanotube_geo.rad_max<0||nanotube_geo.rad_max<nanotube_geo.rad_min||
+    if(nanotube_geo.rad_min<Zero||nanotube_geo.rad_max<Zero||nanotube_geo.rad_max<nanotube_geo.rad_min||
 	   nanotube_geo.rad_min>3*nanotube_geo.step_length||nanotube_geo.rad_max>0.05*nanotube_geo.len_min)
 	{
         hout << "Error: The radius must be non-negative, the minimum radius must be smaller than the maximum radius, the minimum radius must be smaller than 3*step_length and the maximum radius must be smaller than 0.05*len_min. Input for minimum was "<<nanotube_geo.rad_min<<" and for maximum was "<<nanotube_geo.rad_max<< endl; return 0; }
@@ -537,7 +537,7 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     //Read the density of the CNTs (in gm/cm3)
     istringstream istr5(Get_Line(infile));
     istr5 >> nanotube_geo.density;
-    if (nanotube_geo.density <= 0) {
+    if (nanotube_geo.density <= Zero) {
         hout << "Error: The nanotube density has to be greater than zero. Input was: " << nanotube_geo.density<< endl;
         return 0;
     }
@@ -593,7 +593,7 @@ int Input::Read_agg_geo_parameters(struct Agglomerate_Geo &agg_geo, ifstream &in
     //If a negative number is input, it is understood that there are no agglomerates
     //The same happens if a 0 is input, but fur numerical stability it is better to use
     //a negative number instead of 0
-    if(agg_geo.vol_fra_criterion<0){
+    if(agg_geo.vol_fra_criterion<Zero){
         hout << "    No agglomerates will be generated."<< endl;
     }
     else {
@@ -604,11 +604,11 @@ int Input::Read_agg_geo_parameters(struct Agglomerate_Geo &agg_geo, ifstream &in
         //If the volume fraction of agglomerates is between 0 and 1, read the rest of parameters
         
         istr_clust_para >> agg_geo.amin >> agg_geo.amax;
-        if(agg_geo.amin<0||agg_geo.amax<0||agg_geo.amin>agg_geo.amax){
+        if(agg_geo.amin<Zero||agg_geo.amax<Zero||agg_geo.amin>agg_geo.amax){
             hout << "Error: The maximum and minimum values for the ellipsoid's (agglomerate's) longest axis must be non-negative and the minimum value must be smaller than the maximum value. Input for minimum was "<< agg_geo.amin<<" and for maximum was "<<agg_geo.amax<<endl; return 0; }
         
         istr_clust_para >> agg_geo.bmin >> agg_geo.cmin;
-        if(agg_geo.bmin<0||agg_geo.cmin<0)
+        if(agg_geo.bmin<Zero||agg_geo.cmin<Zero)
         {
             hout << "Error: The minimum values for the ellipsoid's (agglomerate's) middle and shortest axes must be non-negative. Input for middle axis was "<<agg_geo.bmin<<" and for shortest axis was "<<agg_geo.cmin<< endl;
             return 0;
@@ -622,11 +622,11 @@ int Input::Read_agg_geo_parameters(struct Agglomerate_Geo &agg_geo, ifstream &in
         }
         
         istr_clust_para >> agg_geo.growth_probability;
-        if(agg_geo.growth_probability<0||agg_geo.growth_probability>1){
+        if(agg_geo.growth_probability<Zero||agg_geo.growth_probability>1){
             hout << "Error: The growth probability of nanotubes in agglomerates must be between 0 and 1. Input was: "<<agg_geo.growth_probability<< endl; return 0; }
         
         istr_clust_para >> agg_geo.volf_clust;
-        if(agg_geo.volf_clust<0||agg_geo.volf_clust>1) {
+        if(agg_geo.volf_clust<Zero||agg_geo.volf_clust>1) {
             hout << "Error: The volume fraction of nanotubes in agglomerates must be between 0 and 1. Input was: "<<agg_geo.volf_clust<< endl; return 0; }
 
         istr_clust_para >> agg_geo.print_key;
@@ -670,12 +670,12 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     if(gnp_geo.orient_distrib_type=="specific")
     {
         istr1  >> gnp_geo.ini_sita >> gnp_geo.ini_pha;
-        if(gnp_geo.ini_sita<0||gnp_geo.ini_sita>PI)
+        if(gnp_geo.ini_sita<Zero||gnp_geo.ini_sita>PI)
         {
             hout << "Error: The range specified for theta is not in the valid range of (0, PI)." << endl;
             return 0;
         }
-        if(gnp_geo.ini_pha<0||gnp_geo.ini_pha>=2*PI)
+        if(gnp_geo.ini_pha<Zero||gnp_geo.ini_pha>=2*PI)
         {
             hout << "Error: The range specified phi is not in the valid range of (0, 2PI)." << endl;
             return 0;
@@ -686,7 +686,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     //Read the step length (in microns) discretization of the GNP
     istringstream istr2(Get_Line(infile));
     istr2 >> gnp_geo.discr_step_length;
-    if(gnp_geo.discr_step_length<=0||
+    if(gnp_geo.discr_step_length<=Zero||
        gnp_geo.discr_step_length>=0.25*geom_sample.len_x||
        gnp_geo.discr_step_length>=0.25*geom_sample.wid_y||
        gnp_geo.discr_step_length>=0.25*geom_sample.hei_z) {
@@ -699,7 +699,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     if(gnp_geo.size_distrib_type!="uniform"&&gnp_geo.size_distrib_type!="normal"){
         hout << "Error: The distribution of the length should be either normal or uniform." << endl;    return 0; }
     istr3 >> gnp_geo.len_min >> gnp_geo.len_max;
-    if(gnp_geo.len_min<0||gnp_geo.len_max<0||gnp_geo.len_max<gnp_geo.len_min){
+    if(gnp_geo.len_min<Zero||gnp_geo.len_max<Zero||gnp_geo.len_max<gnp_geo.len_min){
         hout << "Error: The maximum and minimum values of GNP side length must be non-negative and the minimum value must be smaller than the maximum value. Input for minimum was "<<gnp_geo.len_min<<" and for maximum was "<<gnp_geo.len_max<< endl; return 0; }
     
     //----------------------------------------------------------------------
@@ -709,21 +709,21 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     if(gnp_geo.thick_distrib_type!="uniform"&&gnp_geo.thick_distrib_type!="normal"){
         hout << "Error: The distribution of the GNP thickness should be either normal or uniform. Input was: "<<gnp_geo.thick_distrib_type<< endl;    return 0; }
     istr4 >> gnp_geo.t_min >> gnp_geo.t_max;
-    if(gnp_geo.t_min<0||gnp_geo.t_max<0||gnp_geo.t_max<gnp_geo.t_min) {
+    if(gnp_geo.t_min<Zero||gnp_geo.t_max<Zero||gnp_geo.t_max<gnp_geo.t_min) {
         hout << "Error: The maximum and minimum values of GNP thickness must be non-negative and the minimum value must be smaller than the maximum value. Input for minimum was "<<gnp_geo.t_min<<" and for maximum was "<<gnp_geo.t_max<< endl; return 0; }
     
     //----------------------------------------------------------------------
     //Define the CNTs/GNPs mass ratio
     istringstream istr5(Get_Line(infile));
     istr5 >> gnp_geo.mass_ratio;
-    if(gnp_geo.mass_ratio <= 0) {
+    if(gnp_geo.mass_ratio <= Zero) {
         hout << "Error: The CNT/GNP mass ratio must be greater than zero. Input was: "<<gnp_geo.mass_ratio<< endl; return 0; }
     
     //----------------------------------------------------------------------
     //Define the GNP density (in gm/cm3)
     istringstream istr6(Get_Line(infile));
     istr6 >> gnp_geo.density;
-    if (gnp_geo.density <= 0) {
+    if (gnp_geo.density <= Zero) {
         hout << "Error: The GNP density has to be a value greater than zero. Input was:" << nanotube_geo.density<< endl;
         return 0;
     }
@@ -787,7 +787,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
             
             istr7 >> gnp_geo.volume_fraction;
             //Check that the volume fraction is between 0 and 1
-            if(gnp_geo.volume_fraction>1||gnp_geo.volume_fraction<0) {
+            if(gnp_geo.volume_fraction>1||gnp_geo.volume_fraction<Zero) {
                 hout << "Error: The volume fraction must be between 0 and 1. Input was: "<<gnp_geo.volume_fraction<< endl;
                 return 0;
             }
@@ -903,6 +903,14 @@ int Input::Read_cutoff_distances(struct Cutoff_dist &cutoff_dist, ifstream &infi
     //cutoff for tunneling (in microns)
 	istringstream istr(Get_Line(infile));
 	istr >> cutoff_dist.van_der_Waals_dist >> cutoff_dist.tunneling_dist;
+    if (cutoff_dist.van_der_Waals_dist<Zero) {
+        hout << "Error: van der Waals distance must be greater than zero. Input was: "<< cutoff_dist.van_der_Waals_dist << endl;
+        return 0;
+    }
+    if (cutoff_dist.tunneling_dist<Zero) {
+        hout << "Error: tunneling cutoff distance must be greater than zero. Input was: "<< cutoff_dist.tunneling_dist << endl;
+        return 0;
+    }
     
 	return 1;
 }
@@ -921,7 +929,7 @@ int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstr
     //Read applied voltage
     istringstream istr0(Get_Line(infile));
     istr0 >> electric_para.applied_voltage;
-    if (electric_para.applied_voltage <= 0) {
+    if (electric_para.applied_voltage <= Zero) {
         hout<<"Error: Voltage cannot be negative. Input was: "<<electric_para.applied_voltage<<endl;
         return 0;
     }
@@ -929,7 +937,7 @@ int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstr
     //Carbon nanotube resistivity
     istringstream istr1(Get_Line(infile));
     istr1 >> electric_para.resistivity_CNT;
-    if (electric_para.resistivity_CNT <= 0) {
+    if (electric_para.resistivity_CNT <= Zero) {
         hout<<"Error: CNT resistivity cannot be negative. Input was: "<<electric_para.resistivity_CNT<<endl;
         return 0;
     }
@@ -938,7 +946,7 @@ int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstr
     istringstream istr2(Get_Line(infile));
     istr2 >> electric_para.resistivity_GNP_t >> electric_para.resistivity_GNP_surf;
     //hout << electric_para.resistivity_GNP_t <<" ,"<<electric_para.resistivity_GNP_surf<<endl;
-    if (electric_para.resistivity_GNP_t <= 0 || electric_para.resistivity_GNP_surf <= 0) {
+    if (electric_para.resistivity_GNP_t <= Zero || electric_para.resistivity_GNP_surf <= Zero) {
         hout<<"Error: GNP resistivities cannot be negative. Input was: "<<electric_para.resistivity_GNP_t<<", "<<electric_para.resistivity_GNP_surf<<endl;
         return 0;
     }
@@ -946,7 +954,7 @@ int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstr
     //Polymer matrix resistivity
     istringstream istr3(Get_Line(infile));
     istr3 >> electric_para.resistivity_matrix;
-    if (electric_para.resistivity_matrix <= 0) {
+    if (electric_para.resistivity_matrix <= Zero) {
         hout<<"Error: Polymer resistivity cannot be negative. Input was: "<<electric_para.resistivity_matrix<<endl;
         return 0;
     }
@@ -958,7 +966,7 @@ int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstr
     //Electrical constants:Planck’s constant (m2kg/s), electron charge (C), electron mass (Kg), height barrier (eV)
     istringstream istr4(Get_Line(infile));
     istr4 >> electric_para.h_plank >> electric_para.e_charge >> electric_para.e_mass >> electric_para.lambda_barrier;
-    if (electric_para.h_plank<=0||electric_para.e_charge<=0||electric_para.e_mass<=0||electric_para.lambda_barrier<=0) {
+    if (electric_para.h_plank<=Zero||electric_para.e_charge<=Zero||electric_para.e_mass<=Zero||electric_para.lambda_barrier<=Zero) {
         hout<<"Error: Electric parameters cannot be negative. Input was: "<<electric_para.h_plank<<", "<<electric_para.e_charge<<", "<<electric_para.e_mass<<", "<<electric_para.lambda_barrier<<endl;
         return 0;
     }
