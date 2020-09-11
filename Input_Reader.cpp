@@ -960,14 +960,33 @@ int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstr
     }
     //hout << "electric_para.resistivity_matrix = " << electric_para.resistivity_matrix << endl;
     //Electrical constants: electron charge (C), permitivity of vaccum (F/m), CNT work function (V), dielectric constant of polymer
-    //istringstream istr3(Get_Line(infile));
-    //istr3 >> electric_para.e_charge >> electric_para.e0_vacuum >> electric_para.CNT_work_function >> electric_para.K_polymer;
     
-    //Electrical constants:Planck’s constant (m2kg/s), electron charge (C), electron mass (Kg), height barrier (eV)
+    //Electrical constants to calculate junction resistance
     istringstream istr4(Get_Line(infile));
-    istr4 >> electric_para.h_plank >> electric_para.e_charge >> electric_para.e_mass >> electric_para.lambda_barrier;
-    if (electric_para.h_plank<=Zero||electric_para.e_charge<=Zero||electric_para.e_mass<=Zero||electric_para.lambda_barrier<=Zero) {
-        hout<<"Error: Electric parameters cannot be negative. Input was: "<<electric_para.h_plank<<", "<<electric_para.e_charge<<", "<<electric_para.e_mass<<", "<<electric_para.lambda_barrier<<endl;
+    //Check the type of junction resistance
+    istr4 >> electric_para.junction_type;
+    if (electric_para.junction_type == "constant") {
+        
+        //Read the constant value for junction resistance
+        istr4 >> electric_para.junction_resistance;
+        if (electric_para.junction_resistance < Zero) {
+            hout<<"Error: Junction resistance cannot be negative. Input was: "<<electric_para.junction_resistance<<endl;
+            return 0;
+        }
+    }
+    else if (electric_para.junction_type == "exponential") {
+        
+        //Electrical constants for exponential function:
+        //Planck’s constant (m2kg/s), electron charge (C), electron mass (Kg), height barrier (eV)
+        istr4 >> electric_para.h_plank >> electric_para.e_charge >> electric_para.e_mass >> electric_para.lambda_barrier;
+        if (electric_para.h_plank<=Zero || electric_para.e_charge<=Zero || electric_para.e_mass<=Zero || electric_para.lambda_barrier<=Zero) {
+            hout<<"Error: Electric parameters cannot be negative. Input was: "<<electric_para.h_plank<<", "<<electric_para.e_charge<<", "<<electric_para.e_mass<<", "<<electric_para.lambda_barrier<<endl;
+            return 0;
+        }
+    }
+    else {
+        hout << "Error: the junction type is neither 'constant' nor 'exponential'." << endl;
+        hout << "Input was: " << electric_para.junction_type << endl;
         return 0;
     }
     //hout << electric_para.h_plank <<", "<< electric_para.e_charge <<", "<< electric_para.e_mass <<", "<< electric_para.lambda_barrier << endl;

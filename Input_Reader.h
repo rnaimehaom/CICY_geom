@@ -129,6 +129,7 @@ struct Electric_para{
     double resistivity_CNT;			//Define the resistivity value of the carbon fiber
     double resistivity_GNP_t, resistivity_GNP_surf; //Define the resistivity value of the GNP along the thicknes direction and along the surface
     double resistivity_matrix;      //Define the resistivity of the polymer matrix
+    string junction_type;           //Define the type of junctino resistance
     //Constants for tunneling
     double e_charge;
     //Constants using Li et al approach
@@ -139,6 +140,7 @@ struct Electric_para{
     double h_plank;
     double e_mass;
     double lambda_barrier;
+    double junction_resistance;     //Define the constant value for junction resistance
 };
 struct Tecplot_flags{
     string keywords;

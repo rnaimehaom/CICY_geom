@@ -832,6 +832,11 @@ void Direct_Electrifying::Check_for_other_elements(const int &R_flag, const vect
 double Direct_Electrifying::Calculate_resistance_tunnel(const double &rad1, const Point_3D &P1, const double &rad2, const Point_3D &P2, const struct Electric_para &electric_param, const double &d_vdw)
 {
     
+    //Check if a constant resistance is used
+    if (electric_param.junction_type == "constant") {
+        return electric_param.junction_resistance;
+    }
+    
     //Variable to store the tunnel area
     double A;
     
@@ -861,6 +866,11 @@ double Direct_Electrifying::Calculate_resistance_tunnel(const double &rad1, cons
 //2: CNT-GNP tunnel
 double Direct_Electrifying::Calculate_resistance_tunnel(const int &tunnel_flag, const GCH &hybrid1, const Point_3D &P1, const double &rad2, const Point_3D &P2, const struct Electric_para &electric_param, const double &d_vdw)
 {
+    
+    //Check if a constant resistance is used
+    if (electric_param.junction_type == "constant") {
+        return electric_param.junction_resistance;
+    }
     
     //Variable to store the separation between particles
     double separation;
@@ -1037,7 +1047,6 @@ double Direct_Electrifying::Calculate_distance_tunnel_point_gnp(const GCH &hybri
 }
 double Direct_Electrifying::Exponential_tunnel(const struct Electric_para &electric_param, const double &d_vdw, const double &A, double &separation)
 {
-    return 1e7;
     //==============================================================================
     //==============================================================================
     //Pre-processing

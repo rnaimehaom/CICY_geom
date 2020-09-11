@@ -199,12 +199,17 @@ Electrical_Parameters
 1e-2 1e-7
 %Define the value of resistivity of the polymer matrix (Ohm.micron)
 1.03e20
-%Li et al approach
-%Electrical constants: electron charge (C), permittivity of vacuum (F/m), CNT work function (V), dielectric constant of polymer 
-%1.60217662e-19 8.85e-12 5.0 3.98
-%Hu et al approach
-%Electrical constants:Planck’s constant (e-34 m2kg/s), electron charge (e-19 C), electron mass (e-31 Kg), height barrier (eV)
-6.62606957 1.60217662 9.10938291 2.0
+%Provide the type of junction resistance
+%Choose 'constant' or 'exponential'
+%constant: This means a constant value of junction is added, example: constant 1e7
+%exponential: This means an exponential equation is used and needs the following parameters:
+%Electrical constants for tunneling equation:
+%Planck's constant (e-34 m2kg/s) => is a constant. keep example value.
+%electron charge (e-19 C) => is a constant. keep example value.
+%electron mass (e-31 kg) => is a constant. keep example value.
+%polymer height barrier, i.e., work function (eV) => material property from literature/experiments.
+%Example: exponential 6.62606957 1.60217662 9.10938291 2.0
+constant 1e7
 %--------------------------------End
 %========================================================================================================
 %Define flags for Tecplot visualization files
