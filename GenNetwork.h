@@ -125,10 +125,10 @@ public:
     MathMatrix Get_transformation_matrix(const double &sita, const double &pha)const;
     //To calculate the coordinates of the new CNT point (transformation of coordinates)
     Point_3D Get_new_point(MathMatrix &Matrix, const double &Rad)const;
-    //To judge if a point is included in a RVE
-    int Judge_RVE_including_point(const struct cuboid &cub, const Point_3D &point)const;
-    //To judge if a point is included in a RVE
-    int Judge_RVE_including_point(const struct Geom_sample &geom_sample, const Point_3D &point)const;
+    //This function checks if a point is inside a cuboid
+    int Point_inside_cuboid(const struct cuboid &cub, const Point_3D &point)const;
+    //This function checks if a point is inside a sample
+    int Point_inside_sample(const struct Geom_sample &geom_sample, const Point_3D &point)const;
     //Calculate all intersection points between the new segment and surfaces of RVE
     //(using a parametric equatio:  the parameter 0<t<1, and sort all intersection points from the smaller t to the greater t)
     int Get_intersecting_point_RVE_surface(const struct cuboid &cub, const Point_3D &point0, const Point_3D &point1, vector<Point_3D> &ipoi_vec)const;
@@ -142,7 +142,11 @@ public:
     //which are projected from a group of points on the previous circumference and projected along the direction of line_vec
     int Get_projected_points_in_plane(const Point_3D &center, const Point_3D &normal, const Point_3D &line, const int &num_sec, vector<Node> &nod_temp)const;
     //Transform the 2D cnts_points into 1D cpoints and 2D cstructuers
-    int Transform_points(const string &type, vector<vector<Point_3D> > &cnts_points, vector<Point_3D> &cpoints, vector<vector<long int> > &cstructures)const;
+    int Transform_points(const string &type, const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, vector<vector<Point_3D> > &cnts_points, vector<Point_3D> &cpoints, vector<vector<long int> > &cstructures)const;
+    int Add_cnts_inside_sample(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const;
+    int Add_cnt_segment(const struct Geom_sample &geom_sample, const int &start, const int &end, const int &min_points, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const;
+    int Add_boundary_point(const struct Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside, const int &cnt_count, vector<Point_3D> &cpoints, vector<long int> &struct_temp, long int &point_count)const;
+    Point_3D Find_intersection_at_boundary(const struct Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside)const;
 };
 //-------------------------------------------------------
 #endif

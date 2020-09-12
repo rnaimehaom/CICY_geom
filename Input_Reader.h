@@ -48,6 +48,8 @@ struct Geom_sample{
     bool mark;
     Point_3D origin;												//Define an origin point for a sample
     double len_x, wid_y, hei_z;								//Define length, width and height for an extended RVE for generation with an acurrate control
+    //Coordinates of the sample's boundaries opposite to those given by the coordinates of origin
+    double x_max, y_max, z_max;
     Point_3D ex_origin;											//Define an origin point for an extended sample to generate network with an acurrate control
     double ex_len, ey_wid, ez_hei;							//Define length, width and height for an extended sample for generation with an acurrate control
     double volume;

@@ -373,8 +373,13 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
 		hout << "Error: the dimensions of the sample along each direction should be positive." << endl;
 		return 0;
 	}
+    //Calculate the sample's volume
 	geom_sample.volume = geom_sample.len_x*geom_sample.wid_y*geom_sample.hei_z;
-
+    //Calculate the coordinates of the sample's boundaries opposite to those given by the coordinates of origin
+    geom_sample.x_max = geom_sample.origin.x + geom_sample.len_x;
+    geom_sample.y_max = geom_sample.origin.y + geom_sample.wid_y;
+    geom_sample.z_max = geom_sample.origin.z + geom_sample.hei_z;
+    
 	//----------------------------------------------------------------------
 	//Read the maxmimum and minimum side lengths of the observation window and decrement in x, y and z directions
     istringstream istr1(Get_Line(infile));
