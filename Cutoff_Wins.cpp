@@ -269,6 +269,24 @@ int Cutoff_Wins::Trim_boundary_cnts_(const int &window, const struct Geom_sample
     //Provisionally the minimum number of points to consider a CNT is defined here
     int min_points = cnts.min_points;
     
+    //Variable to reduce computations when adding CNTs to a shell
+    //vars_shells[0] = midpoints
+    //vars_shells[1] = boundary_layer
+    //vars_shells[2] = core
+    //vars_shells[3] = half_step
+    double vars_shells[4][3] = {
+        {sample_geo.origin.x+sample_geo.len_x/2.0,
+        sample_geo.origin.y+sample_geo.wid_y/2.0,
+        sample_geo.origin.z+sample_geo.hei_z/2.0},
+        {sample_geo.origin.x+(sample_geo.len_x-sample_geo.win_max_x)/2.0,
+        sample_geo.origin.y+(sample_geo.wid_y-sample_geo.win_max_y)/2.0,
+        sample_geo.origin.z+(sample_geo.hei_z-sample_geo.win_max_z)/2.0},
+        {sample_geo.origin.x+(sample_geo.len_x-sample_geo.win_min_x)/2.0,
+        sample_geo.origin.y+(sample_geo.wid_y-sample_geo.win_min_y)/2.0,
+        sample_geo.origin.z+(sample_geo.hei_z-sample_geo.win_min_z)/2.0},
+        {sample_geo.win_delt_x/2.0, sample_geo.win_delt_y/2.0, sample_geo.win_delt_z/2.0}
+    };
+    
     //Scan all CNTs in the current shell
     for (long int i = 0; i < (long int)shells_cnt[window].size(); i++) {
         
@@ -319,7 +337,7 @@ int Cutoff_Wins::Trim_boundary_cnts_(const int &window, const struct Geom_sample
                 end = j;
                 
                 //Add the current segment to the structure
-                Add_cnt_segment_to_structure(sample_geo, window_geo, start, end, min_points, CNT, point_location, points_in, structure, shells_cnt, radii, segments, first_idx, last_idx, prev_end, prev_idx);
+                Add_cnt_segment_to_structure(sample_geo, window_geo, vars_shells, start, end, min_points, CNT, point_location, points_in, structure, shells_cnt, radii, segments, first_idx, last_idx, prev_end, prev_idx);
                 
                 //Reset the start index
                 start = j;
@@ -337,7 +355,7 @@ int Cutoff_Wins::Trim_boundary_cnts_(const int &window, const struct Geom_sample
             //This was not done becuase, in the for loop, a segement is added only when it finds a point
             //outside the sample
             //Add the current segment to the structure
-            Add_cnt_segment_to_structure(sample_geo, window_geo, start, end, min_points, CNT, point_location, points_in, structure, shells_cnt, radii, segments, first_idx, last_idx, prev_end, prev_idx);
+            Add_cnt_segment_to_structure(sample_geo, window_geo, vars_shells, start, end, min_points, CNT, point_location, points_in, structure, shells_cnt, radii, segments, first_idx, last_idx, prev_end, prev_idx);
         }
         
         //Check if there is at least one segment
@@ -365,7 +383,7 @@ int Cutoff_Wins::Trim_boundary_cnts_(const int &window, const struct Geom_sample
     return 1;
 }
 //===========================================================================
-int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_geo, const struct Geom_sample &window_geo, const int &start, const int &end, const int &min_points, const int &CNT, const string &last_point_loc, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx, Point_3D &prev_end, int &prev_idx)
+int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_geo, const struct Geom_sample &window_geo, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &last_point_loc, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx, Point_3D &prev_end, int &prev_idx)
 {
     //Count the number of consecutive points inside the sample
     int n_points = end - start;
@@ -496,7 +514,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_g
                 struct_temp.push_back(j);
                 
                 //Update the shell of the new CNT points
-                bg->Add_to_shell(sample_geo, points_in[P], shells_cnt);
+                bg->Add_to_shell(var_shells[0], var_shells[1], var_shells[2], var_shells[3], points_in[P], (int)shells_cnt.size(), shells_cnt);
             }
             
             //Delete the temporary Background_vectors object
@@ -627,6 +645,19 @@ int Cutoff_Wins::Substitute_boundary_point(const struct Geom_sample &window_geo,
 }
 int Cutoff_Wins::Trim_boundary_cnts(vector<vector<int> > &shells_cnt, const int &window, const struct Geom_sample &sample, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<double> &radii)
 {
+    //Variables for the background vectors
+    int n_shells = (int)shells_cnt.size();
+    double midpoints[] = {sample.origin.x+sample.len_x/2.0,
+        sample.origin.y+sample.wid_y/2.0,
+        sample.origin.z+sample.hei_z/2.0};
+    double boundary_layer[] = {sample.origin.x+(sample.len_x-sample.win_max_x)/2.0,
+        sample.origin.y+(sample.wid_y-sample.win_max_y)/2.0,
+        sample.origin.z+(sample.hei_z-sample.win_max_z)/2.0};
+    double core[] = {sample.origin.x+(sample.len_x-sample.win_min_x)/2.0,
+        sample.origin.y+(sample.wid_y-sample.win_min_y)/2.0,
+        sample.origin.z+(sample.hei_z-sample.win_min_z)/2.0};
+    double half_step[] = {sample.win_delt_x/2.0, sample.win_delt_y/2.0, sample.win_delt_z/2.0};
+    
     //These variables will help me find the point location with respect to the box
     string currentPoint;
     //Variables for current and next points and current CNT
@@ -738,7 +769,7 @@ int Cutoff_Wins::Trim_boundary_cnts(vector<vector<int> > &shells_cnt, const int 
                         long int P = structure[CNT][kk];
                         structure.back().push_back(P);
                         points_in[P].flag = new_CNT;
-                        bg->Add_to_shell(sample, points_in[P], shells_cnt);
+                        bg->Add_to_shell(midpoints, boundary_layer, core, half_step, points_in[P], n_shells, shells_cnt);
                     }
                     //Delete the temporary Background_vectors object
                     delete bg;

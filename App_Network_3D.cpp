@@ -58,18 +58,6 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         it0 = time(NULL);
         
         //Update observation window geometry
-        /*/Dimensions of the current observation window
-        window_geo.len_x = Init->geom_sample.win_max_x - i*Init->geom_sample.win_delt_x;
-        window_geo.wid_y = Init->geom_sample.win_max_y - i*Init->geom_sample.win_delt_y;
-        window_geo.hei_z = Init->geom_sample.win_max_z - i*Init->geom_sample.win_delt_z;
-        //These variables are the coordinates of the lower corner of the observation window
-        window_geo.origin.x = Init->geom_sample.origin.x + (Init->geom_sample.len_x - window_geo.len_x)/2;
-        window_geo.origin.y = Init->geom_sample.origin.y + (Init->geom_sample.wid_y - window_geo.wid_y)/2;
-        window_geo.origin.z = Init->geom_sample.origin.z + (Init->geom_sample.hei_z - window_geo.hei_z)/2;
-        //Boundaries with maximum values of coordinates
-        window_geo.x_max = window_geo.origin.x + window_geo.len_x;
-        window_geo.y_max = window_geo.origin.y + window_geo.wid_y;
-        window_geo.z_max = window_geo.origin.z + window_geo.hei_z;*/
         if (!Update_obseravtion_window_geometry(i, Init->geom_sample, window_geo)) {
             hout<<"Error when updating the geometry for observation window "<<i<<endl;
         }
@@ -88,7 +76,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         Cutoff_Wins *Cutwins = new Cutoff_Wins;
         //From this function I get the internal variables cnts_inside and boundary_cnt
         ct0 = time(NULL);
-        if(!Cutwins->Extract_observation_window(i+1, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, Init->gnp_geo, hybrid_particles, cnts_structure, gnps_structure, cnts_radius, cnts_point, gnps_point, shells_cnt, shells_gnps)) {
+        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, Init->gnp_geo, hybrid_particles, cnts_structure, gnps_structure, cnts_radius, cnts_point, gnps_point, shells_cnt, shells_gnps)) {
             hout << "Error when extracting observation window "<< i+1 << endl;
             return 0;
         }
