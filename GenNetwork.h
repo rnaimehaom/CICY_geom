@@ -37,7 +37,7 @@ public:
     GenNetwork(){};
     
     //Member Functions
-    int Generate_nanofiller_network(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct GNP_Geo &gnp_geo, const struct Cutoff_dist &cutoffs, const struct Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<Point_3D> &gnps_points, vector<GCH> &hybrid_particles, vector<double> &cnts_radius, vector<vector<long int> > &cstructures, vector<vector<long int> > &gstructures)const;
+    int Generate_nanofiller_network(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct GNP_Geo &gnp_geo, const struct Cutoff_dist &cutoffs, const struct Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<Point_3D> &gnps_points, vector<GCH> &hybrid_particles, vector<double> &cnts_radius_out, vector<vector<long int> > &cstructures, vector<vector<long int> > &gstructures)const;
     //Generate the nodes and tetrahedron elements of nanotubes (No const following this function because a sum operation on two Point_3D points inside)
     int Generate_cnts_nodes_elements(vector<vector<Node> > &nodes, vector<vector<Element> > &eles, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radius);
     //Generate the nodes and tetrahedron elements of nanotubes (No const following this function because a sum operation on two Point_3D points inside). This function uses a 1D point vector and a 2D structure vector that references the point vector
@@ -142,11 +142,13 @@ public:
     //which are projected from a group of points on the previous circumference and projected along the direction of line_vec
     int Get_projected_points_in_plane(const Point_3D &center, const Point_3D &normal, const Point_3D &line, const int &num_sec, vector<Node> &nod_temp)const;
     //Transform the 2D cnts_points into 1D cpoints and 2D cstructuers
-    int Transform_points(const string &type, const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, vector<vector<Point_3D> > &cnts_points, vector<Point_3D> &cpoints, vector<vector<long int> > &cstructures)const;
-    int Add_cnts_inside_sample(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const;
-    int Add_cnt_segment(const struct Geom_sample &geom_sample, const int &start, const int &end, const int &min_points, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const;
+    int Transform_points_gnps(const Geom_sample &geom_sample, const struct GNP_Geo &gnp_geo, vector<vector<Point_3D> > &cnts_points, vector<Point_3D> &cpoints, vector<vector<long int> > &cstructures)const;
+    int Transform_points_cnts(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, vector<vector<Point_3D> > &cnts_points, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures)const;
+    int Add_cnts_inside_sample(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const;
+    int Add_cnt_segment(const struct Geom_sample &geom_sample, const int &start, const int &end, const int &min_points, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const;
     int Add_boundary_point(const struct Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside, const int &cnt_count, vector<Point_3D> &cpoints, vector<long int> &struct_temp, long int &point_count)const;
     Point_3D Find_intersection_at_boundary(const struct Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside)const;
+    int Recalculate_vol_fraction_cnts(const Geom_sample &geom_sample, const vector<Point_3D> &cpoints, const vector<double> &radii, const vector<vector<long int> > &cstructures)const;
 };
 //-------------------------------------------------------
 #endif

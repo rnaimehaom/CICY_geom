@@ -15,18 +15,20 @@
 //3) When adding the new_cnt vector to the global vector of CNTs, split it into segments. This operation is completely useless with a non-periodic sample and was causing some errors when using the penetrating model so I just deleted it.
 
 //Generate 3D nantube networks with ovelapping
-int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct GNP_Geo &gnp_geo, const struct Cutoff_dist &cutoffs, const struct Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<Point_3D> &gpoints, vector<GCH> &hybrid_particles, vector<double> &cnts_radius, vector<vector<long int> > &cstructures, vector<vector<long int> > &gstructures)const
+int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct GNP_Geo &gnp_geo, const struct Cutoff_dist &cutoffs, const struct Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<Point_3D> &gpoints, vector<GCH> &hybrid_particles, vector<double> &cnts_radius_out, vector<vector<long int> > &cstructures, vector<vector<long int> > &gstructures)const
 {
     //Define a two-dimensional vector of three-dimensional points for storing the CNT threads
     vector<vector<Point_3D> > cnts_points;
     //Define a two-dimensional vector of three-dimensional points for storing the GNP discretizations
     vector<vector<Point_3D> > gnps_points;
+    //Vector for radii, internal variable
+    vector<double> cnts_radius_in;
     
     double carbon_vol = 0, carbon_weight = 0;
     if (simu_para.particle_type == "CNT_wires") {
         //Generate a network defined by points and connections
         //Use the Mersenne Twister for the random number generation
-        if (!Generate_cnt_network_threads_mt(simu_para, geom_sample, agg_geo, nanotube_geo, cutoffs, cnts_points, cnts_radius)) {
+        if (!Generate_cnt_network_threads_mt(simu_para, geom_sample, agg_geo, nanotube_geo, cutoffs, cnts_points, cnts_radius_in)) {
             hout << "Error in generating a CNT network" << endl;
             return 0;
         }
@@ -44,7 +46,7 @@ int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, c
             hout << "Error in generating a GNP network" << endl;
             return 0;
         }
-        if (!Generate_cnt_network_threads_over_gnps_mt(gnp_geo, geom_sample, nanotube_geo, cutoffs, cnts_points, gnps_points, hybrid_particles, cnts_radius)) {
+        if (!Generate_cnt_network_threads_over_gnps_mt(gnp_geo, geom_sample, nanotube_geo, cutoffs, cnts_points, gnps_points, hybrid_particles, cnts_radius_in)) {
             hout << "Error in generating a CNT network on GNPs" << endl;
             return 0;
         }
@@ -60,7 +62,7 @@ int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, c
         //==========================
         //GNP_CNT_mix works only with penetrating model in CNTs (oct 30 2016)
         //TO IMPLEMENT NON-PENETRATING MODEL FOR MIXED NANOPARTICLES A NEW FUNCTION IS NEEDED
-        if (!Generate_cnt_network_threads_mt(simu_para, geom_sample, agg_geo, nanotube_geo, cutoffs, cnts_points, cnts_radius)) {
+        if (!Generate_cnt_network_threads_mt(simu_para, geom_sample, agg_geo, nanotube_geo, cutoffs, cnts_points, cnts_radius_in)) {
             hout << "Error in generating a CNT network mixed with GNPs" << endl;
             return 0;
         }
@@ -75,9 +77,11 @@ int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, c
     
     //-----------------------------------------------------------------------------------------------------------------------------------------
     //Transform the 2D cnts_points into 1D cpoints and 2D cstructures
-    if(Transform_points("CNTs", geom_sample, nanotube_geo, cnts_points, cpoints, cstructures)==0) return 0;
+    if(Transform_points_cnts(geom_sample, nanotube_geo, cnts_points, cpoints, cnts_radius_in, cnts_radius_out, cstructures)==0) {
+        hout<<"Error in Transform_points for CNTs."<<endl;return 0;}
     //Transform the 2D gnps_points into 1D gpoints and 2D gstructures
-    if(Transform_points("GNPs", geom_sample, nanotube_geo, gnps_points, gpoints, gstructures)==0) return 0;
+    if(Transform_points_gnps(geom_sample, gnp_geo, gnps_points, gpoints, gstructures)==0) {
+    hout<<"Error in Transform_points for GNPs."<<endl;return 0;}
     
     //-----------------------------------------------------------------------------------------------------------------------------------------
     //Check if Tecplot visualization files were requested for CNTs
@@ -101,7 +105,7 @@ int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, c
         else {
             
             //The geometric structure of CNT network (by tetrahedron meshes in Tecplot) //Attention: little parts of nanotube volumes out of the cuboid
-            if(Tecexpt->Export_cnt_network_meshes(tec360_flags.generated_cnts, cub, cnts_points, cnts_radius)==0) return 0;
+            if(Tecexpt->Export_cnt_network_meshes(tec360_flags.generated_cnts, cub, cnts_points, cnts_radius_in)==0) return 0;
         }
         
         delete Tecexpt;
@@ -3494,59 +3498,68 @@ int GenNetwork::Get_projected_points_in_plane(const Point_3D &center, const Poin
 }
 //---------------------------------------------------------------------------
 //Transform the 2D cnts_points into 1D cpoints and 2D cstructures
-int GenNetwork::Transform_points(const string &type, const Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, vector<vector<Point_3D> > &cnts_points, vector<Point_3D> &cpoints, vector<vector<long int> > &cstructures)const
+int GenNetwork::Transform_points_gnps(const Geom_sample &geom_sample, const struct GNP_Geo &gnp_geo, vector<vector<Point_3D> > &gnp_points, vector<Point_3D> &gpoints, vector<vector<long int> > &gstructures)const
 {
     //Variable to count the point numbers
     long int point_count = 0;
     
-    //Variable to count the particle numbers (CNT or GNP)
+    //Choose the way in which the output vectors are generated depending on the particle type
+    for(int i=0; i<(int)gnp_points.size(); i++)
+    {
+        
+        vector<long int> struct_temp;
+        for(int j=0; j<(int)gnp_points[i].size(); j++)
+        {
+            gpoints.push_back(gnp_points[i][j]);
+            gpoints.back().flag = i;
+            struct_temp.push_back(point_count);
+            point_count++;
+        }
+        gstructures.push_back(struct_temp);
+    }
+    
+    if (gnp_points.size()) {
+        hout<<"There are "<<gpoints.size()<<" GNPs with "<<gpoints.size() << " points in the generation domain."<<endl;
+    }
+    
+    return 1;
+}
+//---------------------------------------------------------------------------
+//Transform the 2D cnts_points into 1D cpoints and 2D cstructures
+int GenNetwork::Transform_points_cnts(const Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, vector<vector<Point_3D> > &cnts_points, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures)const
+{
+    //Variable to count the point numbers
+    long int point_count = 0;
+    
+    //Variable to count the CNT numbers
     int cnt_count = 0;
     
     //Choose the way in which the output vectors are generated depending on the particle type
-    if (type == "GNPs") {
+    for(int i=0; i<(int)cnts_points.size(); i++)
+    {
         
-        for(int i=0; i<(int)cnts_points.size(); i++)
-        {
-            
-            vector<long int> struct_temp;
-            for(int j=0; j<(int)cnts_points[i].size(); j++)
-            {
-                cpoints.push_back(cnts_points[i][j]);
-                cpoints.back().flag = i;
-                struct_temp.push_back(point_count);
-                point_count++;
-            }
-            cstructures.push_back(struct_temp);
+        if (!Add_cnts_inside_sample(geom_sample, nano_geo, i, cnts_points[i], cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
+            hout<<"Error when adding CNTs to structure."<<endl;
+            return 0;
         }
-        
-        if (cnts_points.size()) {
-            hout<<"There are "<<cpoints.size()<<" GNPs with "<<cpoints.size() << " points in the generation domain."<<endl;
-        }
+         
+        //Free some memory
+        cnts_points[i].clear();
     }
-    else if (type == "CNTs") {
-        
-        for(int i=0; i<(int)cnts_points.size(); i++)
-        {
-            
-            if (!Add_cnts_inside_sample(geom_sample, nano_geo, cnts_points[i], cpoints, cstructures, point_count, cnt_count)) {
-                hout<<"Error when adding CNTs to structure."<<endl;
-                return 0;
-            }
-             
-            //Free some memory
-            cnts_points[i].clear();
-        }
-        
-        if (cnts_points.size()) {
-            hout<<"There were "<<cpoints.size()<<" CNTs in the generation domain."<<endl;
-            hout<<"There are "<<cnt_count<<" CNTs with "<<cpoints.size() << " points inside the sample."<<endl;
-        }
+    
+    if (cnts_points.size()) {
+        hout<<"There were "<<cpoints.size()<<" CNTs in the generation domain."<<endl;
+        hout<<"There are "<<cnt_count<<" CNTs with "<<cpoints.size() << " points inside the sample."<<endl;
+    }
+    
+    if (!Recalculate_vol_fraction_cnts(geom_sample, cpoints, radii_out, cstructures)) {
+        hout<<"Error in Recalculate_vol_fraction_cnts."<<endl;
     }
     
     return 1;
 }
 //===========================================================================
-int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
+int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
 {
     //Indices to define the beginning and ending of a segment of a CNT that is inside a sample
     int start = 0;
@@ -3577,7 +3590,7 @@ int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, co
             end = i;
             
             //Check if there are are enough points and, if so, add the current CNT segment to the data structures
-            if (!Add_cnt_segment(geom_sample, start, end, min_points, cnt, cpoints, cstructures, point_count, cnt_count)) {
+            if (!Add_cnt_segment(geom_sample, start, end, min_points, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
                 hout<<"Error when adding a CNT segment."<<endl;
                 return 0;
             }
@@ -3597,7 +3610,7 @@ int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, co
         //This was not done becuase, in the for loop, a segement is added only when it finds a point
         //outside the sample
         //Then, check if there are are enough points and, if so, add the current CNT segment to the data structures
-        if (!Add_cnt_segment(geom_sample, start, end, min_points, cnt, cpoints, cstructures, point_count, cnt_count)) {
+        if (!Add_cnt_segment(geom_sample, start, end, min_points, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
             hout<<"Error when adding a CNT segment."<<endl;
             return 0;
         }
@@ -3606,7 +3619,7 @@ int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, co
     return 1;
 }
 //===========================================================================
-int GenNetwork::Add_cnt_segment(const struct Geom_sample &geom_sample, const int &start, const int &end, const int &min_points, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
+int GenNetwork::Add_cnt_segment(const struct Geom_sample &geom_sample, const int &start, const int &end, const int &min_points, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
 {
     //Count the number of consecutive points inside the sample
     int n_points = end - start;
@@ -3664,6 +3677,9 @@ int GenNetwork::Add_cnt_segment(const struct Geom_sample &geom_sample, const int
                 hout<<"Error in Add_boundary_point when adding a point at the end of the segment."<<endl;
             }
         }
+        
+        //Add the corresponding radius to the output darii vector
+        radii_out.push_back(radii_in[CNT_old]);
         
         //Add the temporary structure vector
         cstructures.push_back(struct_temp);
@@ -3806,5 +3822,36 @@ Point_3D GenNetwork::Find_intersection_at_boundary(const struct Geom_sample &geo
     //hout<<"P_boundary = ("<<boundary.x<<", "<<boundary.y<<", "<<boundary.z<<")"<<endl<<endl;
     
     return boundary;
+}
+//===========================================================================
+int GenNetwork::Recalculate_vol_fraction_cnts(const Geom_sample &geom_sample, const vector<Point_3D> &cpoints, const vector<double> &radii, const vector<vector<long int> > &cstructures)const
+{
+    //Variable to store the volume of CNTs
+    double cnt_vol = 0.0;
+    
+    //Iterate over all CNT in the structure vector
+    for (int i = 0; i < (int)cstructures.size(); i++) {
+        
+        //Initialize the length of the CNT
+        double cnt_len = 0.0;
+        
+        //Calculate the total length of current CNT_i
+        for (int j = 1; j < (int)cstructures[i].size(); j++) {
+            
+            //Get the previous and current points
+            long int prev = cstructures[i][j-1];
+            long int curr = cstructures[i][j];
+            
+            //Add the length of two consecutive points
+            cnt_len = cnt_len + cpoints[prev].distance_to(cpoints[curr]);
+        }
+        
+        //Calculate the volume from the CNT length and add it to the total volume
+        cnt_vol = cnt_vol + PI*radii[i]*radii[i]*cnt_len;
+    }
+    
+    hout<<"CNT volume fraction after removing CNT outside the sample and small segments is: "<<cnt_vol/geom_sample.volume<<endl;
+    
+    return 1;
 }
 //===========================================================================
