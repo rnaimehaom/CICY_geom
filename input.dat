@@ -90,6 +90,14 @@ random
 %normal: for normal distribution
 uniform 1.000000 1.000000
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
+%CNTs close to a boundary (sample or observation window) might result in small segments.
+%Some of these segments might be ignored if they are not long enough. The minimum
+%length to keep the CNT might be define in microns using the keyword 'length' or by number
+%of points using the keyword 'points', followed by the corresponding value.
+%Define the minimum CNT length ('length') or number of points ('points') to keep a CNT close to
+%the boundary
+points 5
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define the distribution type (uniform or normal) of the nanotube radius (in microns) and its minimum and maximum values
 %uniform: for uniform distribution
 %normal: for normal distribution

@@ -35,7 +35,7 @@ public:
     int Set_global_variables_for_geometry(const struct Geom_sample &sample, const int &window);
     int Save_seeds(const vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, vector<long int> &seeds);
     int Compare_seeds(vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, const vector<long int> &seeds);
-    int Trim_boundary_cnts_(const int &window, const struct Geom_sample &sample, const struct Geom_sample &window_geo, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii);
+    int Trim_boundary_cnts_(const int &window, const struct Geom_sample &sample, const struct Geom_sample &window_geo, const struct Nanotube_Geo &cnts, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii);
     int Add_cnt_segment_to_structure(const struct Geom_sample &sample_geo, const struct Geom_sample &window_geo, const int &start, const int &end, const int &min_points, const int &CNT, const string &last_point_loc, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx, Point_3D &prev_end, int &prev_idx);
     int Substitute_boundary_point(const struct Geom_sample &window_geo, const Point_3D &p_inside, Point_3D &p_outside);
     int Trim_boundary_cnts(vector<vector<int> > &shells_cnt, const int &window, const struct Geom_sample &sample, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<double> &radii);

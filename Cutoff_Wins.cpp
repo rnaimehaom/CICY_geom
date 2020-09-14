@@ -95,7 +95,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
             hout << "Error in Extract_observation_window when calling Trim_boundary_cnts" << endl;
             return 0;
         }*/
-        if (!Trim_boundary_cnts_(window, sample_geo, window_geo, points_in, structure, shells_cnt, radii)) {
+        if (!Trim_boundary_cnts_(window, sample_geo, window_geo, cnts, points_in, structure, shells_cnt, radii)) {
             hout << "Error in Extract_observation_window when calling Trim_boundary_cnts" << endl;
             return 0;
         }
@@ -255,7 +255,7 @@ int Cutoff_Wins::Compare_seeds(vector<GCH> &hybrid_particles, const vector<vecto
     return 1;
 }
 
-int Cutoff_Wins::Trim_boundary_cnts_(const int &window, const struct Geom_sample &sample_geo, const struct Geom_sample &window_geo, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii)
+int Cutoff_Wins::Trim_boundary_cnts_(const int &window, const struct Geom_sample &sample_geo, const struct Geom_sample &window_geo, const struct Nanotube_Geo &cnts, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii)
 {
     //String to save the location of a point (inside the window, outside the window, or at a boundary)
     string point_location;
@@ -267,7 +267,7 @@ int Cutoff_Wins::Trim_boundary_cnts_(const int &window, const struct Geom_sample
     boundary_cnt.assign(6, vector<int>());
     
     //Provisionally the minimum number of points to consider a CNT is defined here
-    int min_points = 1;
+    int min_points = cnts.min_points;
     
     //Scan all CNTs in the current shell
     for (long int i = 0; i < (long int)shells_cnt[window].size(); i++) {

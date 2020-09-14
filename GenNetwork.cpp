@@ -3545,7 +3545,7 @@ int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, co
     int cnt_points = (int)cnt.size();
     
     //Provisionally the minimum number of points to consider a CNT is defined here
-    int min_points = 1;
+    int min_points = nano_geo.min_points;
     
     //Scan all points in the current CNT
     for (int i = 0; i < cnt_points; i++) {

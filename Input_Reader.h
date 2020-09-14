@@ -69,6 +69,10 @@ struct Nanotube_Geo{
     string dir_distrib_type;			//Define the initial growth direction type (random or specific) in a RVE
     string len_distrib_type;			//Define the distribution type (uniform or normal) of the length (unit: micrometer) of nanotubes
     string rad_distrib_type;			//Define the distribution type (uniform or normal) of the radius (unit: micrometer) of nanotubes
+    //Minimum nanotube length to keep a CNT close the the boundary (of the sample or observation window)
+    string min_length_type;
+    //Number of points to keep a CNT close the the boundary (of the sample or observation window)
+    int min_points;
     double step_length;				//Define the step length (unit: micromether) of nanotube growth
     double ini_sita, ini_pha;			//Define initial direction for 'specific' type in the spherical coordinates
     double angle_max;				//Define the angle 'omega' for the normal distribution range [-omega, omega] of the growth direction

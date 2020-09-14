@@ -513,9 +513,9 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
 	if(nanotube_geo.step_length<=Zero||
 	   nanotube_geo.step_length>=0.25*geom_sample.len_x||
 	   nanotube_geo.step_length>=0.25*geom_sample.wid_y||
-       nanotube_geo.step_length>=0.25*geom_sample.hei_z)
-	{ hout << "Error: The step length must be positive and upt to 0.25 times the side length of the sample. Input was: "<<nanotube_geo.step_length << endl;	return 0; }
-
+       nanotube_geo.step_length>=0.25*geom_sample.hei_z) {
+        hout << "Error: The step length must be positive and up to 0.25 times the side length of the sample. Input was: "<<nanotube_geo.step_length << endl;	return 0; }
+    
 	//----------------------------------------------------------------------
     //Read the distribution type (uniform or normal) of the nanotube length (in microns) and its minimum and maximum values
     istringstream istr3(Get_Line(infile));
@@ -525,7 +525,26 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     istr3 >> nanotube_geo.len_min >> nanotube_geo.len_max;
     if(nanotube_geo.len_min<Zero||nanotube_geo.len_max<Zero||nanotube_geo.len_max<nanotube_geo.len_min){
         hout << "Error: The nanotube length must be non-negative and the minimum lengths must be smaller than the maximum length. Input for minimum was "<< nanotube_geo.len_min<<" and for maximum was "<<nanotube_geo.len_max<<endl; return 0; }
-
+    
+    //----------------------------------------------------------------------
+    //Read the minimum CNT length ('length') or number of points ('points') to keep a
+    //CNT close to the boundary
+    istringstream istr_min_length(Get_Line(infile));
+    istr_min_length>>nanotube_geo.min_length_type;
+    if (nanotube_geo.min_length_type=="length") {
+        //Get the input as a double, since it is a length
+        double tmp;
+        istr_min_length>>tmp;
+        //Convert the length to the equivalent number of points
+        nanotube_geo.min_points = 1 + (int)(tmp/nanotube_geo.step_length);
+    }
+    else if (nanotube_geo.min_length_type=="points") {
+        istr_min_length>>nanotube_geo.min_points;
+    }
+    else {
+        hout << "Error: The minimum CNT length can only be specified as 'length' or 'points'. Input was: "<<nanotube_geo.min_length_type<<endl; return 0;
+    }
+    
 	//----------------------------------------------------------------------
 	//Read the distribution type (uniform or normal) of the nanotube radius (in microns) and its minimum and maximum values
     istringstream istr4(Get_Line(infile));
@@ -695,7 +714,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
        gnp_geo.discr_step_length>=0.25*geom_sample.len_x||
        gnp_geo.discr_step_length>=0.25*geom_sample.wid_y||
        gnp_geo.discr_step_length>=0.25*geom_sample.hei_z) {
-        hout << "Error: the step length must be positive and upto 0.25 times the side length of the sample. Input was: "<<gnp_geo.discr_step_length<< endl;    return 0; }
+        hout << "Error: the step length must be positive and up to 0.25 times the side length of the sample. Input was: "<<gnp_geo.discr_step_length<< endl;    return 0; }
     
     //----------------------------------------------------------------------
     //Read the distribution type (uniform or normal) of the GNP side length (in microns) and maximum and minimum values
