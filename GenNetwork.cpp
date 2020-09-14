@@ -3499,34 +3499,48 @@ int GenNetwork::Transform_points(const string &type, const Geom_sample &geom_sam
     //Variable to count the point numbers
     long int point_count = 0;
     
-    //Variable to count the CNT numbers
+    //Variable to count the particle numbers (CNT or GNP)
     int cnt_count = 0;
     
-    for(int i=0; i<(int)cnts_points.size(); i++)
-    {
-        /*
-        vector<long int> struct_temp;
-        for(int j=0; j<(int)cnts_points[i].size(); j++)
-        {
-            cpoints.push_back(cnts_points[i][j]);
-            cpoints.back().flag = i;
-            struct_temp.push_back(point_count);
-            point_count++;
-        }
-        cstructures.push_back(struct_temp);*/
+    //Choose the way in which the output vectors are generated depending on the particle type
+    if (type == "GNPs") {
         
-        if (!Add_cnts_inside_sample(geom_sample, nano_geo, cnts_points[i], cpoints, cstructures, point_count, cnt_count)) {
-            hout<<"Error when adding CNTs to structure."<<endl;
-            return 0;
+        for(int i=0; i<(int)cnts_points.size(); i++)
+        {
+            
+            vector<long int> struct_temp;
+            for(int j=0; j<(int)cnts_points[i].size(); j++)
+            {
+                cpoints.push_back(cnts_points[i][j]);
+                cpoints.back().flag = i;
+                struct_temp.push_back(point_count);
+                point_count++;
+            }
+            cstructures.push_back(struct_temp);
         }
-         
-        //Free some memory
-        cnts_points[i].clear();
+        
+        if (cnts_points.size()) {
+            hout<<"There are "<<cpoints.size()<<" GNPs with "<<cpoints.size() << " points in the generation domain."<<endl;
+        }
     }
-    
-    if (cnts_points.size()) {
-        hout<<"There were "<<cpoints.size()<<" CNTs in the generation domain."<<endl;
-        hout<<"There are "<<cnt_count<<" "<<type<<" with "<<cpoints.size() << " points inside the sample."<<endl;
+    else if (type == "CNTs") {
+        
+        for(int i=0; i<(int)cnts_points.size(); i++)
+        {
+            
+            if (!Add_cnts_inside_sample(geom_sample, nano_geo, cnts_points[i], cpoints, cstructures, point_count, cnt_count)) {
+                hout<<"Error when adding CNTs to structure."<<endl;
+                return 0;
+            }
+             
+            //Free some memory
+            cnts_points[i].clear();
+        }
+        
+        if (cnts_points.size()) {
+            hout<<"There were "<<cpoints.size()<<" CNTs in the generation domain."<<endl;
+            hout<<"There are "<<cnt_count<<" CNTs with "<<cpoints.size() << " points inside the sample."<<endl;
+        }
     }
     
     return 1;
