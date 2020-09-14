@@ -191,12 +191,14 @@ int Contact_grid::Fill_sectioned_domain(const struct Geom_sample &window_geom, c
             int fz = 0;
             
             //Assign value of flag according to position of point
+            //hout<<"Calculate_postion_flags"<<endl;
             if (!Calculate_postion_flags(window_geom, points_in[P], cutoff, a, b, c, sx, sy, sz, fx, fy, fz)) {
                 hout << "Error in Generate_sectioned_domain_cnts when calling Calculate_postion_flags" << endl;
                 return 0;
             }
             
             //Assign the point P to the correspoding region or regions
+            //hout<<"Assign_point_to_region"<<endl;
             if (!Assign_point_to_region(a, b, c, fx, fy, fz, sx, sy, P, sectioned_domain)) {
                 hout << "Error in Generate_sectioned_domain_cnts when calling Assign_point_to_region" << endl;
                 return 0;

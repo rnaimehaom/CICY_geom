@@ -10,7 +10,7 @@
 /*
  
  This class generates the vector:
- shells_cnt: is used to trim the CNTs. The CNTs are grouped according to the sub-regions, then need to be trimmed
+ shells_cnt: is used to trim the CNTs. The CNTs are assigned to a shell sub-region (for them to be trimmed).
  The shells will be created as follows: The smallest observation window (cuboid) will be one shell sub-region and will be used for the last element in the vector.
  Then, the next shell-subregion will be the volume of the next observation window minus the volume of the first one (the smallest observation window).
  The following shells will have the same form: the volume of the observation window minus the volume of the previous one.
@@ -122,7 +122,7 @@ int Background_vectors::Find_shell(const double &x_in, const double &x_0, const 
     //below this corrdinate, x is outside the largest observation window,
     //or in the boundary layer if the largest observation window equals the sample size
     double x_layer = x_0 + (len_x - win_max_x)/2;
-    //The minimum coordinate of the smallesr observation window
+    //The minimum coordinate of the smallest observation window
     //any point above this coordinate is inside the core shell
     double x_core = x_0 + (len_x - win_min_x)/2;
     //An observation window grows a total of dx. However, as it is centered, it grows dx/2 on each direction
@@ -145,7 +145,7 @@ int Background_vectors::Find_shell(const double &x_in, const double &x_0, const 
         return num_shells-1;
     } else {
         //I need the integer part of (x - x_min)/dx_half + 1
-        //The Zero is for foating point errors
+        //The Zero is for floating point errors
         int shell = (int) ((x - x_layer + Zero)/dx_half) + 1;
         //hout<<"=f("<<((x - x_layer + Zero)/dx_half)+1<<")="<<shell<<endl;
         return shell;
