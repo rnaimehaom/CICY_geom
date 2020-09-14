@@ -3656,7 +3656,7 @@ int GenNetwork::Add_cnt_segment(const struct Geom_sample &geom_sample, const int
         
         //A CNT segment was added, i.e., a new CNT was added, thus increase the CNT count
         cnt_count++;
-    }
+    }//else{hout<<"Segment with "<<n_points<<" points, start="<<start<<" end="<<end<<" cnt_count="<<cnt_count<<endl;}
     
     
     return 1;

@@ -62,12 +62,12 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
         return 0;
     }
     
-    //Print CNTs in shell
+    /*/Print CNTs in shell
     hout<<"CNTs in shell:"<<endl;
     for (size_t i = 0; i < shells_cnt[window].size(); i++) {
         hout<<shells_cnt[window][i]<<' ';
     }
-    hout<<endl;
+    hout<<endl;*/
     
     //Output the current window geometry
     hout<<"Observation window geometry:"<<endl;
@@ -100,7 +100,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
             return 0;
         }
         
-        //Print boundary vectors
+        /*/Print boundary vectors
         hout<<"boundary vectors:"<<endl;
         for (size_t i = 0; i < boundary_cnt.size(); i++) {
             hout<<"boundary "<<i<<" ("<<boundary_cnt[i].size()<<" CNTs): \n   ";
@@ -108,7 +108,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
                 hout<<boundary_cnt[i][j]<<' ';
             }
             hout<<endl;
-        }
+        }*/
         
         //Fill the vector cnts_inside
         if (!Fill_cnts_inside(structure)) {
@@ -327,7 +327,7 @@ int Cutoff_Wins::Trim_boundary_cnts_(const int &window, const struct Geom_sample
         }
         
         //Check if the last index of the vector structure[CNT] was inside the sample
-        hout<<"last_inside="<<last_inside<<" cnt_points="<<cnt_points<<endl;
+        //hout<<"last_inside="<<last_inside<<" cnt_points="<<cnt_points<<endl;
         if (last_inside == cnt_points-1) {
             
             //Set end index as the last valid index
@@ -380,7 +380,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_g
         //Variables for the outside and inside points for the start of the segment
         long int p_out_start = structure[CNT][new_start];
         long int p_ins_start = structure[CNT][new_start+1];
-        hout<<"Start=("<<points_in[p_out_start].x<<", "<<points_in[p_out_start].y<<", "<<points_in[p_out_start].z<<") CNT="<<CNT<<endl;
+        //hout<<"Start=("<<points_in[p_out_start].x<<", "<<points_in[p_out_start].y<<", "<<points_in[p_out_start].z<<") CNT="<<CNT<<endl;
         
         //Check that the first point of this segment is not the last point of the previous segment
         if (segments > 0 && start == prev_idx) {
@@ -397,7 +397,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_g
             
             //p_out takes the coordinates of the previous point in order for it to actually be outside
             points_in[p_out_start] = prev_end;
-            hout<<"Start adjusted=("<<points_in[p_out_start].x<<", "<<points_in[p_out_start].y<<", "<<points_in[p_out_start].z<<") CNT="<<CNT<<endl;
+            //hout<<"Start adjusted=("<<points_in[p_out_start].x<<", "<<points_in[p_out_start].y<<", "<<points_in[p_out_start].z<<") CNT="<<CNT<<endl;
         }
         //At this point, the first point of the current segment is for sure not part of the previous segment
         
@@ -431,7 +431,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_g
         //Variables for the outside and inside points for the end of the segment
         long int p_out_end = structure[CNT][end];
         long int p_ins_end = structure[CNT][end-1];
-        hout<<"End=("<<points_in[p_out_end].x<<", "<<points_in[p_out_end].y<<", "<<points_in[p_out_end].z<<") CNT="<<CNT<<endl;
+        //hout<<"End=("<<points_in[p_out_end].x<<", "<<points_in[p_out_end].y<<", "<<points_in[p_out_end].z<<") CNT="<<CNT<<endl;
         
         //Double check where is the last point of the current segment, if the first point is at:
         //inside: do not add it to the boundary vectors
@@ -1006,7 +1006,7 @@ void Cutoff_Wins::Add_to_boundary_vectors(Point_3D point3d, long int point, int 
     double y = point3d.y;
     double z = point3d.z;
     
-    hout<<"P=("<<point3d.x<<", "<<point3d.y<<", "<<point3d.z<<") ";
+    //hout<<"P=("<<point3d.x<<", "<<point3d.y<<", "<<point3d.z<<") ";
     if ( abs(x - xmin) < Zero){
         Add_CNT_to_boundary(boundary_cnt[0], new_CNT, point,0,0);
     } else if ( abs(x - (xmin+w_x)) < Zero ){
@@ -1048,7 +1048,7 @@ void Cutoff_Wins::Add_CNT_to_boundary(vector<int> &boundary, int CNT, long int p
         boundary_flags_cnt[point].push_back(flag2);
 
     }
-    hout<<"CNT "<<CNT<<" boundary ("<<flag1<<", "<<flag2<<")"<<endl;
+    //hout<<"CNT "<<CNT<<" boundary ("<<flag1<<", "<<flag2<<")"<<endl;
 }
 //This function eliminates the case when, after a CNT is split, the last point of one CNT is the same as the frist point of the other CNT
 int Cutoff_Wins::Change_repeated_seed(const int &CNT_original, const int &CNT_previous, int &index2_previous, int &index1_current, vector<vector<long int> > &structure, vector<Point_3D> &points_in)
