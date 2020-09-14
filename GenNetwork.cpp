@@ -3514,7 +3514,7 @@ int GenNetwork::Transform_points(const string &type, const Geom_sample &geom_sam
             point_count++;
         }
         cstructures.push_back(struct_temp);*/
-        //Add_cnts_inside_sample(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)
+        
         if (!Add_cnts_inside_sample(geom_sample, nano_geo, cnts_points[i], cpoints, cstructures, point_count, cnt_count)) {
             hout<<"Error when adding CNTs to structure."<<endl;
             return 0;
@@ -3525,7 +3525,8 @@ int GenNetwork::Transform_points(const string &type, const Geom_sample &geom_sam
     }
     
     if (cnts_points.size()) {
-        hout << "There are "<<cnts_points.size()<<" "<<type<<" with "<<cpoints.size() << " points."<<endl;
+        hout<<"There were "<<cpoints.size()<<" CNTs in the generation domain."<<endl;
+        hout<<"There are "<<cnt_count<<" "<<type<<" with "<<cpoints.size() << " points inside the sample."<<endl;
     }
     
     return 1;
@@ -3544,7 +3545,7 @@ int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, co
     int cnt_points = (int)cnt.size();
     
     //Provisionally the minimum number of points to consider a CNT is defined here
-    int min_points = 50;
+    int min_points = 1;
     
     //Scan all points in the current CNT
     for (int i = 0; i < cnt_points; i++) {
@@ -3567,14 +3568,13 @@ int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, co
                 return 0;
             }
             
-            //Reset the start and end indices
+            //Reset the start index
             start = i;
-            end = i;
         }
     }
     
     //Check if the last point of the CNT was inside the sample
-    if (last_inside == cnt_points) {
+    if (last_inside == cnt_points-1) {
         
         //Set end index as the last valid index
         end = cnt_points - 1;
@@ -3612,6 +3612,7 @@ int GenNetwork::Add_cnt_segment(const struct Geom_sample &geom_sample, const int
             
             //Note that start index is a point outside the sample
             //hout<<"start="<<start<<endl;
+            //hout<<"P_start = ("<<cnt[start].x<<", "<<cnt[start].y<<", "<<cnt[start].z<<") cnt_count="<<cnt_count<<endl;
             if (!Add_boundary_point(geom_sample, cnt[start], cnt[start+1], cnt_count, cpoints, struct_temp, point_count)) {
                 hout<<"Error in Add_boundary_point when adding a point at the start of the segment."<<endl;
             }
@@ -3620,7 +3621,7 @@ int GenNetwork::Add_cnt_segment(const struct Geom_sample &geom_sample, const int
         
         //Add the CNT points of the segment found to the 1D vector
         //Note that end index is actually one more than the last index of the segment
-        for(int j = start; j < end; j++) {
+        for(int j = start+1; j < end; j++) {
             
             //Change the flag of current point to be that of its CNT number
             cnt[j].flag = cnt_count;
@@ -3635,7 +3636,7 @@ int GenNetwork::Add_cnt_segment(const struct Geom_sample &geom_sample, const int
             point_count++;
         }
         
-        //Check if end index is is not the last point of the CNT (since end index is actually one more
+        //Check if end index is not the last point of the CNT (since end index is actually one more
         //than the last index of the segment, then we have to check against the largest posisble index+1
         //which is the number of points in the CNT)
         //If the last index is the last point of the CNT, then the CNT segement ends inside the sample.
@@ -3644,7 +3645,7 @@ int GenNetwork::Add_cnt_segment(const struct Geom_sample &geom_sample, const int
         if (end != (int)cnt.size()) {
             
             //hout<<"end="<<end<<" points="<<cnt.size()<<endl;
-            //hout<<"P_end+1 = ("<<cnt[end+1].x<<", "<<cnt[end+1].y<<", "<<cnt[end+1].z<<")"<<endl;
+            //hout<<"P_end = ("<<cnt[end].x<<", "<<cnt[end].y<<", "<<cnt[end].z<<") cnt_count="<<cnt_count<<endl;
             if (!Add_boundary_point(geom_sample, cnt[end], cnt[end-1], cnt_count, cpoints, struct_temp, point_count)) {
                 hout<<"Error in Add_boundary_point when adding a point at the end of the segment."<<endl;
             }
@@ -3788,7 +3789,7 @@ Point_3D GenNetwork::Find_intersection_at_boundary(const struct Geom_sample &geo
     //hout<<"P_outside = ("<<p_outside.x<<", "<<p_outside.y<<", "<<p_outside.z<<")"<<endl;
     //hout<<"P_inside = ("<<p_inside.x<<", "<<p_inside.y<<", "<<p_inside.z<<")"<<endl;
     //hout<<"P_T = ("<<T.x<<", "<<T.y<<", "<<T.z<<")"<<endl;
-    //hout<<"P_intersection = ("<<boundary.x<<", "<<boundary.y<<", "<<boundary.z<<")"<<endl<<endl;
+    //hout<<"P_boundary = ("<<boundary.x<<", "<<boundary.y<<", "<<boundary.z<<")"<<endl<<endl;
     
     return boundary;
 }

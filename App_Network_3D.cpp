@@ -22,7 +22,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
     vector<GCH> hybrid_particles;                   //Define the set of GNP hybrid particles
     vector<vector<int> > shells_gnps;                //Shell sub-regions to make the deletion of GNPs faster
     
-    //-----------------------------------------------------------------------------------------------------------------------------------------
+    //----------------------------------------------------------------------
     //Network Generation with overlapping
     hout << "-_- Generate nanofiller network......" << endl;
     ct0 = time(NULL);
@@ -35,7 +35,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
     //P->Print_1d_vec(gnps_point, "gnps_point_00.txt");
     //delete P;
     
-    //-----------------------------------------------------------------------------------------------------------------------------------------
+    //----------------------------------------------------------------------
     ct0 = time(NULL);
     Background_vectors *Bckg = new Background_vectors;
     if (!Bckg->Generate_shells(Init->geom_sample, Init->nanotube_geo, cnts_point, hybrid_particles, shells_cnt, shells_gnps)) {
@@ -46,8 +46,8 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
     ct1 = time(NULL);
     hout << "Generate shells and structure time: "<<(int)(ct1-ct0)<<" secs."<<endl;//*/
     
-    //Geometry of observation window saved into a cuboid
-    struct Geom_sample window;
+    //Variable to store the geometry of the observation window
+    struct Geom_sample window_geo;
     
     for(int i=0; i<=Init->geom_sample.cut_num; i++)
     {
@@ -58,16 +58,23 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         it0 = time(NULL);
         
         //Update observation window geometry
-        //Dimensions of the current observation window
-        window.len_x = Init->geom_sample.win_max_x - i*Init->geom_sample.win_delt_x;
-        window.wid_y = Init->geom_sample.win_max_y - i*Init->geom_sample.win_delt_y;
-        window.hei_z = Init->geom_sample.win_max_z - i*Init->geom_sample.win_delt_z;
+        /*/Dimensions of the current observation window
+        window_geo.len_x = Init->geom_sample.win_max_x - i*Init->geom_sample.win_delt_x;
+        window_geo.wid_y = Init->geom_sample.win_max_y - i*Init->geom_sample.win_delt_y;
+        window_geo.hei_z = Init->geom_sample.win_max_z - i*Init->geom_sample.win_delt_z;
         //These variables are the coordinates of the lower corner of the observation window
-        window.origin.x = Init->geom_sample.origin.x + (Init->geom_sample.len_x - window.len_x)/2;
-        window.origin.y = Init->geom_sample.origin.y + (Init->geom_sample.wid_y - window.wid_y)/2;
-        window.origin.z = Init->geom_sample.origin.z + (Init->geom_sample.hei_z - window.hei_z)/2;
+        window_geo.origin.x = Init->geom_sample.origin.x + (Init->geom_sample.len_x - window_geo.len_x)/2;
+        window_geo.origin.y = Init->geom_sample.origin.y + (Init->geom_sample.wid_y - window_geo.wid_y)/2;
+        window_geo.origin.z = Init->geom_sample.origin.z + (Init->geom_sample.hei_z - window_geo.hei_z)/2;
+        //Boundaries with maximum values of coordinates
+        window_geo.x_max = window_geo.origin.x + window_geo.len_x;
+        window_geo.y_max = window_geo.origin.y + window_geo.wid_y;
+        window_geo.z_max = window_geo.origin.z + window_geo.hei_z;*/
+        if (!Update_obseravtion_window_geometry(i, Init->geom_sample, window_geo)) {
+            hout<<"Error when updating the geometry for observation window "<<i<<endl;
+        }
         
-        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //----------------------------------------------------------------------
         //These vectors are used to export tecplot files
         vector<long int> empty;
         vector<vector<long int> > all_dead_indices(7,empty);
@@ -76,19 +83,19 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         vector<vector<int> > all_percolated_gnp(7,empty_int);
         vector<vector<int> > all_dead_gnps(7,empty_int);
         
-        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //----------------------------------------------------------------------
         //Determine the local networks in cutoff windows
         Cutoff_Wins *Cutwins = new Cutoff_Wins;
         //From this function I get the internal variables cnts_inside and boundary_cnt
         ct0 = time(NULL);
-        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, hybrid_particles, cnts_structure, gnps_structure, cnts_radius, cnts_point, gnps_point, shells_cnt, shells_gnps)) {
+        if(!Cutwins->Extract_observation_window(i+1, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, Init->gnp_geo, hybrid_particles, cnts_structure, gnps_structure, cnts_radius, cnts_point, gnps_point, shells_cnt, shells_gnps)) {
             hout << "Error when extracting observation window "<< i+1 << endl;
             return 0;
         }
         ct1 = time(NULL);
         hout << "Extract observation window time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         
-        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //----------------------------------------------------------------------
         //Determine the local networks inside the cutoff windows
         Contact_grid *Contacts = new Contact_grid;
         ct0 = time(NULL);
@@ -99,7 +106,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         ct1 = time(NULL);
         hout << "Generate contact grid time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         
-        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //----------------------------------------------------------------------
         //Hoshen-Kopelman algorithm
         Hoshen_Kopelman *HoKo = new Hoshen_Kopelman;
         ct0 = time(NULL);
@@ -113,7 +120,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Contacts are not needed anymore, so delete the object
         delete Contacts;
         
-        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //----------------------------------------------------------------------
         //Check if Tecplot visualization files were requested for clusters
         if (Init->tec360_flags.clusters) {
             ct0 = time(NULL);
@@ -125,7 +132,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
             hout << "Export tecplot files for clusters time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         }
         
-        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //----------------------------------------------------------------------
         //Determine percolation
         Percolation *Perc = new Percolation;
         ct0 = time(NULL);
@@ -145,7 +152,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         HoKo->labels_gnp.clear();
         HoKo->labels_labels_gnp.clear();
         
-        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //----------------------------------------------------------------------
         //Check if Tecplot visualization files were requested for percolated clusters
         if (Init->tec360_flags.percolated_clusters) {
             ct0 = time(NULL);
@@ -157,7 +164,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
             hout << "Export tecplot files for percolated clusters time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         }
         
-        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //----------------------------------------------------------------------
         //These vectors are used to store the fractions of the different families in the current observation window
         //families_lengths has 8 elements because of the 7 percolated families and the non-percoalted CNTs, the same is true for fractions
         vector<double> families_lengths(8,0);
@@ -170,7 +177,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
             
             //Perform the electrical analysis to obtain the backbone and calculate the electrical resistance
             ct0 = time(NULL);
-            if (!Electric_A->Perform_analysis_on_clusters(Init->simu_para.avoid_resistance, family, HoKo, Cutwins, cnts_structure, cnts_point, cnts_radius, gnps_structure, gnps_point, window, Init->electric_para, Init->cutoff_dist, hybrid_particles, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
+            if (!Electric_A->Perform_analysis_on_clusters(Init->simu_para.avoid_resistance, family, HoKo, Cutwins, cnts_structure, cnts_point, cnts_radius, gnps_structure, gnps_point, window_geo, Init->electric_para, Init->cutoff_dist, hybrid_particles, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
                 hout << "Error when performing electrical analysis" << endl;
                 return 0;
             }
@@ -181,7 +188,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
             
             //Calculate the resistances and resistivities of the polymer matrix
             vector<double> matrix_resistances;
-            if (!Electric_A->Calculate_matrix_resistances(Init->electric_para.resistivity_matrix, window, matrix_resistances)) {
+            if (!Electric_A->Calculate_matrix_resistances(Init->electric_para.resistivity_matrix, window_geo, matrix_resistances)) {
                 hout << "Error when calculating matrix resistances for a sample without percolated clusters" << endl;
                 return 0;
             }
@@ -190,7 +197,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
             vector<double> resistivities;
             //paralel_resistors is initialized with three empty vectors
             vector<vector<double> > paralel_resistors(3,resistivities);
-            if (!Electric_A->Calculate_resistances_and_resistivities(window, matrix_resistances, paralel_resistors, Electric_A->resistors, resistivities)) {
+            if (!Electric_A->Calculate_resistances_and_resistivities(window_geo, matrix_resistances, paralel_resistors, Electric_A->resistors, resistivities)) {
                 hout << "Error when calculating matrix resistivities for a sample without percolated clusters" << endl;
                 return 0;
             }
@@ -219,7 +226,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         delete Fracs;
         delete Cutwins;
 
-        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //----------------------------------------------------------------------
         //Check if Tecplot visualization files were requested for the backbone
         if (Init->tec360_flags.backbone) {
             ct0 = time(NULL);
@@ -234,7 +241,7 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         //Delete objects to free memory
         delete HoKo;
         
-        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //----------------------------------------------------------------------
         //Check if Tecplot visualization files were requested for the triangulations
         if (Init->tec360_flags.triangulations) {
             ct0 = time(NULL);
@@ -252,6 +259,26 @@ int App_Network_3D::Create_conductive_network_3D(Input *Init)const
         
     }
     
+    
+    return 1;
+}
+//Update the geometry of the observation window
+int App_Network_3D::Update_obseravtion_window_geometry(const int &window, const struct Geom_sample &sample_geo, struct Geom_sample &window_geo)const
+{
+    //Dimensions of the current observation window
+    window_geo.len_x = sample_geo.win_max_x - ((double)window)*sample_geo.win_delt_x;
+    window_geo.wid_y = sample_geo.win_max_y - ((double)window)*sample_geo.win_delt_y;
+    window_geo.hei_z = sample_geo.win_max_z - ((double)window)*sample_geo.win_delt_z;
+    
+    //These variables are the coordinates of the lower corner of the observation window
+    window_geo.origin.x = sample_geo.origin.x + (sample_geo.len_x - window_geo.len_x)/2;
+    window_geo.origin.y = sample_geo.origin.y + (sample_geo.wid_y - window_geo.wid_y)/2;
+    window_geo.origin.z = sample_geo.origin.z + (sample_geo.hei_z - window_geo.hei_z)/2;
+    
+    //Boundaries with maximum values of coordinates
+    window_geo.x_max = window_geo.origin.x + window_geo.len_x;
+    window_geo.y_max = window_geo.origin.y + window_geo.wid_y;
+    window_geo.z_max = window_geo.origin.z + window_geo.hei_z;
     
     return 1;
 }
