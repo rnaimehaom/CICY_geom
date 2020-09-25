@@ -8,7 +8,7 @@
 #include "Geometry_3D.h"
 
 //---------------------------------------------------------------------------
-//The member function for the 3D point class
+//Constructor
 Point_3D::Point_3D( double px, double py, double pz )
 {
 	x = px;
@@ -176,8 +176,50 @@ Point_3D Point_3D::rotation(const MathMatrix &Matrix, const Point_3D &displaceme
     return new_point;
 
 }
+//---------------------------------------------------------------------------
+//Return a unit vector in the direction of the origin to the point
+Point_3D Point_3D::unit()
+{
+    double length = sqrt(x*x + y*y + z*z);
+    //Create and return a unit vector
+    return Point_3D(x/length, y/length, z/length);
+}
+//---------------------------------------------------------------------------
+//Make the point a unit vector in the direction of the origin to the point
+void Point_3D::make_unit()
+{
+    double length = sqrt(x*x + y*y + z*z);
+    //Normalize components
+    x = x/length;
+    y = y/length;
+    z = z/length;
+}
+//---------------------------------------------------------------------------
+void Point_3D::set(const double &x_, const double &y_, const double &z_)
+{
+    //Set the components as given by the arguments of the function
+    x = x_;
+    y = y_;
+    z = z_;
+}
+//---------------------------------------------------------------------------
+void Point_3D::set(Point_3D &P)
+{
+    //Set the components to be the same as those in point P
+    x = P.x;
+    y = P.y;
+    z = P.z;
+}
+//---------------------------------------------------------------------------
+//Make a string version of the point
+string Point_3D::str()
+{
+    string s = "(" + to_string(x) + ", " + to_string(y) + ", " + to_string(z) + ")";
+    
+    return s;
+}
 //===========================================================================
-//The member function for the 3D Line class
+//Functions for the 3D Line class
 //---------------------------------------------------------------------------
 //Constructor
 Line_3D::Line_3D(Point_3D p0, Point_3D p1)
@@ -192,7 +234,7 @@ Line_3D::Line_3D(Point_3D p0, Point_3D p1)
 	else virtual_line = true;
 }
 //---------------------------------------------------------------------------   
-//The length of segment
+//Get length of the line segment
 double Line_3D::length() 
 {
 	double dx = point[1].x-point[0].x;
@@ -201,13 +243,13 @@ double Line_3D::length()
 	return sqrt(dx*dx+dy*dy+dz*dz);
 }
 //---------------------------------------------------------------------------
-//The distance from a point to a line
+//Calculate the distance from the line segment to the specified point 
 double Line_3D::distance_point_to_line(const Point_3D *point_temp)const
 {
 	double dis = 0;
 	if(xm==0&&yn==0&&zl==0)
 	{
-		hout << "Attention: this segment is reduced to a point!" <<endl;
+		hout << "Warning: this segment is reduced to a point!" <<endl;
 		double X = point_temp->x-point[0].x;
 		double Y = point_temp->y-point[0].y;
 		double Z = point_temp->z-point[0].z;
@@ -227,7 +269,7 @@ double Line_3D::distance_point_to_line(const Point_3D &point_temp)const
 	double dis = 0;
 	if(xm==0&&yn==0&&zl==0)
 	{
-		hout << "Attention: this segment is reduced to a point!" <<endl;
+		hout << "Warning: this segment is reduced to a point!" <<endl;
 		double X = point_temp.x-point[0].x;
 		double Y = point_temp.y-point[0].y;
 		double Z = point_temp.z-point[0].z;
@@ -246,7 +288,7 @@ double Line_3D::distance_point_to_line(const double dx, const double dy, const d
 	double dis = 0;
 	if(xm==0&&yn==0&&zl==0)
 	{
-		hout << "Attention: this segment is reduced to a point!" <<endl;
+		hout << "Warning: this segment is reduced to a point!" <<endl;
 		double X = dx-point[0].x;
 		double Y = dy-point[0].y;
 		double Z = dz-point[0].z;
@@ -261,7 +303,7 @@ double Line_3D::distance_point_to_line(const double dx, const double dy, const d
 	return dis;
 }
 //---------------------------------------------------------------------------
-//To judge if a point is in a segment
+//Determine is a Point is on the line segment
 int Line_3D::contain(const Point_3D &point_temp)const
 {
 	//to judge if the distance from a point to two endpoints is larger than the distance between endpoints
@@ -269,8 +311,7 @@ int Line_3D::contain(const Point_3D &point_temp)const
 	return 1;
 }
 //===========================================================================
-
-//The member function for the 3D plane class
+//Functions for the 3D plane class
 //---------------------------------------------------------------------------
 //Constructor
 Plane_3D::Plane_3D(double para[])
@@ -291,18 +332,26 @@ Plane_3D::Plane_3D(double a, double b, double c, double d)
     else virtual_plane = true;
 }
 //---------------------------------------------------------------------------
-//To judge if a point is contained in this plane
+//Determine if a point is on in this plane, where the point is given as a Point_3D object
 int Plane_3D::contain(const Point_3D &point_temp)const
 {
-	if( coef[0]*point_temp.x+coef[1]*point_temp.y+coef[2]*point_temp.z+coef[3]==0 ) return 1;	//in the plane
-	return 0;	//out of the plane
+    if( coef[0]*point_temp.x+coef[1]*point_temp.y+coef[2]*point_temp.z+coef[3]==0 ) {
+        //in the plane
+        return 1;
+    }
+    //out of the plane
+	return 0;
 }
 //---------------------------------------------------------------------------
-//To judge if a point is contained in this plane
+//Determine if a point is on in this plane, where the point is given by its three components
 int Plane_3D::contain(const double dx, const double dy, const double dz)const
 {
-	if( coef[0]*dx+coef[1]*dy+coef[2]*dz+coef[3]==0 ) return 1; //in the plane
-	return 0;  //out of the plane
+    if( coef[0]*dx+coef[1]*dy+coef[2]*dz+coef[3]==0 ) {
+        //in the plane
+        return 1;
+    }
+    //out of the plane
+	return 0;
 }
 //===========================================================================
 //Constructor that initializes the graphene nanoplatelet geometry
