@@ -319,23 +319,37 @@ int Input::Read_simulation_parameters(struct Simu_para &simu_para, ifstream &inf
     //If the network is generated from some seeds, then read them
     if (simu_para.create_read_network=="Network_From_Seeds") {
         
-        //Different types of fillers need different number of seed
+        //Different types of fillers need different number of seeds
         //Thus, check the filler type and read the necessary number of seeds
-        if (simu_para.particle_type=="CNT_wires") {
+        if (simu_para.particle_type!="GNP_cuboids") {
+            //If the particle type is not GNP_cuboids, then CNTs are generated for sure
             
-            //7 seeds are required for CNT_wires
-            simu_para.network_seeds.assign(7, 0);
+            //7 seeds are required for CNTs
+            int n_seeds = 7;
+            simu_para.CNT_seeds.assign(n_seeds, 0);
             
             //Read the line with the seeds
             istringstream istr_network_seeds(Get_Line(infile));
             //Add seeds to the vector
-            for (int i = 0; i < 7; i++) {
-                istr_network_seeds >> simu_para.network_seeds[i];
-                //hout << simu_para.network_seeds[i] << endl;
+            for (int i = 0; i < n_seeds; i++) {
+                istr_network_seeds >> simu_para.CNT_seeds[i];
+                //hout << simu_para.CNT_seeds[i] << endl;
             }
         }
-        else {
-            hout<<"Error: Seeds can only be read with the keyword \"CNT_wires\" for nanoparticle type. Input for particle type was: "<<simu_para.particle_type<<endl; return 0;
+        if (simu_para.particle_type!="CNT_wires") {
+            //If the particle type is not CNT_wires, then GNPs are generated for sure
+            
+            //6 seeds are required for GNPs
+            int n_seeds = 6;
+            simu_para.GNP_seeds.assign(n_seeds, 0);
+            
+            //Read the line with the seeds
+            istringstream istr_network_seeds(Get_Line(infile));
+            //Add seeds to the vector
+            for (int i = 0; i < n_seeds; i++) {
+                istr_network_seeds >> simu_para.GNP_seeds[i];
+                //hout << simu_para.GNP_seeds[i] << endl;
+            }
         }
     }
     

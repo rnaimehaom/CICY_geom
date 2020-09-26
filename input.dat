@@ -28,6 +28,9 @@ Hybrid_particles
 %Read_Network: to read the data of network from a file
 %Network_From_Seeds: to generate a new structure from specific seeds (positive integers) for the
 %random number generators. All seeds need to be specified in the next line separated by a space
+%For CNTs 7 seeds are needed. For GNPs 6 seeds are needed.
+%If both CNTs and GNPs are generated (GNP_CNT_mix or Hybrid_particles), CNT seeds are input first
+%in one line and GNP seeds in the next line.
 Create_Network
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Flag to avoid calculating the resistance of the network

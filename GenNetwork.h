@@ -44,9 +44,6 @@ public:
     int Generate_cnts_nodes_elements(vector<vector<Node> > &nodes, vector<vector<Element> > &eles, const vector<Point_3D> &cnts_points, const vector<double> &cnts_radius, const vector<vector<long int> > &structure);    
     
 //private:
-    //Data Member
-    
-    //Member Functions
     
     //Generate a network defined by points and connections
     int Generate_cnt_network_threads_mt(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points,  vector<double> &cnts_radius)const;
@@ -60,7 +57,7 @@ public:
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
-    int Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Cutoff_dist &cutoffs, const string &particle_type, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const;
+    int Generate_gnp_network_mt(const struct Simu_para &simu_para, const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Cutoff_dist &cutoffs, const string &particle_type, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const;
     int Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, vector<double> &cnts_radius)const;
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------

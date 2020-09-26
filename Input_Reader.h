@@ -39,8 +39,8 @@ struct Simu_para{
     int sample_num;
     int avoid_resistance;
     string particle_type;
-    //Seeds (positive integers) for the random number generators to generate a network
-    vector<unsigned int> network_seeds;
+    //Seeds (positive integers) for the random number generators to generate a CNT and GNP networks
+    vector<unsigned int> CNT_seeds, GNP_seeds;
 };
 //The geometry of the sample
 struct Geom_sample{

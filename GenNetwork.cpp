@@ -35,14 +35,14 @@ int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, c
         
     } else if (simu_para.particle_type == "GNP_cuboids") {
         //Generate a network defined by cuboids and points
-        if (!Generate_gnp_network_mt(gnp_geo, geom_sample, cutoffs, simu_para.particle_type, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
+        if (!Generate_gnp_network_mt(simu_para, gnp_geo, geom_sample, cutoffs, simu_para.particle_type, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
             hout << "Error in generating a GNP network" << endl;
             return 0;
         }
         
     } else if (simu_para.particle_type == "Hybrid_particles") {
         //Generate a network defined by cuboids and points
-        if (!Generate_gnp_network_mt(gnp_geo, geom_sample, cutoffs, simu_para.particle_type, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
+        if (!Generate_gnp_network_mt(simu_para, gnp_geo, geom_sample, cutoffs, simu_para.particle_type, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
             hout << "Error in generating a GNP network" << endl;
             return 0;
         }
@@ -53,7 +53,7 @@ int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, c
         
     } else if (simu_para.particle_type == "GNP_CNT_mix") {
         //Generate a network defined by cuboids and points
-        if (!Generate_gnp_network_mt(gnp_geo, geom_sample, cutoffs, simu_para.particle_type, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
+        if (!Generate_gnp_network_mt(simu_para, gnp_geo, geom_sample, cutoffs, simu_para.particle_type, gnps_points, hybrid_particles, carbon_vol, carbon_weight)) {
             hout << "Error in generating a GNP network" << endl;
             return 0;
         }
@@ -150,34 +150,36 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
     vector<unsigned int> net_seeds(7, 0);
     
     //If seeds have been specified, copy them
-    if (simu_para.network_seeds.size()) {
-        for (size_t i = 0; i < simu_para.network_seeds.size(); i++) {
-            net_seeds[i] = simu_para.network_seeds[i];
+    if (simu_para.CNT_seeds.size()) {
+        for (size_t i = 0; i < simu_para.CNT_seeds.size(); i++) {
+            net_seeds[i] = simu_para.CNT_seeds[i];
         }
     }
     //If seeds have not been specified, generate them
      else {
         
-        //7 seeds are needed
-        net_seeds.assign(7, 0);
-        
         //Generate all the new seeds and print them to the output file
         net_seeds[0] = rd();
-        hout << "seed x: "<<net_seeds[0]<<endl;
+        //hout << "seed x: "<<net_seeds[0]<<endl;
         net_seeds[1] = rd();
-        hout << "seed y: "<<net_seeds[1]<<endl;
+        //hout << "seed y: "<<net_seeds[1]<<endl;
         net_seeds[2] = rd();
-        hout << "seed z: "<<net_seeds[2]<<endl;
+        //hout << "seed z: "<<net_seeds[2]<<endl;
         net_seeds[3] = rd();
-        hout << "seed pha: "<<net_seeds[3]<<endl;
+        //hout << "seed pha: "<<net_seeds[3]<<endl;
         net_seeds[4] = rd();
-        hout << "seed sita: "<<net_seeds[4]<<endl;
+        //hout << "seed sita: "<<net_seeds[4]<<endl;
         net_seeds[5] = rd();
-        hout << "seed rand: "<<net_seeds[5]<<endl;
+        //hout << "seed rand: "<<net_seeds[5]<<endl;
         net_seeds[6] = rd();
-        hout << "seed init dir: "<<net_seeds[6]<<endl;
-        
+        //hout << "seed init dir: "<<net_seeds[6]<<endl;
     }
+    //Output the CNT seeds
+    hout<<"CNT seeds:"<<endl;
+    for (size_t i = 0; i < net_seeds.size(); i++) {
+        hout<<net_seeds[i]<<' ';
+    }
+    hout<<endl;
     
     //Use the seeds generated above
     std::mt19937 engine_x(net_seeds[0]);
@@ -524,20 +526,54 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
 //---------------------------------------------------------------------------
 //Generate a GNP network
 //Use the Mersenne Twister for the random number generation
-int GenNetwork::Generate_gnp_network_mt(const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Cutoff_dist &cutoffs, const string &particle_type, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const
+int GenNetwork::Generate_gnp_network_mt(const struct Simu_para &simu_para, const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Cutoff_dist &cutoffs, const string &particle_type, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const
 {
     //---------------------------------------------------------------------------
     //Set up the Mersenne Twisters used for the different variables
     // Use random_device to generate a seed for Mersenne twister engine.
     std::random_device rd;
+
+    //However, geom_sample cannot be modified, so copy the seeds to a new vector
+    vector<unsigned int> net_seeds(6, 0);
+
+    //If seeds have been specified, copy them
+    if (simu_para.GNP_seeds.size()) {
+        for (size_t i = 0; i < simu_para.GNP_seeds.size(); i++) {
+            net_seeds[i] = simu_para.GNP_seeds[i];
+        }
+    }
+    //If seeds have not been specified, generate them
+    else {
+        //Generate all the new seeds
+        net_seeds[0] = rd();
+        //hout << "seed x: "<<net_seeds[0]<<endl;
+        net_seeds[1] = rd();
+        //hout << "seed y: "<<net_seeds[1]<<endl;
+        net_seeds[2] = rd();
+        //hout << "seed z: "<<net_seeds[2]<<endl;
+        net_seeds[3] = rd();
+        //hout << "seed length: "<<net_seeds[3]<<endl;
+        net_seeds[4] = rd();
+        //hout << "seed thickness: "<<net_seeds[4]<<endl;
+        net_seeds[5] = rd();
+        //hout << "seed orientation: "<<net_seeds[5]<<endl;
+        
+        
+    }
+    //Output the seeds
+    hout<<"GNP seeds:"<<endl;
+    for (size_t i = 0; i < net_seeds.size(); i++) {
+        hout<<net_seeds[i]<<' ';
+    }
+    hout<<endl;
     //---------------------------------------------------------------------------
     //Generate differnet engines for different variables
-    std::mt19937 engine_x(rd());
-    std::mt19937 engine_y(rd());
-    std::mt19937 engine_z(rd());
-    std::mt19937 engine_l(rd());
-    std::mt19937 engine_t(rd());
-    std::mt19937 engine_orientation(rd());
+    std::mt19937 engine_x(net_seeds[0]);
+    std::mt19937 engine_y(net_seeds[1]);
+    std::mt19937 engine_z(net_seeds[2]);
+    std::mt19937 engine_l(net_seeds[3]);
+    std::mt19937 engine_t(net_seeds[4]);
+    std::mt19937 engine_orientation(net_seeds[5]);
     
     // "Filter" MT's output to generate double values, uniformly distributed on the closed interval [0, 1].
     std::uniform_real_distribution<double> dist(0.0, 1.0);
