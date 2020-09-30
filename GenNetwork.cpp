@@ -304,7 +304,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
         const double step_wei_para = nanotube_geo.linear_density;
         
         //---------------------------------------------------------------------------
-        //Randomly generate a seed (initial point) of a CNT in the extended RVE
+        //Randomly generate a seed (initial point) of a CNT in the extended domain
         Point_3D cnt_poi;
         if(Get_seed_point_mt(excub, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
         
@@ -526,20 +526,159 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
 //---------------------------------------------------------------------------
 //Generate a GNP network
 //Use the Mersenne Twister for the random number generation
-int GenNetwork::Generate_gnp_network_mt(const struct Simu_para &simu_para, const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Cutoff_dist &cutoffs, const string &particle_type, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const
+
+int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const string &particle_type, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const
+{
+    return 1;
+}
+int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const string &particle_type, vector<GNP> &gnps, double &carbon_vol, double &carbon_weight)const
+{
+
+    //geom_sample cannot be modified, so copy the seeds to an array if they were specified in
+    //the input file otherwise generate them
+    unsigned int net_seeds[6];
+    if (!GNP_seeds(simu_para.GNP_seeds, net_seeds)) {
+        hout<<"Error in GNP_seeds"<<endl;
+        return 0;
+    }
+    
+    //---------------------------------------------------------------------------
+    //Generate differnet engines for different variables
+    std::mt19937 engine_x(net_seeds[0]);
+    std::mt19937 engine_y(net_seeds[1]);
+    std::mt19937 engine_z(net_seeds[2]);
+    std::mt19937 engine_l(net_seeds[3]);
+    std::mt19937 engine_t(net_seeds[4]);
+    std::mt19937 engine_orientation(net_seeds[5]);
+    
+    // "Filter" MT's output to generate double values, uniformly distributed on the closed interval [0, 1].
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+    // "Filter" MT's output to generate double values, uniformly distributed on the closed interval [-1, 1].
+    std::uniform_real_distribution<double> dist_orientation(-1.0, 1.0);
+    
+    //---------------------------------------------------------------------------
+    //Total volume of generated GNPs
+    double vol_sum = 0;
+    //Total weight of generated GNPs
+    double wt_sum = 0;
+    //Variable to count the number of GNPs that were deleted due to penetration
+    int gnp_reject_count = 0;
+    //sectioned_domain[i] contains all the points in sub-region i, a negative number indicates the discretized GNP
+    //Sub-region i is an overlapping subregion to check for penetrations
+    vector<vector<int> > sectioned_domain;
+    //n_subregions[0] is the number of subregions along x
+    //n_subregions[1] is the number of subregions along y
+    //n_subregions[2] is the number of subregions along z
+    int n_subregion[] = {0,0,0};
+    //Variable to store the side length of the GNP overlapping sub-regions
+    double ls = 0.0;
+    //Calculate the number of subregins along each direction and intialize the sectioned_domain vector
+    if (!Initialize_gnp_subregions(geom_sample, gnp_geo, n_subregion, sectioned_domain, ls)) {
+        hout<<"Error in Initialize_gnp_subregions"<<endl;
+        return 1;
+    }
+    
+    //This flag will be used to skip overlapping functions
+    //1 = non-penetrating model
+    //0 = penetrating model
+    int penetrating_model_flag = 1;
+    
+    //Booleans for the content criterion
+    bool vol_crit = gnp_geo.criterion == "vol";
+    bool wt_crit = gnp_geo.criterion == "wt";
+    
+    //---------------------------------------------------------------------------
+    while( (vol_crit&&vol_sum < gnp_geo.real_volume) || (wt_crit&&wt_sum < gnp_geo.real_weight) )
+    {
+        //---------------------------------------------------------------------------
+        //Generate a GNP
+        GNP gnp;
+        //Location of the GNP center
+        Point_3D gnp_poi;
+        
+        //---------------------------------------------------------------------------
+        //Randomly generate a direction as the orientation of the GNP
+        if (!Get_initial_direction_mt(gnp_geo.orient_distrib_type, gnp_geo.ini_sita, gnp_geo.ini_pha, engine_orientation, dist_orientation, gnp.rotation)) {
+            hout << "Error in Generate_gnp_network_mt when calling Get_initial_direction_mt" << endl;
+            return 0;
+        }
+        
+        //---------------------------------------------------------------------------
+        //Randomly generate a point inside the extended domain, this will be the displacement
+        //applied to the GNP, i.e, its random location
+        if(Get_seed_point_mt(geom_sample, gnp.center, engine_x, engine_y, engine_z, dist)==0) return 0;
+        
+        //Generate the GNP and all its remaining geometric parameters (vertices, planes, normal vectors)
+        if (!Generate_gnp(gnp_geo, gnp, engine_l, engine_t, dist)) {
+            hout << "Error in Generate_gnp_network_mt when calling Generate_gnp" << endl;
+            return 0;
+        }
+        
+        //Flag to determine if new gnp was rejected
+        bool rejected = false;
+        
+        //Check if we are allowing penetrations
+        if (!penetrating_model_flag) {
+            //Penetrations are not allowed
+            
+            //Check if the GNP penetrates another GNP
+            if (!Deal_with_gnp_interpenetrations(geom_sample, gnps, ls, 0.34, n_subregion, gnp, sectioned_domain, rejected)) {
+                hout<<"Error in Deal_with_gnp_interpenetrations"<<endl;
+                return 0;
+            }
+            
+        }
+
+        
+        //Check if the new GNP was rejected
+        if (!rejected) {
+            //The GNP was not rejected, so update generated volume/weight and add it to the
+            //vectorof GNPs
+            
+            //Update generated volume/weight
+            
+            
+            //Add the current particle to the vector of particles
+            gnps.push_back(gnp);
+        }
+        else {
+            //The GNP was rejected so increase the count of rejected GNPs
+            gnp_reject_count++;
+        }
+    }
+    
+    carbon_vol = vol_sum;
+    carbon_weight = wt_sum;
+    
+    if (particle_type == "GNP_cuboids") {
+        //Print the number of GNPs when GNPs only or mixed fillers are generated
+        if(gnp_geo.criterion == "wt") {
+            
+            //Calculate matrix weight
+            double matrix_weight = (geom_sample.volume - vol_sum)*geom_sample.matrix_density;
+            
+            hout << "The weight fraction of generated GNPs is: " << wt_sum/(matrix_weight + wt_sum) << endl;
+            hout << ", the target weight fraction was " << gnp_geo.weight_fraction << endl << endl;
+        } else if(gnp_geo.criterion == "vol") {
+            hout << endl << "The volume fraction of generated GNPs was " << vol_sum/geom_sample.volume;
+            hout << ", the target volume fraction was " << gnp_geo.volume_fraction << endl;
+        }
+        
+        hout << "There were " << gnps.size() << " GNPs generated." << endl;
+    }
+    
+    return 1;
+}
+int GenNetwork::GNP_seeds(const vector<unsigned int> &GNP_seeds, unsigned int net_seeds[])const
 {
     //---------------------------------------------------------------------------
-    //Set up the Mersenne Twisters used for the different variables
-    // Use random_device to generate a seed for Mersenne twister engine.
+    //Random_device is used to generate seeds for the Mersenne twister
     std::random_device rd;
 
-    //However, geom_sample cannot be modified, so copy the seeds to a new vector
-    vector<unsigned int> net_seeds(6, 0);
-
     //If seeds have been specified, copy them
-    if (simu_para.GNP_seeds.size()) {
-        for (size_t i = 0; i < simu_para.GNP_seeds.size(); i++) {
-            net_seeds[i] = simu_para.GNP_seeds[i];
+    if (GNP_seeds.size()) {
+        for (size_t i = 0; i < GNP_seeds.size(); i++) {
+            net_seeds[i] = GNP_seeds[i];
         }
     }
     //If seeds have not been specified, generate them
@@ -562,143 +701,292 @@ int GenNetwork::Generate_gnp_network_mt(const struct Simu_para &simu_para, const
     }
     //Output the seeds
     hout<<"GNP seeds:"<<endl;
-    for (size_t i = 0; i < net_seeds.size(); i++) {
+    for (size_t i = 0; i < GNP_seeds.size(); i++) {
         hout<<net_seeds[i]<<' ';
     }
     hout<<endl;
-    //---------------------------------------------------------------------------
-    //Generate differnet engines for different variables
-    std::mt19937 engine_x(net_seeds[0]);
-    std::mt19937 engine_y(net_seeds[1]);
-    std::mt19937 engine_z(net_seeds[2]);
-    std::mt19937 engine_l(net_seeds[3]);
-    std::mt19937 engine_t(net_seeds[4]);
-    std::mt19937 engine_orientation(net_seeds[5]);
+    return 1;
+}
+int GenNetwork::Initialize_gnp_subregions(const Geom_sample &sample_geom, const GNP_Geo &gnp_geo, int n_subregion[], vector<vector<int> > &sectioned_domain, double &ls)const
+{
     
-    // "Filter" MT's output to generate double values, uniformly distributed on the closed interval [0, 1].
-    std::uniform_real_distribution<double> dist(0.0, 1.0);
-    // "Filter" MT's output to generate double values, uniformly distributed on the closed interval [-1, 1].
-    std::uniform_real_distribution<double> dist_orientation(-1.0, 1.0);
+    //Calculate the side length of the subregions
+    ls = sqrt(2.0*gnp_geo.len_max + gnp_geo.t_max);
     
-    //---------------------------------------------------------------------------
-    double vol_sum = 0;  //the sum of volume of generated GNPs
-    double wt_sum = 0;   //the sum of weight of generated GNPs
-    int gnp_count = 0; //to record the number of successfuly generated hybrid particles
-    int gnp_reject_count = 0; //to record the number of CNTs that were deleted due to penetration
+    //Calculate the number of variables along each direction
+    //
+    //Number of subregions along x
+    n_subregion[0] = (int)(sample_geom.len_x/ls);
+    //Number of subregions along y
+    n_subregion[1] = (int)(sample_geom.wid_y/ls);
+    //Number of subregions along z
+    n_subregion[2] = (int)(sample_geom.hei_z/ls);
     
-    //---------------------------------------------------------------------------
-    //Vectors for handling CNT penetration
-    //global_coordinates[i][0] stores the CNT number of global point i
-    //global_coordinates[i][1] stores the local point number of global point i
-    vector<vector<int> > global_coordinates;
-    //sectioned_domain[i] contains all the points in sub-region i, a negative number indicates the discretized GNP
-    //Sub-region i is an overlapping subregion to check for penetrations
-    vector<vector<long int> > sectioned_domain;
-    //n_subregions[0] is the number of subregions along x
-    //n_subregions[1] is the number of subregions along y
-    //n_subregions[2] is the number of subregions along z
-    vector<int> n_subregions;
-    //Initialize the vector sub-regions
-    Initialize_subregions(geom_sample, n_subregions, sectioned_domain);
-    //This flag will be used to skip overlapping functions
-    //1 = non-penetrating model
-    //0 = penetrating model
-    int penetrating_model_flag = 1;
+    //Initialize sectioned_domain
+    sectioned_domain.assign(n_subregion[0]*n_subregion[1]*n_subregion[2], vector<int>());
     
-    //---------------------------------------------------------------------------
-    //Generate cuboids that represent the extended domain and the composite domain
-    //To calculate the effective portion (length) which falls into the given region (RVE)
-    struct cuboid gvcub;					//generate a cuboid to represent the composite domain
-    gvcub.poi_min = geom_sample.origin;
-    gvcub.len_x = geom_sample.len_x;
-    gvcub.wid_y = geom_sample.wid_y;
-    gvcub.hei_z = geom_sample.hei_z;
-    struct cuboid excub;					//generate a cuboid to represent the extended domain
-    excub.poi_min = geom_sample.origin - Point_3D(gnp_geo.len_max/2,gnp_geo.len_max/2,gnp_geo.len_max/2);
-    excub.len_x = geom_sample.len_x + gnp_geo.len_max;
-    excub.wid_y = geom_sample.wid_y + gnp_geo.len_max;
-    excub.hei_z = geom_sample.hei_z + gnp_geo.len_max;
-    excub.volume = excub.len_x*excub.wid_y*excub.hei_z;
+    return 1;
+}
+//This fuction generates a GNP with a square base and generates other usefuld geometric parameters:
+//its volume, the equations of the planes for the faces, thu unit normal vectors to the planes,
+//and the vertices
+int GenNetwork::Generate_gnp(const GNP_Geo &gnp_geo, GNP &gnp, mt19937 &engine_l, mt19937 &engine_t, uniform_real_distribution<double> &dist)const
+{
+    //Define side length for the squared GNP surface
+    gnp.l = gnp_geo.len_min + (gnp_geo.len_max - gnp_geo.len_min)*dist(engine_l);
     
-    gvcub.volume = geom_sample.volume;
+    //Thickness
+    gnp.t = gnp_geo.t_min + (gnp_geo.t_max - gnp_geo.t_min)*dist(engine_t);
     
-    //---------------------------------------------------------------------------
-    while((gnp_geo.criterion == "vol"&&vol_sum < gnp_geo.real_volume)||
-          (gnp_geo.criterion == "wt"&&wt_sum < gnp_geo.real_weight))
-    {
-        //---------------------------------------------------------------------------
-        //Generate a GNP
-        GCH hybrid;
-        Point_3D gnp_poi;                   //Random displacement of the GNP
-        int attempts = 0;
-        int success_gnp = 0;
+    //Calculate volume
+    gnp.volume = gnp.l*gnp.l*gnp.t;
+    
+    //The GNP in local coordinates it is assumed to have its center at the origin, thus its vertices
+    //are at +/- l/2 in x and y, and +/- t in z in local coordinates
+    //After applying the displacement and rotation (that are already in the gnp variable),
+    //vertices are mapped to the global coordinates
+    //
+    //Top surface
+    gnp.vertices[0] = (Point_3D( gnp.l/2, gnp.l/2,  gnp.t/2)).rotation(gnp.rotation, gnp.center);
+    gnp.vertices[1] = (Point_3D(-gnp.l/2, gnp.l/2,  gnp.t/2)).rotation(gnp.rotation, gnp.center);
+    gnp.vertices[2] = (Point_3D(-gnp.l/2,-gnp.l/2,  gnp.t/2)).rotation(gnp.rotation, gnp.center);
+    gnp.vertices[3] = (Point_3D( gnp.l/2,-gnp.l/2,  gnp.t/2)).rotation(gnp.rotation, gnp.center);
+    //Bottom surface
+    gnp.vertices[4] = (Point_3D( gnp.l/2, gnp.l/2, -gnp.t/2)).rotation(gnp.rotation, gnp.center);
+    gnp.vertices[5] = (Point_3D(-gnp.l/2, gnp.l/2, -gnp.t/2)).rotation(gnp.rotation, gnp.center);
+    gnp.vertices[6] = (Point_3D(-gnp.l/2,-gnp.l/2, -gnp.t/2)).rotation(gnp.rotation, gnp.center);
+    gnp.vertices[7] = (Point_3D( gnp.l/2,-gnp.l/2, -gnp.t/2)).rotation(gnp.rotation, gnp.center);
+    
+    //Calculate the plane normals (as unit vectors) and their equations
+    //Normal is calcualted as (P2-P1)x(P3-P1)
+    //
+    //Top face
+    gnp.faces[0] = Plane_3D(gnp.vertices[0], gnp.vertices[1], gnp.vertices[3]);
+    //Bottom face
+    gnp.faces[1] = Plane_3D(gnp.vertices[4], gnp.vertices[7], gnp.vertices[5]);
+    //Front face
+    gnp.faces[2] = Plane_3D(gnp.vertices[0], gnp.vertices[3], gnp.vertices[4]);
+    //Right face
+    gnp.faces[3] = Plane_3D(gnp.vertices[0], gnp.vertices[4], gnp.vertices[1]);
+    //Back face
+    gnp.faces[4] = Plane_3D(gnp.vertices[1], gnp.vertices[5], gnp.vertices[2]);
+    //Left face
+    gnp.faces[5] = Plane_3D(gnp.vertices[2], gnp.vertices[6], gnp.vertices[3]);
+    
+    
+    return 1;
+}
+//This function checks whether the newly generated GNP penetrates another GNP
+//If there is interpenetration, then the GNP is moved
+//If the attempts to relocate the GNP exceed the number of maximum attempts, the GNP is rejected
+int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const vector<GNP> &gnps, const double &ls, const double &overlap_max_cutoff, const int n_subregions[], GNP &gnp_new, vector<vector<int> > &sectioned_domain, bool &rejected)const
+{
+    //Variable to count the number of attempts
+    int attemtps = 0;
+    
+    //Flag to determine penetration
+    //It is initialized with true just to start the while loop
+    bool p_flag = true;
+    
+    //Varibale to store all GNP subregions
+    vector<int> subregions;
+    
+    //Keep moving the GNP_new as long as the number of attempts does not exceed the maximum allowed
+    while (p_flag && attemtps <= MAX_ATTEMPTS) {
         
-        //Randomly assign a geometry to the GNP
-        if (!Generate_gnp(gnp_geo, hybrid.gnp, engine_l, engine_t, dist)) {
-            hout << "Error in Generate_gnp_network_mt when calling Generate_gnp" << endl;
+        //Find the subregions the GNP occupies
+        subregions.clear();
+        if (!Get_gnp_subregions(geom_sample, gnp_new, ls, overlap_max_cutoff, n_subregions, subregions)) {
+            hout<<"Error in Is_there_gnp_interpenetration"<<endl;
             return 0;
         }
         
-        //---------------------------------------------------------------------------
-        //Randomly generate a direction as the orientation of the GNP
-        if (!Get_initial_direction_mt(gnp_geo.orient_distrib_type, gnp_geo.ini_sita, gnp_geo.ini_pha, engine_orientation, dist_orientation, hybrid.rotation)) {
-            hout << "Error in Generate_gnp_network_mt when calling Get_initial_direction_mt" << endl;
+        //Scan the subregions the GNP occupies to determine if it might be close enough to another GNP
+        //Get all GNPs it might penetrate
+        set<int> gnp_set;
+        if (!Get_gnps_in_subregions(sectioned_domain, subregions, gnp_set)) {
+            hout<<"Error in Get_gnps_in_subregions"<<endl;
             return 0;
         }
         
-        //---------------------------------------------------------------------------
-        //Randomly generate a point inside the sample domain, this will be the displacement applied to the GNP, i.e,
-        //its random location
-        if(Get_seed_point_mt(excub, hybrid.center, engine_x, engine_y, engine_z, dist)==0) return 0;
-        
-        //---------------------------------------------------------------------------
-        //Update flag of hybrid particle with the particle number (starts in 0)
-        hybrid.flag = gnp_count;
-        //Increase the counter of particles
-        gnp_count++;
-        //hout << "gnp_count=" << gnp_count << endl;
-        
-        //---------------------------------------------------------------------------
-        //Discretizise the GNP
-        vector<Point_3D> gnp_discrete;
-        if (Discretize_gnp(hybrid, gnp_geo.discr_step_length, gnp_discrete)==0) {
-            hout << "Error in Generate_gnp_network_mt when calling Discretize_gnp." << endl;
-            return 0;
+        //Check if close enough GNPs were found
+        if (!gnp_set.empty()) {
+            
+            //Determine if the GNP_new needs to be moved and, if so, move it
+            
+            
+            //Check if the GNP_new was not moved
+            //If the GNP was not moved, then it is in a valid position
+            //If the GNP was moved, then one more iteration is needed to check that the new
+            //position is a vlaid position
         }
         
-        //---------------------------------------------------------------------------
-        //Add to the vector of discretized gnps
-        gnps_points.push_back(gnp_discrete);
-        
-        //Add generated volume fraction to the cumulative variables
-        if (Calculate_generated_gnp_volume(gnp_geo, gvcub, hybrid, vol_sum, wt_sum)==0) {
-            hout << "Error in Generate_gnp_network_mt when calling Calculate_generated_gnp_volume" << endl;
-            return 0;
-        }
-        
-        //Add the current particle to the vector of particles
-        hybrid_praticles.push_back(hybrid);
+        //Increase the number of attempts
+        attemtps++;
     }
     
-    carbon_vol = vol_sum;
-    carbon_weight = wt_sum;
+    //Get the value of the rejected flag from the penetration flag
+    //If there are still interpenetrations (p_flag = true), then the GNP_new is rejected
+    //rejected = p_flag;
     
-    if (particle_type == "GNP_cuboids") {
-        //Print the number of GNPs when GNPs only or mixed fillers are generated
-        if(gnp_geo.criterion == "wt") {
-            
-            //Calculate matrix weight
-            double matrix_weight = (geom_sample.volume - vol_sum)*geom_sample.matrix_density;
-            
-            hout << "The weight fraction of generated GNPs is: " << wt_sum/(matrix_weight + wt_sum) << endl;
-            hout << ", the target weight fraction was " << gnp_geo.weight_fraction << endl << endl;
-        } else if(gnp_geo.criterion == "vol") {
-            hout << endl << "The volume fraction of generated GNPs was " << vol_sum/geom_sample.volume;
-            hout << ", the target volume fraction was " << gnp_geo.volume_fraction << endl;
-        }
+    /* THIS SHOULD GO IN THE MAIN BODY OF THE GENERATE GNPS FUNCTION
+    //If the while loop was exited and the number of attempts was not exceeded,
+    //then the GNP_new was successfully generated, so add it to all corresponding sub regions
+    for (size_t i = 0; i < subregions.size(); i++) {
         
-        hout << "There were " << hybrid_praticles.size() << " GNPs generated." << endl;
+        //Current subregion
+        int s = subregions[i];
+        
+        //Add GNP number to current subregion
+        sectioned_domain[s].push_back((int)gnps.size());
+    }*/
+    
+    return 1;
+}
+//This function finds all the subregions the GNP_new occupies and those subregions where there might be
+//close enough GNPs below the van der Waals distance
+int GenNetwork::Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gnp_new, const double &ls, const double &overlap_max_cutoff, const int n_subregions[], vector<int> &subregions)const
+{
+    //Minimum and maximum coordinates of the overlapping subregions
+    //Initialize them with the maximum and minimum values, respectively, so they can be updated
+    int min_a = n_subregions[0], max_a = 0;
+    int min_b = n_subregions[1], max_b = 0;
+    int min_c = n_subregions[2], max_c = 0;
+    
+    //Loop over the four middle points of the short edges
+    //According to the numbering convention, any pair of vertices (k,k+4) for 0<=k<=3 is such an edge
+    for (int i = 0; i < 4; i++) {
+        
+        //Calculate the midpoint
+        Point_3D mid = (gnp_new.vertices[i] + gnp_new.vertices[i+3])/2.0;
+        
+        //Check if the midpoint is inside the sample
+        if (Point_inside_sample(geom_sample, mid)) {
+            
+            //Calculate the region-coordinates a, b, c
+            int a = (int)((mid.x-geom_sample.origin.x)/ls);
+            //Limit the value of a as it has to go from 0 to n_subregions[0]-1
+            if (a == n_subregions[0]) a--;
+            int b = (int)((mid.y-geom_sample.origin.y)/ls);
+            //Limit the value of b as it has to go from 0 to n_subregions[1]-1
+            if (b == n_subregions[1]) b--;
+            int c = (int)((mid.z-geom_sample.origin.z)/ls);
+            //Limit the value of c as it has to go from 0 to n_subregions[2]-1
+            if (c == n_subregions[2]) c--;
+            
+            //Update the maximum and minimum values of coordinates
+            if (a < min_a) { min_a = a; }
+            if (a > max_a) { max_a = a; }
+            if (b < min_b) { min_b = b; }
+            if (b > max_b) { max_b = b; }
+            if (c < min_c) { min_c = c; }
+            if (c > max_c) { max_c = c; }
+            
+            //Calculate the coordinates of non-overlaping region the point belongs to
+            double x1 = (double)a*ls +  geom_sample.origin.x;
+            double x2 = x1 + ls;
+            double y1 = (double)b*ls +  geom_sample.origin.y;
+            double y2 = y1 + ls;
+            double z1 = (double)c*ls +  geom_sample.origin.z;
+            double z2 = z1 + ls;
+            
+            //Assign value of flag according to position of point
+            //The first operand eliminates the periodicity on the boundary
+            if ((a > 0) && (mid.x >= x1) && (mid.x <= x1+overlap_max_cutoff)) {
+                //The point is in the "left" side of the overlapping region (along the x axis),
+                //then the minimum a-coordinate needs to be updated again
+                min_a = min_a - 1;
+            }
+            else if ((a < n_subregions[0]-1) && (mid.x >= x2-overlap_max_cutoff) && (mid.x <= x2 )) {
+                //The point is in the "right" side of the overlapping region (along the x axis),
+                //then the maximum a-coordinate needs to be updated again
+                max_a = max_a + 1;
+            }
+            if ((b > 0) && (mid.y >= y1) && (mid.y <= y1+overlap_max_cutoff)) {
+                //The point is in the "left" side of the overlapping region (along the y axis),
+                //then the minimum a-coordinate needs to be updated again
+                min_b = min_b - 1;
+            }
+            else if ((b < n_subregions[1]-1) && (mid.y >= y2-overlap_max_cutoff) && (mid.y <= y2 )){
+                //The point is in the "right" side of the overlapping region (along the y axis),
+                //then the maximum a-coordinate needs to be updated again
+                max_b = max_b + 1;
+            }
+            if ((c > 0) && (mid.z >= z1) && (mid.z <= z1+overlap_max_cutoff)) {
+                //The point is in the "left" side of the overlapping region (along the z axis),
+                //then the minimum a-coordinate needs to be updated again
+                min_c = min_c - 1;
+            }
+            else if ((c < n_subregions[2]-1) && (mid.z >= z2-overlap_max_cutoff) && (mid.z <= z2 )) {
+                //The point is in the "right" side of the overlapping region (along the z axis),
+                //then the maximum a-coordinate needs to be updated again
+                max_c = max_c + 1;
+            }
+        }
     }
+    
+    //Generate all combinations of the coordinates to find the subregions the GNP occupies
+    //and the subregions that might have GNPs that are close enough to be in contact or below the
+    //van der Waals distance
+    for (int i = min_a; i <= max_a; i++) {
+        for (int j = min_b; j <= max_b; j++) {
+            for (int k = min_c; k <= max_c; k++) {
+                
+                //Calculate the subregion index
+                int idx = i + j*n_subregions[0] + k*n_subregions[0]*n_subregions[1];
+                
+                //Add the index to the vector of subregions
+                subregions.push_back(idx);
+            }
+        }
+    }
+    
+    return 1;
+}
+//From a given list of subregions, this function fids all GNPs in those subregions
+//A set is the putput value to avoid repetition of GNP numbers
+int GenNetwork::Get_gnps_in_subregions(const vector<vector<int> > &sectioned_domain, const vector<int> &subregions, set<int> &gnp_set)const
+{
+    for (size_t i = 0; i < subregions.size(); i++) {
+        
+        //Current sub-region
+        int s = subregions[i];
+        
+        for (size_t j = 0; j < sectioned_domain[s].size(); j++) {
+            
+            //Current GNP
+            int GNP = sectioned_domain[s][j];
+            
+            //Add current GNP to set
+            gnp_set.insert(GNP);
+        }
+    }
+    
+    return 1;
+}
+//This function moves a GNP if needed
+int GenNetwork::Move_gnps_if_needed(const vector<GNP> &gnps, set<int> &gnp_set, GNP gnp_new, bool &displaced) const
+{
+    
+    //Variable to store the total displacement (if the GNP_new needs to be moved)
+    Point_3D disp_tot = Point_3D(0.0,0.0,0.0);
+    
+    for (set<int>::iterator i = gnp_set.begin(); i!=gnp_set.end(); i++) {
+        
+        //Get current GNP
+        int GNP = *i;
+        
+        //Check if GNP and GNP_new are too close or penetrate each other
+        
+        
+        //If they are too close or penetrating each other, calculate the dispalcement
+        Point_3D disp;
+        
+        //Add the calculated displacement to the total displacement
+        
+    }
+    
+    //If gnp_new was moved, set the displaced to true
     
     return 1;
 }
@@ -767,15 +1055,17 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
     int penetrating_model_flag = 0;
     
     //---------------------------------------------------------------------------
-    //Generate cuboids that represent the extended domain and the composite domain
-    //To calculate the effective portion (length) which falls into the given region (RVE)
-    struct cuboid gvcub;					//generate a cuboid to represent the composite domain
+    //Generate cuboids that represent the sample domain and the extended domain
+    //
+    //Sample domain
+    struct cuboid gvcub;
     gvcub.poi_min = geom_sample.origin;
     gvcub.len_x = geom_sample.len_x;
     gvcub.wid_y = geom_sample.wid_y;
     gvcub.hei_z = geom_sample.hei_z;
     gvcub.volume = geom_sample.volume;
-    struct cuboid excub;					//generate a cuboid to represent the extended domain
+    //Extended domain
+    struct cuboid excub;
     excub.poi_min = geom_sample.ex_origin;
     excub.len_x = geom_sample.ex_len;
     excub.wid_y = geom_sample.ey_wid;
@@ -933,160 +1223,6 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
     hout << "Deleted additional GNPs, now there are " << hybrid_praticles.size() << " GNPs" << endl << endl;
     
     return 1;
-}
-//This fuction generates a GNP with a square base
-//This fucntion also calculates the volume of the GNP
-int GenNetwork::Generate_gnp(const struct GNP_Geo &gnp_geo, cuboid &gnp, mt19937 &engine_l, mt19937 &engine_t, uniform_real_distribution<double> &dist)const
-{
-    //Define size for the squared GNP surface
-    gnp.len_x = gnp_geo.len_min + (gnp_geo.len_max - gnp_geo.len_min)*dist(engine_l);
-    gnp.wid_y = gnp.len_x;
-    
-    //Thickness
-    gnp.hei_z = gnp_geo.t_min + (gnp_geo.t_max - gnp_geo.t_min)*dist(engine_t);
-    
-    //Calculate volume
-    gnp.volume = gnp.len_x*gnp.hei_z*gnp.wid_y;
-    
-    return 1;
-}
-//This function will loop until the maximum allowed number of attempts to handle GNP penetrations
-int GenNetwork::Handle_gnp_penetrations(const struct cuboid &gvcub, const vector<GCH> &hybrid_particles, GCH &hybrid, Point_3D &gnp_poi)const
-{
-    int attempts = 0;
-    while (attempts < MAX_ATTEMPTS) {
-        //Check if there are any GNP penetrations and move the GNP if necessary
-        if (!Check_penetration_and_move_gnp(gvcub, hybrid_particles, hybrid, gnp_poi)) {
-            //If there are no penetrations, terminate the function
-            return 1;
-        }
-        //After moving the GNP, we need to check if there are still penetrations
-        
-        //Increase the number of attempts for the next loop
-        attempts++;
-    }
-    
-    //If the maximum number of attepmts was reached without eliminating GNP penetrations, terminate the function with 0
-    return 0;
-}
-//This function checks if a GNP is penetrating another GNP or GNPs
-//1: penetration is detected
-//0: no penetration
-int GenNetwork::Check_penetration_and_move_gnp(const struct cuboid &gvcub, const vector<GCH> &hybrid_particles, GCH &hybrid, Point_3D &gnp_poi)const
-{
-    //Calculate radius of sphere that encloses current hybrid
-    double sum = hybrid.gnp.len_x*hybrid.gnp.len_x + hybrid.gnp.wid_y*hybrid.gnp.wid_y + hybrid.gnp.hei_z*hybrid.gnp.hei_z;
-    double radius = sqrt(sum)/2;
-    
-    //Temporary variables
-    vector<int> indices;
-    double sum2, radius2, separation;
-    //Vectors to store the cutoffs and separations
-    
-    //Loop over other hybrid particles to find "penetrating" GNPs
-    vector<double> cutoff, distances;
-    for (int i = 0; i < (int)hybrid_particles.size(); i++) {
-        //Calculate radius of sphere that encloses hybrid particle i
-        sum2 = hybrid_particles[i].gnp.len_x*hybrid_particles[i].gnp.len_x + hybrid_particles[i].gnp.wid_y*hybrid_particles[i].gnp.wid_y + hybrid_particles[i].gnp.hei_z*hybrid_particles[i].gnp.hei_z;
-        radius2 = sqrt(sum2)/2;
-        
-        //Calculate distance from center to center of GNPs
-        separation = hybrid.center.distance_to(hybrid_particles[i].center);
-        
-        //If the distance between centers is less than the sum of radii, there is penetration of GNPs
-        if (separation < radius + radius2) {
-            cutoff.push_back(radius + radius2);
-            distances.push_back(separation);
-            indices.push_back(i);
-        }
-    }
-    
-    //If the cutoff vector (or distances vector) has a nonzero size, there are penetrating GNPs
-    if (cutoff.size()) {
-        //
-        //hout << "Penetrating GNPs: " << cutoff.size() << endl;
-        //hout << "Previous location: (" << hybrid.center.x << ", " << hybrid.center.y << ", " << hybrid.center.z << ")" << endl;
-        
-        //Point to store the new location of the centerpoint of the GNP
-        Point_3D new_location;
-        //Calculate the new location of the center point of the GNP
-        if (Calculate_new_gnp_location(hybrid_particles, cutoff, distances, indices, new_location)==0) return 0;
-        
-        //Calculate the displacement vector of the GNP
-        Point_3D displacement;
-        displacement = new_location - hybrid.center;
-        
-        //Add the displacement to the gnp_poi
-        gnp_poi = gnp_poi + displacement;
-        
-        //Update center point of GNP
-        hybrid.center = new_location;
-        
-        //
-        //hout << "New location: (" << hybrid.center.x << ", " << hybrid.center.y << ", " << hybrid.center.z << ")" << endl;
-        
-        //If it reached this point is beacause there were penetrations
-        return 1;
-    }
-    
-    return 0;
-}
-//Handle penetrations of GNPs
-int GenNetwork::Calculate_new_gnp_location(const vector<GCH> &hybrid_particles, const vector<double> &cutoff, const vector<double> &distances, const vector<int> &indices, Point_3D &new_location)const
-{
-    //Some vectors need to be created in order to use the same functions as for CNT penetration
-    
-    //Create artificial "affected_points" vector. This vector stores all the centers of hybrid particles that are penetrated
-    vector<Point_3D> affected_points;
-    
-    //Add elements to artificial vectors
-    for (int i = 0; i < (int)indices.size(); i++) {
-        int j = indices[i];
-        //Add elements to the "affected_points" vector
-        affected_points.push_back(hybrid_particles[j].center);
-    }
-    
-    //Call the corresponding function depending on the number of overlaps
-    if (indices.size() == 1) {
-        One_overlapping_point(cutoff, distances, affected_points, new_location);
-    } else if (indices.size() == 2) {
-        Two_overlapping_points(cutoff, affected_points, new_location);
-    } else {
-        Three_or_more_overlapping_points(cutoff, distances, affected_points, new_location);
-    }
-    
-    return 1;
-}
-//This function determines if at least one of the corners of the GNP are inside the composite domain (return 1) or outside (return 0)
-int GenNetwork::GNP_inside_composite(const struct cuboid &gvcub, const GCH &hybrid)const
-{    
-    //First calculate the lower left corner
-    //By doing this, it is assummed the center of the GNP is the origin (0,0,0)
-    Point_3D corner( -hybrid.gnp.len_x/2, -hybrid.gnp.wid_y/2, -hybrid.gnp.hei_z/2);
-    
-    //Loop over the eight possible corners of the cube
-    for(int i=0; i<2; i++)
-        for(int j=0; j<2; j++)
-            for(int k=0; k<2; k++) {
-                
-                //If i (j,k) is zero, then add nothing to the x (y,z) coordinate
-                //If i (j,k) is one, then add the length on direction x (y,z) to the x (y,z) coordinate
-                Point_3D adjust(((double)i)*hybrid.gnp.len_x, ((double)j)*hybrid.gnp.wid_y, ((double)k)*hybrid.gnp.hei_z);
-                
-                //Add the center and the "adjustment" so that the loop calculates the eight coordinates 
-                adjust = corner + adjust;
-                
-                //Map to global coordinates
-                adjust = adjust.rotation(hybrid.rotation, hybrid.center);
-                
-                if (Point_inside_cuboid(gvcub, adjust)) {
-                    //When the first corner is found, terminate the function and consider the GNP to be in a proper location
-                    return 1;
-                }
-            }
-    
-    //If the loop finished, that menas that all corners of the GNP are outside the composite domain
-    return 0;
 }
 //Given a CNT geometry and a GNP geometry, this fuction calculates the number of CNTs necesssary to keep the
 //GNP to CNT weight ratio equal to 1
@@ -1981,8 +2117,25 @@ int GenNetwork::Get_random_value_mt(const string &dist_type, mt19937 &engine, un
     return 1;
 }
 //---------------------------------------------------------------------------
+//Randomly generate a seed (intial point) of a CNT in the extended domain
+int GenNetwork::Get_seed_point_mt(const Geom_sample &sample_geo, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_z, uniform_real_distribution<double> &dist)const
+{
+    
+    //Generate coordinates randomly
+    point.x = sample_geo.ex_origin.x + sample_geo.ex_len*dist(engine_x);
+    
+    point.y = sample_geo.ex_origin.y + sample_geo.ey_wid*dist(engine_y);
+    
+    point.z = sample_geo.ex_origin.z + sample_geo.ez_hei*dist(engine_z);
+    
+    //Zero flag denotes this point is the initial point of a CNT
+    point.flag = 0;
+    
+    return 1;
+}
+//---------------------------------------------------------------------------
 //Randomly generate a seed (intial point) of a CNT in the RVE
-int GenNetwork::Get_seed_point_mt(const struct cuboid &cub, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_z, uniform_real_distribution<double> &dist)const
+int GenNetwork::Get_seed_point_mt(const cuboid &cub, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_z, uniform_real_distribution<double> &dist)const
 {
     
     point.x = cub.poi_min.x + cub.len_x*dist(engine_x);
@@ -2009,7 +2162,7 @@ int GenNetwork::Get_initial_direction_mt(const string &dir_distrib_type, const d
         double c = dist_initial(engine_inital_direction);
         
         //Check that a, b and c are not all zero
-        if (abs(a) < Zero && abs(b) < Zero && abs(c) < 0) {
+        if (abs(a) < Zero && abs(b) < Zero && abs(c) < Zero) {
             //Then transform this to a simple case where a = b = c
             a = 1.0;
             b = 1.0;
@@ -2049,8 +2202,9 @@ int GenNetwork::Get_initial_direction_mt(const string &dir_distrib_type, const d
         //Use the probability of a random number to be even to use the opposite direction half the time
         if( engine_inital_direction()%2==0 )
         {
-            cnt_sita = PI - ini_sita;		//"negative" (opposite) direction
-            cnt_pha = PI + ini_pha;	//"negative" (opposite) direction
+            //Invert the direction
+            cnt_sita = PI - ini_sita;
+            cnt_pha = PI + ini_pha;
         }
         //Get the rotation matrix
         rotation = Get_transformation_matrix(cnt_sita, cnt_pha);
@@ -2622,7 +2776,7 @@ int GenNetwork::Get_ellip_clusters(const struct cuboid &cub, const struct Agglom
     double epsilon = 0.01;						//A ratio for extending ellipsoids
     double ellip_volume = 0.0;
     vector<struct elliparam> ellips;			//Define the temporary vector of ellipsoids for nanotube cluster zones
-    double real_volume_fraction;				//Define the real volume fraction of ellips in the RVE
+    double real_volume_fraction = 0;				//Define the real volume fraction of ellips in the RVE
     
     const int N_times=1000;					//A maximum number for generation
     int times = 0;										//Count the number of generation
@@ -2908,7 +3062,7 @@ int GenNetwork::Get_spherical_clusters_regular_arrangement(const struct cuboid &
     double sd_z = 0.5*cub.hei_z/snum;
     if(sd_x<=agg_geo.amin||sd_y<=agg_geo.amin||sd_z<=agg_geo.amin) { hout << "Error: the number of spheres on each side of RVE is too many, please check again." << endl; return 0; }
     
-    double real_volume_fraction;				//Define the real volume fraction of ellips in the RVE
+    double real_volume_fraction = 0;				//Define the real volume fraction of ellips in the RVE
     double ellip_volume = 0.0;
     vector<struct elliparam> ellips;			//Define the temporary vector of ellipsoids for nanotube cluster zones
     for(int i=0; i<snum; i++)

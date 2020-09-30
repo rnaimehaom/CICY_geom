@@ -54,8 +54,8 @@ public:
     double distance_to(const double &px, const double &py,  const double &pz)const;
     double squared_distance_to(const Point_3D &pt)const;
     double squared_distance_to(const double &px, const double &py,  const double &pz)const;
-    Point_3D cross(Point_3D &point);
-    double dot(Point_3D &point);
+    Point_3D cross(const Point_3D &point)const;
+    double dot(const Point_3D &point)const;
     Point_3D rotation(const MathMatrix &Matrix, const Point_3D &displacement);
     Point_3D unit();
     void make_unit();
@@ -100,8 +100,12 @@ class Plane_3D
 {
 public:
 
-    //four coefficients that define the equation of plane: ax+by+cz+d=0
+    //Four coefficients that define the equation of plane: ax+by+cz+d=0
+    //coef[0] = a, coef[1] = b, etc.
     double coef[4];
+    //Normal unit vector to the plane
+    Point_3D N;
+    
     //flag to define if it is a virtual (false) plane
     //false: for virtual plane, its normal vector is (0,0,0)
     //true: for real plane
@@ -111,11 +115,13 @@ public:
     Plane_3D(){};
     Plane_3D(double para[]);
     Plane_3D(double a, double b, double c, double d);
+    Plane_3D(const Point_3D &P1, const Point_3D &P2, const Point_3D &P3);
     
     //Determine if a point is on in this plane, where the point is given as a Point_3D object
     int contain(const Point_3D &point_temp)const;
     //Determine if a point is on in this plane, where the point is given by its three components
     int contain(const double dx, const double dy, const double dz)const;
+    string str() const;
 };
 //---------------------------------------------------------------------------
 //Data structure for an ellipsoid
@@ -174,12 +180,15 @@ struct TrFace {
         v2 = 0;
         v3 = 0;
     }
-    TrFace (int v1_, int v2_, int v3_) {
+    TrFace (const int &v1_, const int &v2_, const int &v3_) {
         v1=v1_;v2=v2_;v3=v3_;
     }
     
-    void set(int v1_, int v2_, int v3_) {
+    void set(const int &v1_, const int &v2_, const int &v3_) {
         v1=v1_;v2=v2_;v3=v3_;
+    }
+    void set(const TrFace &f) {
+        v1=f.v1;v2=f.v2;v3=f.v3;
     }
     string str(){
         return ("("+to_string(v1)+", "+to_string(v2)+", "+to_string(v3)+")");
@@ -200,12 +209,15 @@ struct Edge {
         v1 = 0;
         v2 = 0;
     }
-    Edge (int v1_, int v2_) {
+    Edge (const int &v1_, const int &v2_) {
         v1=v1_;v2=v2_;
     }
     
-    void set(int v1_, int v2_) {
+    void set(const int &v1_, const int &v2_) {
         v1=v1_;v2=v2_;
+    }
+    void set(const Edge &e) {
+        v1=e.v1;v2=e.v2;
     }
     string str(){
         return ("("+to_string(v1)+", "+to_string(v2)+")");
@@ -214,15 +226,15 @@ struct Edge {
         return ("("+to_string(v1)+", "+to_string(v2)+")");
     }
     //Comparing two edges, here edges are not directed so AB and BA are the same edge
-    bool operator==(Edge e) {
+    bool operator==(Edge &e) {
         return ( (e.v1 == v1 && e.v2 == v2) || (e.v2 == v1 && e.v1 == v2) );
     }
-    bool operator==(Edge e) const {
+    bool operator==(Edge &e) const {
         return ( (e.v1 == v1 && e.v2 == v2) || (e.v2 == v1 && e.v1 == v2) );
     }
 };
 //---------------------------------------------------------------------------
-//Data structure for GNP-CNT hybrid particles
+//Class structure for GNP-CNT hybrid particles
 class GCH
 {
 public:
@@ -247,12 +259,49 @@ public:
     //Constructor
     GCH(){
         //Initialize rotation matrix
-        MathMatrix tmp(3,3);
-        rotation = tmp;
+        rotation = MathMatrix(3,3);
     };
     GCH(double len_x, double wid_y, double thick_z);
     
     
+};
+//---------------------------------------------------------------------------
+//Data structure for GNPs
+struct GNP {
+    
+    //Vertices of the GNP
+    Point_3D vertices[8];
+    //Plane equations for the GNP faces
+    Plane_3D faces[6];
+    //GNP center
+    Point_3D center;
+    //Rotation matrix
+    MathMatrix rotation;
+    //Side lengths
+    double l;
+    //Thickness
+    double t;
+    //Volume
+    double volume;
+    //Tringulation edges
+    vector<Edge> triangulation;
+    
+    //Default constructor
+    GNP() {}
+    
+};
+
+//---------------------------------------------------------------------------
+//Data structure for Hybrid particles
+struct Hybrid {
+    
+    //GNP number
+    int GNP;
+    //CNTs attached to the GNP
+    vector<int> cnts_top, cnts_bottom;
+    
+    //Default constructor
+    Hybrid() {}
 };
 #endif
 //===========================================================================

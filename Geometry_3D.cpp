@@ -143,7 +143,7 @@ double Point_3D::squared_distance_to(const double &px, const double &py, const d
     return (x-px)*(x-px)+(y-py)*(y-py)+(z-pz)*(z-pz);
 }
 //---------------------------------------------------------------------------
-Point_3D Point_3D::cross(Point_3D &point)
+Point_3D Point_3D::cross(const Point_3D &point)const
 {
     double a = y*point.z - point.y*z;
     double b = -(x*point.z - point.x*z);
@@ -152,7 +152,7 @@ Point_3D Point_3D::cross(Point_3D &point)
     return Point_3D(a,b,c);
 }
 //---------------------------------------------------------------------------
-double Point_3D::dot(Point_3D &point)
+double Point_3D::dot(const Point_3D &point)const
 {
     return x*point.x + y*point.y + z*point.z;
 }
@@ -316,7 +316,13 @@ int Line_3D::contain(const Point_3D &point_temp)const
 //Constructor
 Plane_3D::Plane_3D(double para[])
 {
+    //Copy the coefficients
 	for(int i=0; i<4; i++)	coef[i] = para[i];
+    
+    //Calculate normal vector
+    N.set(coef[0],coef[1],coef[2]);
+    N.make_unit();
+    
 	if(coef[0]==0.0&&coef[1]==0.0&&coef[2]==0.0) virtual_plane = false;
 	else virtual_plane = true;
 }
@@ -328,6 +334,32 @@ Plane_3D::Plane_3D(double a, double b, double c, double d)
     coef[1] = b;
     coef[2] = c;
     coef[3] = d;
+    
+    //Calculate normal vector
+    N.set(coef[0],coef[1],coef[2]);
+    N.make_unit();
+    
+    if(coef[0]==0.0&&coef[1]==0.0&&coef[2]==0.0) virtual_plane = false;
+    else virtual_plane = true;
+}
+//---------------------------------------------------------------------------
+//Constructor with three points
+Plane_3D::Plane_3D(const Point_3D &P1, const Point_3D &P2, const Point_3D &P3)
+{
+    //Calculate normal vector and normalize it
+    N = (P2 - P1).cross(P3 - P1);
+    N.make_unit();
+    
+    //Top face
+    coef[0] = N.x;
+    coef[1] = N.y;
+    coef[2] = N.z;
+    coef[3] = N.dot(P1)*(-1);
+    
+    //Calculate normal vector
+    N.set(coef[0],coef[1],coef[2]);
+    N.make_unit();
+    
     if(coef[0]==0.0&&coef[1]==0.0&&coef[2]==0.0) virtual_plane = false;
     else virtual_plane = true;
 }
@@ -352,6 +384,38 @@ int Plane_3D::contain(const double dx, const double dy, const double dz)const
     }
     //out of the plane
 	return 0;
+}
+string Plane_3D::str() const
+{
+    string str = to_string(coef[0])+ "x ";
+    if (coef[1] < Zero && abs(coef[1]) > Zero) {
+        //Second coefficient is negative
+        str += to_string(coef[1]);
+    }
+    else {
+        //Second coefficient is positive
+        str += "+ " + to_string(coef[1]);
+    }
+    str += "y ";
+    if (coef[2] < Zero && abs(coef[2]) > Zero) {
+        //Third coefficient is negative
+        str += to_string(coef[2]);
+    }
+    else {
+        //Third coefficient is positive
+        str += "+ " + to_string(coef[2]);
+    }
+    str += "z ";
+    if (coef[3] < Zero && abs(coef[3]) > Zero) {
+        //Third coefficient is negative
+        str += to_string(coef[3]);
+    }
+    else {
+        //Third coefficient is positive
+        str += "+ " + to_string(coef[3]);
+    }
+    str += " = 0";
+    return str;
 }
 //===========================================================================
 //Constructor that initializes the graphene nanoplatelet geometry
