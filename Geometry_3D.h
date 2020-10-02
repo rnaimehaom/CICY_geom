@@ -54,6 +54,8 @@ public:
     double distance_to(const double &px, const double &py,  const double &pz)const;
     double squared_distance_to(const Point_3D &pt)const;
     double squared_distance_to(const double &px, const double &py,  const double &pz)const;
+    double length()const;
+    double length2()const;
     Point_3D cross(const Point_3D &point)const;
     double dot(const Point_3D &point)const;
     Point_3D rotation(const MathMatrix &Matrix, const Point_3D &displacement);
@@ -226,10 +228,7 @@ struct Edge {
         return ("("+to_string(v1)+", "+to_string(v2)+")");
     }
     //Comparing two edges, here edges are not directed so AB and BA are the same edge
-    bool operator==(Edge &e) {
-        return ( (e.v1 == v1 && e.v2 == v2) || (e.v2 == v1 && e.v1 == v2) );
-    }
-    bool operator==(Edge &e) const {
+    bool operator==(const Edge &e) const {
         return ( (e.v1 == v1 && e.v2 == v2) || (e.v2 == v1 && e.v1 == v2) );
     }
 };

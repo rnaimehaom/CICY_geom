@@ -143,6 +143,18 @@ double Point_3D::squared_distance_to(const double &px, const double &py, const d
     return (x-px)*(x-px)+(y-py)*(y-py)+(z-pz)*(z-pz);
 }
 //---------------------------------------------------------------------------
+//Length of the vector from the origin to Point_3D
+double Point_3D::length()const
+{
+    return sqrt(x*x + y*y + z*z);
+}
+//---------------------------------------------------------------------------
+//Squared length of the vector from the origin to Point_3D
+double Point_3D::length2()const
+{
+    return (x*x + y*y + z*z);
+}
+//---------------------------------------------------------------------------
 Point_3D Point_3D::cross(const Point_3D &point)const
 {
     double a = y*point.z - point.y*z;
