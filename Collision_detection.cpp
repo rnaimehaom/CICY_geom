@@ -638,17 +638,20 @@ int Collision_detection::Is_edge_in_edges(const Edge &e, const vector<Edge> &edg
 //This function calculates the distance between two GNPs and finds the closest points on each one
 int Collision_detection::Distance_and_direction_estimation(const GNP &gnpA, const GNP &gnpB, Point_3D &N, double &dist)
 {
-    //Get a point fron inside the Minkowski sum (e.g., gnpA.center - gnpB.center is inside the Mikonski sum)
-    Point_3D P_in = gnpA.center - gnpB.center;
+    //Get a point V fron inside the Minkowski sum (e.g., gnpA.center - gnpB.center is
+    //inside the Mikonski sum)
+    //Then get the vector VO, which goes from V towards the origin.
+    //Thus VO = - V = gnpB.center - gnpA.center
+    Point_3D VO = gnpB.center - gnpA.center;
     
     //Variables to store the four points of the Minkowski sum that are closest to the origin
     int idxsA[2], idxsB[2];
     
-    //Find the two furthest points in A (their indices) in the direction of D
-    Support_map_two_points(P_in, gnpA.vertices, idxsA);
+    //Find the two furthest points in A (their indices) in the direction of VO
+    Support_map_two_points(VO, gnpA.vertices, idxsA);
     
-    //Find the two furthest points in B (their indices) in the direction of -D
-    Support_map_two_points(P_in*(-1), gnpB.vertices, idxsB);
+    //Find the two furthest points in B (their indices) in the direction of -VO
+    Support_map_two_points(VO*(-1), gnpB.vertices, idxsB);
     
     //Generate the four points in the Minkowski sum that are closest to the index
     //Closest point to origin in Minkowski sum is in index 0
