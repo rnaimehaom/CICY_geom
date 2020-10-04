@@ -65,22 +65,15 @@ int GenNetwork::Generate_nanoparticle_network(const Simu_para &simu_para, const 
         //A new Tecplot_Export object
         Tecplot_Export *Tecexpt = new Tecplot_Export;
         
-        //Generate a cuboid for RVE
-        struct cuboid cub;
-        cub.poi_min = geom_sample.ex_origin;
-        cub.len_x = geom_sample.ex_len;
-        cub.wid_y = geom_sample.ey_wid;
-        cub.hei_z = geom_sample.ez_hei;
-        
         if (tec360_flags.generated_cnts == 1) {
             
             //Export the CNT network as threads in Tecplot
-            if(Tecexpt->Export_network_threads(cub, cnts_points)==0) return 0;
+            if(Tecexpt->Export_network_threads(geom_sample.ex_dom_cnt, cnts_points)==0) return 0;
         }
         else {
             
             //Export the CNT network as 3D "cylinders" in Tecplot
-            if(Tecexpt->Export_cnt_network_meshes(tec360_flags.generated_cnts, cub, cnts_points, cnts_radius_in)==0) return 0;
+            if(Tecexpt->Export_cnt_network_meshes(tec360_flags.generated_cnts, geom_sample.ex_dom_cnt, cnts_points, cnts_radius_in)==0) return 0;
         }
         
         delete Tecexpt;
@@ -229,12 +222,6 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
     gvcub.wid_y = geom_sample.wid_y;
     gvcub.hei_z = geom_sample.hei_z;
     gvcub.volume = geom_sample.volume;
-    struct cuboid excub;                    //generate a cuboid to represent the extended domain
-    excub.poi_min = geom_sample.ex_origin;
-    excub.len_x = geom_sample.ex_len;
-    excub.wid_y = geom_sample.ey_wid;
-    excub.hei_z = geom_sample.ez_hei;
-    excub.volume = excub.len_x*excub.wid_y*excub.hei_z;
     
     //Get the time when generation started
     ct0 = time(NULL);
@@ -283,12 +270,12 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
         //---------------------------------------------------------------------------
         //Randomly generate a seed (initial point) of a CNT in the extended domain
         Point_3D cnt_poi;
-        if(Get_seed_point_mt(excub, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
+        if(Get_seed_point_mt(geom_sample.ex_dom_cnt, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
         
         //Check overlapping of the intial point
         int counter = 1;
         while (penetrating_model_flag && !Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
-            if(Get_seed_point_mt(excub, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
+            if(Get_seed_point_mt(geom_sample.ex_dom_cnt, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
             cnt_seed_count++;                    //record the number of seed generations
             //hout << "Seed deleted" << endl;
             if (counter == MAX_ATTEMPTS) {
@@ -343,7 +330,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
             //If the new CNT point grows out of the extended domain, terminate generation of the CNT
             bool touch_end = false;
             //hout <<"point in RVE"<<endl;
-            if(Point_inside_cuboid(excub, cnt_poi)==0)
+            if(Point_inside_cuboid(geom_sample.ex_dom_cnt, cnt_poi)==0)
             {
                 //Break the for-loop
                 touch_end = true;
@@ -853,9 +840,9 @@ void GenNetwork::Overlapping_points_same_position(const struct Geom_sample &geom
     if (!cnt_new.size()) {
         //Point is the first point
         //Move the point to a random location
-        point.x = ((double)rand()/RAND_MAX)*geom_sample.ex_len + geom_sample.ex_origin.x;
-        point.y = ((double)rand()/RAND_MAX)*geom_sample.ey_wid + geom_sample.ex_origin.y;
-        point.z = ((double)rand()/RAND_MAX)*geom_sample.ez_hei + geom_sample.ex_origin.z;
+        point.x = ((double)rand()/RAND_MAX)*geom_sample.ex_dom_cnt.len_x + geom_sample.ex_dom_cnt.poi_min.x;
+        point.y = ((double)rand()/RAND_MAX)*geom_sample.ex_dom_cnt.wid_y + geom_sample.ex_dom_cnt.poi_min.y;
+        point.z = ((double)rand()/RAND_MAX)*geom_sample.ex_dom_cnt.hei_z + geom_sample.ex_dom_cnt.poi_min.z;
     } else if (cnt_new.size() == 1) {
         //point is the second point
         //If there is only one point, just move the new point to a new direction
@@ -1444,24 +1431,7 @@ int GenNetwork::Get_random_value_mt(const string &dist_type, mt19937 &engine, un
     return 1;
 }
 //---------------------------------------------------------------------------
-//Randomly generate a seed (intial point) of a CNT in the extended domain
-int GenNetwork::Get_seed_point_mt(const Geom_sample &sample_geo, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_z, uniform_real_distribution<double> &dist)const
-{
-    
-    //Generate coordinates randomly
-    point.x = sample_geo.ex_origin.x + sample_geo.ex_len*dist(engine_x);
-    
-    point.y = sample_geo.ex_origin.y + sample_geo.ey_wid*dist(engine_y);
-    
-    point.z = sample_geo.ex_origin.z + sample_geo.ez_hei*dist(engine_z);
-    
-    //Zero flag denotes this point is the initial point of a CNT
-    point.flag = 0;
-    
-    return 1;
-}
-//---------------------------------------------------------------------------
-//Randomly generate a seed (intial point) of a CNT in the RVE
+//Randomly generate a seed (intial point of a CNT or GNP center) in the given cuboid
 int GenNetwork::Get_seed_point_mt(const cuboid &cub, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_z, uniform_real_distribution<double> &dist)const
 {
     
@@ -1471,8 +1441,8 @@ int GenNetwork::Get_seed_point_mt(const cuboid &cub, Point_3D &point, mt19937 &e
     
     point.z = cub.poi_min.z + cub.hei_z*dist(engine_z);
     
-    
-    point.flag = 0; //0 denotes this point is the initial point of a CNT
+    //Zero flag denotes this point is the initial point of a CNT
+    point.flag = 0;
     
     return 1;
 }
@@ -1656,6 +1626,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
     //Variable to store the side length of the GNP overlapping sub-regions
     double ls = 0.0;
     //Calculate the number of subregins along each direction and intialize the sectioned_domain vector
+    hout<<"Initialize_gnp_subregions"<<endl;
     if (!Initialize_gnp_subregions(geom_sample, gnp_geo, n_subregion, sectioned_domain, ls)) {
         hout<<"Error in Initialize_gnp_subregions"<<endl;
         return 1;
@@ -1681,6 +1652,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
         
         //---------------------------------------------------------------------------
         //Randomly generate a direction as the orientation of the GNP
+        //hout<<"Get_initial_direction_mt"<<endl;
         if (!Get_initial_direction_mt(gnp_geo.orient_distrib_type, gnp_geo.ini_sita, gnp_geo.ini_pha, engine_orientation, dist_orientation, gnp.rotation)) {
             hout << "Error in Generate_gnp_network_mt when calling Get_initial_direction_mt" << endl;
             return 0;
@@ -1689,9 +1661,12 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
         //---------------------------------------------------------------------------
         //Randomly generate a point inside the extended domain, this will be the displacement
         //applied to the GNP, i.e, its random location
-        if(Get_seed_point_mt(geom_sample, gnp.center, engine_x, engine_y, engine_z, dist)==0) return 0;
+        //hout<<"Get_seed_point_mt"<<endl;
+        if(Get_seed_point_mt(geom_sample.ex_dom_gnp, gnp.center, engine_x, engine_y, engine_z, dist)==0) return 0;
+        hout<<"gnp.center="<<gnp.center.str()<<endl;
         
         //Generate the GNP and all its remaining geometric parameters (vertices, planes, normal vectors)
+        //hout<<"Generate_gnp"<<endl;
         if (!Generate_gnp(gnp_geo, gnp, engine_l, engine_t, dist)) {
             hout << "Error in Generate_gnp_network_mt when calling Generate_gnp" << endl;
             return 0;
@@ -1705,6 +1680,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
             //Penetrations are not allowed
             
             //Check if the GNP penetrates another GNP
+            //hout<<"Deal_with_gnp_interpenetrations"<<endl;
             if (!Deal_with_gnp_interpenetrations(geom_sample, cutoffs, gnps, ls, gnp_geo.t_max, n_subregion, gnp, sectioned_domain, rejected)) {
                 hout<<"Error in Deal_with_gnp_interpenetrations"<<endl;
                 return 0;
@@ -1724,6 +1700,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
             //vectorof GNPs
             
             //Calculate (or approximate) the generated volume
+            //hout<<"Calculate_generated_gnp_vol_and_update_total_vol"<<endl;
             if (!Calculate_generated_gnp_vol_and_update_total_vol(gnp_geo, geom_sample, gnp, gnp_vol_tot, gnp_wt_tot)) {
                 hout<<"Error in Calculate_generated_gnp_volume."<<endl;
             }
@@ -2322,6 +2299,7 @@ int GenNetwork::Calculate_generated_gnp_vol_and_update_total_vol(const GNP_Geo g
         }
     }
     
+    hout << "Total volume = " << gnp_vol_tot << ". Approximated volume = " << gnp_vol <<endl;
     //Update the total weight
     gnp_vol_tot = gnp_vol_tot + gnp_vol;
     
@@ -2347,43 +2325,45 @@ int GenNetwork::Approximate_gnp_volume_inside_sample(const Geom_sample &sample_g
     Point_3D corner_right = (gnp.vertices[0] + gnp.vertices[4])/2.0;
     //Midpoint between vertices 2 and 6
     Point_3D corner_up = (gnp.vertices[2] + gnp.vertices[6])/2.0;
+    //Midpoint between vertices 1 and 5
+    Point_3D corner_up_right = (gnp.vertices[1] + gnp.vertices[5])/2.0;
     
     //Direction vector from corner to corner_right
     Point_3D dir_right = (corner_right - corner);
-    //Direction vector from corner to corner_up
-    Point_3D dir_up = (corner_up - corner);
+    //Direction vector from corner_up to corner_up_right
+    Point_3D dir_right_up = (corner_up_right - corner_up);
     
     //Iterate over the total number of points
-    //Index i moves corner to the right
+    //Index i moves new_point to the right
     for (int i = 0; i < n_points; i++) {
         
-        //Initialize new point with the last value of corner
-        Point_3D new_point = corner;
+        //Get the starting point in the bottom edge
+        double lambda_right = (double)i/(n_points-1);
+        Point_3D start = corner + dir_right*lambda_right;
         
-        //Index j moves corner up
+        //Get the ending point in the top edge
+        Point_3D end = corner_up + dir_right_up*lambda_right;
+        
+        //Get the direction up for the new point
+        Point_3D dir_up_new = end - start;
+        
+        //Index j moves new_point up
         for (int j = 0; j < n_points; j++) {
+            
+            //Get the value of the point that will move over the surface
+            double lambda_up = (double)j/(n_points-1);
+            Point_3D new_point = start + dir_up_new*lambda_up;
             
             //Check if new point is inside the sample
             if (Point_inside_sample(sample_geom, new_point)) {
                 //The point is inside the sample, so increase the number of points inside the sample
                 points_in++;
             }
-            
-            //Move new_point up proportional to the index j
-            //new_point moves from the intial position of corner and upwards
-            double lambda_up = (double)j/(n_points-1);
-            new_point = corner + dir_up*(lambda_up);
         }
-        
-        //Move corner to the right proportional to the index i
-        //Corner only moves to thre right
-        double lambda_right = (double)i/(n_points-1);
-        corner = corner + dir_right*lambda_right;
     }
     
     //Approximate the volume inside
     gnp_vol = gnp_vol*((double)points_in/(n_points*n_points));
-    //hout << "Total volume = " << gnp_vol;
     
     return 1;
 }
@@ -2483,22 +2463,15 @@ int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, c
         //A new Tecplot_Export object
         Tecplot_Export *Tecexpt = new Tecplot_Export;
         
-        //Generate a cuboid for RVE
-        struct cuboid cub;
-        cub.poi_min = geom_sample.ex_origin;
-        cub.len_x = geom_sample.ex_len;
-        cub.wid_y = geom_sample.ey_wid;
-        cub.hei_z = geom_sample.ez_hei;
-        
         if (tec360_flags.generated_cnts == 1) {
             
             //Export the CNT network as threads in Tecplot
-            if(Tecexpt->Export_network_threads(cub, cnts_points)==0) return 0;
+            if(Tecexpt->Export_network_threads(geom_sample.ex_dom_cnt, cnts_points)==0) return 0;
         }
         else {
             
             //The geometric structure of CNT network (by tetrahedron meshes in Tecplot) //Attention: little parts of nanotube volumes out of the cuboid
-            if(Tecexpt->Export_cnt_network_meshes(tec360_flags.generated_cnts, cub, cnts_points, cnts_radius_in)==0) return 0;
+            if(Tecexpt->Export_cnt_network_meshes(tec360_flags.generated_cnts, geom_sample.ex_dom_cnt, cnts_points, cnts_radius_in)==0) return 0;
         }
         
         delete Tecexpt;
@@ -2605,13 +2578,6 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
     gvcub.wid_y = geom_sample.wid_y;
     gvcub.hei_z = geom_sample.hei_z;
     gvcub.volume = geom_sample.volume;
-    //Extended domain
-    struct cuboid excub;
-    excub.poi_min = geom_sample.ex_origin;
-    excub.len_x = geom_sample.ex_len;
-    excub.wid_y = geom_sample.ey_wid;
-    excub.hei_z = geom_sample.ez_hei;
-    excub.volume = excub.len_x*excub.wid_y*excub.hei_z;
     
     //---------------------------------------------------------------------------
     //Vectors for handling CNT-CNT and CNT-GNP penetration within the current hybrid
@@ -2662,7 +2628,7 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
         //Check if CNTs will grow parallel or independent
         if (gnp_geo.growth_type == "independent") {
             //Grow CNTs in the "top" surface
-            if (!Grow_cnts_on_gnp_surface(geom_sample, excub, hybrid_praticles[i], nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, cnts_radius, n_subregions, cnt_rad, cnt_length, overlap_max_cutoff, penetrating_model_flag, num_seeds, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_x, engine_y, engine_sita, engine_pha, dist)) {
+            if (!Grow_cnts_on_gnp_surface(geom_sample, geom_sample.ex_dom_cnt, hybrid_praticles[i], nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, cnts_radius, n_subregions, cnt_rad, cnt_length, overlap_max_cutoff, penetrating_model_flag, num_seeds, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_x, engine_y, engine_sita, engine_pha, dist)) {
                 //
                 hout << "Error while growing CNTs on top surface of GNP " << i << endl;
                 return 0;
@@ -2686,7 +2652,7 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
             hybrid_praticles[i].rotation = rotation_bottom;
             
             //Grow CNTs in the "bottom" surface
-            if (!Grow_cnts_on_gnp_surface(geom_sample, excub, hybrid_praticles[i], nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, cnts_radius, n_subregions, cnt_rad, cnt_length, overlap_max_cutoff, penetrating_model_flag, num_seeds, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_x, engine_y, engine_sita, engine_pha, dist)) {
+            if (!Grow_cnts_on_gnp_surface(geom_sample, geom_sample.ex_dom_cnt, hybrid_praticles[i], nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, cnts_radius, n_subregions, cnt_rad, cnt_length, overlap_max_cutoff, penetrating_model_flag, num_seeds, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_x, engine_y, engine_sita, engine_pha, dist)) {
                 //
                 hout << "Error while growing CNTs on bottom surface of GNP " << i << endl;
                 return 0;

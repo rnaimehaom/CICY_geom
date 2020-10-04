@@ -12,7 +12,7 @@
 int Tecplot_Export::Export_network_threads(const struct cuboid &cub, const vector<vector<Point_3D> > &cnts_points)const
 {
 	ofstream otec("CNT_Wires.dat");
-	otec << "TITLE = CNT_Wires" << endl;
+	otec << "TITLE = \"CNT_Wires\"" << endl;
 	otec << "VARIABLES = X, Y, Z" << endl;
 
 	//---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ int Tecplot_Export::Export_network_threads(const struct cuboid &cub, const vecto
 int Tecplot_Export::Export_triangulation_network_3dlines(const GCH &hybrid, const vector<Point_3D> &cnts_points, const vector<Point_3D> &gnps_points, const vector<vector<long int> > &structure, string filename)const
 {
     ofstream otec(filename.c_str());
-    otec << "TITLE = Triangulation_Wires" << endl;
+    otec << "TITLE = \"Triangulation_Wires\"" << endl;
     otec << "VARIABLES = X, Y, Z" << endl;
     
     //Variables to use funtion that exports randomly oriented GNPs
@@ -49,7 +49,7 @@ int Tecplot_Export::Export_triangulation_network_3dlines(const GCH &hybrid, cons
     //Export 3D threads
     for(int i=0; i<(int)hybrid.triangulation.size(); i++)
     {
-        otec << "GEOMETRY T=LINE3D" << endl;
+        otec << "GEOMETRY T=\"LINE3D\"" << endl;
         otec << "1" << endl;
         otec << hybrid.triangulation[i].size() << endl;
         for (int j=0; j<(int)hybrid.triangulation[i].size(); j++)
@@ -78,7 +78,7 @@ int Tecplot_Export::Export_triangulation_network_3dlines(const GCH &hybrid, cons
 int Tecplot_Export::Export_network_threads(const struct cuboid &cub, const int &n_cluster, const vector<vector<int> > &gnp_clusters, const vector<vector<int> > &cnt_clusters, const vector<vector<long int> > &structure, const vector<Point_3D> &cnts_points, const vector<GCH> &hybrid_particles, string &filename, string &family)const
 {
     ofstream otec(filename.c_str());
-    otec << "TITLE = Wires" << endl;
+    otec << "TITLE = \"Wires\"" << endl;
     otec << "VARIABLES = X, Y, Z" << endl;
     
     //---------------------------------------------------------------------------
@@ -107,7 +107,7 @@ int Tecplot_Export::Export_network_threads(const struct cuboid &cub, const int &
 int Tecplot_Export::Export_network_3dlines(const struct cuboid &cub, const int &n_cluster, const vector<vector<int> > &gnp_clusters, const vector<vector<int> > &cnt_clusters, const vector<vector<long int> > &structure, const vector<Point_3D> &cnts_points, const vector<GCH> &hybrid_particles, string &filename, string &family)const
 {
     ofstream otec(filename.c_str());
-    otec << "TITLE = Wires" << endl;
+    otec << "TITLE = \"Wires\"" << endl;
     otec << "VARIABLES = X, Y, Z" << endl;
     
     //---------------------------------------------------------------------------
@@ -148,7 +148,7 @@ int Tecplot_Export::Export_nano_3dlines(ofstream &otec, const vector<Point_3D> &
         if (i%50 == 0) {
             
             //Output the header for the CNT lines
-            otec << "GEOMETRY T=LINE3D LT=0.2 ZN=1"<< endl;
+            otec << "GEOMETRY T=\"LINE3D\" LT=0.2 ZN=1"<< endl;
             
             //Output the number of polylines, i.e., the number of CNTs in the cluster
             //Limit the number of polylines to 50
@@ -186,7 +186,7 @@ int Tecplot_Export::Export_nano_3dlines(ofstream &otec, const vector<Point_3D> &
 //Export a 3D cuboid
 int Tecplot_Export::Export_cuboid(ofstream &otec, const struct cuboid &cell)const
 {
-	otec << "ZONE T=Cube N=" << 8 << ", E=" << 1 << ", F=FEPOINT, ET=BRICK" << endl;
+	otec << "ZONE T=\"Cube\" N=" << 8 << ", E=" << 1 << ", F=FEPOINT, ET=BRICK" << endl;
 	double cell_x[2] = {cell.poi_min.x, cell.poi_min.x+cell.len_x};
 	double cell_y[2] = {cell.poi_min.y, cell.poi_min.y+cell.wid_y};
 	double cell_z[2] = {cell.poi_min.z, cell.poi_min.z+cell.hei_z};
@@ -287,7 +287,7 @@ int Tecplot_Export::Export_cnts_meshes_multizones(const struct cuboid &cub, cons
 	if(cnts_account!=(int)eles.size()) { hout << "Error, the number of node vectors is not the same to the number of element vectors!" << endl; return 0; }
 	
 	ofstream otec("CNT_Meshes_Multizones.dat");
-	otec << "TITLE = CNT_Meshes_Multizones" << endl;
+	otec << "TITLE = \"CNT_Meshes_Multizones\"" << endl;
 	otec << "VARIABLES = X, Y, Z" << endl;	
 	
 	//---------------------------------------------------------------------------
@@ -327,7 +327,7 @@ int Tecplot_Export::Export_cnts_meshes_singlezone(const struct cuboid &cub, cons
         return 0; }
 	
 	ofstream otec("CNT_Meshes_Singlezone.dat");
-	otec << "TITLE = CNT_Meshes_Singlezone" << endl;
+	otec << "TITLE = \"CNT_Meshes_Singlezone\"" << endl;
 	otec << "VARIABLES = X, Y, Z" << endl;	
 	
 	//---------------------------------------------------------------------------
@@ -345,7 +345,7 @@ int Tecplot_Export::Export_cnts_meshes_singlezone(const struct cuboid &cub, cons
 		eles_num += (int)eles[i].size();
 	}
 		
-	otec << "ZONE T=Cube_RVE N=" << nodes_num << ", E=" << eles_num << ", F=FEPOINT, ET=TETRAHEDRON" << endl;
+	otec << "ZONE T=\"Cube_RVE\" N=" << nodes_num << ", E=" << eles_num << ", F=FEPOINT, ET=TETRAHEDRON" << endl;
 	for(int i=0; i<cnt_count; i++)
 	{		
 		for(int j=0; j<(int)nodes[i].size(); j++)
@@ -380,7 +380,7 @@ int Tecplot_Export::Export_network_meshes(const struct cuboid &cub, const int &n
     
     
     ofstream otec(filename.c_str());
-    otec << "TITLE = CNT_Meshes_Singlezone" << endl;
+    otec << "TITLE = \"CNT_Meshes_Singlezone\"" << endl;
     otec << "VARIABLES = X, Y, Z" << endl;
     
     //---------------------------------------------------------------------------
@@ -443,7 +443,7 @@ int Tecplot_Export::Export_cnt_meshes_singlezone(ofstream &otec, const struct cu
             eles_num += (int)eles[i].size();
         }
         
-        otec << "ZONE T=" << family << "_CNT N=" << nodes_num << ", E=" << eles_num << ", F=FEPOINT, ET=TETRAHEDRON" << endl;
+        otec << "ZONE T=\"" << family << "_CNT\" N=" << nodes_num << ", E=" << eles_num << ", F=FEPOINT, ET=TETRAHEDRON" << endl;
         for(int i=0; i<cnts_account; i++)
         {
             for(int j=0; j<(int)nodes[i].size(); j++)
@@ -476,7 +476,7 @@ int Tecplot_Export::Export_randomly_oriented_gnps(ofstream &otec, const vector<G
     int num_gnps = (int)gnp_cluster.size();
     
     //There will be a total of 8*num_gnps points (N) and num_gnps cubes (E)
-    otec << "ZONE T="<<family<<"_GNP N=" << 8*num_gnps << ", E=" << num_gnps << ", F=FEPOINT, ET=BRICK" << endl;
+    otec << "ZONE T=\""<<family<<"_GNP\" N=" << 8*num_gnps << ", E=" << num_gnps << ", F=FEPOINT, ET=BRICK" << endl;
     
     //Loop over the hybrid particles
     for (int ii = 0; ii < num_gnps; ii++) {
@@ -529,7 +529,7 @@ int Tecplot_Export::Export_randomly_oriented_gnps(ofstream &otec, const vector<G
     int num_gnps = (int)gnps.size();
     
     //There will be a total of 8*num_gnps points (N) and num_gnps cubes (E)
-    otec << "ZONE T=GNPs N=" << 8*num_gnps << ", E=" << num_gnps << ", F=FEPOINT, ET=BRICK" << endl;
+    otec << "ZONE T=\"GNPs\" N=" << 8*num_gnps << ", E=" << num_gnps << ", F=FEPOINT, ET=BRICK" << endl;
     
     //Array that sets the order in which the vertices of the GNP need to be exported
     int order[] = {7, 3, 6, 2, 4 , 0, 5 , 1};

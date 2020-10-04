@@ -124,14 +124,6 @@ int Input::Read_Infile(ifstream &infile)
     //Calculate the actual volume of nanotubes
     nanotube_geo.real_volume = nanotube_geo.volume_fraction * geom_sample.volume;
     
-    //Define the geometry of the boundary layer
-    geom_sample.ex_origin.x = geom_sample.origin.x - nanotube_geo.len_max;
-    geom_sample.ex_origin.y = geom_sample.origin.y - nanotube_geo.len_max;
-    geom_sample.ex_origin.z = geom_sample.origin.z - nanotube_geo.len_max;
-    geom_sample.ex_len = geom_sample.len_x + 2*nanotube_geo.len_max;
-    geom_sample.ey_wid = geom_sample.wid_y+ 2*nanotube_geo.len_max;
-    geom_sample.ez_hei = geom_sample.hei_z + 2*nanotube_geo.len_max;
-    
     return 1;
 }
 //---------------------------------------------------------------------------
@@ -162,13 +154,20 @@ int Input::Data_Initialization()
 	geom_sample.len_x = 1.0;
 	geom_sample.wid_y = 1.0;
 	geom_sample.hei_z = 1.0;
-	geom_sample.ex_origin.x = 0.0;
-	geom_sample.ex_origin.y = 0.0;
-	geom_sample.ex_origin.z = 0.0;
-	geom_sample.ex_origin.flag = 0;
-	geom_sample.ex_len = 1.0;
-	geom_sample.ey_wid = 1.0;
-	geom_sample.ez_hei = 1.0;
+    geom_sample.ex_dom_cnt.poi_min.x = 0.0;
+	geom_sample.ex_dom_cnt.poi_min.y = 0.0;
+	geom_sample.ex_dom_cnt.poi_min.z = 0.0;
+	geom_sample.ex_dom_cnt.poi_min.flag = 0;
+    geom_sample.ex_dom_cnt.len_x = 1.0;
+    geom_sample.ex_dom_cnt.wid_y = 1.0;
+    geom_sample.ex_dom_cnt.hei_z = 1.0;
+    geom_sample.ex_dom_gnp.poi_min.x = 0.0;
+    geom_sample.ex_dom_gnp.poi_min.y = 0.0;
+    geom_sample.ex_dom_gnp.poi_min.z = 0.0;
+    geom_sample.ex_dom_gnp.poi_min.flag = 0;
+    geom_sample.ex_dom_gnp.len_x = 1.0;
+    geom_sample.ex_dom_gnp.wid_y = 1.0;
+    geom_sample.ex_dom_gnp.hei_z = 1.0;
 	geom_sample.volume = geom_sample.len_x*geom_sample.wid_y*geom_sample.hei_z;
 	geom_sample.matrix_density = 1.0;
 	geom_sample.gs_minx = 1.0;
@@ -612,6 +611,15 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
 	}
 	else { hout << "Error: The content of nanotubes can only be specified in volume (vol) or weight (wt) fraction. Input was: "<<nanotube_geo.criterion<< endl; return 0; }
     
+    //Get the geometry of the extended domain for CNTs
+    geom_sample.ex_dom_cnt.poi_min.x = geom_sample.origin.x - nanotube_geo.len_max;
+    geom_sample.ex_dom_cnt.poi_min.y = geom_sample.origin.y - nanotube_geo.len_max;
+    geom_sample.ex_dom_cnt.poi_min.z = geom_sample.origin.z - nanotube_geo.len_max;
+    geom_sample.ex_dom_cnt.len_x = geom_sample.len_x + 2*nanotube_geo.len_max;
+    geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y+ 2*nanotube_geo.len_max;
+    geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + 2*nanotube_geo.len_max;
+    
+    
 	return 1;
 }
 //---------------------------------------------------------------------------
@@ -920,6 +928,13 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
         hout << "Error: GNP content can only be specified in 'vol', 'wt' or from 'dens'. Input was: "<< gnp_geo.criterion << endl;
         return 0;
     }
+    
+    //Get the geometry of the extended domain for GNPs
+    geom_sample.ex_dom_gnp.poi_min = geom_sample.origin - Point_3D(gnp_geo.len_max/2,gnp_geo.len_max/2,gnp_geo.len_max/2);
+    geom_sample.ex_dom_gnp.len_x = geom_sample.len_x + gnp_geo.len_max;
+    geom_sample.ex_dom_gnp.wid_y = geom_sample.wid_y + gnp_geo.len_max;
+    geom_sample.ex_dom_gnp.hei_z = geom_sample.hei_z + gnp_geo.len_max;
+    geom_sample.ex_dom_gnp.volume = geom_sample.ex_dom_gnp.len_x*geom_sample.ex_dom_gnp.wid_y*geom_sample.ex_dom_gnp.hei_z;
     
     
     return 1;

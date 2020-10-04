@@ -286,7 +286,11 @@ struct GNP {
     vector<Edge> triangulation;
     
     //Default constructor
-    GNP() {}
+    GNP() {
+        
+        //Initialize rotation matrix
+        rotation = MathMatrix(3,3);
+    }
     
 };
 

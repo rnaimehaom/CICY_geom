@@ -46,19 +46,26 @@ struct Simu_para{
 struct Geom_sample{
     string keywords;
     bool mark;
-    Point_3D origin;												//Define an origin point for a sample
-    double len_x, wid_y, hei_z;								//Define length, width and height for an extended RVE for generation with an acurrate control
+    //Lower left corner of sample
+    Point_3D origin;
+    //Length, width and height of sample domain
+    double len_x, wid_y, hei_z;
     //Coordinates of the sample's boundaries opposite to those given by the coordinates of origin
     double x_max, y_max, z_max;
-    Point_3D ex_origin;											//Define an origin point for an extended sample to generate network with an acurrate control
-    double ex_len, ey_wid, ez_hei;							//Define length, width and height for an extended sample for generation with an acurrate control
     double volume;
-    double matrix_density;            //Define the density of matrix
-    double gs_minx, gs_miny, gs_minz;					//Define the minimum size for background grids (looking for contact points)
-    double win_max_x, win_max_y, win_max_z;		//Define the size range of the cutoff window and descrement by every step in x, y and z directions
+    double matrix_density;
+    //Minimum size for background grids
+    double gs_minx, gs_miny, gs_minz;
+    //Minimum, maximum, and step decrement of the observation window
     double win_min_x, win_min_y, win_min_z;
+    double win_max_x, win_max_y, win_max_z;
     double win_delt_x, win_delt_y, win_delt_z;
-    int cut_num;														//Define the number of cutoff times (0: the maxmum size, n: the maxmum size - n*step_length(delta), n>=1)
+    //Define the number of cutoff times (0: the maxmum size, n: the maxmum size - n*step_length(delta), n>=1)
+    int cut_num;
+    //Cuboid for the extended domain for GNPs
+    cuboid ex_dom_gnp;
+    //Cuboid for the extended domain for CNTs
+    cuboid ex_dom_cnt;
     
 };
 //The nanotube parameters in a network
