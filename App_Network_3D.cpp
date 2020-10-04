@@ -7,27 +7,43 @@
 
 #include "App_Network_3D.h"
 
-//Generate 3D conductive nanotube network separated by backbone paths, dead branches and isolated clusters
-int App_Network_3D::Create_conductive_network_3D(Input *Init)const
+//Generate 3D nanoparticle network, turn it into a resitor network and find its electrical conductivity
+int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
 {
     //Time markers for total simulation
     time_t ct0, ct1;
     
-    vector<double> cnts_radius;						//Define the radius of each nanotube in the network
-    vector<Point_3D> cnts_point;					//Define the set of cnt point in a 1D vector
-    vector<Point_3D> gnps_point;          //Define the set of GNP point in a 1D vector
-    vector<vector<long int> > cnts_structure;		//The global number of points in the cnts
-    vector<vector<long int> > gnps_structure;		//The global number of points in the gnps
-    vector<vector<int> > shells_cnt;                //Shell sub-regions to make the triming faster
-    vector<GCH> hybrid_particles;                   //Define the set of GNP hybrid particles
-    vector<vector<int> > shells_gnps;                //Shell sub-regions to make the deletion of GNPs faster
+    //Variables for CNTs
+    //CNTs points
+    vector<Point_3D> cnts_point;
+    //CNTs radii
+    vector<double> cnts_radius;
+    //CNT structure, each cnts_structure[i] referes to the points in CNT_i
+    vector<vector<long int> > cnts_structure;
+    
+    //Variables for GNPs
+    //GNPs
+    vector<GNP> gnps;
+    //GNP points (only those needed are stored)
+    vector<Point_3D> gnps_point;
+    
+    //Shell vectors (used to remove nanoparticles when reduding observation window size)
+    vector<vector<int> > shells_cnt;
+    vector<vector<int> > shells_gnps;
+    
+    //Deprecated:
+    vector<GCH> hybrid_particles;
+    vector<vector<long int> > gnps_structure;
     
     //----------------------------------------------------------------------
     //Network Generation with overlapping
-    hout << "-_- Generate nanofiller network......" << endl;
+    hout << "Generating nanoparticle network......" << endl;
     ct0 = time(NULL);
     GenNetwork *Genet = new GenNetwork;
-    if(!Genet->Generate_nanofiller_network(Init->simu_para, Init->geom_sample, Init->agg_geo, Init->nanotube_geo, Init->gnp_geo, Init->cutoff_dist, Init->tec360_flags, cnts_point, gnps_point, hybrid_particles, cnts_radius, cnts_structure, gnps_structure)) return 0;
+    if (!Genet->Generate_nanoparticle_network(Init->simu_para, Init->geom_sample, Init->agg_geo, Init->nanotube_geo, Init->gnp_geo, Init->cutoff_dist, Init->tec360_flags, cnts_point, cnts_radius, cnts_structure, gnps)) {
+        hout<<"Error in Generate_nanoparticle_network."<<endl;
+        return 0;
+    }
     delete Genet;
     ct1 = time(NULL);
     hout << "Nanotube network generation time: " << (int)(ct1-ct0) <<" secs." << endl;

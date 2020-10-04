@@ -521,4 +521,43 @@ int Tecplot_Export::Export_randomly_oriented_gnps(ofstream &otec, const vector<G
     
     return 1;
 }
+//---------------------------------------------------------------------------
+//Export a 3D cuboid with a random orientation
+int Tecplot_Export::Export_randomly_oriented_gnps(ofstream &otec, const vector<GNP> &gnps)const
+{
+    //Calculate the number of GNPs to export
+    int num_gnps = (int)gnps.size();
+    
+    //There will be a total of 8*num_gnps points (N) and num_gnps cubes (E)
+    otec << "ZONE T=GNPs N=" << 8*num_gnps << ", E=" << num_gnps << ", F=FEPOINT, ET=BRICK" << endl;
+    
+    //Array that sets the order in which the vertices of the GNP need to be exported
+    int order[] = {7, 3, 6, 2, 4 , 0, 5 , 1};
+    
+    //Loop over the GNPs
+    for (int ii = 0; ii < num_gnps; ii++) {
+        
+        for (int jj = 0; jj < 8; jj++) {
+            
+            //Export the vertices of the GNP in the order given by the order array
+            int idx = order[jj];
+            otec << gnps[ii].vertices[idx].x << "  " << gnps[ii].vertices[idx].y << "  " << gnps[ii].vertices[idx].z << endl;
+            
+        }
+    }
+    
+    //Loop again over the number of GNPs to add the nodes coresponding to the cubes
+    int indices[] = {1, 2, 4, 3, 5, 6, 8, 7};
+    for (int ii = 0; ii < num_gnps; ii++) {
+        for (int jj = 0; jj < 8; jj++) {
+            otec << indices[jj] + 8*ii << ' ';
+        }
+        otec << endl;
+    }
+    
+    //otec << "1 2 4 3 5 6 8 7" << endl;
+    otec << endl << endl;
+    
+    return 1;
+}
 //===========================================================================

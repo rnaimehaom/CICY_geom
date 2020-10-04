@@ -65,7 +65,7 @@ int main(int argc, char** argv)
     //----------------------------------------------------------------------
     //Input file reader
     hout<<"======================================================" << endl;
-    hout<<"    Input file reader......"<<endl;
+    hout<<"Reading input file......"<<endl;
     Input *Init = new Input;
     if(Init->Data_Initialization())
     {
@@ -73,8 +73,7 @@ int main(int argc, char** argv)
     }
     else return 0;
     it_end= time(NULL);
-    hout<<"    Operation done in "<<(int)(it_end-it_begin)<<" secs."<<endl;
-    hout<<"    Input files reading done"<<endl<<endl;
+    hout<<"Input file read in "<<(int)(it_end-it_begin)<<" secs."<<endl;
     
     //----------------------------------------------------------------------
     //Check which application is being called
@@ -85,7 +84,13 @@ int main(int argc, char** argv)
         App_Network_3D *Network3D =  new  App_Network_3D;
         int count = Init->simu_para.sample_num;
         //Implement all samples
-        for(int i=1; i<=count; i++)    if(Network3D->Create_conductive_network_3D(Init)==0) return 0;
+        for(int i=1; i<=count; i++) {
+            if(Network3D->Generate_nanoparticle_resistor_network(Init)==0) {
+                hout<<"Error in Generate_nanoparticle_resistor_network in sample "<<i<<endl;
+                return 0;
+            }
+        }
+            
         delete Network3D;
     }
     

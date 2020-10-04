@@ -15,14 +15,12 @@
 //3) When adding the new_cnt vector to the global vector of CNTs, split it into segments. This operation is completely useless with a non-periodic sample and was causing some errors when using the penetrating model so I just deleted it.
 
 //Generate a network of nanoparticles
-int GenNetwork::Generate_nanoparticle_network(const Simu_para &simu_para, const Geom_sample &geom_sample, const Agglomerate_Geo &agg_geo, const Nanotube_Geo &nanotube_geo, const GNP_Geo &gnp_geo, const Cutoff_dist &cutoffs, const Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<double> &cnts_radius_out, vector<vector<long int> > &cstructures, vector<GNP> &gnp)const
+int GenNetwork::Generate_nanoparticle_network(const Simu_para &simu_para, const Geom_sample &geom_sample, const Agglomerate_Geo &agg_geo, const Nanotube_Geo &nanotube_geo, const GNP_Geo &gnp_geo, const Cutoff_dist &cutoffs, const Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<double> &cnts_radius_out, vector<vector<long int> > &cstructures, vector<GNP> &gnps)const
 {
     //Vector of storing the CNT points
     vector<vector<Point_3D> > cnts_points;
     //Vector for radii, internal variable
     vector<double> cnts_radius_in;
-    //Vector of GNPs
-    vector<GNP> gnps;
     
     double carbon_vol = 0, carbon_weight = 0;
     if (simu_para.particle_type == "CNT_wires") {
@@ -98,9 +96,6 @@ int GenNetwork::Generate_nanoparticle_network(const Simu_para &simu_para, const 
         ofstream otec("GNP_cuboids.dat");
         otec << "TITLE = GNP_cuboids" << endl;
         otec << "VARIABLES = X, Y, Z" << endl;
-        //vector<int> cluster_gch(hybrid_particles.size(), 0);
-        //for (int i = 1; i < (int)hybrid_particles.size(); i++)
-        //    cluster_gch[i] = i;
         struct cuboid gvcub;
         gvcub.poi_min = geom_sample.origin;
         gvcub.len_x = geom_sample.len_x;
@@ -108,7 +103,7 @@ int GenNetwork::Generate_nanoparticle_network(const Simu_para &simu_para, const 
         gvcub.hei_z = geom_sample.hei_z;
         if(Tecexpt->Export_cuboid(otec, gvcub)==0) return 0;
         string zone_name = "as_generated";
-        //if(Tecexpt->Export_randomly_oriented_gnps(otec, hybrid_particles, cluster_gch,zone_name)==0) return 0;
+        if(Tecexpt->Export_randomly_oriented_gnps(otec, gnps)==0) return 0;
         delete Tecexpt;
         otec.close();
     }

@@ -37,7 +37,7 @@ public:
     App_Network_3D(){};
     
     //Member Functions
-    int Create_conductive_network_3D(Input *Init)const;
+    int Generate_nanoparticle_resistor_network(Input *Init)const;
     int Update_obseravtion_window_geometry(const int &window, const struct Geom_sample &sample_geo, struct Geom_sample &window_geo)const;
     int Export_tecplot_files_for_clusters(const string &type,const int &iter, const int &tecplot_flag, const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<vector<long int> > &structure, const vector<vector<int> > &clusters_cnt, const vector<vector<int> > &isolated, const vector<GCH> &hybrid_particles, const vector<vector<int> > &clusters_gch, const vector<vector<int> > &isolated_gch)const;
     int Convert_cluster_to_structure(const vector<int> &cluster, const vector<vector<long int> > &structure_in, vector<vector<long int> > &structure_out)const;

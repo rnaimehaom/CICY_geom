@@ -45,6 +45,7 @@ public:
     int Export_cnt_meshes_singlezone(ofstream &otec, const struct cuboid &cub, const vector<vector<Node> > &nodes, const vector<vector<Element> > &eles, string &filename, string &family)const;
     //Export a 3D cuboid with a random orientation
     int Export_randomly_oriented_gnps(ofstream &otec, const vector<GCH> &hybrid_particles, const vector<int> &gnp_cluster, string &family)const;
+    int Export_randomly_oriented_gnps(ofstream &otec, const vector<GNP> &gnps)const;
 };
 //-------------------------------------------------------
 #endif
