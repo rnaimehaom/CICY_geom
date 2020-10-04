@@ -25,6 +25,7 @@
 #include "Fem_3D.h"
 #include "Hns.h"
 #include "Tecplot_Export.h"
+#include "Collision_detection.h"
 
 using namespace hns;
 
@@ -63,14 +64,19 @@ public:
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
-    int Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const string &particle_type, vector<GNP> &gnps, double &carbon_vol, double &carbon_weight)const;
+    int Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, vector<GNP> &gnps, double &gnp_vol_tot, double &gnp_wt_tot)const;
     int Initialize_gnp_subregions(const Geom_sample &sample_geom, const GNP_Geo &gnp_geo, int n_subregion[], vector<vector<int> > &sectioned_domain, double &ls)const;
     int GNP_seeds(const vector<unsigned int> &GNP_seeds, unsigned int net_seeds[])const;
     int Generate_gnp(const GNP_Geo &gnp_geo, GNP &gnp, mt19937 &engine_l, mt19937 &engine_t, uniform_real_distribution<double> &dist)const;
-    int Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const vector<GNP> &gnps, const double &ls, const double &overlap_max_cutoff, const int n_subregions[], GNP &gnp_new, vector<vector<int> > &sectioned_domain, bool &rejected)const;
+    int Update_gnp_plane_equations(GNP &gnp)const;
+    int Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const double &ls, const double &overlap_max_cutoff, const int n_subregions[], GNP &gnp_new, vector<vector<int> > &sectioned_domain, bool &rejected)const;
     int Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gnp_new, const double &ls, const double &overlap_max_cutoff, const int n_subregions[], vector<int> &subregions)const;
     int Get_gnps_in_subregions(const vector<vector<int> > &sectioned_domain, const vector<int> &subregions, set<int> &gnp_set)const;
-    int Move_gnps_if_needed(const vector<GNP> &gnps, set<int> &gnp_set, GNP gnp_new, bool &displaced)const;
+    int Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP gnp_new, bool &displaced)const;
+    int Find_direction_of_touching_gnps(Collision_detection &GJK_EPA, const GNP &gnpA, const GNP &gnpB, Point_3D &N)const;
+    int Move_gnp(const Point_3D &displacement, GNP &gnp)const;
+    int Calculate_generated_gnp_vol_and_update_total_vol(const GNP_Geo gnp_geom, const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol_tot, double &gnp_wt_tot)const;
+    int Approximate_gnp_volume_inside_sample(const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol)const;
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------

@@ -531,7 +531,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
 {
     return 1;
 }
-int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const string &particle_type, vector<GNP> &gnps, double &carbon_vol, double &carbon_weight)const
+int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, vector<GNP> &gnps, double &gnp_vol_tot, double &gnp_wt_tot)const
 {
 
     //geom_sample cannot be modified, so copy the seeds to an array if they were specified in
@@ -557,12 +557,14 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
     std::uniform_real_distribution<double> dist_orientation(-1.0, 1.0);
     
     //---------------------------------------------------------------------------
-    //Total volume of generated GNPs
-    double vol_sum = 0;
-    //Total weight of generated GNPs
-    double wt_sum = 0;
+    //Total volume of generated GNPs, initialized at zero
+    gnp_vol_tot = 0;
+    //Total weight of generated GNPs, initialized at zero
+    gnp_wt_tot = 0;
+    
     //Variable to count the number of GNPs that were deleted due to penetration
     int gnp_reject_count = 0;
+    
     //sectioned_domain[i] contains all the points in sub-region i, a negative number indicates the discretized GNP
     //Sub-region i is an overlapping subregion to check for penetrations
     vector<vector<int> > sectioned_domain;
@@ -588,7 +590,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
     bool wt_crit = gnp_geo.criterion == "wt";
     
     //---------------------------------------------------------------------------
-    while( (vol_crit&&vol_sum < gnp_geo.real_volume) || (wt_crit&&wt_sum < gnp_geo.real_weight) )
+    while( (vol_crit&&gnp_vol_tot < gnp_geo.real_volume) || (wt_crit&&gnp_wt_tot < gnp_geo.real_weight) )
     {
         //---------------------------------------------------------------------------
         //Generate a GNP
@@ -622,45 +624,45 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
             //Penetrations are not allowed
             
             //Check if the GNP penetrates another GNP
-            if (!Deal_with_gnp_interpenetrations(geom_sample, gnps, ls, 0.34, n_subregion, gnp, sectioned_domain, rejected)) {
+            if (!Deal_with_gnp_interpenetrations(geom_sample, cutoffs, gnps, ls, gnp_geo.t_max, n_subregion, gnp, sectioned_domain, rejected)) {
                 hout<<"Error in Deal_with_gnp_interpenetrations"<<endl;
                 return 0;
             }
-            
         }
-
         
         //Check if the new GNP was rejected
-        if (!rejected) {
+        //If the penetrating model is used, then rejected is always false and the volume of gnp_new
+        //is always added
+        if (rejected) {
+            
+            //The GNP was rejected so increase the count of rejected GNPs
+            gnp_reject_count++;
+        }
+        else {
             //The GNP was not rejected, so update generated volume/weight and add it to the
             //vectorof GNPs
             
-            //Update generated volume/weight
-            
+            //Calculate (or approximate) the generated volume
+            if (!Calculate_generated_gnp_vol_and_update_total_vol(gnp_geo, geom_sample, gnp, gnp_vol_tot, gnp_wt_tot)) {
+                hout<<"Error in Calculate_generated_gnp_volume."<<endl;
+            }
             
             //Add the current particle to the vector of particles
             gnps.push_back(gnp);
         }
-        else {
-            //The GNP was rejected so increase the count of rejected GNPs
-            gnp_reject_count++;
-        }
     }
     
-    carbon_vol = vol_sum;
-    carbon_weight = wt_sum;
-    
-    if (particle_type == "GNP_cuboids") {
+    if (simu_para.particle_type == "GNP_cuboids") {
         //Print the number of GNPs when GNPs only or mixed fillers are generated
         if(gnp_geo.criterion == "wt") {
             
             //Calculate matrix weight
-            double matrix_weight = (geom_sample.volume - vol_sum)*geom_sample.matrix_density;
+            double matrix_weight = (geom_sample.volume - gnp_vol_tot)*geom_sample.matrix_density;
             
-            hout << "The weight fraction of generated GNPs is: " << wt_sum/(matrix_weight + wt_sum) << endl;
+            hout << "The weight fraction of generated GNPs is: " << gnp_wt_tot/(matrix_weight + gnp_wt_tot) << endl;
             hout << ", the target weight fraction was " << gnp_geo.weight_fraction << endl << endl;
         } else if(gnp_geo.criterion == "vol") {
-            hout << endl << "The volume fraction of generated GNPs was " << vol_sum/geom_sample.volume;
+            hout << endl << "The volume fraction of generated GNPs was " << gnp_vol_tot/geom_sample.volume;
             hout << ", the target volume fraction was " << gnp_geo.volume_fraction << endl;
         }
         
@@ -757,6 +759,16 @@ int GenNetwork::Generate_gnp(const GNP_Geo &gnp_geo, GNP &gnp, mt19937 &engine_l
     gnp.vertices[6] = (Point_3D(-gnp.l/2,-gnp.l/2, -gnp.t/2)).rotation(gnp.rotation, gnp.center);
     gnp.vertices[7] = (Point_3D( gnp.l/2,-gnp.l/2, -gnp.t/2)).rotation(gnp.rotation, gnp.center);
     
+    //Get the plane equations for the six faces
+    if (!Update_gnp_plane_equations(gnp)) {
+        hout<<"Error in Generate_gnp when calling Update_gnp_plane_equations."<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+int GenNetwork::Update_gnp_plane_equations(GNP &gnp)const
+{
     //Calculate the plane normals (as unit vectors) and their equations
     //Normal is calcualted as (P2-P1)x(P3-P1)
     //
@@ -773,28 +785,26 @@ int GenNetwork::Generate_gnp(const GNP_Geo &gnp_geo, GNP &gnp, mt19937 &engine_l
     //Left face
     gnp.faces[5] = Plane_3D(gnp.vertices[2], gnp.vertices[6], gnp.vertices[3]);
     
-    
     return 1;
 }
 //This function checks whether the newly generated GNP penetrates another GNP
 //If there is interpenetration, then the GNP is moved
 //If the attempts to relocate the GNP exceed the number of maximum attempts, the GNP is rejected
-int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const vector<GNP> &gnps, const double &ls, const double &overlap_max_cutoff, const int n_subregions[], GNP &gnp_new, vector<vector<int> > &sectioned_domain, bool &rejected)const
+int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const double &ls, const double &overlap_max_cutoff, const int n_subregions[], GNP &gnp_new, vector<vector<int> > &sectioned_domain, bool &rejected)const
 {
     //Variable to count the number of attempts
     int attemtps = 0;
     
-    //Flag to determine penetration
-    //It is initialized with true just to start the while loop
-    bool p_flag = true;
+    //Flag to determine if gnp_new was moved
+    bool displaced;
     
     //Varibale to store all GNP subregions
     vector<int> subregions;
     
-    //Keep moving the GNP_new as long as the number of attempts does not exceed the maximum allowed
-    while (p_flag && attemtps <= MAX_ATTEMPTS) {
+    //Keep moving gnp_new as long as the number of attempts does not exceed the maximum allowed
+    while (attemtps <= MAX_ATTEMPTS) {
         
-        //Find the subregions the GNP occupies
+        //Find the subregions gnp_new occupies
         subregions.clear();
         if (!Get_gnp_subregions(geom_sample, gnp_new, ls, overlap_max_cutoff, n_subregions, subregions)) {
             hout<<"Error in Is_there_gnp_interpenetration"<<endl;
@@ -812,34 +822,43 @@ int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, 
         //Check if close enough GNPs were found
         if (!gnp_set.empty()) {
             
-            //Determine if the GNP_new needs to be moved and, if so, move it
-            
+            //Determine if gnp_new needs to be moved and, if so, move it
+            if (!Move_gnps_if_needed(cutoffs, gnps, gnp_set, gnp_new, displaced)) {
+                hout<<"Error in Move_gnps_if_needed."<<endl;
+                return 0;
+            }
             
             //Check if the GNP_new was not moved
-            //If the GNP was not moved, then it is in a valid position
+            if (!displaced) {
+                
+                //If gnp_new was not moved, then it is in a valid position
+                //Thus, set the rejected flag to false
+                rejected = false;
+                
+                //Also, since gnp_new was successfully generated, add it to all corresponding sub regions
+                for (size_t i = 0; i < subregions.size(); i++) {
+                    
+                    //Current subregion
+                    int s = subregions[i];
+                    
+                    //Add GNP number to current subregion
+                    sectioned_domain[s].push_back((int)gnps.size());
+                }
+                
+                return 1;
+            }
             //If the GNP was moved, then one more iteration is needed to check that the new
-            //position is a vlaid position
+            //position is a valid position
         }
         
         //Increase the number of attempts
         attemtps++;
     }
     
-    //Get the value of the rejected flag from the penetration flag
-    //If there are still interpenetrations (p_flag = true), then the GNP_new is rejected
-    //rejected = p_flag;
-    
-    /* THIS SHOULD GO IN THE MAIN BODY OF THE GENERATE GNPS FUNCTION
-    //If the while loop was exited and the number of attempts was not exceeded,
-    //then the GNP_new was successfully generated, so add it to all corresponding sub regions
-    for (size_t i = 0; i < subregions.size(); i++) {
-        
-        //Current subregion
-        int s = subregions[i];
-        
-        //Add GNP number to current subregion
-        sectioned_domain[s].push_back((int)gnps.size());
-    }*/
+    //If this part of the code is reached, then gnp_new was moved and we need to check if it is
+    //in a valid positon. However, since the maximum number of attempts was reached then gnp_new
+    //is to be rejected. So set the rejected flag to true
+    rejected = true;
     
     return 1;
 }
@@ -965,28 +984,325 @@ int GenNetwork::Get_gnps_in_subregions(const vector<vector<int> > &sectioned_dom
     return 1;
 }
 //This function moves a GNP if needed
-int GenNetwork::Move_gnps_if_needed(const vector<GNP> &gnps, set<int> &gnp_set, GNP gnp_new, bool &displaced) const
+int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP gnp_new, bool &displaced) const
 {
+    //Create a new Collision_detection object to determine whether two GNPs interpenetrate
+    //eachother or not, and their distances if they do not interpenetrate each other
+    Collision_detection GJK_EPA;
     
     //Variable to store the total displacement (if the GNP_new needs to be moved)
     Point_3D disp_tot = Point_3D(0.0,0.0,0.0);
     
+    //Initialize the displaced flag to false
+    displaced = false;
+    
     for (set<int>::iterator i = gnp_set.begin(); i!=gnp_set.end(); i++) {
         
-        //Get current GNP
-        int GNP = *i;
+        //Get current GNP number
+        int GNP_i = *i;
         
-        //Check if GNP and GNP_new are too close or penetrate each other
+        //Vector to stor the simplex that encloses the origin in case of interpenetration
+        vector<Point_3D> simplex;
         
+        //Flags for penetration (p_flag) and touching (t_flag)
+        bool p_flag = false;
+        bool t_flag = false;
         
-        //If they are too close or penetrating each other, calculate the dispalcement
-        Point_3D disp;
+        //Check if GNP and GNP_new penetrate each other
+        if (!GJK_EPA.GJK(gnps[GNP_i], gnp_new, simplex, p_flag, t_flag)) {
+            hout<<"Error in Move_gnps_if_needed when calling GJK"<<endl;
+            return 0;
+        }
+
+        //Variables to store the penetration depth (PD) and direction vector (N) along which
+        //gnp_new needs to move
+        double PD;
+        Point_3D N;
         
-        //Add the calculated displacement to the total displacement
-        
+        if (p_flag) {
+            //hout<<"Penetration"<<endl;
+            
+            //There is penetration, so then use EPA to fint the penetration depth PD and direction vector N
+            if (!GJK_EPA.EPA(gnps[GNP_i].vertices, gnp_new.vertices, simplex, N, PD)) {
+                hout<<"Error in Move_gnps_if_needed when calling EPA"<<endl;
+                return 0;
+            }
+            //hout<<"PD="<<PD<<" normal="<<N.str()<<endl;
+            
+            //Update the total dispacement
+            disp_tot = disp_tot + N*(PD + cutoffs.van_der_Waals_dist);
+            
+            //Change the displaced flag if needed
+            if (!displaced) {
+                displaced =  true;
+            }
+        }
+        else {
+            //There is no penetration, so check wether they are touching or not
+            
+            if (t_flag) {
+                //hout<<"Touch"<<endl;
+                
+                //Find the simpleces that share the same plane/line/vertex and the direction in which
+                //gnp_new should be moved
+                if (!Find_direction_of_touching_gnps(GJK_EPA, gnps[GNP_i], gnp_new, N)) {
+                    hout<<"Error in Move_gnps_if_needed when calling Find_direction_of_touching_gnps"<<endl;
+                    return 0;
+                }
+                
+                //Since the GNPs are touching, then the distance to be moved is just
+                //the van der Waals distance
+                disp_tot = disp_tot + N*cutoffs.van_der_Waals_dist;
+                
+                //Change the displaced flag if needed
+                if (!displaced) {
+                    displaced =  true;
+                }
+            }
+            else {
+                //hout<<"No penetration"<<endl;
+                
+                //Find the distance between the two GNPs and make sure they are separated at least the
+                //van der Waals distance
+                if (!GJK_EPA.Distance_and_direction_estimation(gnps[GNP_i], gnp_new, N, PD)) {
+                    hout<<"Error in Move_gnps_if_needed when calling Distance_and_direction_estimation"<<endl;
+                    return 0;
+                }
+                
+                //Check that the separation is at least the van der Waals distance
+                double new_dist = cutoffs.van_der_Waals_dist - PD;
+                if (new_dist > Zero) {
+                    
+                    //If the separation is less than the van der Waals distance, then gnp_new needs
+                    //to be moved, so update the total displacement
+                    disp_tot = disp_tot + N*new_dist;
+                    
+                    //Change the displaced flag if needed
+                    if (!displaced) {
+                        displaced =  true;
+                    }
+                }
+            }
+        }
     }
     
-    //If gnp_new was moved, set the displaced to true
+    //Check if a displacement is needed
+    if (displaced) {
+        
+        //A displacement is needed, then move gnp_new
+        if (!Move_gnp(disp_tot, gnp_new)) {
+            hout<<"Error in Move_gnp."<<endl;
+            return 0;
+        }
+    }
+    
+    return 1;
+}
+//This function determines the direction in wich a GNP should be moved in case it is touching
+//another GNP
+int GenNetwork::Find_direction_of_touching_gnps(Collision_detection &GJK_EPA, const GNP &gnpA, const GNP &gnpB, Point_3D &N)const
+{
+    //Find a point V in the Minkowski sum
+    Point_3D V = gnpA.center - gnpB.center;
+    
+    //Squared length of the vector from V to origin
+    double len_V2 = V.length2();
+    
+    //Lambda function to obtain the distance from V to the vector OQ
+    //The '&' lets me use variables in scope
+    auto dist2 = [&](const Point_3D &Q_) {
+        double dot_ = V.dot(Q_);
+        return (len_V2 + dot_*dot_/Q_.length2());
+    };
+    
+    //Get the support vector in the direction from V to origin
+    Point_3D Q = GJK_EPA.Support_AB(V*(-1), gnpA.vertices, gnpB.vertices);
+    
+    //Calculate the distance from V to the line segment OQ, this will be the reference distance
+    double dist_ref;
+    //Check if Q is the origin
+    if (Q.length2() < Zero) {
+        
+        //Q is the origin, so the reference distance is just the distance from V to the origin
+        dist_ref = len_V2;
+    }
+    else {
+        
+        //Q is not the origin, so use the lambda function to calculate the distance from V
+        //to the line segment OQ
+        dist_ref = dist2(Q);
+    }
+    
+    
+    //Vectors to save the simplices in A and B that are touching
+    vector<int> simplexA, simplexB;
+    
+    //Iterate over all vertices of the Minkowski sum
+    //i iterates over the vertices of A
+    for (int i = 0; i < 8; i++) {
+        //j iterates over the vertices of B
+        for (int j = 0; j < 8; j++) {
+            
+            //Calculate the point in the Minkowski sum
+            Q = gnpA.vertices[i] - gnpB.vertices[j];
+            
+            //Check if Q is the origin
+            if (Q.length2() < Zero) {
+                
+                //Q is the origin, so i and j should be added to the simplices
+                simplexA.push_back(i);
+                simplexB.push_back(j);
+            }
+            
+            //Q is not the origin, so check if the distance from V to line segment OQ
+            //is the same (or almost the same) as the reference distance
+            else if (abs(dist_ref - dist2(Q)) < Zero) {
+                
+                //The vertices in gnpA and gnpB are in the edge or face of the Minkowski sum
+                //that crosses the origin, so add them to their corresponding simplices
+                simplexA.push_back(i);
+                simplexB.push_back(j);
+            }
+        }
+    }
+    
+    //Check if there is a face in any of the simplices found
+    if (simplexA.size() == 4 || simplexB.size() == 4) {
+        
+        //Find one face and the normal to that face
+        if (simplexA.size() == 4) {
+            
+            //gnpA has a face as part of the touch, get the normal
+            N = (gnpA.vertices[simplexA[1]] - gnpA.vertices[simplexA[0]]).cross(gnpA.vertices[simplexA[2]] - gnpA.vertices[simplexA[0]]);
+        }
+        else {
+            
+            //Only gnpB has a plane as part of the touch
+            N = (gnpB.vertices[simplexB[1]] - gnpB.vertices[simplexB[0]]).cross(gnpB.vertices[simplexB[2]] - gnpB.vertices[simplexB[0]]);
+        }
+        
+        //Make the normal a unit vector
+        N.make_unit();
+        
+        //Make sure N goes in the direction from gnpA to gnpB
+        if (N.dot(gnpB.center - gnpA.center) < Zero) {
+            //Rever the direction
+            N = N*(-1);
+        }
+    }
+    else {
+        
+        //No face is touching, in such case gnpB can be moved in the direction from centerA to centerB
+        N = (gnpB.center - gnpA.center).unit();
+    }
+    
+    return 1;
+}
+//This function moves a GNP on a given direction and updates the plane equations of its faces
+int GenNetwork::Move_gnp(const Point_3D &displacement, GNP &gnp)const
+{
+    //Move the GNP center
+    gnp.center = gnp.center + displacement;
+    
+    //Move the vertices
+    for (int i = 0; i < 8; i++) {
+        gnp.vertices[i] = gnp.vertices[i] + displacement;
+    }
+    
+    //Update the planes of the gnp faces
+    if (!Update_gnp_plane_equations(gnp)) {
+        hout<<"Error in Move_gnp when calling Update_gnp_plane_equations."<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//This function calculates the generated volume of a GNP and adds it to the global variables
+int GenNetwork::Calculate_generated_gnp_vol_and_update_total_vol(const GNP_Geo gnp_geom, const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol_tot, double &gnp_wt_tot)const
+{
+    //---------------------------------------------------------------------------
+    //Add the volume and weight corresponding to the GNP
+    double gnp_vol = gnp.volume;
+    
+    //Iterate over the eight vertices of the GNP and check if all of them are inside the sample
+    for (int i = 0; i < 8; i++) {
+        
+        //Check if current vertex is inside the sample
+        if (!Point_inside_sample(sample_geom, gnp.vertices[i])) {
+            
+            //Vertex i is not inside the sample, then approximate the GNP volume
+            if (!Approximate_gnp_volume_inside_sample(sample_geom, gnp, gnp_vol)) {
+                hout << "Error in Calculate_generated_volume when calling Approximate_gnp_volume_inside_sample." << endl;
+                return 0;
+            }
+            
+            //Break the loop as it is not necessary to continue cheking the rest of the vertices
+            break;
+        }
+    }
+    
+    //Update the total weight
+    gnp_vol_tot = gnp_vol_tot + gnp_vol;
+    
+    //Update the weight from the volume
+    gnp_wt_tot = gnp_wt_tot + gnp_vol*gnp_geom.density;
+    
+    return 1;
+}
+//This function approximates the volume of a GNP inside the sample depending of the number of points in
+//the discretization of its middle plane that are inside the sample
+int GenNetwork::Approximate_gnp_volume_inside_sample(const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol)const
+{
+    //---------------------------------------------------------------------------
+    //Number of points per side to approximate volume
+    int n_points = 20;
+    
+    //Variable to count the number of points inside the sample
+    int points_in = 0;
+    
+    //Midpoint between vertices 3 and 7
+    Point_3D corner = (gnp.vertices[3] + gnp.vertices[7])/2.0;
+    //Midpoint between vertices 0 and 4
+    Point_3D corner_right = (gnp.vertices[0] + gnp.vertices[4])/2.0;
+    //Midpoint between vertices 2 and 6
+    Point_3D corner_up = (gnp.vertices[2] + gnp.vertices[6])/2.0;
+    
+    //Direction vector from corner to corner_right
+    Point_3D dir_right = (corner_right - corner);
+    //Direction vector from corner to corner_up
+    Point_3D dir_up = (corner_up - corner);
+    
+    //Iterate over the total number of points
+    //Index i moves corner to the right
+    for (int i = 0; i < n_points; i++) {
+        
+        //Initialize new point with the last value of corner
+        Point_3D new_point = corner;
+        
+        //Index j moves corner up
+        for (int j = 0; j < n_points; j++) {
+            
+            //Check if new point is inside the sample
+            if (Point_inside_sample(sample_geom, new_point)) {
+                //The point is inside the sample, so increase the number of points inside the sample
+                points_in++;
+            }
+            
+            //Move new_point up proportional to the index j
+            //new_point moves from the intial position of corner and upwards
+            double lambda_up = (double)j/(n_points-1);
+            new_point = corner + dir_up*(lambda_up);
+        }
+        
+        //Move corner to the right proportional to the index i
+        //Corner only moves to thre right
+        double lambda_right = (double)i/(n_points-1);
+        corner = corner + dir_right*lambda_right;
+    }
+    
+    //Approximate the volume inside
+    gnp_vol = gnp_vol*((double)points_in/(n_points*n_points));
+    //hout << "Total volume = " << gnp_vol;
     
     return 1;
 }
