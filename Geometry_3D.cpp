@@ -224,7 +224,7 @@ void Point_3D::set(Point_3D &P)
 }
 //---------------------------------------------------------------------------
 //Make a string version of the point
-string Point_3D::str()
+string Point_3D::str()const
 {
     string s = "(" + to_string(x) + ", " + to_string(y) + ", " + to_string(z) + ")";
     

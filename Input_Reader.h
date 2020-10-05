@@ -21,7 +21,7 @@ using namespace hns;
 #include "Geometry_3D.h"
 
 const double PI = 3.1415926535897932384626433832795;
-const int MAX_ATTEMPTS = 15;
+const int MAX_ATTEMPTS = 5;
 
 //---------------------------------------------------------------------------
 //Name of application case

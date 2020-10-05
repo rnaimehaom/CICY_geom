@@ -1663,7 +1663,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
         //applied to the GNP, i.e, its random location
         //hout<<"Get_seed_point_mt"<<endl;
         if(Get_seed_point_mt(geom_sample.ex_dom_gnp, gnp.center, engine_x, engine_y, engine_z, dist)==0) return 0;
-        hout<<"gnp.center="<<gnp.center.str()<<endl;
+        //hout<<"gnp.center="<<gnp.center.str()<<endl;
         
         //Generate the GNP and all its remaining geometric parameters (vertices, planes, normal vectors)
         //hout<<"Generate_gnp"<<endl;
@@ -1671,12 +1671,15 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
             hout << "Error in Generate_gnp_network_mt when calling Generate_gnp" << endl;
             return 0;
         }
+        Tecplot_Export tec;
+        string str =  "GNP_"+to_string(gnps.size())+".dat";
+        tec.Export_singlegnp(gnp, str);
         
         //Flag to determine if new gnp was rejected
         bool rejected = false;
         
         //Check if we are allowing penetrations
-        if (!penetrating_model_flag) {
+        if (penetrating_model_flag) {
             //Penetrations are not allowed
             
             //Check if the GNP penetrates another GNP
@@ -1693,6 +1696,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
         if (rejected) {
             
             //The GNP was rejected so increase the count of rejected GNPs
+            //hout<<"GNP WAS REJECTED"<<endl;
             gnp_reject_count++;
         }
         else {
@@ -1724,7 +1728,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
             hout << ", the target volume fraction was " << gnp_geo.volume_fraction << endl;
         }
         
-        hout << "There were " << gnps.size() << " GNPs generated." << endl;
+        hout << "There were " << gnps.size() << " GNPs generated. There were "<<gnp_reject_count<<" rejected GNPs."<< endl;
     }
     
     return 1;
@@ -1774,13 +1778,14 @@ int GenNetwork::Initialize_gnp_subregions(const Geom_sample &sample_geom, const 
     ls = sqrt(2.0*gnp_geo.len_max + gnp_geo.t_max);
     
     //Calculate the number of variables along each direction
+    //Make sure there is at least one subregion
     //
     //Number of subregions along x
-    n_subregion[0] = (int)(sample_geom.len_x/ls);
+    n_subregion[0] = max(1, (int)(sample_geom.len_x/ls));
     //Number of subregions along y
-    n_subregion[1] = (int)(sample_geom.wid_y/ls);
+    n_subregion[1] = max(1, (int)(sample_geom.wid_y/ls));
     //Number of subregions along z
-    n_subregion[2] = (int)(sample_geom.hei_z/ls);
+    n_subregion[2] = max(1, (int)(sample_geom.hei_z/ls));
     
     //Initialize sectioned_domain
     sectioned_domain.assign(n_subregion[0]*n_subregion[1]*n_subregion[2], vector<int>());
@@ -1851,7 +1856,7 @@ int GenNetwork::Update_gnp_plane_equations(GNP &gnp)const
 int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const double &ls, const double &overlap_max_cutoff, const int n_subregions[], GNP &gnp_new, vector<vector<int> > &sectioned_domain, bool &rejected)const
 {
     //Variable to count the number of attempts
-    int attemtps = 0;
+    int attempts = 0;
     
     //Flag to determine if gnp_new was moved
     bool displaced;
@@ -1859,28 +1864,34 @@ int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, 
     //Varibale to store all GNP subregions
     vector<int> subregions;
     
+    hout<<"GNP_i ="<<gnps.size()<<" center="<<gnp_new.center.str()<<endl;
     //Keep moving gnp_new as long as the number of attempts does not exceed the maximum allowed
-    while (attemtps <= MAX_ATTEMPTS) {
+    while (attempts <= MAX_ATTEMPTS) {
         
         //Find the subregions gnp_new occupies
         subregions.clear();
+        
+        hout<<"attempts="<<attempts<<endl;
         if (!Get_gnp_subregions(geom_sample, gnp_new, ls, overlap_max_cutoff, n_subregions, subregions)) {
-            hout<<"Error in Is_there_gnp_interpenetration"<<endl;
+            hout<<"Error in Get_gnp_subregions"<<endl;
             return 0;
         }
         
         //Scan the subregions the GNP occupies to determine if it might be close enough to another GNP
         //Get all GNPs it might penetrate
         set<int> gnp_set;
+        hout<<"Get_gnps_in_subregions"<<endl;
         if (!Get_gnps_in_subregions(sectioned_domain, subregions, gnp_set)) {
             hout<<"Error in Get_gnps_in_subregions"<<endl;
             return 0;
         }
+        hout<<"gnp_set.size="<<gnp_set.size()<<endl;
         
         //Check if close enough GNPs were found
         if (!gnp_set.empty()) {
             
             //Determine if gnp_new needs to be moved and, if so, move it
+            hout<<"Move_gnps_if_needed"<<endl;
             if (!Move_gnps_if_needed(cutoffs, gnps, gnp_set, gnp_new, displaced)) {
                 hout<<"Error in Move_gnps_if_needed."<<endl;
                 return 0;
@@ -1893,24 +1904,36 @@ int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, 
                 //Thus, set the rejected flag to false
                 rejected = false;
                 
-                //Also, since gnp_new was successfully generated, add it to all corresponding sub regions
-                for (size_t i = 0; i < subregions.size(); i++) {
-                    
-                    //Current subregion
-                    int s = subregions[i];
-                    
-                    //Add GNP number to current subregion
-                    sectioned_domain[s].push_back((int)gnps.size());
+                if (!Add_valid_gnp_to_subregions((int)gnps.size(), subregions, sectioned_domain)) {
+                    hout<<"Error in Add_valid_gnp_to_subregions after displacement."<<endl;
+                    return 0;
                 }
                 
                 return 1;
             }
             //If the GNP was moved, then one more iteration is needed to check that the new
             //position is a valid position
+            else{hout<<"displaced gnp_new.center="<<gnp_new.center.str()<<endl;}
+        }
+        else {
+            
+            //If no GNPs that could be to close or interpenetrating gnp_new, then gnp_new is in a valid
+            //position
+            //Thus, set the rejected flag to false
+            rejected = false;
+            
+            //Also, since gnp_new was successfully generated, add it to all corresponding sub regions
+            if (!Add_valid_gnp_to_subregions((int)gnps.size(), subregions, sectioned_domain)) {
+                hout<<"Error in Add_valid_gnp_to_subregions (no displacement needed)."<<endl;
+                return 0;
+            }
+            
+            //terminate the function
+            return 1;
         }
         
         //Increase the number of attempts
-        attemtps++;
+        attempts++;
     }
     
     //If this part of the code is reached, then gnp_new was moved and we need to check if it is
@@ -1935,7 +1958,7 @@ int GenNetwork::Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gn
     for (int i = 0; i < 4; i++) {
         
         //Calculate the midpoint
-        Point_3D mid = (gnp_new.vertices[i] + gnp_new.vertices[i+3])/2.0;
+        Point_3D mid = (gnp_new.vertices[i] + gnp_new.vertices[i+4])/2.0;
         
         //Check if the midpoint is inside the sample
         if (Point_inside_sample(geom_sample, mid)) {
@@ -1950,6 +1973,7 @@ int GenNetwork::Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gn
             int c = (int)((mid.z-geom_sample.origin.z)/ls);
             //Limit the value of c as it has to go from 0 to n_subregions[2]-1
             if (c == n_subregions[2]) c--;
+            //hout<<"a="<<a<<" b="<<b<<" c="<<c<<endl;
             
             //Update the maximum and minimum values of coordinates
             if (a < min_a) { min_a = a; }
@@ -2005,18 +2029,24 @@ int GenNetwork::Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gn
     //Generate all combinations of the coordinates to find the subregions the GNP occupies
     //and the subregions that might have GNPs that are close enough to be in contact or below the
     //van der Waals distance
+    /*hout<<"min_a="<<min_a<<" max_a="<<max_a<<endl;
+    hout<<"min_b="<<min_b<<" max_b="<<max_b<<endl;
+    hout<<"min_c="<<min_c<<" max_c="<<max_c<<endl;
+    hout<<"subregions:"<<endl;*/
     for (int i = min_a; i <= max_a; i++) {
         for (int j = min_b; j <= max_b; j++) {
             for (int k = min_c; k <= max_c; k++) {
                 
                 //Calculate the subregion index
                 int idx = i + j*n_subregions[0] + k*n_subregions[0]*n_subregions[1];
+                //hout<<idx<<' ';
                 
                 //Add the index to the vector of subregions
                 subregions.push_back(idx);
             }
         }
     }
+    //hout<<endl;
     
     return 1;
 }
@@ -2024,11 +2054,13 @@ int GenNetwork::Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gn
 //A set is the putput value to avoid repetition of GNP numbers
 int GenNetwork::Get_gnps_in_subregions(const vector<vector<int> > &sectioned_domain, const vector<int> &subregions, set<int> &gnp_set)const
 {
+    //hout<<"sectioned_domain.size="<<sectioned_domain.size()<<endl;
     for (size_t i = 0; i < subregions.size(); i++) {
         
         //Current sub-region
         int s = subregions[i];
         
+        //hout<<"   sectioned_domain["<<s<<"].size="<<sectioned_domain[s].size()<<endl;
         for (size_t j = 0; j < sectioned_domain[s].size(); j++) {
             
             //Current GNP
@@ -2042,7 +2074,7 @@ int GenNetwork::Get_gnps_in_subregions(const vector<vector<int> > &sectioned_dom
     return 1;
 }
 //This function moves a GNP if needed
-int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP gnp_new, bool &displaced) const
+int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP &gnp_new, bool &displaced) const
 {
     //Create a new Collision_detection object to determine whether two GNPs interpenetrate
     //eachother or not, and their distances if they do not interpenetrate each other
@@ -2078,7 +2110,7 @@ int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP
         Point_3D N;
         
         if (p_flag) {
-            //hout<<"Penetration"<<endl;
+            hout<<"Penetration with GNP "<<GNP_i<<endl;
             
             //There is penetration, so then use EPA to fint the penetration depth PD and direction vector N
             if (!GJK_EPA.EPA(gnps[GNP_i].vertices, gnp_new.vertices, simplex, N, PD)) {
@@ -2099,7 +2131,7 @@ int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP
             //There is no penetration, so check wether they are touching or not
             
             if (t_flag) {
-                //hout<<"Touch"<<endl;
+                hout<<"Touch with GNP "<<GNP_i<<endl;
                 
                 //Find the simpleces that share the same plane/line/vertex and the direction in which
                 //gnp_new should be moved
@@ -2118,7 +2150,7 @@ int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP
                 }
             }
             else {
-                //hout<<"No penetration"<<endl;
+                hout<<"No penetration with GNP "<<GNP_i<<endl;
                 
                 //Find the distance between the two GNPs and make sure they are separated at least the
                 //van der Waals distance
@@ -2147,6 +2179,7 @@ int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP
     //Check if a displacement is needed
     if (displaced) {
         
+        hout<<"GNP moved disp_tot="<<disp_tot.str()<<endl;
         //A displacement is needed, then move gnp_new
         if (!Move_gnp(disp_tot, gnp_new)) {
             hout<<"Error in Move_gnp."<<endl;
@@ -2271,6 +2304,21 @@ int GenNetwork::Move_gnp(const Point_3D &displacement, GNP &gnp)const
     if (!Update_gnp_plane_equations(gnp)) {
         hout<<"Error in Move_gnp when calling Update_gnp_plane_equations."<<endl;
         return 0;
+    }
+    
+    return 1;
+}
+//This function adds a GNP to all the subregions it occupies (as given by the subregions vector)
+int GenNetwork::Add_valid_gnp_to_subregions(const int &gnp_new_idx, const vector<int> &subregions, vector<vector<int> > &sectioned_domain)const
+{
+    //Also, since gnp_new was successfully generated, add it to all corresponding sub regions
+    for (size_t i = 0; i < subregions.size(); i++) {
+        
+        //Current subregion
+        int s = subregions[i];
+        
+        //Add GNP number to current subregion
+        sectioned_domain[s].push_back(gnp_new_idx);
     }
     
     return 1;

@@ -90,9 +90,10 @@ public:
     int Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const double &ls, const double &overlap_max_cutoff, const int n_subregions[], GNP &gnp_new, vector<vector<int> > &sectioned_domain, bool &rejected)const;
     int Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gnp_new, const double &ls, const double &overlap_max_cutoff, const int n_subregions[], vector<int> &subregions)const;
     int Get_gnps_in_subregions(const vector<vector<int> > &sectioned_domain, const vector<int> &subregions, set<int> &gnp_set)const;
-    int Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP gnp_new, bool &displaced)const;
+    int Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP &gnp_new, bool &displaced)const;
     int Find_direction_of_touching_gnps(Collision_detection &GJK_EPA, const GNP &gnpA, const GNP &gnpB, Point_3D &N)const;
     int Move_gnp(const Point_3D &displacement, GNP &gnp)const;
+    int Add_valid_gnp_to_subregions(const int &gnp_new_idx, const vector<int> &subregions, vector<vector<int> > &sectioned_domain)const;
     int Calculate_generated_gnp_vol_and_update_total_vol(const GNP_Geo gnp_geom, const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol_tot, double &gnp_wt_tot)const;
     int Approximate_gnp_volume_inside_sample(const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol)const;
     

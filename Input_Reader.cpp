@@ -930,10 +930,14 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     }
     
     //Get the geometry of the extended domain for GNPs
-    geom_sample.ex_dom_gnp.poi_min = geom_sample.origin - Point_3D(gnp_geo.len_max/2,gnp_geo.len_max/2,gnp_geo.len_max/2);
+    /*geom_sample.ex_dom_gnp.poi_min = geom_sample.origin - Point_3D(gnp_geo.len_max/2,gnp_geo.len_max/2,gnp_geo.len_max/2);
     geom_sample.ex_dom_gnp.len_x = geom_sample.len_x + gnp_geo.len_max;
     geom_sample.ex_dom_gnp.wid_y = geom_sample.wid_y + gnp_geo.len_max;
-    geom_sample.ex_dom_gnp.hei_z = geom_sample.hei_z + gnp_geo.len_max;
+    geom_sample.ex_dom_gnp.hei_z = geom_sample.hei_z + gnp_geo.len_max;*/
+    geom_sample.ex_dom_gnp.poi_min = geom_sample.origin;
+    geom_sample.ex_dom_gnp.len_x = geom_sample.len_x;
+    geom_sample.ex_dom_gnp.wid_y = geom_sample.wid_y;
+    geom_sample.ex_dom_gnp.hei_z = geom_sample.hei_z;
     geom_sample.ex_dom_gnp.volume = geom_sample.ex_dom_gnp.len_x*geom_sample.ex_dom_gnp.wid_y*geom_sample.ex_dom_gnp.hei_z;
     
     

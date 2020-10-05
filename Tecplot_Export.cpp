@@ -560,4 +560,29 @@ int Tecplot_Export::Export_randomly_oriented_gnps(ofstream &otec, const vector<G
     
     return 1;
 }
+int Tecplot_Export::Export_singlegnp(const GNP &gnp, const string &filename)
+{
+    ofstream otec(filename.c_str());
+    otec << "TITLE = \"GNP\"" << endl;
+    otec << "VARIABLES = X, Y, Z" << endl;
+    otec << "ZONE T=\"GNP\" N=8, E=1, F=FEPOINT, ET=BRICK" << endl;
+    
+    //Array that sets the order in which the vertices of the GNP need to be exported
+    int order[] = {7, 3, 6, 2, 4 , 0, 5 , 1};
+    
+    //Iterate over the vertices
+    for (int jj = 0; jj < 8; jj++) {
+        
+        //Export the vertices of the GNP in the order given by the order array
+        int idx = order[jj];
+        otec << gnp.vertices[idx].x << "  " << gnp.vertices[idx].y << "  " << gnp.vertices[idx].z << endl;
+        
+    }
+    
+    otec << "1 2 4 3 5 6 8 7" << endl;
+    otec << endl << endl;
+    
+    otec.close();
+    return 1;
+}
 //===========================================================================

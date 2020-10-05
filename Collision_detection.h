@@ -27,7 +27,7 @@ public:
     bool Is_origin_in_simplex(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &terminate);
     bool Update_simplex_case2(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &terminate);
     bool Common_if_case2(vector<Point_3D> &simplex, Point_3D &A, Point_3D &AB, Point_3D &AO, Point_3D &D, bool &terminate);
-    bool Update_simplex_case3(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &terminate);
+    bool Update_simplex_case3(vector<Point_3D> &simplex, Point_3D &A, Point_3D &Dir, bool &terminate);
     //---------------------------------------------------------------------------
     //Extended Polytope Algorithm (EPA)
     int EPA(const Point_3D verticesA[], const Point_3D verticesB[], vector<Point_3D> &simplex, Point_3D &normal, double &PD);

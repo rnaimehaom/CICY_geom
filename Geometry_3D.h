@@ -63,7 +63,7 @@ public:
     void make_unit();
     void set(const double &x_, const double &y_, const double &z_);
     void set(Point_3D &P);
-    string str();
+    string str()const;
 };
 //---------------------------------------------------------------------------
 //Definition for 3D line segements

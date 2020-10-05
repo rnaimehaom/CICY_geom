@@ -46,6 +46,7 @@ public:
     //Export a 3D cuboid with a random orientation
     int Export_randomly_oriented_gnps(ofstream &otec, const vector<GCH> &hybrid_particles, const vector<int> &gnp_cluster, string &family)const;
     int Export_randomly_oriented_gnps(ofstream &otec, const vector<GNP> &gnps)const;
+    int Export_singlegnp(const GNP &gnps, const string &filename);
 };
 //-------------------------------------------------------
 #endif
