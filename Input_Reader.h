@@ -54,8 +54,10 @@ struct Geom_sample{
     double x_max, y_max, z_max;
     double volume;
     double matrix_density;
-    //Minimum size for background grids
+    //Minimum size for background grids (overlapping sub-regions)
     double gs_minx, gs_miny, gs_minz;
+    //Overlapping of background gids
+    double gs_overlap;
     //Minimum, maximum, and step decrement of the observation window
     double win_min_x, win_min_y, win_min_z;
     double win_max_x, win_max_y, win_max_z;
@@ -194,9 +196,9 @@ private:
     int Read_application(struct App_name &app_name, ifstream &infile);
     int Read_simulation_parameters(struct Simu_para &simu_para, ifstream &infile);
     int Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infile);
+    int Read_cutoff_distances(struct Cutoff_dist &cutoff_dist, ifstream &infile);
     int Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstream &infile);
     int Read_agg_geo_parameters(struct Agglomerate_Geo &agg_geo, ifstream &infile);
-    int Read_cutoff_distances(struct Cutoff_dist &cutoff_dist, ifstream &infile);
     int Read_electrical_parameters(struct Electric_para &electric_para, ifstream &infile);
     int Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile);
     int Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infile);

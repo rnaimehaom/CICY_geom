@@ -44,7 +44,7 @@ int Collision_detection::GJK(const GNP &gnp1, const GNP &gnp_new, vector<Point_3
             //hout<<"Case 1"<<endl;
             return 1;
         }
-        //hout<<"A="<<A.str()<<endl;
+        hout<<"A="<<A.str()<<endl;
         
         //Check if there is no intersection
         if (A.dot(D) < Zero) {
@@ -81,7 +81,7 @@ int Collision_detection::GJK(const GNP &gnp1, const GNP &gnp_new, vector<Point_3
         
         //If D is a zero vector, then the origin is located at a face, edge or point
         //Thus check for D being a zero vector
-        //hout<<"D="<<D.str()<<endl;
+        hout<<"D="<<D.str()<<endl;
         if (D.length2() < Zero) {
             //Set the flag for touching to true as the polyhedrons are touching
             t_flag = true;
@@ -138,13 +138,14 @@ bool Collision_detection::Is_origin_in_simplex(vector<Point_3D> &simplex, Point_
     
     if (simplex.size() == 1) {
         
+        hout<<"case simplex 1"<<endl;
         //Calculate the vector from A to B, where B is the point in the simplex
         Point_3D AB = simplex[0] - A;
         
         //Calculate the vector from A to the origin
         Point_3D AO = A*(-1);
         
-        //hout<<"simplex0={B="<<simplex[0].str()<<"}"<<endl;
+        hout<<"simplex0={B="<<simplex[0].str()<<"}"<<endl;
         //Check if there is intersection
         if (AB.dot(AO) > Zero) {
             
@@ -185,12 +186,12 @@ bool Collision_detection::Is_origin_in_simplex(vector<Point_3D> &simplex, Point_
 bool Collision_detection::Update_simplex_case2(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &terminate)
 {
     
-    //cout<<"case 2"<<endl;
+    hout<<"case simplex 2"<<endl;
     
     //Note that simplex = {B, C}
     Point_3D B = simplex[0];
     Point_3D C = simplex[1];
-    //hout<<"simplex0={B="<<simplex[0].str()<<", C="<<simplex[1].str()<<"}"<<endl;
+    hout<<"simplex0={B="<<simplex[0].str()<<", C="<<simplex[1].str()<<"}"<<endl;
     
     //Precompute some vectors
     Point_3D AB = B-A;
@@ -275,7 +276,7 @@ bool Collision_detection::Common_if_case2(vector<Point_3D> &simplex, Point_3D &A
 //This is the case when the simplex already has three points and the support point A is added
 bool Collision_detection::Update_simplex_case3(vector<Point_3D> &simplex, Point_3D &A, Point_3D &Dir, bool &terminate)
 {
-    //hout<<"case 3"<<endl;
+    hout<<"case simplex 3"<<endl;
     //Rename vertices in simplex to facilitate the writing and reading of the code
     Point_3D B = simplex[0];
     Point_3D C = simplex[1];
@@ -354,7 +355,7 @@ bool Collision_detection::Update_simplex_case3(vector<Point_3D> &simplex, Point_
             }
             else {
                 //This should no happen, so return error
-                hout<<"Error in Find_simplex_closest_to_origin. Vector idxs has an invalid combination:"<<endl;
+                hout<<"Error in Update_simplex_case3 (1). Vector idxs has an invalid combination:"<<endl;
                 for (size_t i = 0; i < idxs.size(); i++) {
                     hout<<"idxs["<<i<<"]="<<idxs[i]<<endl;
                 }
@@ -363,7 +364,7 @@ bool Collision_detection::Update_simplex_case3(vector<Point_3D> &simplex, Point_
                 return false;
             }
         }
-        else if (idxs[0] == 1 && idxs[2] == 2) {
+        else if (idxs[0] == 1 && idxs[1] == 2) {
             
             //This is the case when the origin is above planes for faces ACD and ABD
             //Those faces share the edge AD, thus this is the simplex
@@ -372,7 +373,7 @@ bool Collision_detection::Update_simplex_case3(vector<Point_3D> &simplex, Point_
         }
         else {
             //This should no happen, so return error
-            hout<<"Error in Find_simplex_closest_to_origin. Vector idxs has an invalid combination:"<<endl;
+            hout<<"Error in Update_simplex_case3 (2). Vector idxs has an invalid combination:"<<endl;
             for (size_t i = 0; i < idxs.size(); i++) {
                 hout<<"idxs["<<i<<"]="<<idxs[i]<<endl;
             }
@@ -880,7 +881,7 @@ int Collision_detection::Find_simplex_closest_to_origin(const Point_3D tetrahedr
             }
             else {
                 //This should no happen, so return error
-                hout<<"Error in Find_simplex_closest_to_origin. Vector idxs has an invalid combination:"<<endl;
+                hout<<"Error in Find_simplex_closest_to_origin (1). Vector idxs has an invalid combination:"<<endl;
                 for (size_t i = 0; i < idxs.size(); i++) {
                     hout<<"idxs["<<i<<"]="<<idxs[i]<<endl;
                 }
@@ -900,7 +901,7 @@ int Collision_detection::Find_simplex_closest_to_origin(const Point_3D tetrahedr
         }
         else {
             //This should no happen, so return error
-            hout<<"Error in Find_simplex_closest_to_origin. Vector idxs has an invalid combination:"<<endl;
+            hout<<"Error in Find_simplex_closest_to_origin (2). Vector idxs has an invalid combination:"<<endl;
             for (size_t i = 0; i < idxs.size(); i++) {
                 hout<<"idxs["<<i<<"]="<<idxs[i]<<endl;
             }

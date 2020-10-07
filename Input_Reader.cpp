@@ -53,6 +53,15 @@ int Input::Read_Infile(ifstream &infile)
         Warning_message("Sample_Geometry");
     }
     
+    str = Get_Line(infile);
+    if(str=="Cutoff_Distances")    {
+        if(Read_cutoff_distances(cutoff_dist, infile)==0) return 0;
+        //hout<<"i="<<i<<endl;i++;
+    }
+    //If not found then the default values are used
+    else {
+        Warning_message("Cutoff_Distances");
+    }
     
     str = Get_Line(infile);
     if(str=="Nanotube_Geometry")    {
@@ -83,16 +92,6 @@ int Input::Read_Infile(ifstream &infile)
     //If not found then the default values are used
     else {
         Warning_message("GNP_Geometry");
-    }
-    
-    str = Get_Line(infile);
-    if(str=="Cutoff_Distances")    {
-        if(Read_cutoff_distances(cutoff_dist, infile)==0) return 0;
-        //hout<<"i="<<i<<endl;i++;
-    }
-    //If not found then the default values are used
-    else {
-        Warning_message("Cutoff_Distances");
     }
     
     str = Get_Line(infile);
@@ -482,6 +481,34 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
 	return 1;
 }
 //---------------------------------------------------------------------------
+//Read cutoff distances
+int Input::Read_cutoff_distances(struct Cutoff_dist &cutoff_dist, ifstream &infile)
+{
+    if(cutoff_dist.mark)
+    {
+        //Output a message that the keyword has already been iput
+        Warning_message_already_input(cutoff_dist.keywords);
+        return 0;
+    }
+    else cutoff_dist.mark = true;
+    
+    //Read the the cutoff distances in the following order:
+    //van der Waals distance (in microns)
+    //cutoff for tunneling (in microns)
+    istringstream istr(Get_Line(infile));
+    istr >> cutoff_dist.van_der_Waals_dist >> cutoff_dist.tunneling_dist;
+    if (cutoff_dist.van_der_Waals_dist<Zero) {
+        hout << "Error: van der Waals distance must be greater than zero. Input was: "<< cutoff_dist.van_der_Waals_dist << endl;
+        return 0;
+    }
+    if (cutoff_dist.tunneling_dist<Zero) {
+        hout << "Error: tunneling cutoff distance must be greater than zero. Input was: "<< cutoff_dist.tunneling_dist << endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//---------------------------------------------------------------------------
 //Read the geometric parameters of nanotubes
 int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstream &infile)
 {
@@ -619,6 +646,8 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y+ 2*nanotube_geo.len_max;
     geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + 2*nanotube_geo.len_max;
     
+    //Determine the overlapping of the overlapping sub-regions
+    geom_sample.gs_overlap = 2*nanotube_geo.rad_max + cutoff_dist.van_der_Waals_dist;
     
 	return 1;
 }
@@ -940,36 +969,16 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     geom_sample.ex_dom_gnp.hei_z = geom_sample.hei_z;
     geom_sample.ex_dom_gnp.volume = geom_sample.ex_dom_gnp.len_x*geom_sample.ex_dom_gnp.wid_y*geom_sample.ex_dom_gnp.hei_z;
     
+    //Determine the overlapping of the overlapping sub-regions
+    if (simu_para.particle_type == "GNP_cuboids") {
+        
+        //If only GNPs are specified, use the GNP overlapping, which is only the var de Waals
+        //distance since the points of a GNP discretization are on its surfaces
+        geom_sample.gs_overlap = geom_sample.gs_minx/(2.0*sqrt(2.0));
+    }
+    //If CNTs are also generated, use the overlapping specified for them since it is larger
     
     return 1;
-}
-//---------------------------------------------------------------------------
-//Read cutoff distances
-int Input::Read_cutoff_distances(struct Cutoff_dist &cutoff_dist, ifstream &infile)
-{
-	if(cutoff_dist.mark)
-	{
-		//Output a message that the keyword has already been iput
-        Warning_message_already_input(cutoff_dist.keywords);
-        return 0;
-	}
-	else cutoff_dist.mark = true;
-    
-    //Read the the cutoff distances in the following order:
-    //van der Waals distance (in microns)
-    //cutoff for tunneling (in microns)
-	istringstream istr(Get_Line(infile));
-	istr >> cutoff_dist.van_der_Waals_dist >> cutoff_dist.tunneling_dist;
-    if (cutoff_dist.van_der_Waals_dist<Zero) {
-        hout << "Error: van der Waals distance must be greater than zero. Input was: "<< cutoff_dist.van_der_Waals_dist << endl;
-        return 0;
-    }
-    if (cutoff_dist.tunneling_dist<Zero) {
-        hout << "Error: tunneling cutoff distance must be greater than zero. Input was: "<< cutoff_dist.tunneling_dist << endl;
-        return 0;
-    }
-    
-	return 1;
 }
 //---------------------------------------------------------------------------
 //Read electrical properties of materials

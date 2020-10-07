@@ -1623,11 +1623,9 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
     //n_subregions[1] is the number of subregions along y
     //n_subregions[2] is the number of subregions along z
     int n_subregion[] = {0,0,0};
-    //Variable to store the side length of the GNP overlapping sub-regions
-    double ls = 0.0;
     //Calculate the number of subregins along each direction and intialize the sectioned_domain vector
-    hout<<"Initialize_gnp_subregions"<<endl;
-    if (!Initialize_gnp_subregions(geom_sample, gnp_geo, n_subregion, sectioned_domain, ls)) {
+    //hout<<"Initialize_gnp_subregions"<<endl;
+    if (!Initialize_gnp_subregions(geom_sample, n_subregion, sectioned_domain)) {
         hout<<"Error in Initialize_gnp_subregions"<<endl;
         return 1;
     }
@@ -1671,9 +1669,9 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
             hout << "Error in Generate_gnp_network_mt when calling Generate_gnp" << endl;
             return 0;
         }
-        Tecplot_Export tec;
-        string str =  "GNP_"+to_string(gnps.size())+".dat";
-        tec.Export_singlegnp(gnp, str);
+        //Tecplot_Export tec;
+        //string str =  "GNP_"+to_string(gnps.size())+".dat";
+        //tec.Export_singlegnp(gnp, str);
         
         //Flag to determine if new gnp was rejected
         bool rejected = false;
@@ -1684,7 +1682,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
             
             //Check if the GNP penetrates another GNP
             //hout<<"Deal_with_gnp_interpenetrations"<<endl;
-            if (!Deal_with_gnp_interpenetrations(geom_sample, cutoffs, gnps, ls, gnp_geo.t_max, n_subregion, gnp, sectioned_domain, rejected)) {
+            if (!Deal_with_gnp_interpenetrations(geom_sample, cutoffs, gnps, n_subregion, gnp, sectioned_domain, rejected)) {
                 hout<<"Error in Deal_with_gnp_interpenetrations"<<endl;
                 return 0;
             }
@@ -1696,7 +1694,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
         if (rejected) {
             
             //The GNP was rejected so increase the count of rejected GNPs
-            //hout<<"GNP WAS REJECTED"<<endl;
+            hout<<"GNP WAS REJECTED"<<endl;
             gnp_reject_count++;
         }
         else {
@@ -1728,7 +1726,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
             hout << ", the target volume fraction was " << gnp_geo.volume_fraction << endl;
         }
         
-        hout << "There were " << gnps.size() << " GNPs generated. There were "<<gnp_reject_count<<" rejected GNPs."<< endl;
+        hout << "There were " << gnps.size() << " GNPs generated ("<<(int)gnps.size()+gnp_reject_count<<" in total, from which "<<gnp_reject_count<<" were rejected GNPs."<< endl;
     }
     
     return 1;
@@ -1760,32 +1758,26 @@ int GenNetwork::GNP_seeds(const vector<unsigned int> &GNP_seeds, unsigned int ne
         //hout << "seed thickness: "<<net_seeds[4]<<endl;
         net_seeds[5] = rd();
         //hout << "seed orientation: "<<net_seeds[5]<<endl;
-        
-        
     }
     //Output the seeds
     hout<<"GNP seeds:"<<endl;
-    for (size_t i = 0; i < GNP_seeds.size(); i++) {
+    for (int i = 0; i < 6; i++) {
         hout<<net_seeds[i]<<' ';
     }
     hout<<endl;
     return 1;
 }
-int GenNetwork::Initialize_gnp_subregions(const Geom_sample &sample_geom, const GNP_Geo &gnp_geo, int n_subregion[], vector<vector<int> > &sectioned_domain, double &ls)const
-{
-    
-    //Calculate the side length of the subregions
-    ls = sqrt(2.0*gnp_geo.len_max + gnp_geo.t_max);
-    
+int GenNetwork::Initialize_gnp_subregions(const Geom_sample &sample_geom, int n_subregion[], vector<vector<int> > &sectioned_domain)const
+{   
     //Calculate the number of variables along each direction
-    //Make sure there is at least one subregion
+    //Make sure there is at least one subregion along each direction
     //
     //Number of subregions along x
-    n_subregion[0] = max(1, (int)(sample_geom.len_x/ls));
+    n_subregion[0] = max(1, (int)(sample_geom.len_x/sample_geom.gs_minx));
     //Number of subregions along y
-    n_subregion[1] = max(1, (int)(sample_geom.wid_y/ls));
+    n_subregion[1] = max(1, (int)(sample_geom.wid_y/sample_geom.gs_miny));
     //Number of subregions along z
-    n_subregion[2] = max(1, (int)(sample_geom.hei_z/ls));
+    n_subregion[2] = max(1, (int)(sample_geom.hei_z/sample_geom.gs_minz));
     
     //Initialize sectioned_domain
     sectioned_domain.assign(n_subregion[0]*n_subregion[1]*n_subregion[2], vector<int>());
@@ -1853,7 +1845,7 @@ int GenNetwork::Update_gnp_plane_equations(GNP &gnp)const
 //This function checks whether the newly generated GNP penetrates another GNP
 //If there is interpenetration, then the GNP is moved
 //If the attempts to relocate the GNP exceed the number of maximum attempts, the GNP is rejected
-int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const double &ls, const double &overlap_max_cutoff, const int n_subregions[], GNP &gnp_new, vector<vector<int> > &sectioned_domain, bool &rejected)const
+int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const int n_subregions[], GNP &gnp_new, vector<vector<int> > &sectioned_domain, bool &rejected)const
 {
     //Variable to count the number of attempts
     int attempts = 0;
@@ -1862,17 +1854,18 @@ int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, 
     bool displaced;
     
     //Varibale to store all GNP subregions
-    vector<int> subregions;
+    set<int> subregions;
     
-    hout<<"GNP_i ="<<gnps.size()<<" center="<<gnp_new.center.str()<<endl;
+    hout<<endl<<"GNP_new ="<<gnps.size()<<" center="<<gnp_new.center.str()<<endl;
     //Keep moving gnp_new as long as the number of attempts does not exceed the maximum allowed
     while (attempts <= MAX_ATTEMPTS) {
         
-        //Find the subregions gnp_new occupies
+        //Empty the subregions set
         subregions.clear();
         
+        //Find the subregions gnp_new occupies
         hout<<"attempts="<<attempts<<endl;
-        if (!Get_gnp_subregions(geom_sample, gnp_new, ls, overlap_max_cutoff, n_subregions, subregions)) {
+        if (!Get_gnp_subregions(geom_sample, gnp_new, n_subregions, subregions)) {
             hout<<"Error in Get_gnp_subregions"<<endl;
             return 0;
         }
@@ -1880,7 +1873,7 @@ int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, 
         //Scan the subregions the GNP occupies to determine if it might be close enough to another GNP
         //Get all GNPs it might penetrate
         set<int> gnp_set;
-        hout<<"Get_gnps_in_subregions"<<endl;
+        //hout<<"Get_gnps_in_subregions"<<endl;
         if (!Get_gnps_in_subregions(sectioned_domain, subregions, gnp_set)) {
             hout<<"Error in Get_gnps_in_subregions"<<endl;
             return 0;
@@ -1891,7 +1884,7 @@ int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, 
         if (!gnp_set.empty()) {
             
             //Determine if gnp_new needs to be moved and, if so, move it
-            hout<<"Move_gnps_if_needed"<<endl;
+            //hout<<"Move_gnps_if_needed"<<endl;
             if (!Move_gnps_if_needed(cutoffs, gnps, gnp_set, gnp_new, displaced)) {
                 hout<<"Error in Move_gnps_if_needed."<<endl;
                 return 0;
@@ -1913,7 +1906,7 @@ int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, 
             }
             //If the GNP was moved, then one more iteration is needed to check that the new
             //position is a valid position
-            else{hout<<"displaced gnp_new.center="<<gnp_new.center.str()<<endl;}
+            //else{hout<<"displaced gnp_new.center="<<gnp_new.center.str()<<endl;}
         }
         else {
             
@@ -1945,7 +1938,82 @@ int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, 
 }
 //This function finds all the subregions the GNP_new occupies and those subregions where there might be
 //close enough GNPs below the van der Waals distance
-int GenNetwork::Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gnp_new, const double &ls, const double &overlap_max_cutoff, const int n_subregions[], vector<int> &subregions)const
+int GenNetwork::Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gnp_new, const int n_subregions[], set<int> &subregions)const
+{
+    //Number of points to discretize the GNP along the x direction (of the GNP local coordinates)
+    int n_points_x = max(2, 1 + (int)(gnp_new.l/geom_sample.gs_minx));
+    
+    //Number of points to discretize the GNP along the y direction (of the GNP local coordinates)
+    int n_points_y = max(2, 1 + (int)(gnp_new.l/geom_sample.gs_miny));
+    
+    //Number of points to discretize the GNP along the z direction (of the GNP local coordinates)
+    //Make sure there are at least two points in the discretization along z
+    int n_points_z = max(2, 1 + (int)(gnp_new.t/geom_sample.gs_minz));
+    
+    //Iterate over all points in the discretization
+    //Index k moves the point in the discretization along z
+    for (int k = 0; k < n_points_z; k++) {
+        
+        //Calculate the start and end points along the y-direction
+        
+        //Their locations are proportional to index k and the number of points
+        //in the discretization along z
+        double lambda_z = (double)k/(n_points_z-1);
+        
+        //These points move along edges 3-7 and 0-4 of the GNP
+        Point_3D start1_y = gnp_new.vertices[7] + (gnp_new.vertices[3] - gnp_new.vertices[7])*lambda_z;
+        Point_3D end1_y = gnp_new.vertices[4] + (gnp_new.vertices[0] - gnp_new.vertices[4])*lambda_z;
+        Point_3D diff1_y = end1_y - start1_y;
+        
+        //These points move along edges 2-6 and 1-5 of the GNP
+        Point_3D start2_y = gnp_new.vertices[6] + (gnp_new.vertices[2] - gnp_new.vertices[6])*lambda_z;
+        Point_3D end2_y = gnp_new.vertices[5] + (gnp_new.vertices[1] - gnp_new.vertices[5])*lambda_z;
+        Point_3D diff2_y = end2_y - start2_y;
+        
+        //Index j moves the point in the discretization along y
+        for (int j = 0; j < n_points_y; j++) {
+            
+            //Calculate the start and end points along the x-direction
+            
+            //Their locations are proportional to index j and the number of points
+            //in the discretization along y
+            double lambda_y = (double)j/(n_points_y-1);
+            
+            //These points move along the y-direction from start_y to end_y
+            Point_3D start_x = start1_y + diff1_y*lambda_y;
+            Point_3D end_x = start2_y + diff2_y*lambda_y;
+            Point_3D diff_x = end_x - start_x;
+
+            //Index i moves the point in the discretization along x
+            for (int i = 0; i < n_points_x; i++) {
+                
+                //Calculate the position of new_point (the point in the discretization)
+                
+                //The location of new_point is proportional to index i and the number of points
+                //in the discretization along x
+                double lambda_x = (double)i/(n_points_x-1);
+                
+                //Location of new_point
+                Point_3D new_point = start_x + diff_x*lambda_x;
+                
+
+                //Check if the midpoint is inside the sample
+                if (Point_inside_sample(geom_sample, new_point)) {
+                    
+                    //If the point is inside the sample, then add the subregion the GNP point occupies
+                    if (!Add_gnp_subregions_to_set_for_gnp_point(geom_sample, new_point, n_subregions, subregions)) {
+                        hout<<"Error in Add_gnp_subregions_to_set_for_gnp_point"<<endl;
+                        return 0;
+                    }
+                }
+            }
+            
+        }
+    }
+    
+    return 1;
+}
+int GenNetwork::Add_gnp_subregions_to_set_for_gnp_point(const Geom_sample &geom_sample, const Point_3D &new_point, const int n_subregions[], set<int> &subregions)const
 {
     //Minimum and maximum coordinates of the overlapping subregions
     //Initialize them with the maximum and minimum values, respectively, so they can be updated
@@ -1953,96 +2021,83 @@ int GenNetwork::Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gn
     int min_b = n_subregions[1], max_b = 0;
     int min_c = n_subregions[2], max_c = 0;
     
-    //Loop over the four middle points of the short edges
-    //According to the numbering convention, any pair of vertices (k,k+4) for 0<=k<=3 is such an edge
-    for (int i = 0; i < 4; i++) {
-        
-        //Calculate the midpoint
-        Point_3D mid = (gnp_new.vertices[i] + gnp_new.vertices[i+4])/2.0;
-        
-        //Check if the midpoint is inside the sample
-        if (Point_inside_sample(geom_sample, mid)) {
-            
-            //Calculate the region-coordinates a, b, c
-            int a = (int)((mid.x-geom_sample.origin.x)/ls);
-            //Limit the value of a as it has to go from 0 to n_subregions[0]-1
-            if (a == n_subregions[0]) a--;
-            int b = (int)((mid.y-geom_sample.origin.y)/ls);
-            //Limit the value of b as it has to go from 0 to n_subregions[1]-1
-            if (b == n_subregions[1]) b--;
-            int c = (int)((mid.z-geom_sample.origin.z)/ls);
-            //Limit the value of c as it has to go from 0 to n_subregions[2]-1
-            if (c == n_subregions[2]) c--;
-            //hout<<"a="<<a<<" b="<<b<<" c="<<c<<endl;
-            
-            //Update the maximum and minimum values of coordinates
-            if (a < min_a) { min_a = a; }
-            if (a > max_a) { max_a = a; }
-            if (b < min_b) { min_b = b; }
-            if (b > max_b) { max_b = b; }
-            if (c < min_c) { min_c = c; }
-            if (c > max_c) { max_c = c; }
-            
-            //Calculate the coordinates of non-overlaping region the point belongs to
-            double x1 = (double)a*ls +  geom_sample.origin.x;
-            double x2 = x1 + ls;
-            double y1 = (double)b*ls +  geom_sample.origin.y;
-            double y2 = y1 + ls;
-            double z1 = (double)c*ls +  geom_sample.origin.z;
-            double z2 = z1 + ls;
-            
-            //Assign value of flag according to position of point
-            //The first operand eliminates the periodicity on the boundary
-            if ((a > 0) && (mid.x >= x1) && (mid.x <= x1+overlap_max_cutoff)) {
-                //The point is in the "left" side of the overlapping region (along the x axis),
-                //then the minimum a-coordinate needs to be updated again
-                min_a = min_a - 1;
-            }
-            else if ((a < n_subregions[0]-1) && (mid.x >= x2-overlap_max_cutoff) && (mid.x <= x2 )) {
-                //The point is in the "right" side of the overlapping region (along the x axis),
-                //then the maximum a-coordinate needs to be updated again
-                max_a = max_a + 1;
-            }
-            if ((b > 0) && (mid.y >= y1) && (mid.y <= y1+overlap_max_cutoff)) {
-                //The point is in the "left" side of the overlapping region (along the y axis),
-                //then the minimum a-coordinate needs to be updated again
-                min_b = min_b - 1;
-            }
-            else if ((b < n_subregions[1]-1) && (mid.y >= y2-overlap_max_cutoff) && (mid.y <= y2 )){
-                //The point is in the "right" side of the overlapping region (along the y axis),
-                //then the maximum a-coordinate needs to be updated again
-                max_b = max_b + 1;
-            }
-            if ((c > 0) && (mid.z >= z1) && (mid.z <= z1+overlap_max_cutoff)) {
-                //The point is in the "left" side of the overlapping region (along the z axis),
-                //then the minimum a-coordinate needs to be updated again
-                min_c = min_c - 1;
-            }
-            else if ((c < n_subregions[2]-1) && (mid.z >= z2-overlap_max_cutoff) && (mid.z <= z2 )) {
-                //The point is in the "right" side of the overlapping region (along the z axis),
-                //then the maximum a-coordinate needs to be updated again
-                max_c = max_c + 1;
-            }
-        }
+    //Calculate the region-coordinates a, b, c
+    int a = (int)((new_point.x-geom_sample.origin.x)/geom_sample.gs_minx);
+    //Limit the value of a as it has to go from 0 to n_subregions[0]-1
+    if (a == n_subregions[0]) a--;
+    int b = (int)((new_point.y-geom_sample.origin.y)/geom_sample.gs_miny);
+    //Limit the value of b as it has to go from 0 to n_subregions[1]-1
+    if (b == n_subregions[1]) b--;
+    int c = (int)((new_point.z-geom_sample.origin.z)/geom_sample.gs_minz);
+    //Limit the value of c as it has to go from 0 to n_subregions[2]-1
+    if (c == n_subregions[2]) c--;
+    //hout<<"a="<<a<<" b="<<b<<" c="<<c<<endl;
+    
+    //Update the maximum and minimum values of coordinates
+    if (a < min_a) { min_a = a; }
+    if (a > max_a) { max_a = a; }
+    if (b < min_b) { min_b = b; }
+    if (b > max_b) { max_b = b; }
+    if (c < min_c) { min_c = c; }
+    if (c > max_c) { max_c = c; }
+    
+    //Calculate the coordinates of non-overlaping region the point belongs to
+    double x1 = (double)a*geom_sample.gs_minx +  geom_sample.origin.x;
+    double x2 = x1 + geom_sample.gs_minx;
+    double y1 = (double)b*geom_sample.gs_miny +  geom_sample.origin.y;
+    double y2 = y1 + geom_sample.gs_miny;
+    double z1 = (double)c*geom_sample.gs_minz +  geom_sample.origin.z;
+    double z2 = z1 + geom_sample.gs_minz;
+    
+    //Update subregion coordinates in case the point is in the overlapping part of the subregion
+    //The first operand eliminates the periodicity on the boundary
+    if ((a > 0) && (new_point.x >= x1) && (new_point.x <= x1+geom_sample.gs_overlap)) {
+        //The point is in the "left" side of the overlapping region (along the x axis),
+        //then the minimum a-coordinate needs to be updated again
+        min_a = min_a - 1;
+    }
+    else if ((a < n_subregions[0]-1) && (new_point.x >= x2-geom_sample.gs_overlap) && (new_point.x <= x2 )) {
+        //The point is in the "right" side of the overlapping region (along the x axis),
+        //then the maximum a-coordinate needs to be updated again
+        max_a = max_a + 1;
+    }
+    if ((b > 0) && (new_point.y >= y1) && (new_point.y <= y1+geom_sample.gs_overlap)) {
+        //The point is in the "left" side of the overlapping region (along the y axis),
+        //then the minimum a-coordinate needs to be updated again
+        min_b = min_b - 1;
+    }
+    else if ((b < n_subregions[1]-1) && (new_point.y >= y2-geom_sample.gs_overlap) && (new_point.y <= y2 )){
+        //The point is in the "right" side of the overlapping region (along the y axis),
+        //then the maximum a-coordinate needs to be updated again
+        max_b = max_b + 1;
+    }
+    if ((c > 0) && (new_point.z >= z1) && (new_point.z <= z1+geom_sample.gs_overlap)) {
+        //The point is in the "left" side of the overlapping region (along the z axis),
+        //then the minimum a-coordinate needs to be updated again
+        min_c = min_c - 1;
+    }
+    else if ((c < n_subregions[2]-1) && (new_point.z >= z2-geom_sample.gs_overlap) && (new_point.z <= z2 )) {
+        //The point is in the "right" side of the overlapping region (along the z axis),
+        //then the maximum a-coordinate needs to be updated again
+        max_c = max_c + 1;
     }
     
     //Generate all combinations of the coordinates to find the subregions the GNP occupies
-    //and the subregions that might have GNPs that are close enough to be in contact or below the
-    //van der Waals distance
+    //as given the coordinates of new_point
     /*hout<<"min_a="<<min_a<<" max_a="<<max_a<<endl;
     hout<<"min_b="<<min_b<<" max_b="<<max_b<<endl;
     hout<<"min_c="<<min_c<<" max_c="<<max_c<<endl;
     hout<<"subregions:"<<endl;*/
-    for (int i = min_a; i <= max_a; i++) {
-        for (int j = min_b; j <= max_b; j++) {
-            for (int k = min_c; k <= max_c; k++) {
+    for (int ii = min_a; ii <= max_a; ii++) {
+        for (int jj = min_b; jj <= max_b; jj++) {
+            for (int kk = min_c; kk <= max_c; kk++) {
                 
                 //Calculate the subregion index
-                int idx = i + j*n_subregions[0] + k*n_subregions[0]*n_subregions[1];
+                int idx = ii + jj*n_subregions[0] + kk*n_subregions[0]*n_subregions[1];
                 //hout<<idx<<' ';
                 
                 //Add the index to the vector of subregions
-                subregions.push_back(idx);
+                subregions.insert(idx);
             }
         }
     }
@@ -2052,13 +2107,13 @@ int GenNetwork::Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gn
 }
 //From a given list of subregions, this function fids all GNPs in those subregions
 //A set is the putput value to avoid repetition of GNP numbers
-int GenNetwork::Get_gnps_in_subregions(const vector<vector<int> > &sectioned_domain, const vector<int> &subregions, set<int> &gnp_set)const
+int GenNetwork::Get_gnps_in_subregions(const vector<vector<int> > &sectioned_domain, const set<int> &subregions, set<int> &gnp_set)const
 {
     //hout<<"sectioned_domain.size="<<sectioned_domain.size()<<endl;
-    for (size_t i = 0; i < subregions.size(); i++) {
+    for (set<int>::iterator i = subregions.begin(); i != subregions.end(); i++) {
         
         //Current sub-region
-        int s = subregions[i];
+        int s = *i;
         
         //hout<<"   sectioned_domain["<<s<<"].size="<<sectioned_domain[s].size()<<endl;
         for (size_t j = 0; j < sectioned_domain[s].size(); j++) {
@@ -2090,6 +2145,24 @@ int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP
         
         //Get current GNP number
         int GNP_i = *i;
+        hout<<"GNP_i="<<GNP_i<<endl;
+        if (gnps.size() == 87 && GNP_i == 24) {
+            hout<<endl<<endl;
+            hout<<"===================="<<endl;
+            hout<<"===================="<<endl;
+            hout<<"===================="<<endl;
+            for (int i = 0; i < 8; i++) {
+                hout<<gnps[GNP_i].vertices[i].x<<' '<<gnps[GNP_i].vertices[i].y<<' '<<gnps[GNP_i].vertices[i].z<<endl;
+            }
+            for (int i = 0; i < 8; i++) {
+                hout<<gnp_new.vertices[i].x<<' '<<gnp_new.vertices[i].y<<' '<<gnp_new.vertices[i].z<<endl;
+            }
+        }
+        /*Tecplot_Export tec;
+        string str =  "GNPA.dat";
+        tec.Export_singlegnp(gnps[GNP_i], str);
+        str = "GNPB.dat";
+        tec.Export_singlegnp(gnp_new, str);*/
         
         //Vector to stor the simplex that encloses the origin in case of interpenetration
         vector<Point_3D> simplex;
@@ -2110,7 +2183,7 @@ int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP
         Point_3D N;
         
         if (p_flag) {
-            hout<<"Penetration with GNP "<<GNP_i<<endl;
+            //hout<<"Penetration with GNP "<<GNP_i<<endl;
             
             //There is penetration, so then use EPA to fint the penetration depth PD and direction vector N
             if (!GJK_EPA.EPA(gnps[GNP_i].vertices, gnp_new.vertices, simplex, N, PD)) {
@@ -2131,7 +2204,7 @@ int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP
             //There is no penetration, so check wether they are touching or not
             
             if (t_flag) {
-                hout<<"Touch with GNP "<<GNP_i<<endl;
+                //hout<<"Touch with GNP "<<GNP_i<<endl;
                 
                 //Find the simpleces that share the same plane/line/vertex and the direction in which
                 //gnp_new should be moved
@@ -2150,7 +2223,7 @@ int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP
                 }
             }
             else {
-                hout<<"No penetration with GNP "<<GNP_i<<endl;
+                //hout<<"No penetration with GNP "<<GNP_i<<endl;
                 
                 //Find the distance between the two GNPs and make sure they are separated at least the
                 //van der Waals distance
@@ -2179,7 +2252,7 @@ int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP
     //Check if a displacement is needed
     if (displaced) {
         
-        hout<<"GNP moved disp_tot="<<disp_tot.str()<<endl;
+        //hout<<"GNP moved disp_tot="<<disp_tot.str()<<endl;
         //A displacement is needed, then move gnp_new
         if (!Move_gnp(disp_tot, gnp_new)) {
             hout<<"Error in Move_gnp."<<endl;
@@ -2309,13 +2382,13 @@ int GenNetwork::Move_gnp(const Point_3D &displacement, GNP &gnp)const
     return 1;
 }
 //This function adds a GNP to all the subregions it occupies (as given by the subregions vector)
-int GenNetwork::Add_valid_gnp_to_subregions(const int &gnp_new_idx, const vector<int> &subregions, vector<vector<int> > &sectioned_domain)const
+int GenNetwork::Add_valid_gnp_to_subregions(const int &gnp_new_idx, const set<int> &subregions, vector<vector<int> > &sectioned_domain)const
 {
     //Also, since gnp_new was successfully generated, add it to all corresponding sub regions
-    for (size_t i = 0; i < subregions.size(); i++) {
+    for (set<int>::iterator i = subregions.begin(); i != subregions.end(); i++) {
         
         //Current subregion
-        int s = subregions[i];
+        int s = *i;
         
         //Add GNP number to current subregion
         sectioned_domain[s].push_back(gnp_new_idx);
@@ -2347,7 +2420,7 @@ int GenNetwork::Calculate_generated_gnp_vol_and_update_total_vol(const GNP_Geo g
         }
     }
     
-    hout << "Total volume = " << gnp_vol_tot << ". Approximated volume = " << gnp_vol <<endl;
+    //hout << "Total volume = " << gnp_vol_tot << ". Approximated volume = " << gnp_vol <<endl;
     //Update the total weight
     gnp_vol_tot = gnp_vol_tot + gnp_vol;
     
