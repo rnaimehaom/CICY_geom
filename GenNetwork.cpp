@@ -240,6 +240,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
         //---------------------------------------------------------------------------
         //Randomly generate a length of a CNT
         double cnt_length;
+        //hout<<"Get_random_value_mt 1"<<endl;
         if(Get_random_value_mt(nanotube_geo.len_distrib_type, engine_rand, dist, nanotube_geo.len_min, nanotube_geo.len_max, cnt_length)==0) return 0;
         //Calculate the total number of growth step for a CNT
         int step_num = (int)(cnt_length/nanotube_geo.step_length) + 1;
@@ -247,6 +248,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
         //---------------------------------------------------------------------------
         //Randomly generate a radius of a CNT
         double cnt_rad;
+        //hout<<"Get_random_value_mt 2"<<endl;
         if(!Get_random_value_mt(nanotube_geo.rad_distrib_type, engine_rand, dist, nanotube_geo.rad_min, nanotube_geo.rad_max, cnt_rad)) {
             hout << "Error in Generate_network_threads_mt when calling Get_random_value_mt" <<endl;
             return 0;
@@ -255,6 +257,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
         //---------------------------------------------------------------------------
         //Randomly generate an initial direction, then generate the rotation matrix that results in that rotation
         MathMatrix multiplier(3,3);
+        //hout<<"Get_initial_direction_mt"<<endl;
         if (!Get_initial_direction_mt(nanotube_geo.dir_distrib_type, nanotube_geo.ini_sita, nanotube_geo.ini_pha, engine_initial_direction, dist_initial, multiplier)) {
             hout << "Error in Generate_network_threads_mt when calling Get_initial_direction_mt" <<endl;
             return 0;
@@ -270,10 +273,12 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
         //---------------------------------------------------------------------------
         //Randomly generate a seed (initial point) of a CNT in the extended domain
         Point_3D cnt_poi;
+        //hout<<"Get_seed_point_mt"<<endl;
         if(Get_seed_point_mt(geom_sample.ex_dom_cnt, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
         
         //Check overlapping of the intial point
         int counter = 1;
+        //hout<<"Check_penetration (while)"<<endl;
         while (penetrating_model_flag && !Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
             if(Get_seed_point_mt(geom_sample.ex_dom_cnt, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
             cnt_seed_count++;                    //record the number of seed generations
@@ -302,7 +307,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
         //
         
         //---------------------------------------------------------------------------
-        //The growth process of nanotube
+        //hout<<"The growth process of nanotube"<<endl;
         int ellip_num = -1; //For recording the serial number of ellipsoid cluster which a nanotube penetrates out. It is no use if the cluster generation is not considered.
         for(int i=0; i<step_num; i++)
         {
@@ -481,6 +486,11 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
     
     hout << "There were " << point_overlap_count_unique << " overlapping points and ";
     hout << point_overlap_count << " overlaps, " << cnt_reject_count << " CNTs were rejected." << endl;
+    long int n_points = 0;
+    for (size_t i = 0; i < cnts_points.size(); i++) {
+        n_points = n_points + (long int)cnts_points[i].size();
+    }
+    hout << "There are " << cnts_points.size() << " CNTs in the generation domain with "<<n_points<<" points."<<endl;
     
     return 1;
 }
@@ -515,8 +525,7 @@ void GenNetwork::Initialize_subregions(const struct Geom_sample &geom_sample, ve
     nsubregions.push_back(s);
     
     //Initialize sectioned_domain
-    vector<long int> empty;
-    sectioned_domain.assign(nsubregions[0]*nsubregions[1]*nsubregions[2], empty);
+    sectioned_domain.assign(nsubregions[0]*nsubregions[1]*nsubregions[2], vector<long int>());
 }
 //---------------------------------------------------------------------------
 //Check if the current CNT is penetrating another CNT, i.e. is the new point is overlapping other point
@@ -527,6 +536,7 @@ void GenNetwork::Initialize_subregions(const struct Geom_sample &geom_sample, ve
 int GenNetwork::Check_penetration(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const vector<int> &n_subregions, const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
 {
     //Get the sub-region the point belongs to
+    //hout<<"Get_subregion 0"<<endl;
     int subregion = Get_subregion(geom_sample, n_subregions, point);
     
     //If the sub-region is -1, then the point is in the boundary layer, so there is no need to check penetration
@@ -545,6 +555,7 @@ int GenNetwork::Check_penetration(const struct Geom_sample &geom_sample, const s
     for (attempts = 0; attempts <= MAX_ATTEMPTS; attempts++) {
         
         //Check if there are any penetrations in the corresponding sub-region
+        //hout<<"Get_penetrating_points"<<endl;
         Get_penetrating_points(cnts, global_coordinates, sectioned_domain[subregion], radii, cnt_rad, d_vdw, point, affected_points, cutoffs_p, distances);
         
         //--------------------------------------------------------------------------------------------
@@ -573,6 +584,7 @@ int GenNetwork::Check_penetration(const struct Geom_sample &geom_sample, const s
             //hout << "Moved a point to final position (" << point.x << ", " << point.y << ", " << point.z << ")." << endl;
             
             //Check that the new point is within the permited orientation repect to the previous segment
+            //hout<<"Check_segment_orientation"<<endl;
             if (!Check_segment_orientation(point, cnt_new)) {
                 //hout << "Deleted CNT number " << cnts.size() << " of size " << cnt_new.size();
                 //hout << " (the point is not in a valid orientation)" << endl;//*/
@@ -581,6 +593,7 @@ int GenNetwork::Check_penetration(const struct Geom_sample &geom_sample, const s
             }
             
             //Need to update point sub-region as it could be relocated to a new sub-region
+            //hout<<"Get_subregion 1"<<endl;
             subregion = Get_subregion(geom_sample, n_subregions, point);
             //Check if after moving the point it is now in the boundary layer
             if (subregion == -1) {
@@ -749,16 +762,20 @@ void GenNetwork::Two_overlapping_points(const vector<double> &cutoffs, const vec
     //hout << "(" << affected_points[1].x << ", " << affected_points[1].y << ", " << affected_points[1].z << ")." << endl;
     //Calculate P vector
     P = P2 - P1;
+    //hout<<"P="<<P.str()<<endl;
     //Calculate Q vector
     Q = point - P1;
+    //hout<<"Q="<<Q.str()<<endl;
     //Calculate normal vector PxQ
     R = (P.cross(Q)).cross(P);
+    //hout<<"R="<<R.str()<<endl;
     //Sides of the triangle
     a = cutoffs[0];
     b = cutoffs[1];
     c = P1.distance_to(P2);
     //Distance from P1 to M
     d = (b*b - a*a - c*c)/(-2*c);
+    //hout<<"a="<<a<<" b="<<b<<" c="<<c<<" d="<<d<<endl;
     //Make P a unit vector
     P = P/sqrt(P.dot(P));
     //Make R a unit vector
@@ -1090,7 +1107,6 @@ int GenNetwork::Transform_points_cnts(const Geom_sample &geom_sample, const stru
     }
     
     if (cnts_points.size()) {
-        hout<<"There were "<<cpoints.size()<<" CNTs in the generation domain."<<endl;
         hout<<"There are "<<cnt_count<<" CNTs with "<<cpoints.size() << " points inside the sample."<<endl;
     }
     

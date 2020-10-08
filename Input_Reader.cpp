@@ -497,6 +497,7 @@ int Input::Read_cutoff_distances(struct Cutoff_dist &cutoff_dist, ifstream &infi
     //cutoff for tunneling (in microns)
     istringstream istr(Get_Line(infile));
     istr >> cutoff_dist.van_der_Waals_dist >> cutoff_dist.tunneling_dist;
+    hout<<"van_der_Waals_dist="<<cutoff_dist.van_der_Waals_dist<<" tunneling_dist="<<cutoff_dist.tunneling_dist<<endl;
     if (cutoff_dist.van_der_Waals_dist<Zero) {
         hout << "Error: van der Waals distance must be greater than zero. Input was: "<< cutoff_dist.van_der_Waals_dist << endl;
         return 0;
