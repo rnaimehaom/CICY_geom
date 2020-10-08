@@ -1694,7 +1694,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
         if (rejected) {
             
             //The GNP was rejected so increase the count of rejected GNPs
-            hout<<"GNP WAS REJECTED"<<endl;
+            //hout<<"GNP WAS REJECTED"<<endl;
             gnp_reject_count++;
         }
         else {
@@ -1713,20 +1713,27 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
     }
     
     if (simu_para.particle_type == "GNP_cuboids") {
+        
         //Print the number of GNPs when GNPs only or mixed fillers are generated
         if(gnp_geo.criterion == "wt") {
             
             //Calculate matrix weight
             double matrix_weight = (geom_sample.volume - gnp_vol_tot)*geom_sample.matrix_density;
             
-            hout << "The weight fraction of generated GNPs is: " << gnp_wt_tot/(matrix_weight + gnp_wt_tot) << endl;
+            hout << "The weight fraction of generated GNPs inside the sample is: " << gnp_wt_tot/(matrix_weight + gnp_wt_tot) << endl;
             hout << ", the target weight fraction was " << gnp_geo.weight_fraction << endl << endl;
-        } else if(gnp_geo.criterion == "vol") {
-            hout << endl << "The volume fraction of generated GNPs was " << gnp_vol_tot/geom_sample.volume;
+        }
+        else if(gnp_geo.criterion == "vol") {
+            
+            hout << endl << "The volume fraction of generated GNPs inside the sample is: " << gnp_vol_tot/geom_sample.volume;
             hout << ", the target volume fraction was " << gnp_geo.volume_fraction << endl;
         }
         
-        hout << "There were " << gnps.size() << " GNPs generated ("<<(int)gnps.size()+gnp_reject_count<<" in total, from which "<<gnp_reject_count<<" were rejected GNPs."<< endl;
+        hout << "There are " << gnps.size() << " GNPs inside the sample. ";
+        //If there were rejected GNPs, also output that information
+        if (gnp_reject_count) {
+            hout<<"In total "<<(int)gnps.size()+gnp_reject_count<<" GNPs were generated, from which "<<gnp_reject_count<<" were rejected."<< endl;
+        }
     }
     
     return 1;
@@ -1856,7 +1863,7 @@ int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, 
     //Varibale to store all GNP subregions
     set<int> subregions;
     
-    hout<<endl<<"GNP_new ="<<gnps.size()<<" center="<<gnp_new.center.str()<<endl;
+    //hout<<endl<<"GNP_new ="<<gnps.size()<<" center="<<gnp_new.center.str()<<endl;
     //Keep moving gnp_new as long as the number of attempts does not exceed the maximum allowed
     while (attempts <= MAX_ATTEMPTS) {
         
@@ -1864,7 +1871,7 @@ int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, 
         subregions.clear();
         
         //Find the subregions gnp_new occupies
-        hout<<"attempts="<<attempts<<endl;
+        //hout<<"attempts="<<attempts<<endl;
         if (!Get_gnp_subregions(geom_sample, gnp_new, n_subregions, subregions)) {
             hout<<"Error in Get_gnp_subregions"<<endl;
             return 0;
@@ -1878,7 +1885,7 @@ int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, 
             hout<<"Error in Get_gnps_in_subregions"<<endl;
             return 0;
         }
-        hout<<"gnp_set.size="<<gnp_set.size()<<endl;
+        //hout<<"gnp_set.size="<<gnp_set.size()<<endl;
         
         //Check if close enough GNPs were found
         if (!gnp_set.empty()) {
@@ -2141,28 +2148,29 @@ int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP
     //Initialize the displaced flag to false
     displaced = false;
     
+    //int el = 0;
     for (set<int>::iterator i = gnp_set.begin(); i!=gnp_set.end(); i++) {
         
         //Get current GNP number
         int GNP_i = *i;
-        hout<<"GNP_i="<<GNP_i<<endl;
-        if (gnps.size() == 87 && GNP_i == 24) {
-            hout<<endl<<endl;
+        //hout<<"GNP_i="<<GNP_i<<" el="<<el<<endl;el++;
+        /*if (gnps.size() == 33 && GNP_i == 9) {
             hout<<"===================="<<endl;
             hout<<"===================="<<endl;
-            hout<<"===================="<<endl;
+            hout<<"GNP_i:"<<endl;
             for (int i = 0; i < 8; i++) {
                 hout<<gnps[GNP_i].vertices[i].x<<' '<<gnps[GNP_i].vertices[i].y<<' '<<gnps[GNP_i].vertices[i].z<<endl;
             }
+            hout<<"GNP_new:"<<endl;
             for (int i = 0; i < 8; i++) {
                 hout<<gnp_new.vertices[i].x<<' '<<gnp_new.vertices[i].y<<' '<<gnp_new.vertices[i].z<<endl;
             }
-        }
-        /*Tecplot_Export tec;
-        string str =  "GNPA.dat";
-        tec.Export_singlegnp(gnps[GNP_i], str);
-        str = "GNPB.dat";
-        tec.Export_singlegnp(gnp_new, str);*/
+            Tecplot_Export tec;
+            string str =  "GNPA.dat";
+            tec.Export_singlegnp(gnps[GNP_i], str);
+            str = "GNPB.dat";
+            tec.Export_singlegnp(gnp_new, str);
+        }//*/
         
         //Vector to stor the simplex that encloses the origin in case of interpenetration
         vector<Point_3D> simplex;

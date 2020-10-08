@@ -24,10 +24,11 @@ public:
     int GJK(const GNP &gnp1, const GNP &gnp_new, vector<Point_3D> &simplex, bool &p_flag, bool &t_flag);
     Point_3D Support_AB(const Point_3D &D, const Point_3D verticesA[], const Point_3D verticesB[]);
     Point_3D Support_map(const Point_3D &D, const Point_3D vertices[]);
-    bool Is_origin_in_simplex(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &terminate);
-    bool Update_simplex_case2(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &terminate);
-    bool Common_if_case2(vector<Point_3D> &simplex, Point_3D &A, Point_3D &AB, Point_3D &AO, Point_3D &D, bool &terminate);
-    bool Update_simplex_case3(vector<Point_3D> &simplex, Point_3D &A, Point_3D &Dir, bool &terminate);
+    bool Is_origin_in_simplex(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &t_flag);
+    bool Update_simplex_case2(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &t_flag);
+    bool Update_simplex_case3(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &t_flag);
+    bool Update_simplex_case2_tetrahedron(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, Point_3D &E, Point_3D &ABC, Point_3D &AEB, Point_3D &ACE, bool &t_flag);
+    bool Check_actual_touch(const Point_3D verticesA[], const Point_3D verticesB[], const Point_3D &D, vector<Point_3D> &simplex);
     //---------------------------------------------------------------------------
     //Extended Polytope Algorithm (EPA)
     int EPA(const Point_3D verticesA[], const Point_3D verticesB[], vector<Point_3D> &simplex, Point_3D &normal, double &PD);

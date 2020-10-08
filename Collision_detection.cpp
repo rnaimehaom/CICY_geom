@@ -24,65 +24,59 @@ int Collision_detection::GJK(const GNP &gnp1, const GNP &gnp_new, vector<Point_3
     D = S*(-1);
     //hout<<"D="<<D.str()<<endl;
     
-    bool terminate = false;
+    //If the first vertex is zero, then there is a vertex to vertex touch
+    if (Support_AB(D, gnp1.vertices, gnp_new.vertices).length2() < Zero) {
+        
+        //Touch case
+        //Although it could also be penetration when the two GNPs occupy the same space
+        //but this will be very unlikely to hapen, so it is ignored
+        t_flag = true;
+        
+        //No penetration but touch
+        p_flag =  false;
+        
+        //Terminate the function
+        //hout<<"Case 0: Vertices shared, no GJK needed"<<endl;
+        return 1;
+    }
     
-    while (!terminate) {
+    while (true) {
         
         //Get a new support point
         Point_3D A = Support_AB(D, gnp1.vertices, gnp_new.vertices);
-        
-        //Check if A is the origin
-        if (A.length2() < Zero) {
-            
-            //Set the flag for touching to true as the polyhedrons are touching at a vertex
-            t_flag = true;
-            
-            //Set the penetration flag to false, as touching is not penetration
-            p_flag = false;
-            
-            //Terminate the function
-            //hout<<"Case 1"<<endl;
-            return 1;
-        }
-        hout<<"A="<<A.str()<<endl;
+        //hout<<"A="<<A.str()<<endl;
         
         //Check if there is no intersection
         if (A.dot(D) < Zero) {
             
-            //This conditions means there is no penetration, thus set the penetration flag to false
+            //This conditions means there is no intersection because the vector OA
+            //goes in the direction opposite to D
+            //That is, the origin is beyond A. If the origin is beyond A, then it
+            //has to be outside the Minkowski sum as A is the furthest point in direction D
+            //thus terminate the function with false
             p_flag = false;
             
             //Terminate the function
-            //hout<<"Case 2"<<endl;
+            //hout<<"Case GJK 1: Origin is outside the Minkowski sum"<<endl;
             return 1;
         }
         
         //If this part of the code is reached, then update the simplex and check if it
         //contains the origin
-        if (Is_origin_in_simplex(simplex, A, D, terminate)) {
+        if (Is_origin_in_simplex(simplex, A, D, t_flag)) {
             
             //Add the last vertex to the simplex
             simplex.push_back(A);
-            if (D.length2() < Zero) {
-                //Set the flag for touching to true as the polyhedrons are touching
-                t_flag = true;
-            }
             
             //If the simplex contains the origin, set the penetration flag to true
             p_flag = true;
             
             //Terminate the function
-            //hout<<"Case 3"<<endl;
+            //hout<<"Case GJK 2: Origin is inside the Minkowski sum"<<endl;
             return 1;
         }
-        //If the simplex was not found to contain the origin, continue the loop with the
-        //updated direction D as with the next support point A the simplex might
-        //enclose the origin
-        
-        //If D is a zero vector, then the origin is located at a face, edge or point
-        //Thus check for D being a zero vector
-        hout<<"D="<<D.str()<<endl;
-        if (D.length2() < Zero) {
+        else if (t_flag && Check_actual_touch(gnp1.vertices, gnp_new.vertices, D, simplex)) {
+            
             //Set the flag for touching to true as the polyhedrons are touching
             t_flag = true;
             
@@ -90,14 +84,12 @@ int Collision_detection::GJK(const GNP &gnp1, const GNP &gnp_new, vector<Point_3
             p_flag = false;
             
             //Terminate the function
-            //hout<<"Case 4"<<endl;
+            //hout<<"Case GJK 3: Touch"<<endl;
             return 1;
         }
         //hout<<"END IT"<<endl<<endl;
     }
     
-    p_flag = false;
-    //hout<<"Case 5"<<endl;
     return 1;
 }
 //Function to obtain the support point in a given direction in the Minkowski sum
@@ -134,18 +126,18 @@ Point_3D Collision_detection::Support_map(const Point_3D &D, const Point_3D vert
     return vertices[idx];
 }
 //Check if the simplex contains the origin or update it and the search direction
-bool Collision_detection::Is_origin_in_simplex(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &terminate) {
+bool Collision_detection::Is_origin_in_simplex(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &t_flag) {
     
     if (simplex.size() == 1) {
         
-        hout<<"case simplex 1"<<endl;
+        //hout<<"case simplex 1"<<endl;
         //Calculate the vector from A to B, where B is the point in the simplex
         Point_3D AB = simplex[0] - A;
         
         //Calculate the vector from A to the origin
         Point_3D AO = A*(-1);
         
-        hout<<"simplex0={B="<<simplex[0].str()<<"}"<<endl;
+        //hout<<"simplex0={B="<<simplex[0].str()<<"}"<<endl;
         //Check if there is intersection
         if (AB.dot(AO) > Zero) {
             
@@ -158,9 +150,14 @@ bool Collision_detection::Is_origin_in_simplex(vector<Point_3D> &simplex, Point_
             D = (AB.cross(AO)).cross(AB);
         }
         else {
-            //Origin is outside Minkowski sum, so update terminate flag
-            //There is no intersection
-            terminate =  true;
+            
+            //The origin is closest to vertex A, so the simplex is only A
+            simplex[0] = A;
+            //hout<<"simplex={A="<<simplex[0].str()<<"}"<<endl;
+            
+            //The new direction is from A to the origin
+            D = AO;
+            //hout<<"D=AO="<<D.str()<<endl;
         }
         
         //Return false as either way we cannot say that the origin is inside the simplex
@@ -169,284 +166,516 @@ bool Collision_detection::Is_origin_in_simplex(vector<Point_3D> &simplex, Point_
     else if (simplex.size() == 2) {
         //Go to the case where the simplex has two elements before (potentially)
         //adding the new vertex A
-        return Update_simplex_case2(simplex, A, D, terminate);
+        return Update_simplex_case2(simplex, A, D, t_flag);
     }
     else if (simplex.size() == 3) {
         //Go to the case where the simplex has three elements before (potentially)
         //adding the new vertex A
-        return Update_simplex_case3(simplex, A, D, terminate);
+        return Update_simplex_case3(simplex, A, D, t_flag);
     }
     else {
-        //hout<<"There was a problem in the code, simplex has "<<simplex.size()<<" elments"<<endl;
+        hout<<"There was a problem in the code, simplex has "<<simplex.size()<<" elments"<<endl;
         //Also return true to terminate the function GJK
         return true;
     }
 }
 //This is the case when the simplex already has two points and the support point A is added
-bool Collision_detection::Update_simplex_case2(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &terminate)
+bool Collision_detection::Update_simplex_case2(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &t_flag)
 {
-    
-    hout<<"case simplex 2"<<endl;
+    //hout<<"case simplex 2"<<endl;
     
     //Note that simplex = {B, C}
-    Point_3D B = simplex[0];
-    Point_3D C = simplex[1];
-    hout<<"simplex0={B="<<simplex[0].str()<<", C="<<simplex[1].str()<<"}"<<endl;
+    //Point_3D B = simplex[0];
+    //Point_3D C = simplex[1];
+    //hout<<"simplex0={B="<<simplex[0].str()<<", C="<<simplex[1].str()<<"}"<<endl;
     
     //Precompute some vectors
-    Point_3D AB = B-A;
-    Point_3D AC = C-A;
+    Point_3D AB = simplex[0]-A;
+    Point_3D AC = simplex[1]-A;
     Point_3D AO = A*(-1);
-    //ABC = ABxAC
-    Point_3D ABC = AB.cross(AC);
     
-    //Check where is the origin
-    if ( (ABC.cross(AC)).dot(AO) > Zero) {
+    //ABC = ACxAB
+    Point_3D ABC = AC.cross(AB);
+    //hout<<"ABC="<<ABC.str()<<endl;
+    
+    //Calculate the normal to edge AC, such that it is on
+    //the plane of the triangle and goes outside the triangle
+    Point_3D N_AC = AC.cross(ABC);
+    //hout<<"N_AC="<<N_AC.str()<<endl;
+    
+    //Check if the origin is outside the triangle, on the side of edge AC
+    //or in the plane of the edge
+    double dot_N_AC = N_AC.dot(AO);
+    //hout<<"N_AC.dot(AO)="<<dot_N_AC<<endl;
+    if (dot_N_AC > Zero || abs(dot_N_AC) < Zero) {
         
-        if (AC.dot(AO) > Zero) {
-            //Replace B by A
+        //Check if the origin is on the region closest to edge AC
+        //hout<<"AC.dot(AO)="<<AC.dot(AO)<<endl;
+        if (AC.dot(AO) > 0) {
+            
+            //Update simplex as {A, C}
+            //Just substitute B with A
             simplex[0] = A;
-            //Update direction
-            D = (AC.cross(AO)).cross(AC);
+            //hout<<"simplex={A="<<simplex[0].str()<<", C="<<simplex[1].str()<<"}"<<endl;
+            
+            //Calculate the direction
+            D = AC.cross(AO.cross(AC));
+            
+            //If the direction vector is zero, then the origin is in the edge
+            //and probably there is touch
+            if (D.length2() < Zero) {
+                
+                //Set the touch flag to true
+                //hout<<"touch 2b 1"<<endl;
+                t_flag = true;
+                
+                //Set the direction as the normal to the edge in the place of the triangle
+                D = N_AC;
+            }
+            
         }
         else {
-            //go to common if-statement
-            return Common_if_case2(simplex, A, AB, AO, D, terminate);
+            
+            //The origin is closest to vertex A, so the simplex is only A
+            simplex.assign(1, A);
+            //hout<<"simplex={A="<<simplex[0].str()<<"}"<<endl;
+            
+            //The new direction is from A to the origin
+            D = AO;
+            //hout<<"D=AO="<<D.str()<<endl;
         }
     }
     else {
-        if ( (AB.cross(ABC)).dot(AO) > Zero) {
-            //go to common if-statement
-            return Common_if_case2(simplex, A, AB, AO, D, terminate);
-        }
-        else {
-            //Compute D as only the sign will chenge below
-            D = ABC;
+
+        //Calculate the normal to edge AB, such that it is on
+        //the plane of the triangle and goes outside the triangle
+        Point_3D N_AB = ABC.cross(AB);
+        //hout<<"N_AB="<<N_AB.str()<<endl;
+        
+        //Check if the origin is outside the triangle, on the side of edge AB
+        //or in the plane of the edge
+        double dot_N_AB = N_AB.dot(AO);
+        //hout<<"N_AB.dot(AO)="<<dot_N_AB<<endl;
+        if (dot_N_AB > Zero || abs(dot_N_AB) < Zero) {
             
-            if (ABC.dot(AO) > Zero) {
-                //Update the simplex adding A as the first element
-                //Add another C, here simplex = {B, C, C}
-                simplex.push_back(simplex.back());
-                //Swap B to the middle, here simplex = {B, B, C}
-                simplex[1] = simplex[0];
-                //Swap A to the front, here simplex = {A, B, C}
-                simplex[0] = A;
-                //hout<<"simplex={A="<<simplex[0].str()<<", B="<<simplex[1].str()<<", C="<<simplex[2].str()<<"}"<<endl;
+            //Check if the origin is on the region closest to edge AB
+            //hout<<"AB.dot(AO)="<<AB.dot(AO)<<endl;
+            if (AB.dot(AO) > Zero) {
+                
+                //Update simplex as {B, A}
+                //Just substitute C with A
+                simplex[1] = A;
+                //hout<<"simplex={B="<<simplex[0].str()<<", A="<<simplex[1].str()<<"}"<<endl;
+                
+                //Calculate the direction
+                D = (AB.cross(AO)).cross(AB);
+                
+                //If the direction vector is zero, then the origin is in the edge
+                //and probably there is touch
+                if (D.length2() < Zero) {
+                    
+                    //Set the touch flag to true
+                    //hout<<"touch 2b 2"<<endl;
+                    t_flag = true;
+                    
+                    //Set the direction as the normal to the edge in the place of the triangle
+                    D = N_AB;
+                }
             }
             else {
-                //Update the simplex adding A as the first element and swapping B and C
-                //Add another B, here simplex = {B, C, B}
-                simplex.push_back(simplex[0]);
-                //Swap the first B with A, here simplex = {A, C, B}
-                simplex[0] = A;
-                //hout<<"simplex={A="<<simplex[0].str()<<", C="<<simplex[1].str()<<", B="<<simplex[2].str()<<"}"<<endl;
                 
-                //Update direction
-                D = D*(-1);
+                //The origin is closest to vertex A, so the simplex is only A
+                simplex.assign(1, A);
+                //hout<<"simplex={A="<<simplex[0].str()<<"}"<<endl;
+                
+                //The new direction is from A to the origin
+                D = AO;
+                //hout<<"D=AO="<<D.str()<<endl;
+            }
+        }
+        else {
+            
+            //The origin is either above or below the triangle, so the simplex
+            //will be {B,C,A}
+            simplex.push_back(A);
+            
+            //Set D to have the direction above the triangle
+            D = ABC;
+            
+            //Check if the direction of D needs to be reversed
+            double dot_ABC = ABC.dot(AO);
+            //hout<<"ABC.dot(AO)="<<dot_ABC<<endl;
+            if (abs(dot_ABC) < Zero) {
+                //The origin is inside the triangle (on its surface), likely there is touch
+                t_flag = true;
+            }
+            else if (dot_ABC < Zero) {
+                //Just reverse the direction of D
+                D = D*(-1.0);
             }
         }
     }
     
-    //Return false as either way we cannot say that the origin is inside the simplex
-    return false;
-}
-//Common if in case 2
-bool Collision_detection::Common_if_case2(vector<Point_3D> &simplex, Point_3D &A, Point_3D &AB, Point_3D &AO, Point_3D &D, bool &terminate)
-{
-    if (AB.dot(AO) > Zero) {
-        
-        //Update the simplex adding A as the first element, and swapping C by B
-        //Swap C by B, here simplex = {B, B}
-        simplex[1] = simplex[0];
-        //Swap the first B by A, here simplex = {A, B}
-        simplex[0] = A;
-        
-        //Update direction
-        D = (AB.cross(AO)).cross(AB);
-    }
-    else {
-        //Origin is outside Minkowski sum, so update terminate flag
-        terminate = true;
-        //hout<<"Origin is outside Minkowski sum, so update terminate flag (case 2 common)"<<endl;
-    }
-    
-    //Return false as either way we cannot say that the origin is inside the simple
+    //Terminate the function with false, as the origin is not inside the simplex
+    //in any of the cases above
     return false;
 }
 //This is the case when the simplex already has three points and the support point A is added
-bool Collision_detection::Update_simplex_case3(vector<Point_3D> &simplex, Point_3D &A, Point_3D &Dir, bool &terminate)
+bool Collision_detection::Update_simplex_case3(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &t_flag)
 {
-    hout<<"case simplex 3"<<endl;
-    //Rename vertices in simplex to facilitate the writing and reading of the code
-    Point_3D B = simplex[0];
-    Point_3D C = simplex[1];
-    Point_3D E = simplex[2];
+    //hout<<"case simplex 3"<<endl;
     
     //Get a vector from tetrahedron to origin
     Point_3D AO = A*(-1);
     
-    //Determine if the origin is closest to any of the faces
-    //Face BCE is ignored because by construction, it cannot be the closest face to the origin
-    //as it does not contain A. By construction A is the clossest point to the origin.
-    //So a face that does not contain A cannot be closest to the origin
+    //Rename points for simplicity
+    //Recall that simplex = {B, C, E}
+    Point_3D B = simplex[0];
+    Point_3D C = simplex[1];
+    Point_3D E = simplex[2];
+    //hout<<"simplex0={B="<<simplex[0].str()<<", C="<<simplex[1].str()<<", E="<<simplex[2].str()<<"}"<<endl;
     
-    //Get a normal to ABC going outside the tetrahedron
-    Point_3D ABC = Normal_to_face_ouside_tetrahedron(A, B, C, E);
-    
-    //Get a normal to ACE going outside the tetrahedron
+    //Get the normals to the faces that go outside the tetrahedron
     Point_3D ACE = Normal_to_face_ouside_tetrahedron(A, C, E, B);
+    //hout<<"ACE="<<ACE.str()<<endl;
+    Point_3D AEB = Normal_to_face_ouside_tetrahedron(A, E, B, C);
+    //hout<<"AEB="<<AEB.str()<<endl;
+    Point_3D ABC = Normal_to_face_ouside_tetrahedron(A, B, C, E);
+    //hout<<"ABC="<<ABC.str()<<endl;
     
-    //Get a normal to ABE going outside the tetrahedron
-    Point_3D ABE = Normal_to_face_ouside_tetrahedron(A, B, E, C);
+    //Get the dot product ACE.AO
+    double dot_ACE = ACE.dot(AO);
+    //hout<<"ACE.dot(AO)="<<dot_ACE<<endl;
     
-    //Variable to count the positive dot products
-    int n = 0;
-    
-    //Variable to identify the positive dot products
-    vector<int> idxs;
-    
-    //Calculate the dot products of the normals to the faces with the vector AO, and check the signs
-    //Increase the counter when the dot product is positive
-    //Add an identifier when the dot product is positive
-    if (AO.dot(ABC) > Zero) {
-        n++;
-        idxs.push_back(0);
-    }
-    if (AO.dot(ACE) > Zero) {
-        n++;
-        idxs.push_back(1);
-    }
-    if (AO.dot(ABE) > Zero) {
-        n++;
-        idxs.push_back(2);
-    }
-    
-    //If the three dot products were positive, the the origin is closest to vertex A
-    if (n == 3) {
-        //There is nothing to do as the origin is in outside the Minkowski sum
-        //Terminate the GJK
-        terminate = true;
+    //Check if the origin is in the face ACE
+    if (abs(dot_ACE) < Zero) {
         
-        //Just terminate the function with false, as the origin is not inside the simplex
+        //The origin is in the face ACE, probably there is touch
+        //hout<<"touch in case 3 ACE"<<endl;
+        t_flag = true;
+        
+        //Set the simplex as the face ACE
+        simplex[0] = A;
+        
+        //Terminate with false
         return false;
     }
-    //If two dot products were positive, then the origin is closest to an edge
-    else if (n == 2) {
+    
+    //Check if the origin is above the plane of face ACE
+    if (dot_ACE > Zero) {
         
-        //Clear the simplex and add vertex A
-        simplex.clear();
-        simplex.push_back(A);
+        //Since origin is above the plane of face ACE, go to case 2 for tetrahedron
+        //with simplex = {C,E}, A and B
+        simplex[0] = C;
+        simplex[1] = E;
+        simplex.pop_back();
+        //hout<<"simplex to 2 for tetrahedron={C="<<simplex[0].str()<<", E="<<simplex[1].str()<<"}"<<endl;
         
-        //Determine the second vertex of the edge
-        if (idxs[0] == 0) {
-            if (idxs[1] == 1) {
-                
-                //This is the case when the origin is above planes for faces ABC and ACD
-                //Those faces share the edge AC, thus this is the simplex
-                //Since A is already in the simplex, add C
-                simplex.push_back(C);
-            }
-            else if (idxs[1] == 2) {
-                
-                //This is the case when the origin is above planes for faces ABC and ABD
-                //Those faces share the edge AB, thus this is the simplex
-                //Since A is already in the simplex, add B
-                simplex.push_back(B);
-            }
-            else {
-                //This should no happen, so return error
-                hout<<"Error in Update_simplex_case3 (1). Vector idxs has an invalid combination:"<<endl;
-                for (size_t i = 0; i < idxs.size(); i++) {
-                    hout<<"idxs["<<i<<"]="<<idxs[i]<<endl;
-                }
-                hout<<endl;
-                terminate = true;
-                return false;
-            }
-        }
-        else if (idxs[0] == 1 && idxs[1] == 2) {
-            
-            //This is the case when the origin is above planes for faces ACD and ABD
-            //Those faces share the edge AD, thus this is the simplex
-            //Since A is already in the simplex, add E
-            simplex.push_back(E);
-        }
-        else {
-            //This should no happen, so return error
-            hout<<"Error in Update_simplex_case3 (2). Vector idxs has an invalid combination:"<<endl;
-            for (size_t i = 0; i < idxs.size(); i++) {
-                hout<<"idxs["<<i<<"]="<<idxs[i]<<endl;
-            }
-            hout<<endl;
-            terminate = true;
-            return false;
-        }
-        
-        //Find the direction from the edge towards the origin
-        //Note that simplex[0] is A
-        Dir = ((simplex[1] - A).cross(AO) ).cross(simplex[1] - A);
-        
-        //We still cannot say the origin is inside the simplex, just return false without
-        //updating the terminate flag
-        return false;
-    }
-    //If only one dot product was positive, then the simplex is a face
-    else if(n == 1) {
-        
-        //Clear the simplex and add vertex A
-        simplex.clear();
-        simplex.push_back(A);
-        
-        //Determine the face from idxs
-        if (idxs[0] == 0) {
-            
-            //Origin is above face ABC
-            //Add B and C
-            simplex.push_back(B);
-            simplex.push_back(C);
-            
-            //Update the direction
-            Dir = ABC;
-        }
-        else if (idxs[0] == 1) {
-            
-            //Origin is above face ACE
-            //Add C and E
-            simplex.push_back(C);
-            simplex.push_back(E);
-            
-            //Update the direction
-            Dir = ACE;
-        }
-        else if (idxs[0] == 2) {
-            
-            //Origin is above face ABE
-            //Add B and E
-            simplex.push_back(B);
-            simplex.push_back(E);
-            
-            //Update the direction
-            Dir = ABE;
-        }
-        else {
-            //This should no happen, so return error
-            hout<<"Error in Find_simplex_closest_to_origin. The first element in idxs has an invalid value:"<<idxs[0]<<". Valid values are 0, 1, or 2 only."<<endl;
-            terminate = true;
-            return false;
-        }
-        
-        //We still cannot say the origin is inside the simplex, just return false without
-        //updating the terminate flag
-        return false;
+        return Update_simplex_case2_tetrahedron(simplex, A, D, B, ACE, ABC, AEB, t_flag);
     }
     else {
-    
-        //If the three dot products are negative, then the origin is inside the simplex
-        //Terminate the GJK
-        terminate = true;
-        //It is true that the origin is inside the simplex
-        return true;
+        
+        //Get the dot product ABC.AO
+        double dot_AEB = AEB.dot(AO);
+        //hout<<"AEB.dot(AO)="<<dot_AEB<<endl;
+        
+        //Check if the origin is in the face AEB
+        if (abs(dot_AEB) < Zero) {
+            
+            //The origin is in the face AEB, probably there is touch
+            //hout<<"touch in case 3 AEB"<<endl;
+            t_flag = true;
+            
+            //Set the simplex as the face AEB
+            simplex[1] = A;
+            
+            //Terminate with false
+            return false;
+        }
+        
+        //Check if the origin is above the plane of face AEB
+        if (dot_AEB > Zero) {
+            
+            //Since origin is above the plane of face AEB, go to case 2 for tetrahedron
+            //with simplex = {E, B}, A and C
+            simplex[0] = E;
+            simplex[1] = B;
+            simplex.pop_back();
+            //hout<<"simplex to 2 for tetrahedron={E="<<simplex[0].str()<<", B="<<simplex[1].str()<<"}"<<endl;
+            
+            return Update_simplex_case2_tetrahedron(simplex, A, D, C, AEB, ACE, ABC, t_flag);
+        }
+        else {
+            
+            //Get the dot product ABC.AO
+            double dot_ABC = ABC.dot(AO);
+            //hout<<"ABC.dot(AO)="<<dot_ABC<<endl;
+            
+            //Check if the origin is in the face ABC
+            if (abs(dot_ABC) < Zero) {
+                
+                //The origin is in the face ABC, probably there is touch
+                //hout<<"touch in case 3 ABC"<<endl;
+                t_flag = true;
+                
+                //Set the simplex as the face ABC
+                simplex[2] = A;
+                
+                //Terminate with false
+                return false;
+            }
+            
+            //Check if the origin is above the plane of face ABC
+            if (dot_ABC > Zero) {
+                
+                //Since origin is above the plane of face ABC, go to case 2
+                //with simplex = {B, C}, A and E
+                simplex.pop_back();
+                //hout<<"simplex to 2 for tetrahedron={B="<<simplex[0].str()<<", C="<<simplex[1].str()<<"}"<<endl;
+                
+                return Update_simplex_case2_tetrahedron(simplex, A, D, E, ABC, AEB, ACE, t_flag);
+            }
+            else {
+                
+                //The origin is inside the Minkowski sum, so there is nothing to do
+                //hout<<"Origin is inside the simplex (Case 3)"<<endl;
+                
+                //Return true as the origin is inside the simplex
+                return true;
+            }
+        }
     }
+}
+
+bool Collision_detection::Update_simplex_case2_tetrahedron(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, Point_3D &E, Point_3D &ABC, Point_3D &AEB, Point_3D &ACE, bool &t_flag)
+{
+    //hout<<"case simplex 2 tetrahedron"<<endl;
+    
+    //Note that simplex = {B, C}
+    //hout<<"simplex0={B="<<simplex[0].str()<<", C="<<simplex[1].str()<<"}"<<endl;
+    
+    //Precompute some vectors
+    //Note that simplex = {B, C}
+    Point_3D AB = simplex[0]-A;
+    Point_3D AC = simplex[1]-A;
+    Point_3D AO = A*(-1);
+    
+    //ABC = ACxAB
+    //hout<<"ABC="<<ABC.str()<<endl;
+    
+    //Calculate the normal to edge AC, such that it is on
+    //the plane of the triangle and goes outside the triangle
+    Point_3D N_AC = AC.cross(ABC);
+    //Make sure it goes outside te triangle
+    if (N_AC.dot(AB) > Zero) {
+        N_AC = N_AC*(-1);
+    }
+    //hout<<"N_AC="<<N_AC.str()<<endl;
+    
+    //Check if the origin is outside the triangle, on the side of edge AC
+    //or in the plane of the edge
+    double dot_N_AC = N_AC.dot(AO);
+    //hout<<"N_AC.dot(AO)="<<dot_N_AC<<endl;
+    if (dot_N_AC > Zero || abs(dot_N_AC) < Zero) {
+        
+        //Check if the origin is outside the triangle, on the side of edge AC
+        //hout<<"AC.dot(AO)="<<AC.dot(AO)<<endl;
+        if (AC.dot(AO) > 0) {
+            
+            //Get the Normal to edge AC on the plane of face ACE
+            Point_3D N_AC_ACE = AC.cross(ACE);
+            //Make sure it goes outside the triangle ACE
+            if (N_AC_ACE.dot(E-A) > Zero) {
+                N_AC_ACE = N_AC_ACE*(-1);
+            }
+            //hout<<"N_AC_ACE="<<N_AC_ACE.str()<<endl;
+            
+            //Check if origin is closest to edge AC or face shared with edge AC (face ACE)
+            //hout<<"N_AC_ACE.dot(AO)="<<N_AC_ACE.dot(AO)<<endl;
+            if (N_AC_ACE.dot(AO) > Zero) {
+                
+                //Update simplex as {A, C}
+                //Just substitute B with A
+                simplex[0] = A;
+                //hout<<"simplex={A="<<simplex[0].str()<<", C="<<simplex[1].str()<<"}"<<endl;
+                
+                //Calculate the direction
+                D = AC.cross(AO.cross(AC));
+                
+                //If the direction vector is zero, then the origin is in the edge
+                //and probably there is touch
+                if (D.length2() < Zero) {
+                    
+                    //Set the touch flag to true
+                    //hout<<"touch 2b 1"<<endl;
+                    t_flag = true;
+                    
+                    //Set the direction as the normal to the edge in the place of the triangle
+                    D = N_AC;
+                }
+            }
+            else {
+                //The origin is actually closer to face ACE
+                
+                //Update simplex as {A, C, E}
+                simplex[0] = A;
+                simplex.push_back(E);
+                //hout<<"simplex={A="<<simplex[0].str()<<", C="<<simplex[1].str()<<", E="<<simplex[2].str()<<"}"<<endl;
+                
+                //The direction is the normal to face ACE
+                D = ACE;
+            }
+        }
+        else {
+            
+            //The origin is closest to vertex A, so the simplex is only A
+            simplex.assign(1, A);
+            //hout<<"simplex={A="<<simplex[0].str()<<"}"<<endl;
+            
+            //The new direction is from A to the origin
+            D = AO;
+            //hout<<"D=AO="<<D.str()<<endl;
+        }
+    }
+    else {
+
+        //Calculate the normal to edge AB, such that it is on
+        //the plane of the triangle and goes outside the triangle
+        Point_3D N_AB = ABC.cross(AB);
+        //Make sure it goes outside te triangle
+        if (N_AB.dot(AC) > Zero) {
+            N_AB = N_AB*(-1);
+        }
+        //hout<<"N_AB="<<N_AB.str()<<endl;
+        
+        //Check if the origin is outside the triangle, on the side of edge AB
+        //or in the plane of the edge
+        double dot_N_AB = N_AB.dot(AO);
+        //hout<<"N_AB.dot(AO)="<<dot_N_AB<<endl;
+        if (dot_N_AB > Zero || abs(dot_N_AB) < Zero) {
+            
+            //Check if the origin is on the region closest to edge AB
+            //hout<<"AB.dot(AO)="<<AB.dot(AO)<<endl;
+            if (AB.dot(AO) > Zero) {
+                
+                //Get the Normal to edge AB on the plane of face AEB
+                Point_3D N_AB_AEB = AEB.cross(AB);
+                //hout<<"N_AB_AEB="<<N_AB_AEB.str()<<endl;
+                //Make sure it goes outside the triangle AEB
+                if (N_AB_AEB.dot(E-A) > Zero) {
+                    N_AB_AEB = N_AB_AEB*(-1);
+                }
+                
+                //Check if origin is closest to edge AB or face shared with edge AB (face AEB)
+                //hout<<"N_AB_AEB.dot(AO)="<<N_AB_AEB.dot(AO)<<endl;
+                if (N_AB_AEB.dot(AO) > Zero) {
+                    //Update simplex as {B, A}
+                    //Just substitute C with A
+                    simplex[1] = A;
+                    //hout<<"simplex={B="<<simplex[0].str()<<", A="<<simplex[1].str()<<"}"<<endl;
+                    
+                    //Calculate the direction
+                    D = (AB.cross(AO)).cross(AB);
+                    
+                    //If the direction vector is zero, then the origin is in the edge
+                    //and probably there is touch
+                    if (D.length2() < Zero) {
+                        
+                        //Set the touch flag to true
+                        //hout<<"touch 2b 2"<<endl;
+                        t_flag = true;
+                        
+                        //Set the direction as the normal to the edge in the place of the triangle
+                        D = N_AB;
+                    }
+                }
+                else {
+                    //The origin is actually closer to face AEB
+                    
+                    //Update simplex as {B, A, E}
+                    simplex[1] = A;
+                    simplex.push_back(E);
+                    //hout<<"simplex={B="<<simplex[0].str()<<", A="<<simplex[1].str()<<", E="<<simplex[2].str()<<"}"<<endl;
+                    
+                    //The direction is the normal to face AEB
+                    D = AEB;
+                }
+            }
+            else {
+                
+                //The origin is closest to vertex A, so the simplex is only A
+                simplex.assign(1, A);
+                //hout<<"simplex={A="<<simplex[0].str()<<"}"<<endl;
+                
+                //The new direction is from A to the origin
+                D = AO;
+                //hout<<"D=AO="<<D.str()<<endl;
+            }
+        }
+        else {
+            
+            //The origin is either above or below the triangle, so the simplex
+            //will be {B,C,A}
+            simplex.push_back(A);
+            //hout<<"simplex={B="<<simplex[0].str()<<", C="<<simplex[1].str()<<", A="<<simplex[2].str()<<"}"<<endl;
+            
+            //Set D to have the direction above the triangle
+            D = ABC;
+            
+            //Check if the direction of D needs to be reversed
+            double dot_ABC = ABC.dot(AO);
+            //hout<<"ABC.dot(AO)="<<dot_ABC<<endl;
+            if (abs(dot_ABC) < Zero) {
+                //The origin is inside the triangle (on its surface), likely there is touch
+                //hout<<"Touch in case 2"<<endl;
+                t_flag = true;
+            }
+            else if (dot_ABC < Zero) {
+                //Just reverse the direction of D
+                //hout<<"Reverse D"<<endl;
+                D = D*(-1.0);
+            }
+        }
+    }
+    
+    //Terminate the function with false, as the origin is not inside the simplex
+    //in any of the cases above
+    return false;
+}
+//When the t_flag is set to true, the origin is in either an edge or a face of the simplex.
+//This function helps finding if the origin is inside the Minkowski sum or on its edge or face.
+//If the origin is in the edge or face of the Minkowski sum, then there is touch. Othwewise, the
+//origin is in an edge or face of the simplex, but this edge or face is inside the Minkowski sum.
+bool Collision_detection::Check_actual_touch(const Point_3D verticesA[], const Point_3D verticesB[], const Point_3D &D, vector<Point_3D> &simplex)
+{
+    
+    //Get a support point in the direction of D
+    Point_3D S = Support_AB(D, verticesA, verticesB);
+    
+    if (simplex.size() == 3) {
+        
+        //Check if S is in the plane of the simplex
+        //This happens if a vector from a vertex of the simplex to S has zero dot product
+        //With the normal to the plane
+        Point_3D N = (simplex[1] - simplex[0]).cross(simplex[2] - simplex[0]);
+        if ( abs((S - simplex[0]).dot(N)) < Zero) {
+            
+            //There is actual touch as the simplex is a face of the Minkowski sum
+            return true;
+        }
+        
+    }
+    else if (simplex.size() == 2) {
+        
+        //Check if S is still in the edge defined by the simplex
+        //This happens if the vector from a vertex of the edge to S has zero dot with D
+        if (abs( (S - simplex[0]).dot(D) )) {
+            
+            //There is actual touch as the simplex is an edge of the Minkowski sum
+            return true;
+        }
+    }
+    return false;
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
