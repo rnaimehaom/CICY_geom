@@ -111,7 +111,7 @@ Point_3D Point_3D::operator/( double d )const
     return rp;
 }
 //---------------------------------------------------------------------------
-bool Point_3D::operator==( Point_3D &pt )
+bool Point_3D::operator==(const Point_3D &pt )const
 {
 	return (x==pt.x&&y==pt.y&&z==pt.z);
 }

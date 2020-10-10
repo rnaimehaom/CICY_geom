@@ -27,8 +27,10 @@ public:
     bool Is_origin_in_simplex(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &t_flag);
     bool Update_simplex_case2(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &t_flag);
     bool Update_simplex_case3(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, bool &t_flag);
+    Point_3D Normal_to_face_ouside_tetrahedron(const Point_3D &A, const Point_3D &B, const Point_3D &C, const Point_3D &not_in_face);
     bool Update_simplex_case2_tetrahedron(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, Point_3D &E, Point_3D &ABC, Point_3D &AEB, Point_3D &ACE, bool &t_flag);
     bool Check_actual_touch(const Point_3D verticesA[], const Point_3D verticesB[], const Point_3D &D, vector<Point_3D> &simplex);
+    bool Is_point_in_simplex(const vector<Point_3D> &simplex, const Point_3D &A);
     //---------------------------------------------------------------------------
     //Extended Polytope Algorithm (EPA)
     int EPA(const Point_3D verticesA[], const Point_3D verticesB[], vector<Point_3D> &simplex, Point_3D &normal, double &PD);
@@ -38,13 +40,7 @@ public:
     int Is_edge_in_edges(const Edge &e, const vector<Edge> &edges);
     //---------------------------------------------------------------------------
     //Distance estimation
-    int Distance_and_direction_estimation(const GNP &gnpA, const GNP &gnpB, Point_3D &N, double &dist);
-    void Support_map_two_points(const Point_3D &D, const Point_3D vertices[], int idxs[]);
-    int Find_simplex_closest_to_origin (const Point_3D tetrahedron[4], vector<int> &simplex);
-    Point_3D Normal_to_face_ouside_tetrahedron(const Point_3D &A, const Point_3D &B, const Point_3D &C, const Point_3D &not_in_face);
-    int Distance_and_direction_from_simplex_to_origin(const Point_3D tetrahedron[4], const vector<int> &simplex, Point_3D &N, double &dist);
-    
-private:
+    int Distance_and_direction_from_simplex_to_origin(const vector<Point_3D> &simplex, Point_3D &N, double &dist);
     
 };
 

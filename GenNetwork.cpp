@@ -2251,7 +2251,7 @@ int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP
                 
                 //Find the distance between the two GNPs and make sure they are separated at least the
                 //van der Waals distance
-                if (!GJK_EPA.Distance_and_direction_estimation(gnps[GNP_i], gnp_new, N, PD)) {
+                if (!GJK_EPA.Distance_and_direction_from_simplex_to_origin(simplex, N, PD)) {
                     hout<<"Error in Move_gnps_if_needed when calling Distance_and_direction_estimation"<<endl;
                     return 0;
                 }

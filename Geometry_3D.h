@@ -48,7 +48,7 @@ public:
     Point_3D operator*( double d )const;
     Point_3D operator/( double d );
     Point_3D operator/( double d )const;
-    bool operator==( Point_3D &pt );
+    bool operator==(const Point_3D &pt )const;
     bool operator!=( Point_3D &pt );
     double distance_to(const Point_3D &pt)const;
     double distance_to(const double &px, const double &py,  const double &pz)const;

@@ -46,15 +46,34 @@ int Collision_detection::GJK(const GNP &gnp1, const GNP &gnp_new, vector<Point_3
         Point_3D A = Support_AB(D, gnp1.vertices, gnp_new.vertices);
         //hout<<"A="<<A.str()<<endl;
         
-        //Check if there is no intersection
+        //Check if there is no penetration, i.e., the origin is furthest than th support point
         if (A.dot(D) < Zero) {
             
-            //This conditions means there is no intersection because the vector OA
+            //This conditions means there is no penetration because the vector OA
             //goes in the direction opposite to D
             //That is, the origin is beyond A. If the origin is beyond A, then it
             //has to be outside the Minkowski sum as A is the furthest point in direction D
-            //thus terminate the function with false
+            //thus set the penetration flag to false
             p_flag = false;
+            
+            //Make a last update to the simplex if needed
+            if(Is_point_in_simplex(simplex, A)) {
+                
+                //hout<<"A already in simplex"<<endl;
+                
+                //Then take the last point in simplex to be A
+                A = simplex.back();
+                
+                //Remove the last point in the simplex so that
+                //one last update to the simplex can be done
+                simplex.pop_back();
+            }
+            //else {hout<<"A not in simplex"<<endl;}
+            
+            //Get the closest simplex to the origin (one last time)
+            //There is no need to store the output of the function is_origin_in_simplex
+            //hout<<"Last update of the simplex"<<endl;
+            Is_origin_in_simplex(simplex, A, D, t_flag);
             
             //Terminate the function
             //hout<<"Case GJK 1: Origin is outside the Minkowski sum"<<endl;
@@ -446,7 +465,27 @@ bool Collision_detection::Update_simplex_case3(vector<Point_3D> &simplex, Point_
         }
     }
 }
-
+//This function finds the normal to a tetrahedron face that goes outside the tetrahedron
+Point_3D Collision_detection::Normal_to_face_ouside_tetrahedron(const Point_3D &A, const Point_3D &B, const Point_3D &C, const Point_3D &not_in_face)
+{
+    //Get a normal to face ABC
+    Point_3D ABC = (C - A).cross(B - A);
+    
+    //Make sure ABC goes outside the tetrahedron, e.g., in the oposite direction of AD,
+    //where D is not_in_face
+    Point_3D AD = not_in_face - A;
+    
+    //Calculate dot product
+    double dot_tmp = ABC.dot(AD);
+    if (dot_tmp > Zero) {
+        //Reverse the direction is ABC and AD go in the same direction, i.e.,
+        //ABC goes inside the tetrahedron
+        ABC = ABC*(-1);
+    }
+    
+    return ABC;
+}
+//Find the simplex closest to the origin in the case that A and simplex are a face of a tetrahedron
 bool Collision_detection::Update_simplex_case2_tetrahedron(vector<Point_3D> &simplex, Point_3D &A, Point_3D &D, Point_3D &E, Point_3D &ABC, Point_3D &AEB, Point_3D &ACE, bool &t_flag)
 {
     //hout<<"case simplex 2 tetrahedron"<<endl;
@@ -672,6 +711,18 @@ bool Collision_detection::Check_actual_touch(const Point_3D verticesA[], const P
         if (abs( (S - simplex[0]).dot(D) )) {
             
             //There is actual touch as the simplex is an edge of the Minkowski sum
+            return true;
+        }
+    }
+    return false;
+}
+//This function checks is the support point A is already in the simplex
+bool Collision_detection::Is_point_in_simplex(const vector<Point_3D> &simplex, const Point_3D &A)
+{
+    
+    for (size_t i = 0; i < simplex.size(); i++) {
+        if (simplex[i] == A) {
+            //hout<<"A is already in the simplex"<<endl;
             return true;
         }
     }
@@ -916,320 +967,46 @@ int Collision_detection::Is_edge_in_edges(const Edge &e, const vector<Edge> &edg
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-//This function calculates the distance between two GNPs and finds the closest points on each one
-int Collision_detection::Distance_and_direction_estimation(const GNP &gnpA, const GNP &gnpB, Point_3D &N, double &dist)
-{
-    //Get a point V fron inside the Minkowski sum (e.g., gnpA.center - gnpB.center is
-    //inside the Mikonski sum)
-    //Then get the vector VO, which goes from V towards the origin.
-    //Thus VO = - V = gnpB.center - gnpA.center
-    Point_3D VO = gnpB.center - gnpA.center;
-    
-    //Variables to store the four points of the Minkowski sum that are closest to the origin
-    int idxsA[2], idxsB[2];
-    
-    //Find the two furthest points in A (their indices) in the direction of VO
-    Support_map_two_points(VO, gnpA.vertices, idxsA);
-    
-    //Find the two furthest points in B (their indices) in the direction of -VO
-    Support_map_two_points(VO*(-1), gnpB.vertices, idxsB);
-    
-    //Generate the four points in the Minkowski sum that are closest to the index
-    //Closest point to origin in Minkowski sum is in index 0
-    Point_3D tetrahedron[4];
-    tetrahedron[0] = gnpA.vertices[idxsA[0]] - gnpB.vertices[idxsB[0]];
-    tetrahedron[1] = gnpA.vertices[idxsA[0]] - gnpB.vertices[idxsB[1]];
-    tetrahedron[2] = gnpA.vertices[idxsA[1]] - gnpB.vertices[idxsB[0]];
-    tetrahedron[3] = gnpA.vertices[idxsA[1]] - gnpB.vertices[idxsB[1]];
-    
-    //From the simplex int the Minkowski sum closest to the origin
-    vector<int> simplex;
-    if (!Find_simplex_closest_to_origin(tetrahedron, simplex)) {
-        hout<<"Error in Distance_estimation when calling Find_simplex_closest_to_origin."<<endl;
-        return 0;
-    }
-    
-    //Determine the distance from simplex to origin and direction vector
-    if (!Distance_and_direction_from_simplex_to_origin(tetrahedron, simplex, N, dist)) {
-        hout<<"Error in Distance_estimation when calling Distance_and_direction_from_simplex_to_origin."<<endl;
-        return 0;
-    }
-    
-    return 1;
-}
-//Function for finding two suport points (their indices) in a given direction
-void Collision_detection::Support_map_two_points(const Point_3D &D, const Point_3D vertices[], int idxs[])
-{
-    //Initialize the first distance with the vertex in the first index
-    double dist1 = D.dot(vertices[0]);
-    
-    //Initialize the first index of maximum dot product with 0 (first index)
-    idxs[0] = 0;
-    
-    //Initialize the second distance with the vertex in the second index
-    double dist2 = D.dot(vertices[1]);
-    
-    //Initialize the second index of maximum dot product depending on the value of idxs[0]
-    if (dist1 > dist2) {
-        idxs[1] = 1;
-    }
-    else {
-        //Swap distances and indices
-        double tmp = dist1;
-        dist1 = dist2;
-        dist2 = tmp;
-        idxs[0] = 1;
-        idxs[1] = 0;
-    }
-    
-    //Find the maximum distance in the rest of the vertices
-    //The array of vertices has a fixed size of 8, so that value is used here
-    //It will need to change if other types of polyhedrons are used
-    for (int i = 2; i < 8; i++) {
-        
-        //Calculate the new distance
-        double new_dist =  D.dot(vertices[i]);
-        
-        //Check if update is needed
-        //First check if new_dist is a new maximum
-        if (new_dist > dist1) {
-            
-            //What was stored as dist1, becomes dist2 (i.e., the second maximum)
-            dist2 = dist1;
-            idxs[1] = idxs[0];
-            
-            //new_dist becomes the maximum distance
-            dist1 = new_dist;
-            idxs[0] = i;
-        }
-        //Second, if new_dist is not a new maximum, check if it is largest that the second maximum
-        else if (new_dist > dist2) {
-            
-            //Only update the second maximum
-            dist2 = new_dist;
-            idxs[1] = i;
-        }
-    }
-}
-//This function finds the simplex (point, edge or face) from a tetrahedron that is closest to the origin
-//The simplex is stored in a vector as the indices of the tetrahedron (which is an array of points)
-//In this function, the vertices of the tetrahedon are labeled as follows:
-//tetrahedron[0] = A
-//tetrahedron[1] = B
-//tetrahedron[2] = C
-//tetrahedron[3] = D
-int Collision_detection::Find_simplex_closest_to_origin(const Point_3D tetrahedron[4], vector<int> &simplex)
-{
-    //Rename tetrahedron vertices to facilitate the writing and reading of the code
-    Point_3D A = tetrahedron[0];
-    Point_3D B = tetrahedron[1];
-    Point_3D C = tetrahedron[2];
-    Point_3D D = tetrahedron[3];
-    
-    //Get a vector from tetrahedron to origin
-    Point_3D AO = A*(-1);
-    
-    //The resulting simplex will for sure have the point A because by construction it is the closest
-    //or one of the closest points to the origin
-    simplex.push_back(0);
-    
-    //Determine if the origin is closest to any of the faces
-    //Face BCD is ignored because by construction, it cannot be the closest face to the origin
-    //as it does not contain A. By construction A is the closest point to the origin.
-    //So a face that does not contain A cannot be closest to the origin
-    
-    //Get a normal to ABC going outside the tetrahedron
-    Point_3D ABC = Normal_to_face_ouside_tetrahedron(A, B, C, D);
-    
-    //If the four points are in the same plane, then ABC is orthogonal to AD and their dot
-    //product is zero, in such case, all points are in the simplex,
-    //However, only three points are necessary to calculate the distance of the Minkowski sum to the origin
-    if (abs(ABC.dot(D-A)) < Zero) {
-        
-        //Set the three first point in the tetrahedron array as the simplex
-        //The first is already added, so just add the next two
-        simplex.push_back(1);
-        simplex.push_back(2);
-        
-        //Terminate the function
-        return 1;
-    }
-    
-    //Get a normal to ACD going outside the tetrahedron
-    Point_3D ACD = Normal_to_face_ouside_tetrahedron(A, C, D, B);
-    
-    //Get a normal to ABD going outside the tetrahedron
-    Point_3D ABD = Normal_to_face_ouside_tetrahedron(A, B, D, C);
-    
-    //Variable to count the positive dot products
-    int n = 0;
-    
-    //Variable to identify the positive dot products
-    vector<int> idxs;
-    
-    //Calculate the dot products of the normals to the faces with the vector AO, and check the signs
-    //Increase the counter when the dot product is positive
-    //Add an identifier when the dot product is positive
-    if (AO.dot(ABC) > Zero) {
-        n++;
-        idxs.push_back(0);
-    }
-    if (AO.dot(ACD) > Zero) {
-        n++;
-        idxs.push_back(1);
-    }
-    if (AO.dot(ABD) > Zero) {
-        n++;
-        idxs.push_back(2);
-    }
-    
-    //If the three dot products were positive, the the origin is closest to vertex A
-    if (n == 3) {
-        //There is nothing to do as A was already added to the simplex
-        //Just terminate the function
-        return 1;
-    }
-    //If two dot products were positive, then the simplex is an edge
-    else if (n == 2) {
-        
-        //Determine the second vertex of the edge
-        if (idxs[0] == 0) {
-            if (idxs[1] == 1) {
-                
-                //This is the case when the origin is above planes for faces ABC and ACD
-                //Those faces share the edge AC, thus this is the simplex
-                //Since A is already in the simplex, add C (2)
-                simplex.push_back(2);
-            }
-            else if (idxs[1] == 2) {
-                
-                //This is the case when the origin is above planes for faces ABC and ABD
-                //Those faces share the edge AB, thus this is the simplex
-                //Since A is already in the simplex, add B (1)
-                simplex.push_back(1);
-            }
-            else {
-                //This should no happen, so return error
-                hout<<"Error in Find_simplex_closest_to_origin (1). Vector idxs has an invalid combination:"<<endl;
-                for (size_t i = 0; i < idxs.size(); i++) {
-                    hout<<"idxs["<<i<<"]="<<idxs[i]<<endl;
-                }
-                hout<<endl;
-                return 0;
-            }
-            
-            return 1;
-        }
-        else if (idxs[0] == 1 && idxs[2] == 2) {
-            
-            //This is the case when the origin is above planes for faces ACD and ABD
-            //Those faces share the edge AD, thus this is the simplex
-            //Since A is already in the simplex, add D (3) and terminate the function
-            simplex.push_back(3);
-            return 1;
-        }
-        else {
-            //This should no happen, so return error
-            hout<<"Error in Find_simplex_closest_to_origin (2). Vector idxs has an invalid combination:"<<endl;
-            for (size_t i = 0; i < idxs.size(); i++) {
-                hout<<"idxs["<<i<<"]="<<idxs[i]<<endl;
-            }
-            hout<<endl;
-            return 0;
-        }
-    }
-    //If only one dot product was positive, then the simplex is a face
-    else if(n == 1) {
-        
-        //Determine the face from idxs
-        if (idxs[0] == 0) {
-            //Origin is above face ABC
-            //Add B and C
-            simplex.push_back(1);
-            simplex.push_back(2);
-        }
-        else if (idxs[0] == 1) {
-            //Origin is above face ACD
-            //Add C and D
-            simplex.push_back(2);
-            simplex.push_back(3);
-        }
-        else if (idxs[0] == 2) {
-            //Origin is above face ABD
-            //Add B and D
-            simplex.push_back(1);
-            simplex.push_back(3);
-        }
-        else {
-            //This should no happen, so return error
-            hout<<"Error in Find_simplex_closest_to_origin. The first element in idxs has an invalid value:"<<idxs[0]<<". Valid values are 0, 1, or 2 only."<<endl;
-            return 0;
-        }
-        
-        return 1;
-    }
-    else {
-    
-        //This should not happen
-        hout<<"Error in Find_simplex_closest_to_origin. There were n="<<n<<" positive dot products. Valid values of n can only be 1, 2, or 3."<<endl;
-        return 0;
-    }
-}
-//
-Point_3D Collision_detection::Normal_to_face_ouside_tetrahedron(const Point_3D &A, const Point_3D &B, const Point_3D &C, const Point_3D &not_in_face)
-{
-    //Get a normal to face ABC
-    Point_3D ABC = (C - A).cross(B - A);
-    
-    //Make sure ABC goes outside the tetrahedron, e.g., in the oposite direction of AD,
-    //where D is not_in_face
-    Point_3D AD = not_in_face - A;
-    
-    //Calculate dot product
-    double dot_tmp = ABC.dot(AD);
-    if (dot_tmp > Zero) {
-        //Reverse the direction is ABC and AD go in the same direction, i.e.,
-        //ABC goes inside the tetrahedron
-        ABC = ABC*(-1);
-    }
-    
-    return ABC;
-}
-int Collision_detection::Distance_and_direction_from_simplex_to_origin(const Point_3D tetrahedron[4], const vector<int> &simplex, Point_3D &N, double &dist)
+int Collision_detection::Distance_and_direction_from_simplex_to_origin(const vector<Point_3D> &simplex, Point_3D &N, double &dist)
 {
     //Vector AO is used a few times
-    Point_3D AO = tetrahedron[simplex[0]]*(-1);
+    Point_3D AO = simplex[0]*(-1);
     
     //Calculate the distance from simplex to origin depending on the type of simplex (vertex, edge, or face)
     if (simplex.size() == 3) {
         //Simplex is a face
         
         //Get the normal vector
-        N = (tetrahedron[simplex[1]] - tetrahedron[simplex[0]]).cross(tetrahedron[simplex[2]] - tetrahedron[simplex[0]]);
+        N = (simplex[1] - simplex[0]).cross(simplex[2] - simplex[0]);
         //Make the vector unitary
         N.make_unit();
         
         //Make sure it goes towards the origin, e.g., in the same direction as AO
-        double signed_dist = N.dot(AO*(-1));
-        N = (signed_dist > Zero)? N*(-1.0) : N;
+        double signed_dist = N.dot(simplex[0]);
+        if (signed_dist < Zero) {
+            N = N*(-1.0);
+        }
         
         //Calculate distance to origin
         dist = abs(signed_dist);
     }
     else if (simplex.size() == 2) {
-        //Simplex is an edge
+        //Simplex is an edge, where simplex = {A,B}
         
-        //Calculate the projection of AO on AB, where simplez = {A,B}
-        Point_3D AB = tetrahedron[simplex[1]] - tetrahedron[simplex[0]];
+        //AB = B - A
+        Point_3D AB = simplex[1] - simplex[0];
+        
+        //dp^2 = (AO.dot(AB))^2/||AB||^2
         double dot_tmp = AO.dot(AB);
         //This is actually the projection squared, this is the quantity needed to obtain dist
-        double proj2 = dot_tmp*dot_tmp/AB.length2();
+        double dp_2 = dot_tmp*dot_tmp/AB.length2();
         
         //The distance of the edge to the origin is calculated using Pythagoras
-        dist = sqrt(AO.length2() - proj2);
+        dist = sqrt(AO.length2() - dp_2);
         
         //The direction vector is the triple cross product
         N = (AB.cross(AO)).cross(AB);
+        N.make_unit();
         
     }
     else if (simplex.size() == 1) {
@@ -1239,7 +1016,7 @@ int Collision_detection::Distance_and_direction_from_simplex_to_origin(const Poi
         N = AO.unit();
         
         //The distance is the length of the vector from origin to point
-        dist = tetrahedron[simplex[0]].length();
+        dist = AO.length();
     }
     else {
         //This should not happen
