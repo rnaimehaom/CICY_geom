@@ -110,46 +110,15 @@ int GenNetwork::Generate_nanoparticle_network(const Simu_para &simu_para, const 
 //---------------------------------------------------------------------------
 //Generate a network defined by points and connections
 //Use the Mersenne Twister for the random number generation
-int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points,  vector<double> &cnts_radius)const
+int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius)const
 {
-    // Use random_device to generate seeds for Mersenne twister engines.
-    std::random_device rd;
-    
     //Initial seeds, if any are in network_seeds within geom_sample.
     //However, geom_sample cannot be modified, so copy the seeds to a new vector
-    vector<unsigned int> net_seeds(7, 0);
-    
-    //If seeds have been specified, copy them
-    if (simu_para.CNT_seeds.size()) {
-        for (size_t i = 0; i < simu_para.CNT_seeds.size(); i++) {
-            net_seeds[i] = simu_para.CNT_seeds[i];
-        }
+    unsigned int net_seeds[7];
+    if (!CNT_seeds(simu_para.CNT_seeds, net_seeds)) {
+        hout<<"Error in CNT_seeds"<<endl;
+        return 0;
     }
-    //If seeds have not been specified, generate them
-     else {
-        
-        //Generate all the new seeds and print them to the output file
-        net_seeds[0] = rd();
-        //hout << "seed x: "<<net_seeds[0]<<endl;
-        net_seeds[1] = rd();
-        //hout << "seed y: "<<net_seeds[1]<<endl;
-        net_seeds[2] = rd();
-        //hout << "seed z: "<<net_seeds[2]<<endl;
-        net_seeds[3] = rd();
-        //hout << "seed pha: "<<net_seeds[3]<<endl;
-        net_seeds[4] = rd();
-        //hout << "seed sita: "<<net_seeds[4]<<endl;
-        net_seeds[5] = rd();
-        //hout << "seed rand: "<<net_seeds[5]<<endl;
-        net_seeds[6] = rd();
-        //hout << "seed init dir: "<<net_seeds[6]<<endl;
-    }
-    //Output the CNT seeds
-    hout<<"CNT seeds:"<<endl;
-    for (size_t i = 0; i < net_seeds.size(); i++) {
-        hout<<net_seeds[i]<<' ';
-    }
-    hout<<endl;
     
     //Use the seeds generated above
     std::mt19937 engine_x(net_seeds[0]);
@@ -170,28 +139,20 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
     time_t ct0, ct1;
     
     //---------------------------------------------------------------------------
-    //Generate the data for nanotube clusters limited in ellipsoid surfaces (each ellipsoid is within the RVE and is separated with each other)
-    if(agg_geo.vol_fra_criterion>0.0)
-    {
-        struct cuboid cub;                                        //Generate a cuboid for RVE
-        cub.poi_min = geom_sample.origin;
-        cub.len_x = geom_sample.len_x;
-        cub.wid_y = geom_sample.wid_y;
-        cub.hei_z = geom_sample.hei_z;
-        cub.volume = cub.len_x*cub.wid_y*cub.hei_z;
-        
-        if(Get_ellip_clusters(cub, agg_geo)==0) return 0;
-        //Generate a number of sperical clusters in regular arrangement
-        //        if(Get_spherical_clusters_regular_arrangement(cub, agg_geo)==0) return 0;
-    }
+    //Variables for the generated CNT volume and weight
+    double vol_sum = 0;
+    double wt_sum = 0;
     
-    //---------------------------------------------------------------------------
-    double vol_sum = 0;  //the sum of volume of generated CNTs
-    double wt_sum = 0;   //the sum of weight of generated CNTs
-    int cnt_seed_count = 0; //to record the number of generated seeds of a CNT (If the growth of a CNT fails, but this seed will be used for the next growth of a CNT)
-    int cnt_reject_count = 0; //to record the number of CNTs that were deleted due to penetration
-    int point_overlap_count = 0; //to record the number of times that a point had to be relocated
-    int point_overlap_count_unique = 0; //to record the number of points that were overlapping other points
+    //Variable to count the generated CNT seeds
+    int cnt_seed_count = 0;
+    
+    //Variable to coun the number of rejected CNTs
+    int cnt_reject_count = 0;
+    
+    //Variable to count the number of times that a point had to be relocated
+    int point_overlap_count = 0;
+    //Variable to count the number of points that were overlapping other points
+    int point_overlap_count_unique = 0;
     
     //---------------------------------------------------------------------------
     //Vectors for handling CNT penetration
@@ -228,14 +189,15 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
     //Check when 10% is completed
     double vol_completed = 0.1;
     
+    //Boolean to terminate the main while loop, initialized to false to start the loop
+    bool terminate = false;
+    
     //---------------------------------------------------------------------------
-    while((nanotube_geo.criterion == "vol"&&vol_sum < nanotube_geo.real_volume)||
-          (nanotube_geo.criterion == "wt"&&wt_sum < nanotube_geo.real_weight))
+    while(!terminate)
     {
         //---------------------------------------------------------------------------
         //Define a vector for a new nanotube
         vector<Point_3D> new_cnt;
-        int new_cnt_size = (int)new_cnt.size();
         
         //---------------------------------------------------------------------------
         //Randomly generate a length of a CNT
@@ -255,6 +217,10 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
         }
         
         //---------------------------------------------------------------------------
+        //Cross-sectional area of the current CNT. It is used to calculate the CNT volume.
+        const double step_vol_para = PI*cnt_rad*cnt_rad;
+        
+        //---------------------------------------------------------------------------
         //Randomly generate an initial direction, then generate the rotation matrix that results in that rotation
         MathMatrix multiplier(3,3);
         //hout<<"Get_initial_direction_mt"<<endl;
@@ -262,13 +228,6 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
             hout << "Error in Generate_network_threads_mt when calling Get_initial_direction_mt" <<endl;
             return 0;
         }
-        
-        //---------------------------------------------------------------------------
-        //The increased volume of each segement (growth step) of nanotube (Here the overlapping volume is ignored)
-        const double step_vol_para = PI*cnt_rad*cnt_rad;
-        //---------------------------------------------------------------------------
-        //The increased weight of each segement (growth step) of nanotube (If the different radii of nanotube are considered, the linear_density may be different in every nanotube)
-        const double step_wei_para = nanotube_geo.linear_density;
         
         //---------------------------------------------------------------------------
         //Randomly generate a seed (initial point) of a CNT in the extended domain
@@ -291,24 +250,30 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
             counter ++;
         }//*/
         
-        new_cnt.push_back(cnt_poi);    //store this seed point in the vector for a new nanotube
+        //Add the CNT seed to the current CNT vector
+        new_cnt.push_back(cnt_poi);
         
         //---------------------------------------------------------------------------
-        cnt_seed_count++;                    //record the number of seed generations
+        //Count the numer of CNT seeds generated
+        cnt_seed_count++;
         //hout << "Seed="<<cnt_seed_count<<endl;
         int max_seed = 1E9;
         if(cnt_seed_count>max_seed)
         {
-            hout << "The number of seed genrations is lager than "<<max_seed<<", but the nanotube generation still fails to acheive the demanded volume fraction." << endl;
+            hout << "The number of generated seeds is lager than "<<max_seed<<", but the nanotube generation still fails to acheive the requested volume fraction." << endl;
             return 0;
         }
         
         //---------------------------------------------------------------------------
-        //
+        //hout<<"Growth of CNT"<<endl;
         
-        //---------------------------------------------------------------------------
-        //hout<<"The growth process of nanotube"<<endl;
-        int ellip_num = -1; //For recording the serial number of ellipsoid cluster which a nanotube penetrates out. It is no use if the cluster generation is not considered.
+        //Get the location of the seed
+        bool is_prev_in_sample = Point_inside_sample(geom_sample, new_cnt[0]);
+        
+        //Variable to store the length of the current CNT that is inside the sample
+        double cnt_len = 0.0;
+        
+        //Start generation of a CNT siven the generated seed
         for(int i=0; i<step_num; i++)
         {
             //Randomly generate a direction in the spherical coordinates
@@ -317,92 +282,89 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
             double cnt_sita = 0, cnt_pha = 0;
             if(Get_normal_direction_mt(nanotube_geo.angle_max, cnt_sita, cnt_pha, engine_sita, engine_pha, dist)==0) return 0;
             
-            //To calculate the new multiplier for transformation of coordinates
+            //Calculate the rotation matrix for current segment
             multiplier = multiplier*Get_transformation_matrix(cnt_sita, cnt_pha);
             
             //hout << "i="<<i<<"<"<<step_num<<endl;
             cnt_poi = cnt_poi + Get_new_point(multiplier, nanotube_geo.step_length);
-            cnt_poi.flag = 1;                            //1 means that point is not the intial point
+            //1 means that point is not the intial point
+            cnt_poi.flag = 1;
             
-            //---------------------------------------------------------------------------
-            //If a CNT penetrates the ellipsoidal surface of a cluster from inside, the growth of this CNT will be headed back in the cluster in a probability p, (0<=p<=1).
-            if(agg_geo.ellips.size()>0)
+            //Check if the new point, cnt_poi, is inside the extended domain
+            if(Point_inside_cuboid(geom_sample.ex_dom_cnt, cnt_poi))
             {
-                return 0;
-            }
-            
-            //---------------------------------------------------------------------------
-            //If the new CNT point grows out of the extended domain, terminate generation of the CNT
-            bool touch_end = false;
-            //hout <<"point in RVE"<<endl;
-            if(Point_inside_cuboid(geom_sample.ex_dom_cnt, cnt_poi)==0)
-            {
-                //Break the for-loop
-                touch_end = true;
-            }
-            
-            //---------------------------------------------------------------------------
-            //Check for overlapping
-            //hout << "Check overlapping ";
-            if (!penetrating_model_flag || Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
+                //If the point is inside the extended domain, then check for penetration if non-penetrating
+                //model is used, or just add it if penetrating model is used
                 
-                //---------------------------------------------------------------------------
-                //If the overlapping model is used or if overlapping was successfully solved, then proceed as usual
-                //---------------------------------------------------------------------------
-                
-                double temp_length = Effective_length_given_region(gvcub, new_cnt.back(),cnt_poi);
-                //double temp_length = new_cnt.back().distance_to(cnt_poi);
-                if (temp_length > 0.0)
-                {
-                    vol_sum += temp_length*step_vol_para;        //a accumulation on the volume
-                    wt_sum += temp_length*step_wei_para;        //a accumulation on the weight
-                }
-                
-                new_cnt.push_back(cnt_poi);                            //store a new point
-                new_cnt_size = (int)new_cnt.size()-1;                //calculate the size of new point
-            } else {
-                //---------------------------------------------------------------------------
-                //If the overlapping was not solved, then delete the current CNT and generate a new one
-                //---------------------------------------------------------------------------
-                //hout << "Penetrating point could not be accommodated" <<endl;
-                //Remove the volume and weight fractions corresponding to the new_cnt
-                double temp_length;
-                for(int j=0; j<(int)new_cnt.size()-1; j++) {
-                    if(new_cnt[j+1].flag!=0) {
-                        //Calculate segment length
-                        temp_length = Effective_length_given_region(gvcub, new_cnt.back(),cnt_poi);
-                        //new_cnt[j].distance_to(new_cnt[j+1]);
-                        //Subtract corresponding volume
-                        vol_sum -= temp_length*step_vol_para;
-                        //Subtract corresponding weight
-                        wt_sum -= temp_length*step_wei_para;
+                //Check for penetration
+                //hout << "Check penetration ";
+                if (!penetrating_model_flag || Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
+                    
+                    //---------------------------------------------------------------------------
+                    //If the penetrating model is used or if the new point, cnt_poi, was placed
+                    //in a valid position (i.e., without penetrating another CNT) then add the point
+                    //to the generated CNTs
+                    
+                    //Calculate the segment length inside the sample and add it to the total CNT length
+                    bool is_new_inside_sample;
+                    cnt_len = cnt_len + Length_inside_sample(geom_sample, new_cnt.back(), cnt_poi, is_prev_in_sample, is_new_inside_sample);
+                    
+                    //For the next iteration of the for loop, cnt_poi will become previous point,
+                    //so update the boolean is_prev_in_sample for the next iteration
+                    is_prev_in_sample = is_new_inside_sample;
+                    
+                    //Add the new point to the current CNT
+                    new_cnt.push_back(cnt_poi);
+                    
+                    //---------------------------------------------------------------------------
+                    //Check if the target volume/weight fraction has been reached
+                    if( (nanotube_geo.criterion == "vol"&&(vol_sum + cnt_len*step_vol_para) >= nanotube_geo.real_volume) || (nanotube_geo.criterion == "wt"&&(wt_sum + cnt_len*nanotube_geo.linear_density) >= nanotube_geo.real_weight)) {
+                        
+                        //Set the terminate variable to true so that the main while-loop is terminated
+                        terminate = true;
+                        
+                        //Break the for-loop so that the current CNT stops its growth
+                        break;
                     }
+                    
+                } else {
+                    //---------------------------------------------------------------------------
+                    //If the penetrating point could not be accommodated, then delete the current CNT
+                    //so that a new one is generated
+                    //hout << "Penetrating point could not be accommodated" <<endl;
+                    
+                    //Clear the new_cnt vector so that it is not added to the rest of CNTs
+                    new_cnt.clear();
+                    
+                    //Increase the count of rejected cnts
+                    cnt_reject_count++;
+                    
+                    //Break the for-loop to terminate the CNT growth
+                    break;
                 }
-                
-                //Clear the new_cnt vector so that it is not added to the rest of CNTs
-                new_cnt.clear();
-                
-                //Increase the count of rejected cnts
-                cnt_reject_count++;
-                
-                //Break the for-loop
-                touch_end = true;
+                //hout << "done" << endl;
             }
-            //hout << "done" << endl;
-            
-            
-            //---------------------------------------------------------------------------
-            //Judge the new volume or weight
-            if(nanotube_geo.criterion == "vol"&&vol_sum >= nanotube_geo.real_volume) break;        //Break out when the volume reaches the critical value
-            else if(nanotube_geo.criterion == "wt"&&wt_sum >= nanotube_geo.real_weight) break;        //Break out when the weight reaches the critical value
-            else if (touch_end) break; //Enforce break
+            else {
+                
+                //If the point is outside the extended domain, break the for-loop
+                //to terminate the CNT growth
+                break;
+            }
         }
         
         //---------------------------------------------------------------------------
         //Store the CNT points
         //hout << "Store CNT ";
+        //Check that is a valid CNT
+        //If size is 0, the CNT was rejected
+        //If size is 1, then only the CNT seed was generated in a valid position but the second point
+        //could not be placed in a valid position (i.e., without interpenetrating another CNT)
         if(new_cnt.size() >= 2)
         {
+            //Update the volume and weigth of generated CNTs
+            vol_sum += cnt_len*step_vol_para;
+            wt_sum += cnt_len*nanotube_geo.linear_density;
+            
             //If the new_cnt vector has at least two points, then it can be added to the rest of the points
             cnts_points.push_back(new_cnt);
             
@@ -432,9 +394,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
             }
         }
         //hout << "done"<<endl;
-        //(nanotube_geo.criterion == "vol"&&vol_sum < nanotube_geo.real_volume)||
-        //(nanotube_geo.criterion == "wt"&&wt_sum < nanotube_geo.real_weight)
-        //(nanotube_geo.criterion == "wt"&&wt_sum > vol_completed*nanotube_geo.real_weight)
+        
         //Check progress
         if ( (nanotube_geo.criterion == "vol"&&vol_sum > vol_completed*nanotube_geo.real_volume)) {
             //Get the time
@@ -486,12 +446,51 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
     
     hout << "There were " << point_overlap_count_unique << " overlapping points and ";
     hout << point_overlap_count << " overlaps, " << cnt_reject_count << " CNTs were rejected." << endl;
-    long int n_points = 0;
-    for (size_t i = 0; i < cnts_points.size(); i++) {
-        n_points = n_points + (long int)cnts_points[i].size();
-    }
-    hout << "There are " << cnts_points.size() << " CNTs in the generation domain with "<<n_points<<" points."<<endl;
     
+    return 1;
+}
+//---------------------------------------------------------------------------
+//This function copies the seeds for the random number generators given in the input file
+//If seeds were not given, seeds are generated
+int GenNetwork::CNT_seeds(const vector<unsigned int> &CNT_seeds, unsigned int net_seeds[])const
+{
+    //---------------------------------------------------------------------------
+    //Random_device is used to generate seeds for the Mersenne twister
+    std::random_device rd;
+
+    //If seeds have been specified, copy them
+    if (CNT_seeds.size()) {
+        for (size_t i = 0; i < CNT_seeds.size(); i++) {
+            net_seeds[i] = CNT_seeds[i];
+        }
+    }
+    //If seeds have not been specified, generate them
+    else {
+        
+        //Generate all the new seeds and print them to the output file
+        net_seeds[0] = rd();
+        //hout << "seed x: "<<net_seeds[0]<<endl;
+        net_seeds[1] = rd();
+        //hout << "seed y: "<<net_seeds[1]<<endl;
+        net_seeds[2] = rd();
+        //hout << "seed z: "<<net_seeds[2]<<endl;
+        net_seeds[3] = rd();
+        //hout << "seed pha: "<<net_seeds[3]<<endl;
+        net_seeds[4] = rd();
+        //hout << "seed sita: "<<net_seeds[4]<<endl;
+        net_seeds[5] = rd();
+        //hout << "seed rand: "<<net_seeds[5]<<endl;
+        net_seeds[6] = rd();
+        //hout << "seed init dir: "<<net_seeds[6]<<endl;
+    }
+    
+    //Output the seeds
+    hout<<"CNT seeds:"<<endl;
+    for (int i = 0; i < 7; i++) {
+        hout<<net_seeds[i]<<' ';
+    }
+    
+    hout<<endl;
     return 1;
 }
 //---------------------------------------------------------------------------
@@ -964,37 +963,46 @@ double GenNetwork::Segment_angle_discriminant(const Point_3D &first, const Point
 }
 //---------------------------------------------------------------------------
 //Calculate the effective portion (length) which falls into the given region defined by a cuboid
-double GenNetwork::Effective_length_given_region(const struct cuboid &cub, const Point_3D last_point, const Point_3D new_point)const
+double GenNetwork::Length_inside_sample(const Geom_sample &geom_sample, const Point_3D &prev_point, const Point_3D &new_point, const bool &is_prev_inside_sample, bool &is_new_inside_sample)const
 {
-    //Check if the last point is inside the given region
-    int last_bool = Point_inside_cuboid(cub, last_point);
-    //Check if the new point is inside the given region
-    int new_bool = Point_inside_cuboid(cub, new_point);
+    //Check if the new point is inside the sample
+    is_new_inside_sample = Point_inside_sample(geom_sample, new_point);
     
-    //Vector to store the intersecting point
-    vector<Point_3D> ipoi_vec;
-    
-    //Decide the corresponding case and calculate volume fraction
-    if (last_bool&&new_bool)
-        return last_point.distance_to(new_point); //both points are inside so add the total length
-    else if (last_bool&&(!new_bool))  //if the last point is inside and the new point is outside
-    {
-        if(Get_intersecting_point_RVE_surface(cub, last_point, new_point, ipoi_vec)==0){
-            hout << "Error in Effective_length_given_region, case last_bool&&(!new_bool) "<<endl;
-            return 0;
+    //Check how to calculate the length inside the sample depending on the location (either
+    //inside or outside) of the two points
+    if (is_prev_inside_sample) {
+        if (is_new_inside_sample) {
+            
+            //Both points are inside the sample, so return the length between the two points
+            return prev_point.distance_to(new_point);
         }
-        return last_point.distance_to(ipoi_vec[0]);
-    }
-    else if ((!last_bool)&&new_bool)  //if the last point is outside and the new point is inside
-    {
-        if(Get_intersecting_point_RVE_surface(cub, new_point, last_point, ipoi_vec)==0) {
-            hout << "Error in Effective_length_given_region, case (!last_bool)&&new_bool"<<endl;
-            return 0;
+        else {
+            
+            //The previous point is inside the sample, while the new point is outside the sample
+            //Find the intersecting point at the boundary
+            Point_3D boundary = Find_intersection_at_boundary(geom_sample, new_point, prev_point);
+            
+            //Return the length from the boundary point towards the inside point
+            return prev_point.distance_to(boundary);
         }
-        return new_point.distance_to(ipoi_vec[0]);
     }
-    else
-        return 0.0; //if both points are outside
+    else {
+        if (is_new_inside_sample) {
+            
+            //The previous point is outside the sample, while the new point is inside the sample
+            //Find the intersecting point at the boundary
+            Point_3D boundary = Find_intersection_at_boundary(geom_sample, prev_point, new_point);
+            
+            //Return the length from the boundary point towards the inside point
+            return new_point.distance_to(boundary);
+            
+        }
+        else {
+
+            //Both points are outside, thus there is zero length inside the sample
+            return 0.0;
+        }
+    }
 }
 //---------------------------------------------------------------------------
 //This function adds a point to a region so penetration can be checked
@@ -1093,6 +1101,9 @@ int GenNetwork::Transform_points_cnts(const Geom_sample &geom_sample, const stru
     //Variable to count the CNT numbers
     int cnt_count = 0;
     
+    //Variable to count the generated points
+    long int n_points = 0;
+    
     //Choose the way in which the output vectors are generated depending on the particle type
     for(int i=0; i<(int)cnts_points.size(); i++)
     {
@@ -1101,12 +1112,17 @@ int GenNetwork::Transform_points_cnts(const Geom_sample &geom_sample, const stru
             hout<<"Error when adding CNTs to structure."<<endl;
             return 0;
         }
+        
+        //Update the number of generated points
+        n_points += (long int)cnts_points[i].size();
          
         //Free some memory
         cnts_points[i].clear();
     }
     
     if (cnts_points.size()) {
+        hout<<"Radii="<<radii_in.size()<<endl;
+        hout << "There are " << cnts_points.size() << " CNTs with "<<n_points<<" points in the generation domain."<<endl;
         hout<<"There are "<<cnt_count<<" CNTs with "<<cpoints.size() << " points inside the sample."<<endl;
     }
     
@@ -1132,26 +1148,40 @@ int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, co
     //Provisionally the minimum number of points to consider a CNT is defined here
     int min_points = nano_geo.min_points;
     
-    //Scan all points in the current CNT
-    for (int i = 0; i < cnt_points; i++) {
+    //Check where is the first point of the CNT
+    bool is_first_inside_sample = Point_inside_sample(geom_sample, cnt[0]);
+    
+    //Scan all remaining points in the current CNT
+    for (int i = 1; i < cnt_points; i++) {
         
         //Check if the point is inside the sample
         if (Point_inside_sample(geom_sample, cnt[i])) {
             
             //Update the last inside point
             last_inside = i;
-            
         }
         else {
             
             //End index is the current looping index
             end = i;
             
-            //Check if there are are enough points and, if so, add the current CNT segment to the data structures
-            if (!Add_cnt_segment(geom_sample, start, end, min_points, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
-                hout<<"Error when adding a CNT segment."<<endl;
-                return 0;
+            //Count the number of consecutive points inside the sample
+            //If start is zero and it is inside the sample, then the number of points is end - start
+            //because end is always outside
+            //If start is not zero, then it is always outside, and since end is also outside, then
+            //the number of points is end - start - 1
+            int n_points = (start == 0 && is_first_inside_sample)? end - start: end - start - 1;
+            
+            //Check if there are enough points to consider this a whole CNT and include it in the analysis
+            if (n_points >= min_points) {
+                
+                //Check if there are are enough points and, if so, add the current CNT segment to the data structures
+                if (!Add_cnt_segment(geom_sample, is_first_inside_sample, start, end, min_points, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
+                    hout<<"Error when adding a CNT segment."<<endl;
+                    return 0;
+                }
             }
+            //else{hout<<"Segment with "<<n_points<<" points, start="<<start<<" end="<<end<<" cnt_count="<<cnt_count<<endl;}
             
             //Reset the start index
             start = i;
@@ -1161,14 +1191,15 @@ int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, co
     //Check if the last point of the CNT was inside the sample
     if (last_inside == cnt_points-1) {
         
-        //Set end index as the last valid index
-        end = cnt_points - 1;
+        //Set end index as one after the last valid index
+        //In this way, when adding CNTs to the structure, the last CNT point is added
+        end = cnt_points;
         
         //If the last point of the CNT was inside the sample, then add a new segment
         //This was not done becuase, in the for loop, a segement is added only when it finds a point
         //outside the sample
         //Then, check if there are are enough points and, if so, add the current CNT segment to the data structures
-        if (!Add_cnt_segment(geom_sample, start, end, min_points, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
+        if (!Add_cnt_segment(geom_sample, is_first_inside_sample, start, end, min_points, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
             hout<<"Error when adding a CNT segment."<<endl;
             return 0;
         }
@@ -1177,75 +1208,76 @@ int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, co
     return 1;
 }
 //---------------------------------------------------------------------------
-int GenNetwork::Add_cnt_segment(const struct Geom_sample &geom_sample, const int &start, const int &end, const int &min_points, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
+int GenNetwork::Add_cnt_segment(const struct Geom_sample &geom_sample, const bool &is_first_inside_sample, const int &start, const int &end, const int &min_points, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
 {
-    //Count the number of consecutive points inside the sample
-    int n_points = end - start;
     
-    //Check if there are enough points to consider this a whole CNT and include it in the analysis
-    if (n_points > min_points) {
-        
-        //Temporary vector to add the point numbers to the structure vector
-        vector<long int> struct_temp;
-        
-        //Check if there is a previous point outside the sample, in such case add a new point at the boundary
-        //This always happens when the start index is not zero. If start index was zero,
-        //then the segment CNT starts inside the sample. If start index is not zero, then the
-        //CNT segment starts outside the sample and crosses the sample boundary. In such case a point
-        //at the boundary is added. This is needed to determine percolation
-        if (start != 0) {
-            
-            //Note that start index is a point outside the sample
-            //hout<<"start="<<start<<endl;
-            //hout<<"P_start = ("<<cnt[start].x<<", "<<cnt[start].y<<", "<<cnt[start].z<<") cnt_count="<<cnt_count<<endl;
-            if (!Add_boundary_point(geom_sample, cnt[start], cnt[start+1], cnt_count, cpoints, struct_temp, point_count)) {
-                hout<<"Error in Add_boundary_point when adding a point at the start of the segment."<<endl;
-            }
-            
-        }
-        
-        //Add the CNT points of the segment found to the 1D vector
-        //Note that end index is actually one more than the last index of the segment
-        for(int j = start+1; j < end; j++) {
-            
-            //Change the flag of current point to be that of its CNT number
-            cnt[j].flag = cnt_count;
-            
-            //Add current point
-            cpoints.push_back(cnt[j]);
-            
-            //Add the point number to the structure vector
-            struct_temp.push_back(point_count);
-            
-            //Increase the count of points
-            point_count++;
-        }
-        
-        //Check if end index is not the last point of the CNT (since end index is actually one more
-        //than the last index of the segment, then we have to check against the largest posisble index+1
-        //which is the number of points in the CNT)
-        //If the last index is the last point of the CNT, then the CNT segement ends inside the sample.
-        //If the last index is not the last point of the CNT, then the CNT segment crosses the boundary
-        //In such case, a point at the boundary is added. This is needed to determine percolation
-        if (end != (int)cnt.size()) {
-            
-            //hout<<"end="<<end<<" points="<<cnt.size()<<endl;
-            //hout<<"P_end = ("<<cnt[end].x<<", "<<cnt[end].y<<", "<<cnt[end].z<<") cnt_count="<<cnt_count<<endl;
-            if (!Add_boundary_point(geom_sample, cnt[end], cnt[end-1], cnt_count, cpoints, struct_temp, point_count)) {
-                hout<<"Error in Add_boundary_point when adding a point at the end of the segment."<<endl;
-            }
-        }
-        
-        //Add the corresponding radius to the output darii vector
-        radii_out.push_back(radii_in[CNT_old]);
-        
-        //Add the temporary structure vector
-        cstructures.push_back(struct_temp);
-        
-        //A CNT segment was added, i.e., a new CNT was added, thus increase the CNT count
-        cnt_count++;
-    }//else{hout<<"Segment with "<<n_points<<" points, start="<<start<<" end="<<end<<" cnt_count="<<cnt_count<<endl;}
+    //Temporary vector to add the point numbers to the structure vector
+    vector<long int> struct_temp;
     
+    //Variable to recalculate start index if needed
+    int new_start = start;
+    
+    //Check if start is inside the boundary, this is needed to determine percolation
+    //This happens when:
+    //1) Always when start is non-zero. Whenever start index is not zero, the
+    //   CNT segment starts outside the sample and crosses the sample boundary.
+    //2) The only case when start is zero but is outside the sample is when the first
+    //   CNT point is outside the sample and the second CNT point is inside the sample.
+    //   For this case use the flag is_first_inside_sample
+    if (start != 0 || (start == 0 && !is_first_inside_sample)) {
+        
+        //Note that start index is a point outside the sample
+        //hout<<"start="<<start<<endl;
+        //hout<<"P_start = ("<<cnt[start].x<<", "<<cnt[start].y<<", "<<cnt[start].z<<") cnt_count="<<cnt_count<<endl;
+        if (!Add_boundary_point(geom_sample, cnt[start], cnt[start+1], cnt_count, cpoints, struct_temp, point_count)) {
+            hout<<"Error in Add_boundary_point when adding a point at the start of the segment."<<endl;
+        }
+        
+        //Start is outside, so the first inside point is start+1
+        //Thus update start
+        new_start++;
+    }
+    
+    //Add the CNT points of the segment found to the 1D vector
+    //Note that end index is actually one more than the last index of the segment
+    for(int j = new_start; j < end; j++) {
+        
+        //Change the flag of current point to be that of its CNT number
+        cnt[j].flag = cnt_count;
+        
+        //Add current point
+        cpoints.push_back(cnt[j]);
+        
+        //Add the point number to the structure vector
+        struct_temp.push_back(point_count);
+        
+        //Increase the count of points
+        point_count++;
+    }
+    
+    //Check if end index is not the last point of the CNT (since end index is actually one more
+    //than the last index of the segment, then we have to check against the largest posisble index+1
+    //which is the number of points in the CNT)
+    //If the last index is the last point of the CNT, then the CNT segement ends inside the sample.
+    //If the last index is not the last point of the CNT, then the CNT segment crosses the boundary
+    //In such case, a point at the boundary is added. This is needed to determine percolation
+    if (end != (int)cnt.size()) {
+        
+        //hout<<"end="<<end<<" points="<<cnt.size()<<endl;
+        //hout<<"P_end = ("<<cnt[end].x<<", "<<cnt[end].y<<", "<<cnt[end].z<<") cnt_count="<<cnt_count<<endl;
+        if (!Add_boundary_point(geom_sample, cnt[end], cnt[end-1], cnt_count, cpoints, struct_temp, point_count)) {
+            hout<<"Error in Add_boundary_point when adding a point at the end of the segment."<<endl;
+        }
+    }
+    
+    //Add the corresponding radius to the output darii vector
+    radii_out.push_back(radii_in[CNT_old]);
+    
+    //Add the temporary structure vector
+    cstructures.push_back(struct_temp);
+    
+    //A CNT segment was added, i.e., a new CNT was added, thus increase the CNT count
+    cnt_count++;
     
     return 1;
 }
@@ -1274,7 +1306,7 @@ int GenNetwork::Add_boundary_point(const struct Geom_sample &geom_sample, const 
 //---------------------------------------------------------------------------
 //Depending on the location of the outside point, the line defined by consecutive inside and outside points
 //might have up to three intersections with the planes that define the boundaries of the sample.
-//Of course, a point might be on the plane where a boundary is located, but ouside of that boundary.
+//Of course, a point might be on the plane of a boundary, but ouside of that boundary.
 //Thus, if there are multiple intersections with the planes, we need to check whether or not
 //the interstion is at an actual boundary
 //This function finds that intersecting point at an actual boundary
@@ -1284,95 +1316,94 @@ Point_3D GenNetwork::Find_intersection_at_boundary(const struct Geom_sample &geo
     //P = p_outside + lambda*T
     //where T = p_inside - p_outside
     //In this way P = p_outside when lambda = 0 and P = p_inside when lambda = 1
-    
     //Variable to store the point T = p_inside - p_outside
     Point_3D T = p_inside - p_outside;
-    
-    //Variable to store the coefficient lambda to parameterize the line segment between
-    //p_outside (lambda = 0) and p_inside (lambda = 1)
-    double lambda = 0;
     
     //Variable to store the point at the intersection of the line segment (between p_outside and p_inside)
     //and the boundary
     Point_3D boundary;
     
-    //Lambda function to calculate the lambda coefficient, since I only use it multiple times here and is a
-    //simple calculation I rather use a lambda function instead of declaring a new proper function
+    //Lambda function to calculate the lambda coefficient, since I only use it three times here and is a
+    //simple calculation, so I rather use a lambda function instead of declaring a new proper function
+    //as part of the class
     auto calc_lambda = [](auto x_plane, auto x_out, auto x_T) {return (x_plane - x_out)/x_T;};
     
-    //Go through each boundary and find the boundary those that are intersected
+    //Go through each boundary and find the lambda value for those that are intersected for the
+    //line segment that goes from p_outside to p_inside
     
     //Check if any of the x-boundaries is intersected
+    double lambda_x = - 1.0;
     //x-left boundary
     if ( (p_outside.x - geom_sample.origin.x) < Zero ) {
         
         //Calculate the lambda value
-        lambda = calc_lambda(geom_sample.origin.x, p_outside.x, T.x);
+        lambda_x = calc_lambda(geom_sample.origin.x, p_outside.x, T.x);
     }
     //x-right boundary
     else if ( (geom_sample.x_max - p_outside.x) < Zero ) {
         
         //Calculate the lambda value
-        lambda = calc_lambda(geom_sample.x_max, p_outside.x, T.x);
+        lambda_x = calc_lambda(geom_sample.x_max, p_outside.x, T.x);
     }
-    //hout<<"lambda1="<<lambda<<endl;
-    //Calculate the new point
-    boundary = p_outside + T*lambda;
+    //hout<<"lambda_x="<<lambda_x<<endl;
     
     //Variable to save a new value of lambda, if needed
     //If a new lambda turns out to be larger, then the old lambda needs to be updated
     //Since we need to find a value larger than lambda, which is in [0,1], then
     //new_lambda is initialized with a value smaller than lambda.
     //A negative value ensures this new_lambda will be smaller than any value lambda could get
-    double new_lambda = -1.0;
     
     //Check if any of the y-boundaries is intersected
+    double lambda_y = -1.0;
     //y-left boundary
     if ( (p_outside.y - geom_sample.origin.y) < Zero ) {
         
         //Calculate the lambda value
-        new_lambda = calc_lambda(geom_sample.origin.y, p_outside.y, T.y);
+        lambda_y = calc_lambda(geom_sample.origin.y, p_outside.y, T.y);
     }
     //y-right boundary
     else if ( (geom_sample.y_max - p_outside.y) < Zero ) {
         
         //Calculate the lambda value
-        new_lambda = calc_lambda(geom_sample.y_max, p_outside.y, T.y);
+        lambda_y = calc_lambda(geom_sample.y_max, p_outside.y, T.y);
     }
-    //Check if a new point needs to be calculated
-    if (new_lambda > lambda) {
-        
-        //Update lambda
-        lambda = new_lambda;
-        
-        //Calculate the new point
-        boundary = p_outside + T*lambda;
-    }
-    //hout<<"lambda2="<<lambda<<endl;
+    //hout<<"lambda_y="<<lambda_y<<endl;
     
     //Check if any of the z-boundaries is intersected
+    double lambda_z = -1.0;
     //z-left boundary
     if ( (p_outside.z - geom_sample.origin.z) < Zero ) {
         
         //Calculate the lambda value
-        new_lambda = calc_lambda(geom_sample.origin.z, p_outside.z, T.z);
+        lambda_z = calc_lambda(geom_sample.origin.z, p_outside.z, T.z);
     }
     //z-right boundary
     else if ( (geom_sample.z_max - p_outside.z) < Zero ) {
         
         //Calculate the lambda value
-        new_lambda = calc_lambda(geom_sample.z_max, p_outside.z, T.z);
+        lambda_z = calc_lambda(geom_sample.z_max, p_outside.z, T.z);
     }
-    //Check if a new point needs to be calculated
-    if (new_lambda > lambda) {
-        
-        //Update lambda
-        lambda = new_lambda;
-        
-        //Calculate the new point
-        boundary = p_outside + T*lambda;
+    //hout<<"lambda_z="<<lambda_z<<endl;
+    
+    //Variable to store the coefficient lambda to parameterize the line segment between
+    //p_outside (lambda = 0) and p_inside (lambda = 1)
+    //The lambda needed is the largest one
+    double lambda = max(lambda_x, max(lambda_y, lambda_z));
+    
+    //Calculate the new point using the largest lambda
+    boundary = p_outside + T*lambda;
+    
+    //Check if a coordinate is close to zero, in which case set it to zero directly
+    //to reduce numerical errors
+    if (abs(boundary.x) < Zero) {
+        boundary.x = 0.0;
     }
-    //hout<<"lambda3="<<lambda<<endl;
+    if (abs(boundary.y) < Zero) {
+        boundary.y = 0.0;
+    }
+    if (abs(boundary.z) < Zero) {
+        boundary.z = 0.0;
+    }
     
     //hout<<"P_outside = ("<<p_outside.x<<", "<<p_outside.y<<", "<<p_outside.z<<")"<<endl;
     //hout<<"P_inside = ("<<p_inside.x<<", "<<p_inside.y<<", "<<p_inside.z<<")"<<endl;
@@ -1393,6 +1424,10 @@ int GenNetwork::Recalculate_vol_fraction_cnts(const Geom_sample &geom_sample, co
         //Initialize the length of the CNT
         double cnt_len = 0.0;
         
+        /*if (!Point_inside_sample(geom_sample, cpoints[cstructures[i][0]])) {
+            hout<<"Point outside the sample: cpoints["<<cstructures[i][0]<<"(i="<<i<<", j="<<0<<")]="<<cpoints[cstructures[i][0]].str()<<" CNT with "<<cstructures[i].size()<<" points"<<endl;
+        }*/
+        
         //Calculate the total length of current CNT_i
         for (int j = 1; j < (int)cstructures[i].size(); j++) {
             
@@ -1402,6 +1437,10 @@ int GenNetwork::Recalculate_vol_fraction_cnts(const Geom_sample &geom_sample, co
             
             //Add the length of two consecutive points
             cnt_len = cnt_len + cpoints[prev].distance_to(cpoints[curr]);
+            
+            /*if (!Point_inside_sample(geom_sample, cpoints[curr])) {
+                hout<<"A point is outside the sample: cpoints["<<curr<<"(i="<<i<<", j="<<j<<")]="<<cpoints[curr].str()<<endl;
+            }*/
         }
         
         //Calculate the volume from the CNT length and add it to the total volume
@@ -1754,6 +1793,8 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
     
     return 1;
 }
+//This function copies the seeds for the random number generators given in the input file
+//If seeds were not given, seeds are generated
 int GenNetwork::GNP_seeds(const vector<unsigned int> &GNP_seeds, unsigned int net_seeds[])const
 {
     //---------------------------------------------------------------------------
@@ -1782,11 +1823,13 @@ int GenNetwork::GNP_seeds(const vector<unsigned int> &GNP_seeds, unsigned int ne
         net_seeds[5] = rd();
         //hout << "seed orientation: "<<net_seeds[5]<<endl;
     }
+    
     //Output the seeds
     hout<<"GNP seeds:"<<endl;
     for (int i = 0; i < 6; i++) {
         hout<<net_seeds[i]<<' ';
     }
+    
     hout<<endl;
     return 1;
 }
@@ -3304,25 +3347,28 @@ int GenNetwork::Add_CNTs_to_global_structure(const struct Geom_sample &geom_samp
 //This function calculates the generated volume and adds it to the global variables
 int GenNetwork::Calculate_generated_volume(const struct GNP_Geo &gnp_geo, const struct cuboid &gvcub, const GCH &hybrid, const vector<vector<Point_3D> > &particle, const double &step_vol_para, const double &step_wei_para, double &vol_sum_cnt, double &wt_sum_cnt, double &vol_sum_gnp, double &wt_sum_gnp, double &vol_sum_tot, double &wt_sum_tot)const
 {
+    //Variable to store the total length of CNTs inside the sample
+    //Since all nanotubes have the same radius, then only the total length is needed to
+    //calculate the total volume inside the sample
+    double tot_length = 0.0;
     
-    //---------------------------------------------------------------------------
-    //Add the volume and weight corresponding to the CNTs
-    
-    //Variable to store the effective length
-    double temp_length;
-    //Variables to store the CNT volume and weight
-    double cnt_vol = 0, cnt_wei = 0;
+    //Iterate over the CNT in the hybrid
     for (int i = 0; i < (int)particle.size(); i++) {
+        
+        //Iterate over the points in the hybrid
         for (int j = 0; j < (int)particle[i].size()-1; j++) {
-            temp_length = Effective_length_given_region(gvcub, particle[i][j],particle[i][j+1]);
-            //double temp_length = new_cnt.back().distance_to(cnt_poi);
-            if (temp_length > 0.0)
-            {
-                cnt_vol += temp_length*step_vol_para;		//add accumulation on the volume
-                cnt_wei += temp_length*step_wei_para;		//add accumulation on the weight
-            }
+            
+            //Accumulate the total length inside the sample
+            tot_length = tot_length + Effective_length_given_region(gvcub, particle[i][j],particle[i][j+1]);
         }
+        
+        
     }
+    
+    //Calculate the CNT volume and weight
+    double cnt_vol = tot_length*step_vol_para;
+    double cnt_wei = tot_length*step_wei_para;
+    
     //Add the volume and weight to the cummulative variables
     vol_sum_tot += cnt_vol;
     wt_sum_tot += cnt_wei;
@@ -3350,6 +3396,40 @@ int GenNetwork::Calculate_generated_volume(const struct GNP_Geo &gnp_geo, const 
     
     
     return 1;
+}
+//---------------------------------------------------------------------------
+//Calculate the effective portion (length) which falls into the given region defined by a cuboid
+double GenNetwork::Effective_length_given_region(const struct cuboid &cub, const Point_3D last_point, const Point_3D new_point)const
+{
+    //Check if the last point is inside the given region
+    int last_bool = Point_inside_cuboid(cub, last_point);
+    //Check if the new point is inside the given region
+    int new_bool = Point_inside_cuboid(cub, new_point);
+    
+    //Vector to store the intersecting point
+    vector<Point_3D> ipoi_vec;
+    
+    //Decide the corresponding case and calculate volume fraction
+    if (last_bool&&new_bool)
+        return last_point.distance_to(new_point); //both points are inside so add the total length
+    else if (last_bool&&(!new_bool))  //if the last point is inside and the new point is outside
+    {
+        if(Get_intersecting_point_RVE_surface(cub, last_point, new_point, ipoi_vec)==0){
+            hout << "Error in Effective_length_given_region, case last_bool&&(!new_bool) "<<endl;
+            return 0;
+        }
+        return last_point.distance_to(ipoi_vec[0]);
+    }
+    else if ((!last_bool)&&new_bool)  //if the last point is outside and the new point is inside
+    {
+        if(Get_intersecting_point_RVE_surface(cub, new_point, last_point, ipoi_vec)==0) {
+            hout << "Error in Effective_length_given_region, case (!last_bool)&&new_bool"<<endl;
+            return 0;
+        }
+        return new_point.distance_to(ipoi_vec[0]);
+    }
+    else
+        return 0.0; //if both points are outside
 }
 //This function calculates the generated volume of a GNP and adds it to the global variables
 int GenNetwork::Calculate_generated_gnp_volume(const struct GNP_Geo &gnp_geo, const struct cuboid &gvcub, const GCH &hybrid, double &vol_sum, double &wt_sum)const

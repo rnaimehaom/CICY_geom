@@ -585,6 +585,9 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     else {
         hout << "Error: The minimum CNT length can only be specified as 'length' or 'points'. Input was: "<<nanotube_geo.min_length_type<<endl; return 0;
     }
+    if (nanotube_geo.min_points <= 0) {
+        hout << "Error: The minimum CNT length can only be specified as a non-zero length or number of points. Minimum number of points was: "<<nanotube_geo.min_length_type<<endl; return 0;
+    }
     
 	//----------------------------------------------------------------------
 	//Read the distribution type (uniform or normal) of the nanotube radius (in microns) and its minimum and maximum values
