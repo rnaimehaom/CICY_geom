@@ -472,7 +472,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_g
             struct_temp.push_back(j);
             
             //Update the shell of the new CNT points
-            bg.Add_to_shell(var_shells[0], var_shells[1], var_shells[2], var_shells[3], points_in[P], (int)shells_cnt.size(), shells_cnt);
+            bg.Add_to_cnt_shells(var_shells[0], var_shells[1], var_shells[2], var_shells[3], points_in[P], (int)shells_cnt.size(), shells_cnt);
         }
         
         //Update the radii vector

@@ -31,7 +31,7 @@
  
  */
 
-int Background_vectors::Generate_shells(const struct Geom_sample &sample, const struct Nanotube_Geo &cnts, const vector<Point_3D> &points_in, const vector<GCH> &hybrid_particles, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnps)
+int Background_vectors::Generate_shells(const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<GNP> &gnps, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnps)
 {
     //Calculate the number of shells
     //sample.cut_num is the number of increments from the smallest to the largest observation widows
@@ -62,7 +62,7 @@ int Background_vectors::Generate_shells(const struct Geom_sample &sample, const 
     
     //Scan all points to determine in which sub-regions the CNTs are located and construct the structure vector
     for (long int i = 0; i < (long int)points_in.size(); i++) {
-        if (!Add_to_shell(midpoints, boundary_layer, core, half_step, points_in[i], n_shells, shells_cnt)) {
+        if (!Add_to_cnt_shells(midpoints, boundary_layer, core, half_step, points_in[i], n_shells, shells_cnt)) {
             hout << "Error in Generate_shells_and_structure when calling Add_to_shell (CNT shells)."<< endl;
             return 0;
         }
@@ -72,18 +72,20 @@ int Background_vectors::Generate_shells(const struct Geom_sample &sample, const 
     shells_gnps.assign(n_shells, vector<int>());
     
     //Scan all Hybrid particles to determine to which shells they belong
-    for (int i = 0; i < (int)hybrid_particles.size(); i++) {
-        //Add to the corresponding shell
-        if (!Add_to_shells(midpoints, boundary_layer, core, half_step, hybrid_particles[i], n_shells, shells_gnps)) {
+    for (int i = 0; i < (int)gnps.size(); i++) {
+        //Add GNP to the corresponding shells
+        if (!Add_to_gnp_shells(midpoints, boundary_layer, core, half_step, gnps[i], n_shells, shells_gnps)) {
             hout << "Error in Generate_shells_and_structure when calling Add_to_shells (GNP shells)."<< endl;
             return 0;
-        }    }
+        }
+    }
+    
     
     return 1;
 }
 //This function finds shell sub-region where a point is located.
 //Then it adds the CNT number to the corresponding shell in the 2D vector shells_cnt
-int Background_vectors::Add_to_shell(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const Point_3D &point, const int &n_shells, vector<vector<int> > &shells_cnt)
+int Background_vectors::Add_to_cnt_shells(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const Point_3D &point, const int &n_shells, vector<vector<int> > &shells_cnt)
 {
     
     //Find the shell that corresponds to the point
@@ -151,48 +153,33 @@ int Background_vectors::Find_shell(const double &x_in, const double &x_m, const 
         return shell;
     }
 }
-//This function finds the corresponding shell sub-region where the point is located. Then it adds the CNT number to the
-//corresponding vector in the 2D vector shells_cnt
-int Background_vectors::Add_to_shells(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const GCH &hybrid, const int &n_shells, vector<vector<int> > &shells_gnp)
+//This function finds the shell sub-regions that a GNP occupies.
+int Background_vectors::Add_to_gnp_shells(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const GNP &gnp, const int &n_shells, vector<vector<int> > &shells_gnp)
 {
+    //Variables to store the minimum and moximum shell numbers that the GNP occupies
+    //Minimum and maximum shell numbers are initialized with the first shell
+    int min_shell = Find_minimum_shell(midpoints, boundary_layer, core, half_step, gnp.vertices[0], n_shells);
+    int max_shell = min_shell;
     
-    //Range of shells in which the GNP will be stored
-    int shell_max = -1; //Initialized in a negative value to find a larger value
-    int shell_min = n_shells+1; //Initialized in a large value to find a smaller value
+    //Iterate over the remaining vertices of the GNP
+    for (int i = 1; i < 8; i++) {
+        
+        //Find the shell that corresponds to vertex i
+        int shell = Find_minimum_shell(midpoints, boundary_layer, core, half_step, gnp.vertices[i], n_shells);
+        
+        //Check if shell numbers need to be updated
+        if (shell < min_shell) {
+            min_shell = shell;
+        }
+        if (shell > max_shell) {
+            max_shell = shell;
+        }
+    }
     
-    //Base point to find the eight corner points
-    Point_3D corner_base( -hybrid.gnp.len_x/2, -hybrid.gnp.wid_y/2, -hybrid.gnp.hei_z/2);
-    
-    //Loop over the eigt possible corners of the cube
-    for(int i=0; i<2; i++)
-        for(int j=0; j<2; j++)
-            for(int k=0; k<2; k++) {
-                
-                //If i (j,k) is zero, then add nothing to the x (y,z) coordinate
-                //If i (j,k) is one, then add the length on direction x (y,z) to the x (y,z) coordinate
-                Point_3D corner(((double)i)*hybrid.gnp.len_x, ((double)j)*hybrid.gnp.wid_y, ((double)k)*hybrid.gnp.hei_z);
-                
-                //Add the center and the "adjustment" so that the loop calculates the eight coordinates are calculated
-                corner = corner_base + corner;
-                
-                //Map to global coordinates
-                corner = corner.rotation(hybrid.rotation, hybrid.center);
-                
-                //Find the shell that corresponds to the point
-                int shell = Find_minimum_shell(midpoints, boundary_layer, core, half_step, corner, n_shells);
-                
-                //Update maximum and minimum shells
-                if (shell < shell_min)
-                    shell_min = shell;
-                if (shell > shell_max)
-                    shell_max = shell;
-            }
-    
-    //Add to all shells in range
-    for (int i = shell_min; i <= shell_max; i++) {
-        //Add the GNP number to a shell sub-region
-        shells_gnp[i].push_back(hybrid.flag);
-    }    
+    //Add the GNP number to all the shells it spans
+    for (int j = min_shell; j <= max_shell; j++) {
+        shells_gnp[j].push_back(gnp.flag);
+    }
     
     return 1;
 }

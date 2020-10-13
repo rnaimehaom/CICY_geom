@@ -101,8 +101,7 @@ int GenNetwork::Generate_nanoparticle_network(const Simu_para &simu_para, const 
         otec.close();
     }
     
-    //Return 0 for testing only the generation function
-    return 0;
+    return 1;
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
@@ -1761,6 +1760,9 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
             if (!Calculate_generated_gnp_vol_and_update_total_vol(gnp_geo, geom_sample, gnp, gnp_vol_tot, gnp_wt_tot)) {
                 hout<<"Error in Calculate_generated_gnp_volume."<<endl;
             }
+            
+            //Update the GNP flag
+            gnp.flag = (int)gnps.size();
             
             //Add the current particle to the vector of particles
             gnps.push_back(gnp);

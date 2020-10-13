@@ -54,7 +54,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     //----------------------------------------------------------------------
     ct0 = time(NULL);
     Background_vectors *Bckg = new Background_vectors;
-    if (!Bckg->Generate_shells(Init->geom_sample, Init->nanotube_geo, cnts_point, hybrid_particles, shells_cnt, shells_gnps)) {
+    if (!Bckg->Generate_shells(Init->geom_sample, cnts_point, gnps, shells_cnt, shells_gnps)) {
         hout << "Error when generating shells" << endl;
         return 0;
     }

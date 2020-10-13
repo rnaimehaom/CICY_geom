@@ -284,6 +284,8 @@ struct GNP {
     double volume;
     //Tringulation edges
     vector<Edge> triangulation;
+    //Flag for GNP number
+    int flag;
     
     //Default constructor
     GNP() {
