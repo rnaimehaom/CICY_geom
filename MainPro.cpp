@@ -46,10 +46,10 @@ int main(int argc, char** argv)
 
     hout<<endl;
     hout<<"******************************************"<<endl;
-    hout<<"                   3D Gemetric model      "<<endl;
+    hout<<"            3D Geometric model      "<<endl;
     hout<<"                                          "<<endl;
-    hout<<"      Propriety of CICY/Unidad de Materiales    "<<endl;
-    hout<<"                    faviles@cicy.mx       "<<endl;
+    hout<<"  Propriety of CICY/Unidad de Materiales    "<<endl;
+    hout<<"              faviles@cicy.mx       "<<endl;
     hout<<"******************************************"<<endl;
     hout<<endl;
     hout<<endl;

@@ -123,8 +123,8 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
     std::mt19937 engine_x(net_seeds[0]);
     std::mt19937 engine_y(net_seeds[1]);
     std::mt19937 engine_z(net_seeds[2]);
-    std::mt19937 engine_pha(net_seeds[3]);
-    std::mt19937 engine_sita(net_seeds[4]);
+    std::mt19937 engine_phi(net_seeds[3]);
+    std::mt19937 engine_theta(net_seeds[4]);
     std::mt19937 engine_rand(net_seeds[5]);
     std::mt19937 engine_initial_direction(net_seeds[6]);
     
@@ -221,7 +221,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         //Randomly generate an initial direction, then generate the rotation matrix that results in that rotation
         MathMatrix multiplier(3,3);
         //hout<<"Get_initial_direction_mt"<<endl;
-        if (!Get_initial_direction_mt(nanotube_geo.dir_distrib_type, nanotube_geo.ini_sita, nanotube_geo.ini_pha, engine_initial_direction, dist_initial, multiplier)) {
+        if (!Get_initial_direction_mt(nanotube_geo.dir_distrib_type, nanotube_geo.ini_theta, nanotube_geo.ini_phi, engine_initial_direction, dist_initial, multiplier)) {
             hout << "Error in Generate_network_threads_mt when calling Get_initial_direction_mt" <<endl;
             return 0;
         }
@@ -275,12 +275,12 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         {
             //Randomly generate a direction in the spherical coordinates
             //To have the positive Z-axis to be a central axis
-            //Then, the radial angle, sita, obeys a normal distribution (sita \in fabs[(-omega,+omega)]) and the zonal angle, pha, obeys a uniform distribution (pha \in (0,2PI))
-            double cnt_sita = 0, cnt_pha = 0;
-            if(Get_normal_direction_mt(nanotube_geo.angle_max, cnt_sita, cnt_pha, engine_sita, engine_pha, dist)==0) return 0;
+            //Then, the radial angle, theta, obeys a normal distribution (theta \in fabs[(-omega,+omega)]) and the zonal angle, phi, obeys a uniform distribution (phi \in (0,2PI))
+            double cnt_theta = 0, cnt_phi = 0;
+            if(Get_normal_direction_mt(nanotube_geo.angle_max, cnt_theta, cnt_phi, engine_theta, engine_phi, dist)==0) return 0;
             
             //Calculate the rotation matrix for current segment
-            multiplier = multiplier*Get_transformation_matrix(cnt_sita, cnt_pha);
+            multiplier = multiplier*Get_transformation_matrix(cnt_theta, cnt_phi);
             
             //hout << "i="<<i<<"<"<<step_num<<endl;
             cnt_poi = cnt_poi + Get_new_point(multiplier, nanotube_geo.step_length);
@@ -472,9 +472,9 @@ int Generate_Network::CNT_seeds(const vector<unsigned int> &CNT_seeds, unsigned 
         net_seeds[2] = rd();
         //hout << "seed z: "<<net_seeds[2]<<endl;
         net_seeds[3] = rd();
-        //hout << "seed pha: "<<net_seeds[3]<<endl;
+        //hout << "seed phi: "<<net_seeds[3]<<endl;
         net_seeds[4] = rd();
-        //hout << "seed sita: "<<net_seeds[4]<<endl;
+        //hout << "seed theta: "<<net_seeds[4]<<endl;
         net_seeds[5] = rd();
         //hout << "seed rand: "<<net_seeds[5]<<endl;
         net_seeds[6] = rd();
@@ -1500,7 +1500,7 @@ int Generate_Network::Get_seed_point_mt(const cuboid &cub, Point_3D &point, mt19
 }
 //---------------------------------------------------------------------------
 //Randomly generate an initial direction, then generate the rotation matrix that results in that rotation
-int Generate_Network::Get_initial_direction_mt(const string &dir_distrib_type, const double &ini_sita, const double &ini_pha, mt19937 &engine_inital_direction, uniform_real_distribution<double> &dist_initial, MathMatrix &rotation)const
+int Generate_Network::Get_initial_direction_mt(const string &dir_distrib_type, const double &ini_theta, const double &ini_phi, mt19937 &engine_inital_direction, uniform_real_distribution<double> &dist_initial, MathMatrix &rotation)const
 {
     if(dir_distrib_type=="random")
     {
@@ -1524,84 +1524,84 @@ int Generate_Network::Get_initial_direction_mt(const string &dir_distrib_type, c
         //This quantity is used three times:
         double quantity = sqrt(a*a + b*b);
         
-        //Calculate the trigonometric functions of the angles sita and pha
-        double cos_pha = a/quantity;
-        double sin_pha = b/quantity;
-        double cos_sita = c/v_length;
-        double sin_sita = quantity/v_length;
+        //Calculate the trigonometric functions of the angles theta and phi
+        double cos_phi = a/quantity;
+        double sin_phi = b/quantity;
+        double cos_theta = c/v_length;
+        double sin_theta = quantity/v_length;
         
         //Fill the elements of the rotation matrix
-        rotation.element[0][0] = cos_pha*cos_sita;
-        rotation.element[0][1] = -sin_pha;
-        rotation.element[0][2] = cos_pha*sin_sita;
+        rotation.element[0][0] = cos_phi*cos_theta;
+        rotation.element[0][1] = -sin_phi;
+        rotation.element[0][2] = cos_phi*sin_theta;
         
-        rotation.element[1][0] = sin_pha*cos_sita;
-        rotation.element[1][1] = cos_pha;
-        rotation.element[1][2] = sin_pha*sin_sita;
+        rotation.element[1][0] = sin_phi*cos_theta;
+        rotation.element[1][1] = cos_phi;
+        rotation.element[1][2] = sin_phi*sin_theta;
         
-        rotation.element[2][0] = -sin_sita;
-        rotation.element[2][2] = cos_sita;
+        rotation.element[2][0] = -sin_theta;
+        rotation.element[2][2] = cos_theta;
     }
     else if(dir_distrib_type=="specific")
     {
         //initialize variables with the initial direction
-        double cnt_sita = ini_sita;
-        double cnt_pha = ini_pha;
+        double cnt_theta = ini_theta;
+        double cnt_phi = ini_phi;
         
         //Use the probability of a random number to be even to use the opposite direction half the time
         if( engine_inital_direction()%2==0 )
         {
             //Invert the direction
-            cnt_sita = PI - ini_sita;
-            cnt_pha = PI + ini_pha;
+            cnt_theta = PI - ini_theta;
+            cnt_phi = PI + ini_phi;
         }
         //Get the rotation matrix
-        rotation = Get_transformation_matrix(cnt_sita, cnt_pha);
+        rotation = Get_transformation_matrix(cnt_theta, cnt_phi);
     }
     
     return 1;
 }
 //---------------------------------------------------------------------------
-int Generate_Network::Get_normal_direction_mt(const double &omega, double &cnt_sita, double &cnt_pha, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
+int Generate_Network::Get_normal_direction_mt(const double &omega, double &cnt_theta, double &cnt_phi, mt19937 &engine_theta, mt19937 &engine_phi, uniform_real_distribution<double> &dist)const
 {
     
-    //sita centers around 0 and obeys a normal distribution in (-omega, +omega)
+    //theta centers around 0 and obeys a normal distribution in (-omega, +omega)
     double sum=0;
     for(int i=0; i<12; i++)
     {
-        sum = sum + dist(engine_sita);
+        sum = sum + dist(engine_theta);
     }
-    cnt_sita = fabs(omega*(sum/6 - 1));
+    cnt_theta = fabs(omega*(sum/6 - 1));
     
-    //pha satisfies a uniform distribution in (0, 2PI)
-    cnt_pha = 2.0*PI*dist(engine_pha);//*/
+    //phi satisfies a uniform distribution in (0, 2PI)
+    cnt_phi = 2.0*PI*dist(engine_phi);//*/
     
     return 1;
 }
 //---------------------------------------------------------------------------
 //Transform angles into matrix
-MathMatrix Generate_Network::Get_transformation_matrix(const double &sita, const double &pha)const
+MathMatrix Generate_Network::Get_transformation_matrix(const double &theta, const double &phi)const
 {
-    //M = M_pha*M_sita
-    //          |cos(pha) -sin(pha) 0|
-    // M_pha  = |sin(pha)  cos(pha) 0|
+    //M = M_phi*M_theta
+    //          |cos(phi) -sin(phi) 0|
+    // M_phi  = |sin(phi)  cos(phi) 0|
     //          |   0         0     1|
     //
-    //          | cos(sita)  0  sin(sita)|
-    // M_sita = |     0      1      0    |
-    //          |-sin(sita)  0  cos(sita)|
+    //          | cos(theta)  0  sin(theta)|
+    // M_theta = |     0      1      0    |
+    //          |-sin(theta)  0  cos(theta)|
     //Calculate the matrix elements directly, instead of multiplying two matrices
     MathMatrix M(3,3);
-    M.element[0][0] = cos(pha)*cos(sita);
-    M.element[0][1] = -sin(pha);
-    M.element[0][2] = cos(pha)*sin(sita);
+    M.element[0][0] = cos(phi)*cos(theta);
+    M.element[0][1] = -sin(phi);
+    M.element[0][2] = cos(phi)*sin(theta);
     
-    M.element[1][0] = sin(pha)*cos(sita);
-    M.element[1][1] = cos(pha);
-    M.element[1][2] = sin(pha)*sin(sita);
+    M.element[1][0] = sin(phi)*cos(theta);
+    M.element[1][1] = cos(phi);
+    M.element[1][2] = sin(phi)*sin(theta);
     
-    M.element[2][0] = -sin(sita);
-    M.element[2][2] = cos(sita);
+    M.element[2][0] = -sin(theta);
+    M.element[2][2] = cos(theta);
     
     return M;
 }
@@ -1698,7 +1698,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
         //---------------------------------------------------------------------------
         //Randomly generate a direction as the orientation of the GNP
         //hout<<"Get_initial_direction_mt"<<endl;
-        if (!Get_initial_direction_mt(gnp_geo.orient_distrib_type, gnp_geo.ini_sita, gnp_geo.ini_pha, engine_orientation, dist_orientation, gnp.rotation)) {
+        if (!Get_initial_direction_mt(gnp_geo.orient_distrib_type, gnp_geo.ini_theta, gnp_geo.ini_phi, engine_orientation, dist_orientation, gnp.rotation)) {
             hout << "Error in Generate_gnp_network_mt when calling Get_initial_direction_mt" << endl;
             return 0;
         }
@@ -2711,8 +2711,8 @@ int Generate_Network::Generate_cnt_network_threads_over_gnps_mt(const struct GNP
     std::mt19937 engine_x(rd());
     std::mt19937 engine_y(rd());
     std::mt19937 engine_z(rd());
-    std::mt19937 engine_pha(rd());
-    std::mt19937 engine_sita(rd());
+    std::mt19937 engine_phi(rd());
+    std::mt19937 engine_theta(rd());
     std::mt19937 engine_rand(rd());
     
     // "Filter" MT's output to generate double values, uniformly distributed on the closed interval [0, 1].
@@ -2811,7 +2811,7 @@ int Generate_Network::Generate_cnt_network_threads_over_gnps_mt(const struct GNP
         //Check if CNTs will grow parallel or independent
         if (gnp_geo.growth_type == "independent") {
             //Grow CNTs in the "top" surface
-            if (!Grow_cnts_on_gnp_surface(geom_sample, geom_sample.ex_dom_cnt, hybrid_praticles[i], nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, cnts_radius, n_subregions, cnt_rad, cnt_length, overlap_max_cutoff, penetrating_model_flag, num_seeds, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_x, engine_y, engine_sita, engine_pha, dist)) {
+            if (!Grow_cnts_on_gnp_surface(geom_sample, geom_sample.ex_dom_cnt, hybrid_praticles[i], nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, cnts_radius, n_subregions, cnt_rad, cnt_length, overlap_max_cutoff, penetrating_model_flag, num_seeds, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_x, engine_y, engine_theta, engine_phi, dist)) {
                 //
                 hout << "Error while growing CNTs on top surface of GNP " << i << endl;
                 return 0;
@@ -2835,7 +2835,7 @@ int Generate_Network::Generate_cnt_network_threads_over_gnps_mt(const struct GNP
             hybrid_praticles[i].rotation = rotation_bottom;
             
             //Grow CNTs in the "bottom" surface
-            if (!Grow_cnts_on_gnp_surface(geom_sample, geom_sample.ex_dom_cnt, hybrid_praticles[i], nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, cnts_radius, n_subregions, cnt_rad, cnt_length, overlap_max_cutoff, penetrating_model_flag, num_seeds, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_x, engine_y, engine_sita, engine_pha, dist)) {
+            if (!Grow_cnts_on_gnp_surface(geom_sample, geom_sample.ex_dom_cnt, hybrid_praticles[i], nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, cnts_radius, n_subregions, cnt_rad, cnt_length, overlap_max_cutoff, penetrating_model_flag, num_seeds, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_x, engine_y, engine_theta, engine_phi, dist)) {
                 //
                 hout << "Error while growing CNTs on bottom surface of GNP " << i << endl;
                 return 0;
@@ -3026,7 +3026,7 @@ int Generate_Network::Check_seed_overlapping(const vector<Point_3D> &seeds, cons
     return 0;
 }
 //This function generates all CNTs in one side of a GNP. CNTs grow independently of each other
-int Generate_Network::Grow_cnts_on_gnp_surface(const struct Geom_sample &geom_sample, const struct cuboid &excub, const GCH &hybrid, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, vector<double> &cnts_radius, const vector<int> &n_subregions, const double &cnt_rad, const double  &cnt_length, const double &overlap_max_cutoff, const int &penetrating_model_flag, const int &ns, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
+int Generate_Network::Grow_cnts_on_gnp_surface(const struct Geom_sample &geom_sample, const struct cuboid &excub, const GCH &hybrid, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, vector<double> &cnts_radius, const vector<int> &n_subregions, const double &cnt_rad, const double  &cnt_length, const double &overlap_max_cutoff, const int &penetrating_model_flag, const int &ns, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_theta, mt19937 &engine_phi, uniform_real_distribution<double> &dist)const
 {
     //---------------------------------------------------------------------------
     //Initialize a point to be used in the rest of the function
@@ -3069,7 +3069,7 @@ int Generate_Network::Grow_cnts_on_gnp_surface(const struct Geom_sample &geom_sa
                 
                 //Grow CNT
                 //hout << "CNT growth start" << endl;
-                if (Grow_single_cnt_on_gnp(geom_sample, excub, nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, new_cnt, cnts_radius, n_subregions, hybrid.rotation, cnt_rad, cnt_length, penetrating_model_flag, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_sita, engine_pha, dist)) {
+                if (Grow_single_cnt_on_gnp(geom_sample, excub, nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, new_cnt, cnts_radius, n_subregions, hybrid.rotation, cnt_rad, cnt_length, penetrating_model_flag, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_theta, engine_phi, dist)) {
                     //If CNT was grown succesfully, set the flag to 1 to break the while loop
                     success = 1;
                     
@@ -3122,7 +3122,7 @@ int Generate_Network::Grow_cnts_on_gnp_surface(const struct Geom_sample &geom_sa
     return 1;
 }
 //This function generates all CNTs in one side of a GNP. CNTs grow parallel
-int Generate_Network::Grow_CNTs_on_GNP_surface_parallel(const struct Geom_sample &geom_sample, const struct cuboid &excub, const struct cuboid &gnp, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, vector<Point_3D> &gnp_discrete, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, vector<double> &cnts_radius, const vector<int> &n_subregions, const MathMatrix &multiplier, const Point_3D &gnp_poi, const double &cnt_rad, const double  &cnt_length, const int &penetrating_model_flag, const int &ns, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
+int Generate_Network::Grow_CNTs_on_GNP_surface_parallel(const struct Geom_sample &geom_sample, const struct cuboid &excub, const struct cuboid &gnp, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, vector<Point_3D> &gnp_discrete, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, vector<double> &cnts_radius, const vector<int> &n_subregions, const MathMatrix &multiplier, const Point_3D &gnp_poi, const double &cnt_rad, const double  &cnt_length, const int &penetrating_model_flag, const int &ns, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_theta, mt19937 &engine_phi, uniform_real_distribution<double> &dist)const
 {
     //---------------------------------------------------------------------------
     //Initialize a point to be used in the rest of the function
@@ -3146,7 +3146,7 @@ int Generate_Network::Grow_CNTs_on_GNP_surface_parallel(const struct Geom_sample
     
     //Grow intial CNT
     //hout << "CNT growth start" << endl;
-    if (Grow_single_cnt_on_gnp(geom_sample, excub, nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, initial_cnt, cnts_radius, n_subregions, multiplier, cnt_rad, cnt_length, penetrating_model_flag, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_sita, engine_pha, dist)==0) return 0;
+    if (Grow_single_cnt_on_gnp(geom_sample, excub, nanotube_geo, cutoffs, cnts_points, gnps_points, particle, global_coordinates, sectioned_domain, global_coord_hybrid, sect_domain_hybrid, initial_cnt, cnts_radius, n_subregions, multiplier, cnt_rad, cnt_length, penetrating_model_flag, point_overlap_count, point_overlap_count_unique, cnt_reject_count, engine_theta, engine_phi, dist)==0) return 0;
     //hout << "CNT growth end" << endl;
     //Add the initial CNT to the vector of points for the current particle
     particle.push_back(initial_cnt);
@@ -3232,7 +3232,7 @@ int Generate_Network::Copy_CNT(const vector<Point_3D> &initial_cnt, vector<Point
 //This function will be used to "grow" the CNTs in the surface of a GNP
 //1: successfully grown CNT
 //0: could not solve penetration of CNT
-int Generate_Network::Grow_single_cnt_on_gnp(const struct Geom_sample &geom_sample, const struct cuboid &excub, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<vector<int> > &global_coord_hybrid, const vector<vector<long int> > &sect_domain_hybrid, vector<Point_3D> &new_cnt, vector<double> &cnts_radius, const vector<int> &n_subregions, const MathMatrix &seed_multiplier, const double &cnt_rad, const double  &cnt_length, const int &penetrating_model_flag, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
+int Generate_Network::Grow_single_cnt_on_gnp(const struct Geom_sample &geom_sample, const struct cuboid &excub, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<vector<int> > &global_coord_hybrid, const vector<vector<long int> > &sect_domain_hybrid, vector<Point_3D> &new_cnt, vector<double> &cnts_radius, const vector<int> &n_subregions, const MathMatrix &seed_multiplier, const double &cnt_rad, const double  &cnt_length, const int &penetrating_model_flag, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_theta, mt19937 &engine_phi, uniform_real_distribution<double> &dist)const
 {
     //Initialize the multiplier matrix with the initial rotation
     MathMatrix multiplier = seed_multiplier;
@@ -3240,7 +3240,7 @@ int Generate_Network::Grow_single_cnt_on_gnp(const struct Geom_sample &geom_samp
     Point_3D cnt_poi = new_cnt.front();
     
     //variables for the angle orientations
-    double cnt_sita, cnt_pha;
+    double cnt_theta, cnt_phi;
     
     //---------------------------------------------------------------------------
     //Calculate the total number of growth steps for a CNT
@@ -3252,11 +3252,11 @@ int Generate_Network::Grow_single_cnt_on_gnp(const struct Geom_sample &geom_samp
         //hout << "Point#" << i<<" of "<<step_num-1<<' '<<endl;
         //Randomly generate a direction in the spherical coordinates
         //To have the positive Z-axis to be a central axis
-        //Then, the radial angle, sita, obeys a normal distribution (sita \in fabs[(-omega,+omega)]) and the zonal angle, pha, obeys a uniform distribution (pha \in (0,2PI))
-        if(Get_normal_direction_mt(nanotube_geo.angle_max, cnt_sita, cnt_pha, engine_sita, engine_pha, dist)==0) return 0;
+        //Then, the radial angle, theta, obeys a normal distribution (theta \in fabs[(-omega,+omega)]) and the zonal angle, phi, obeys a uniform distribution (phi \in (0,2PI))
+        if(Get_normal_direction_mt(nanotube_geo.angle_max, cnt_theta, cnt_phi, engine_theta, engine_phi, dist)==0) return 0;
         
         //To calculate the new multiplier for transformation of coordinates
-        multiplier = multiplier*Get_transformation_matrix(cnt_sita, cnt_pha);
+        multiplier = multiplier*Get_transformation_matrix(cnt_theta, cnt_phi);
         
         //To calculate the coordinates of the new CNT point (transformation of coordinates)
         cnt_poi = cnt_poi + Get_new_point(multiplier, nanotube_geo.step_length);

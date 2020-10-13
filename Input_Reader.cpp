@@ -179,8 +179,8 @@ int Input::Data_Initialization()
 	nanotube_geo.keywords = "Nanotube_Geometry";
 	nanotube_geo.mark = false;
 	nanotube_geo.dir_distrib_type = "random";
-	nanotube_geo.ini_pha = 0.0;
-	nanotube_geo.ini_sita = 0.0;
+	nanotube_geo.ini_phi = 0.0;
+	nanotube_geo.ini_theta = 0.0;
 	nanotube_geo.angle_max = 1.5707963267948966;
 	nanotube_geo.step_length = 0.01;
 	nanotube_geo.len_distrib_type = "uniform";
@@ -527,15 +527,15 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
 	if(nanotube_geo.dir_distrib_type!="random"&&nanotube_geo.dir_distrib_type!="specific"){ hout << "Error: the type of growth direction must be either random or specific. Input was: " <<nanotube_geo.dir_distrib_type<< endl;	return 0; }
 	if(nanotube_geo.dir_distrib_type=="specific")
 	{
-		istr0  >> nanotube_geo.ini_sita >> nanotube_geo.ini_pha;
-		if(nanotube_geo.ini_sita<0||nanotube_geo.ini_sita>PI)
+		istr0  >> nanotube_geo.ini_theta >> nanotube_geo.ini_phi;
+		if(nanotube_geo.ini_theta<Zero||nanotube_geo.ini_theta>PI)
 		{
-			hout << "Error: Specific growth direction was chosen, but the value of theta is not in the valid range of (0, PI). Input was: " <<nanotube_geo.ini_sita<< endl;
+			hout << "Error: Specific growth direction was chosen, but the value of theta is not in the valid range of (0, PI). Input was: " <<nanotube_geo.ini_theta<< endl;
 			return 0;
 		}
-        if(nanotube_geo.ini_pha<0||nanotube_geo.ini_pha>=2*PI)
+        if(nanotube_geo.ini_phi<0||nanotube_geo.ini_phi>=2*PI)
         {
-            hout << "Error: Specific growth direction was chosen, but the value of phi is not in the valid range of (0, 2PI). Input was: " <<nanotube_geo.ini_pha<< endl;
+            hout << "Error: Specific growth direction was chosen, but the value of phi is not in the valid range of (0, 2PI). Input was: " <<nanotube_geo.ini_phi<< endl;
             return 0;
         }
 	}
@@ -746,13 +746,13 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
         return 0; }
     if(gnp_geo.orient_distrib_type=="specific")
     {
-        istr1  >> gnp_geo.ini_sita >> gnp_geo.ini_pha;
-        if(gnp_geo.ini_sita<Zero||gnp_geo.ini_sita>PI)
+        istr1  >> gnp_geo.ini_theta >> gnp_geo.ini_phi;
+        if(gnp_geo.ini_theta<Zero||gnp_geo.ini_theta>PI)
         {
             hout << "Error: The range specified for theta is not in the valid range of (0, PI)." << endl;
             return 0;
         }
-        if(gnp_geo.ini_pha<Zero||gnp_geo.ini_pha>=2*PI)
+        if(gnp_geo.ini_phi<Zero||gnp_geo.ini_phi>=2*PI)
         {
             hout << "Error: The range specified phi is not in the valid range of (0, 2PI)." << endl;
             return 0;

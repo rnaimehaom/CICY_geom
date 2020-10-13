@@ -90,7 +90,7 @@ struct Nanotube_Geo{
     //Length of CNT segment between two CNT consecutive points
     double step_length;
     //Angles for initial direction (used for 'specific' growth direction)
-    double ini_sita, ini_pha;
+    double ini_theta, ini_phi;
     //Angle 'omega' for the normal distribution range [-omega, omega] of growth direction
     double angle_max;
     //Length range (min, max) of nanotubes
@@ -118,7 +118,7 @@ struct GNP_Geo{
     string size_distrib_type;			//Define the distribution type (uniform or normal) of the length (unit: micrometer) of GNP
     string thick_distrib_type;			//Define the distribution type (uniform or normal) of the thickness (unit: micrometer) of GNP
     double discr_step_length;                 //Define the step length (unit: micromether) for discretization of the GNP
-    double ini_sita, ini_pha;			//Define initial GNP orientation for 'specific' type the spherical coordinates
+    double ini_theta, ini_phi;			//Define initial GNP orientation for 'specific' type the spherical coordinates
     double len_min, len_max;            //Define the length range (min, max) for the width and length of the GNP surface
     double t_min, t_max;                //Define the thickness range (min,max) of the GNP
     double mass_ratio;                  //Define the CNT/GNP mass ratio
