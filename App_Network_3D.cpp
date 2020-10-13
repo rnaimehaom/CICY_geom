@@ -76,6 +76,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Update observation window geometry
         if (!Update_obseravtion_window_geometry(i, Init->geom_sample, window_geo)) {
             hout<<"Error when updating the geometry for observation window "<<i<<endl;
+            return 0;
         }
         
         //----------------------------------------------------------------------

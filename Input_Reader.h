@@ -38,6 +38,7 @@ struct Simu_para{
     string create_read_network;
     int sample_num;
     int avoid_resistance;
+    int penetration_model_flag;
     string particle_type;
     //Seeds (positive integers) for the random number generators to generate a CNT and GNP networks
     vector<unsigned int> CNT_seeds, GNP_seeds;
@@ -74,25 +75,38 @@ struct Geom_sample{
 struct Nanotube_Geo{
     string keywords;
     bool mark;
-    string criterion;					//Define the volume or weight fraction of nanotubes in the sample: vol, wt
-    string dir_distrib_type;			//Define the initial growth direction type (random or specific) in a RVE
-    string len_distrib_type;			//Define the distribution type (uniform or normal) of the length (unit: micrometer) of nanotubes
-    string rad_distrib_type;			//Define the distribution type (uniform or normal) of the radius (unit: micrometer) of nanotubes
+    //Criterion to measure nanotube content: vol, wt
+    string criterion;
+    //Initial growth direction type (random or specific)
+    string dir_distrib_type;
+    //Distribution type (uniform or normal) of the nanotube length
+    string len_distrib_type;
+    //Distribution type (uniform or normal) of the nanotube radius
+    string rad_distrib_type;
     //Minimum nanotube length to keep a CNT close the the boundary (of the sample or observation window)
     string min_length_type;
     //Number of points to keep a CNT close the the boundary (of the sample or observation window)
     int min_points;
-    double step_length;				//Define the step length (unit: micromether) of nanotube growth
-    double ini_sita, ini_pha;			//Define initial direction for 'specific' type in the spherical coordinates
-    double angle_max;				//Define the angle 'omega' for the normal distribution range [-omega, omega] of the growth direction
-    double len_min, len_max;		//Define the length range (min, max) of nanotubes
-    double rad_min, rad_max;		//Define the radius range (min,max) of nanotubes
-    double volume_fraction;		//Define the volume fraction of nanotubes
-    double real_volume;				//Define the real volume of nanotubes
-    double weight_fraction;			//Define the weight fraction of nanotubes
-    double real_weight;				//Define the real weight of nanotubes
-    double linear_density;			//Define the linear density of nanotubes
-    double density;			//Define the density of nanotubes
+    //Length of CNT segment between two CNT consecutive points
+    double step_length;
+    //Angles for initial direction (used for 'specific' growth direction)
+    double ini_sita, ini_pha;
+    //Angle 'omega' for the normal distribution range [-omega, omega] of growth direction
+    double angle_max;
+    //Length range (min, max) of nanotubes
+    double len_min, len_max;
+    //Radius range (min, max) of nanotubes
+    double rad_min, rad_max;
+    //Volume fraction of nanotubes
+    double volume_fraction;
+    //Actual volume of nanotubes
+    double volume;
+    //Weight fraction of nanotubes
+    double weight_fraction;
+    //Actual weight of nanotubes
+    double weight;
+    //Density of nanotubes
+    double density;
 };
 //The nanotube parameters in a network
 struct GNP_Geo{

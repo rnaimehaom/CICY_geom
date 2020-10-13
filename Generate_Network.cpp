@@ -109,7 +109,7 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
 //---------------------------------------------------------------------------
 //Generate a network defined by points and connections
 //Use the Mersenne Twister for the random number generation
-int Generate_Network::Generate_cnt_network_threads_mt(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius)const
+int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para, const Geom_sample &geom_sample, const Agglomerate_Geo &agg_geo, const Nanotube_Geo &nanotube_geo, const Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius)const
 {
     //Initial seeds, if any are in network_seeds within geom_sample.
     //However, geom_sample cannot be modified, so copy the seeds to a new vector
@@ -169,10 +169,6 @@ int Generate_Network::Generate_cnt_network_threads_mt(const struct Simu_para &si
     double overlap_max_cutoff = 2*nanotube_geo.rad_max + cutoffs.van_der_Waals_dist;
     //Initialize the vector sub-regions
     Initialize_subregions(geom_sample, n_subregions, sectioned_domain);
-    //This flag will be used to skip overlapping functions
-    //1 = non-penetrating model
-    //0 = penetrating model
-    int penetrating_model_flag = 1;
     
     //Generate cuboids that represent the extended domain and the composite domain
     //To calculate the effective portion (length) which falls into the given region (RVE)
@@ -217,7 +213,9 @@ int Generate_Network::Generate_cnt_network_threads_mt(const struct Simu_para &si
         
         //---------------------------------------------------------------------------
         //Cross-sectional area of the current CNT. It is used to calculate the CNT volume.
-        const double step_vol_para = PI*cnt_rad*cnt_rad;
+        const double cnt_cross_area = PI*cnt_rad*cnt_rad;
+        //Linear density of current CNT. It is used to calculate the CNT weight.
+        const double cnt_lin_dens = cnt_cross_area*nanotube_geo.density;
         
         //---------------------------------------------------------------------------
         //Randomly generate an initial direction, then generate the rotation matrix that results in that rotation
@@ -237,7 +235,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const struct Simu_para &si
         //Check overlapping of the intial point
         int counter = 1;
         //hout<<"Check_penetration (while)"<<endl;
-        while (penetrating_model_flag && !Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
+        while (simu_para.penetration_model_flag && !Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
             if(Get_seed_point_mt(geom_sample.ex_dom_cnt, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
             cnt_seed_count++;                    //record the number of seed generations
             //hout << "Seed deleted" << endl;
@@ -247,7 +245,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const struct Simu_para &si
                 return 0;
             }
             counter ++;
-        }//*/
+        }
         
         //Add the CNT seed to the current CNT vector
         new_cnt.push_back(cnt_poi);
@@ -297,7 +295,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const struct Simu_para &si
                 
                 //Check for penetration
                 //hout << "Check penetration ";
-                if (!penetrating_model_flag || Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
+                if (!simu_para.penetration_model_flag || Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
                     
                     //---------------------------------------------------------------------------
                     //If the penetrating model is used or if the new point, cnt_poi, was placed
@@ -317,7 +315,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const struct Simu_para &si
                     
                     //---------------------------------------------------------------------------
                     //Check if the target volume/weight fraction has been reached
-                    if( (nanotube_geo.criterion == "vol"&&(vol_sum + cnt_len*step_vol_para) >= nanotube_geo.real_volume) || (nanotube_geo.criterion == "wt"&&(wt_sum + cnt_len*nanotube_geo.linear_density) >= nanotube_geo.real_weight)) {
+                    if( (nanotube_geo.criterion == "vol"&&(vol_sum + cnt_len*cnt_cross_area) >= nanotube_geo.volume) || (nanotube_geo.criterion == "wt"&&(wt_sum + cnt_len*cnt_lin_dens) >= nanotube_geo.weight)) {
                         
                         //Set the terminate variable to true so that the main while-loop is terminated
                         terminate = true;
@@ -361,8 +359,8 @@ int Generate_Network::Generate_cnt_network_threads_mt(const struct Simu_para &si
         if(new_cnt.size() >= 2)
         {
             //Update the volume and weigth of generated CNTs
-            vol_sum += cnt_len*step_vol_para;
-            wt_sum += cnt_len*nanotube_geo.linear_density;
+            vol_sum += cnt_len*cnt_cross_area;
+            wt_sum += cnt_len*cnt_lin_dens;
             
             //If the new_cnt vector has at least two points, then it can be added to the rest of the points
             cnts_points.push_back(new_cnt);
@@ -371,7 +369,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const struct Simu_para &si
             cnts_radius.push_back(cnt_rad);
             
             //Perform these operations when the non-overlapping model is used
-            if (penetrating_model_flag) {
+            if (simu_para.penetration_model_flag) {
                 
                 //Variable needed for updating global_coordinates
                 vector<int> empty;
@@ -395,7 +393,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const struct Simu_para &si
         //hout << "done"<<endl;
         
         //Check progress
-        if ( (nanotube_geo.criterion == "vol"&&vol_sum > vol_completed*nanotube_geo.real_volume)) {
+        if ( (nanotube_geo.criterion == "vol"&&vol_sum > vol_completed*nanotube_geo.volume)) {
             //Get the time
             ct1 = time(NULL);
             
@@ -503,7 +501,7 @@ int Generate_Network::CNT_seeds(const vector<unsigned int> &CNT_seeds, unsigned 
 //
 //The vector sectioned_domain contains the sub-regions to look for overlapping
 //It is initialized with the number of sub-regions in the sample
-void Generate_Network::Initialize_subregions(const struct Geom_sample &geom_sample, vector<int> &nsubregions, vector<vector<long int> > &sectioned_domain)const
+void Generate_Network::Initialize_subregions(const Geom_sample &geom_sample, vector<int> &nsubregions, vector<vector<long int> > &sectioned_domain)const
 {
     //Initialize nsubregions
     
@@ -531,7 +529,7 @@ void Generate_Network::Initialize_subregions(const struct Geom_sample &geom_samp
 //   b) No need to check for penetration (point is in boundary layer or there are no other points in the same sub-region)
 //   c) There was penetration but it was succesfully resolved
 //0: There was penetration but could not be resolved
-int Generate_Network::Check_penetration(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const vector<int> &n_subregions, const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
+int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const vector<int> &n_subregions, const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
 {
     //Get the sub-region the point belongs to
     //hout<<"Get_subregion 0"<<endl;
@@ -615,7 +613,7 @@ int Generate_Network::Check_penetration(const struct Geom_sample &geom_sample, c
 }
 //---------------------------------------------------------------------------
 //This function returns the subregion a point belongs to
-int Generate_Network::Get_subregion(const struct Geom_sample &geom_sample, const vector<int> &n_subregions, const Point_3D &point)const
+int Generate_Network::Get_subregion(const Geom_sample &geom_sample, const vector<int> &n_subregions, const Point_3D &point)const
 {
     if (Point_inside_sample(geom_sample, point)) {
         //These variables will give me the region cordinates of the region that a point belongs to
@@ -677,7 +675,7 @@ void Generate_Network::Get_penetrating_points(const vector<vector<Point_3D> > &c
 }
 //---------------------------------------------------------------------------
 //This function moves a point according to the number of points it is overlapping
-void Generate_Network::Move_point(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point, vector<double> &cutoffs, vector<double> &distances, vector<Point_3D> &affected_points)const
+void Generate_Network::Move_point(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point, vector<double> &cutoffs, vector<double> &distances, vector<Point_3D> &affected_points)const
 {
     //The number of overlapings will determine how the new point is moved
     //However, first I need to eliminate invalid-points, which are the points of perfect overlapping, i.e.
@@ -849,7 +847,7 @@ void Generate_Network::Three_or_more_overlapping_points(const vector<double> &cu
 //Move the point when all points are in the same location
 //After solving the bug that caused multiple points to be in the same location,
 //probably this function is not needed. I leave it here just in case
-void Generate_Network::Overlapping_points_same_position(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point)const
+void Generate_Network::Overlapping_points_same_position(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point)const
 {
     //The new point will be moved depending on wheter it is the first point, second point or other point after the second
     if (!cnt_new.size()) {
@@ -1005,7 +1003,7 @@ double Generate_Network::Length_inside_sample(const Geom_sample &geom_sample, co
 }
 //---------------------------------------------------------------------------
 //This function adds a point to a region so penetration can be checked
-void Generate_Network::Add_to_overlapping_regions(const struct Geom_sample &geom_sample, double overlap_max_cutoff, Point_3D point, long int global_num, const vector<int> &n_subregions, vector<vector<long int> > &sectioned_domain)const
+void Generate_Network::Add_to_overlapping_regions(const Geom_sample &geom_sample, double overlap_max_cutoff, Point_3D point, long int global_num, const vector<int> &n_subregions, vector<vector<long int> > &sectioned_domain)const
 {
     //A point is added only if it is in the composite domain
     //If the point is in the boundary layer, overlapping is not important
@@ -1092,7 +1090,7 @@ int Generate_Network::Calculate_t(int a, int b, int c, int sx, int sy)const
 }
 //---------------------------------------------------------------------------
 //Transform the 2D cnts_points into 1D cpoints and 2D cstructures
-int Generate_Network::Transform_points_cnts(const Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, vector<vector<Point_3D> > &cnts_points, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures)const
+int Generate_Network::Transform_points_cnts(const Geom_sample &geom_sample, const Nanotube_Geo &nano_geo, vector<vector<Point_3D> > &cnts_points, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures)const
 {
     //Variable to count the point numbers
     long int point_count = 0;
@@ -1207,7 +1205,7 @@ int Generate_Network::Add_cnts_inside_sample(const struct Geom_sample &geom_samp
     return 1;
 }
 //---------------------------------------------------------------------------
-int Generate_Network::Add_cnt_segment(const struct Geom_sample &geom_sample, const bool &is_first_inside_sample, const int &start, const int &end, const int &min_points, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
+int Generate_Network::Add_cnt_segment(const Geom_sample &geom_sample, const bool &is_first_inside_sample, const int &start, const int &end, const int &min_points, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
 {
     
     //Temporary vector to add the point numbers to the structure vector
@@ -1281,7 +1279,7 @@ int Generate_Network::Add_cnt_segment(const struct Geom_sample &geom_sample, con
     return 1;
 }
 //---------------------------------------------------------------------------
-int Generate_Network::Add_boundary_point(const struct Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside, const int &cnt_count, vector<Point_3D> &cpoints, vector<long int> &struct_temp, long int &point_count)const
+int Generate_Network::Add_boundary_point(const Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside, const int &cnt_count, vector<Point_3D> &cpoints, vector<long int> &struct_temp, long int &point_count)const
 {
     //Find the coordinates of the point between the ouside (p_outside) and inside (p_inside) that
     //that is located at the sample boundary (one of the faces)
@@ -1309,7 +1307,7 @@ int Generate_Network::Add_boundary_point(const struct Geom_sample &geom_sample, 
 //Thus, if there are multiple intersections with the planes, we need to check whether or not
 //the interstion is at an actual boundary
 //This function finds that intersecting point at an actual boundary
-Point_3D Generate_Network::Find_intersection_at_boundary(const struct Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside)const
+Point_3D Generate_Network::Find_intersection_at_boundary(const Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside)const
 {
     //The line segment defined by p_outside and p_inside is given by:
     //P = p_outside + lambda*T
@@ -1620,7 +1618,7 @@ Point_3D Generate_Network::Get_new_point(MathMatrix &Matrix, const double &Rad)c
 }
 //---------------------------------------------------------------------------
 //This function checks if a point is inside a sample
-int Generate_Network::Point_inside_sample(const struct Geom_sample &geom_sample, const Point_3D &point)const
+int Generate_Network::Point_inside_sample(const Geom_sample &geom_sample, const Point_3D &point)const
 {
     if(point.x<geom_sample.origin.x||point.x>geom_sample.x_max||
        point.y<geom_sample.origin.y||point.y>geom_sample.y_max||
@@ -1684,11 +1682,6 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
         return 1;
     }
     
-    //This flag will be used to skip overlapping functions
-    //1 = non-penetrating model
-    //0 = penetrating model
-    int penetrating_model_flag = 1;
-    
     //Booleans for the content criterion
     bool vol_crit = gnp_geo.criterion == "vol";
     bool wt_crit = gnp_geo.criterion == "wt";
@@ -1731,7 +1724,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
         bool rejected = false;
         
         //Check if we are allowing penetrations
-        if (penetrating_model_flag) {
+        if (simu_para.penetration_model_flag) {
             //Penetrations are not allowed
             
             //Check if the GNP penetrates another GNP
@@ -2807,7 +2800,7 @@ int Generate_Network::Generate_cnt_network_threads_over_gnps_mt(const struct GNP
         const double step_vol_para = PI*cnt_rad*cnt_rad;
         //---------------------------------------------------------------------------
         //The increased weight of each segement (growth step) of nanotube (If the different radii of nanotube are considered, the linear_density may be different in every nanotube)
-        const double step_wei_para = nanotube_geo.linear_density;
+        const double step_wei_para = nanotube_geo.density*step_vol_para;
         
         //Vector to store all CNTs for the current hybrd particle
         vector<vector<Point_3D> > particle;
@@ -2875,8 +2868,8 @@ int Generate_Network::Generate_cnt_network_threads_over_gnps_mt(const struct GNP
         hybrid_count++;
         
         //Check if the target of hybrid particles content has been reached
-        if ((nanotube_geo.criterion == "vol"&&vol_sum >= nanotube_geo.real_volume)||
-            (nanotube_geo.criterion == "wt"&&wt_sum >= nanotube_geo.real_weight) ) {
+        if ((nanotube_geo.criterion == "vol"&&vol_sum >= nanotube_geo.volume)||
+            (nanotube_geo.criterion == "wt"&&wt_sum >= nanotube_geo.weight) ) {
             //If the target content has been generated, break the loop
             break;
         }

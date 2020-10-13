@@ -116,13 +116,6 @@ int Input::Read_Infile(ifstream &infile)
 
 	hout << "Finished reading input file!" << endl;
     
-    
-    //Once the input file has been read or default values have been set,
-    //calculate the CNT volume and the geometry of the boudary layer
-    
-    //Calculate the actual volume of nanotubes
-    nanotube_geo.real_volume = nanotube_geo.volume_fraction * geom_sample.volume;
-    
     return 1;
 }
 //---------------------------------------------------------------------------
@@ -198,10 +191,9 @@ int Input::Data_Initialization()
 	nanotube_geo.rad_max = 0.005;
 	nanotube_geo.criterion = "vol";
 	nanotube_geo.volume_fraction = 0.0;
-	nanotube_geo.real_volume = 0.0;
+	nanotube_geo.volume = 0.0;
 	nanotube_geo.weight_fraction = 0.0;
-	nanotube_geo.real_weight = 0.0;
-	nanotube_geo.linear_density = 5.8E-5;
+	nanotube_geo.weight = 0.0;
 
 	//Initialize the geometric paramters of nanotube clusters
 	agg_geo.keywords = "CNT_Agglomerate_Geometry";
@@ -351,6 +343,13 @@ int Input::Read_simulation_parameters(struct Simu_para &simu_para, ifstream &inf
         }
     }
     
+    //Flag that defines whether the non-penetrating or penetrating model is used
+    istringstream istr_pm_flag(Get_Line(infile));
+    istr_pm_flag >> simu_para.penetration_model_flag;
+    if (simu_para.penetration_model_flag > 1 || simu_para.penetration_model_flag < 0) {
+        hout << "Error: Invalid value for penetration model flag. Valid options are 0 (penetrating model) or 1 (non-penetrating model). Input was: " << simu_para.penetration_model_flag << endl; return 0;
+    }
+    
     //Flag to avoid calculating the resistance of the network
     //This can be useful when only a geometric study or visualizations are needed
     // 1: Avoid calculating the resistance of the network
@@ -427,10 +426,10 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
 
 	if(num[0]!=num[1]||num[0]!=num[2])
 	{
-		hout << "Error: the number of steps is different on each direction: " << endl;
-        hout << "\tSteps on x = " << num[0] << endl;
-        hout << "\tSteps on y = " << num[1] << endl;
-        hout << "\tSteps on z = " << num[2] << endl;
+		hout << "Error: the number of obseravtion windows is different on each direction: " << endl;
+        hout << "Windows on x = " << num[0] << endl;
+        hout << "Windows on y = " << num[1] << endl;
+        hout << "Windows on z = " << num[2] << endl;
 		return 0;
 	}
     else
@@ -602,7 +601,7 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
         hout << "Error: The radius must be non-negative, the minimum radius must be smaller than the maximum radius, the minimum radius must be smaller than 3*step_length and the maximum radius must be smaller than 0.05*len_min. Input for minimum was "<<nanotube_geo.rad_min<<" and for maximum was "<<nanotube_geo.rad_max<< endl; return 0; }
     
     //---------------------------------------------------------------------------------------
-    //Read the density of the CNTs (in gm/cm3)
+    //Read the density of the CNTs (in gr/micron3)
     istringstream istr5(Get_Line(infile));
     istr5 >> nanotube_geo.density;
     if (nanotube_geo.density <= Zero) {
@@ -616,38 +615,37 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     istr6 >> nanotube_geo.criterion;
 	if(nanotube_geo.criterion=="vol")
 	{
-		istr6 >> nanotube_geo.volume_fraction;
+        istr6 >> nanotube_geo.volume_fraction;
         
-		if(nanotube_geo.volume_fraction>1||nanotube_geo.volume_fraction<0){
-            hout << "Error: The volume fraction must be between 0 and 1. Input was: "<<nanotube_geo.volume_fraction<<endl; return 0; }
+		if(nanotube_geo.volume_fraction > 1||nanotube_geo.volume_fraction < Zero){
+            hout << "Error: The volume fraction must be between 0 and 1. Input was: "<<nanotube_geo.volume_fraction<<endl; return 0;
+        }
 		hout << "    The CNT volume fraction is "<< nanotube_geo.volume_fraction << endl;
         
-		//The total volume of the nanotube network
-		nanotube_geo.real_volume = nanotube_geo.volume_fraction*geom_sample.volume;
+		//Calcualte the total volume of (required) CNTs in the sample
+		nanotube_geo.volume = nanotube_geo.volume_fraction*geom_sample.volume;
 	}
 	else if(nanotube_geo.criterion=="wt")
 	{
-		istr6 >> nanotube_geo.weight_fraction;
+        istr6 >> nanotube_geo.weight_fraction;
         
-		if(nanotube_geo.weight_fraction>1||nanotube_geo.weight_fraction<0){ hout << "Error: The weight fraction must be between 0 and 1. Input was:"<<nanotube_geo.weight_fraction<< endl; return 0; }
+		if(nanotube_geo.weight_fraction > 1||nanotube_geo.weight_fraction < Zero) {
+            hout << "Error: The weight fraction must be between 0 and 1. Input was:"<<nanotube_geo.weight_fraction<< endl; return 0;
+        }
 		hout << "    The weight fraction is " << nanotube_geo.weight_fraction << endl;
         
-        //Read the linear density of a nanotube
-		istr6 >> nanotube_geo.linear_density;
-		if(nanotube_geo.linear_density<0){
-            hout << "Error: The linear density of nanotubes should be non-negetive. Input was: "<<nanotube_geo.linear_density<< endl; return 0; }
-        
 		//Calculate actual weight of nanotubes
-		nanotube_geo.real_weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
+		nanotube_geo.weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
 	}
-	else { hout << "Error: The content of nanotubes can only be specified in volume (vol) or weight (wt) fraction. Input was: "<<nanotube_geo.criterion<< endl; return 0; }
+	else { hout << "Error: The content of nanotubes can only be specified in volume (vol) or weight (wt) fraction. Input was: "<<nanotube_geo.criterion<< endl; return 0;
+    }
     
     //Get the geometry of the extended domain for CNTs
     geom_sample.ex_dom_cnt.poi_min.x = geom_sample.origin.x - nanotube_geo.len_max;
     geom_sample.ex_dom_cnt.poi_min.y = geom_sample.origin.y - nanotube_geo.len_max;
     geom_sample.ex_dom_cnt.poi_min.z = geom_sample.origin.z - nanotube_geo.len_max;
     geom_sample.ex_dom_cnt.len_x = geom_sample.len_x + 2*nanotube_geo.len_max;
-    geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y+ 2*nanotube_geo.len_max;
+    geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y + 2*nanotube_geo.len_max;
     geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + 2*nanotube_geo.len_max;
     
     //Determine the overlapping of the overlapping sub-regions
@@ -799,7 +797,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
         hout << "Error: The CNT/GNP mass ratio must be greater than zero. Input was: "<<gnp_geo.mass_ratio<< endl; return 0; }
     
     //----------------------------------------------------------------------
-    //Define the GNP density (in gm/cm3)
+    //Define the GNP density (in gr/micron3)
     istringstream istr6(Get_Line(infile));
     istr6 >> gnp_geo.density;
     if (gnp_geo.density <= Zero) {
@@ -833,7 +831,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
             nanotube_geo.volume_fraction = total_vol_frac - gnp_geo.volume_fraction;
             
             //Adjust the total nanotube volume
-            nanotube_geo.real_volume = nanotube_geo.volume_fraction*geom_sample.volume;
+            nanotube_geo.volume = nanotube_geo.volume_fraction*geom_sample.volume;
             
             hout << "    Given the CNT/GNP mass ratio of " << gnp_geo.mass_ratio << ", the CNT volume fraction was adjusted to " << nanotube_geo.volume_fraction << endl;
             hout << "    The GNP volume fraction is " << gnp_geo.volume_fraction <<endl;
@@ -898,7 +896,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
             //Adjust the CNT weight fraction
             nanotube_geo.weight_fraction = total_wt_frac - gnp_geo.weight_fraction;
             //Adjust the real weight of nanotubes
-            nanotube_geo.real_weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
+            nanotube_geo.weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
             
             hout << "    Given the CNT/GNP mass ratio of " << gnp_geo.mass_ratio << ", the CNT weight fraction was adjusted to " << nanotube_geo.weight_fraction << endl;
             hout << "    The GNP weight fraction is " << gnp_geo.weight_fraction <<endl;

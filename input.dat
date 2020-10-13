@@ -32,6 +32,10 @@ Hybrid_particles
 %If both CNTs and GNPs are generated (GNP_CNT_mix or Hybrid_particles), CNT seeds are input first
 %in one line and GNP seeds in the next line.
 Create_Network
+%Indicate if non-penetrating model is used or no
+% 1: Use non-penetrating model
+% 0: Use penetrating model
+1
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Flag to avoid calculating the resistance of the network
 %When set to 1, the backbone networks are found but not the resistance of the cubic sample
@@ -64,8 +68,8 @@ Sample_Geometry
 %Define minimum size for background grids (used for searching contact points)
 0.05000 0.05000 0.05000
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define the matrix density (g/cm3)
-1.03
+%Define the matrix density (g/micron^3)
+1.03e-12
 %--------------------------------End
 %
 %
@@ -117,14 +121,13 @@ points 5
 %uniform: for uniform distribution
 %normal: for normal distribution
 uniform 0.005000 0.005000
-%Define the density of the CNTs (in gm/cm3)
-1.78
+%Define the density of the CNTs (in gr/micron^3)
+1.78e-12
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define how the CNT content is measured (volume or weight fraction)
 %vol: for volume fraction, especify the value after 'vol', for example: vol 0.01
-%wt: for weight fraction, especify the value after 'wt' but also the nanotube linear density
-% (1E-12g/micron), for example wt 0.005 1E-12
-%wt 0.005 5.8E-5
+%wt: for weight fraction, especify the value after 'wt', for example: wt 0.005
+%wt 0.005
 vol 0.001000
 %--------------------------------End
 %
@@ -183,8 +186,8 @@ uniform 0.03 0.03
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define the CNT/GNP mass ratio
 1.0
-%Define the GNP density (in gm/cm3)
-2.25
+%Define the GNP density  (in gr/micron^3)
+2.25e-12
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define how the GNP content is measured (volume, weight fraction or by the CNTs density per unit area)
 %vol: for volume fraction, especify the value after 'vol', for example: vol 0.01
