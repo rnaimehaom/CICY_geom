@@ -242,7 +242,7 @@ double Clusters_fractions::GNP_cluster_volume(const struct cuboid &gvcub, const 
 {
     //Generate a temporary vector to take advantage of the function that approximates the volume
     //of a GNP in the GenNetwork class
-    GenNetwork *GN_tmp = new GenNetwork;
+    Generate_Network *GN_tmp = new Generate_Network;
     
     //Variable to store the total volume of GNPs
     double volume = 0.0;

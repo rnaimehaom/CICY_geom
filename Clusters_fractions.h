@@ -11,7 +11,7 @@
 #include <iostream>
 
 #include "Input_Reader.h"
-#include "GenNetwork.h"
+#include "Generate_Network.h"
 #include "Printer.h"
 
 //-------------------------------------------------------

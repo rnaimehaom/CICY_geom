@@ -5,8 +5,8 @@
 //E-MAIL:       angel.mora@cicy.mx
 //===========================================================================
 
-#ifndef GENNETWORK_H
-#define GENNETWORK_H
+#ifndef GENERATE_NETWORK_H
+#define GENERATE_NETWORK_H
 
 #include<iomanip>
 #include<iostream>
@@ -30,13 +30,13 @@
 using namespace hns;
 
 //-------------------------------------------------------
-class GenNetwork
+class Generate_Network
 {
 public:
     //Data Member
     
     //Constructor
-    GenNetwork(){};
+    Generate_Network(){};
     
     //Generate a network of nanoparticles
     int Generate_nanoparticle_network(const Simu_para &simu_para, const Geom_sample &geom_sample, const Agglomerate_Geo &agg_geo, const Nanotube_Geo &nanotube_geo, const GNP_Geo &gnp_geo, const Cutoff_dist &cutoffs, const Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<double> &cnts_radius_out, vector<vector<long int> > &cstructures, vector<GNP> &gnps)const;

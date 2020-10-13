@@ -15,7 +15,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     
     //Variables for CNTs
     //CNTs points
-    vector<Point_3D> cnts_point;
+    vector<Point_3D> cnts_points;
     //CNTs radii
     vector<double> cnts_radius;
     //CNT structure, each cnts_structure[i] referes to the points in CNT_i
@@ -25,10 +25,10 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     //GNPs
     vector<GNP> gnps;
     //GNP points (only those needed are stored)
-    vector<Point_3D> gnps_point;
+    vector<Point_3D> gnps_points;
     
     //Shell vectors (used to remove nanoparticles when reduding observation window size)
-    vector<vector<int> > shells_cnt;
+    vector<vector<int> > shells_cnts;
     vector<vector<int> > shells_gnps;
     
     //Deprecated:
@@ -39,12 +39,12 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     //Network Generation with overlapping
     hout << "Generating nanoparticle network......" << endl;
     ct0 = time(NULL);
-    GenNetwork *Genet = new GenNetwork;
-    if (!Genet->Generate_nanoparticle_network(Init->simu_para, Init->geom_sample, Init->agg_geo, Init->nanotube_geo, Init->gnp_geo, Init->cutoff_dist, Init->tec360_flags, cnts_point, cnts_radius, cnts_structure, gnps)) {
+    Generate_Network *Generator = new Generate_Network;
+    if (!Generator->Generate_nanoparticle_network(Init->simu_para, Init->geom_sample, Init->agg_geo, Init->nanotube_geo, Init->gnp_geo, Init->cutoff_dist, Init->tec360_flags, cnts_points, cnts_radius, cnts_structure, gnps)) {
         hout<<"Error in Generate_nanoparticle_network."<<endl;
         return 0;
     }
-    delete Genet;
+    delete Generator;
     ct1 = time(NULL);
     hout << "Nanotube network generation time: " << (int)(ct1-ct0) <<" secs." << endl;
     //Printer *P = new Printer;
@@ -53,12 +53,12 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     
     //----------------------------------------------------------------------
     ct0 = time(NULL);
-    Background_vectors *Bckg = new Background_vectors;
-    if (!Bckg->Generate_shells(Init->geom_sample, cnts_point, gnps, shells_cnt, shells_gnps)) {
+    Shells *Shell = new Shells;
+    if (!Shell->Generate_shells(Init->geom_sample, cnts_points, gnps, shells_cnts, shells_gnps)) {
         hout << "Error when generating shells" << endl;
         return 0;
     }
-    delete Bckg;
+    delete Shell;
     ct1 = time(NULL);
     hout << "Generate shells and structure time: "<<(int)(ct1-ct0)<<" secs."<<endl;//*/
     
@@ -92,7 +92,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         Cutoff_Wins *Cutwins = new Cutoff_Wins;
         //From this function I get the internal variables cnts_inside and boundary_cnt
         ct0 = time(NULL);
-        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, Init->gnp_geo, hybrid_particles, cnts_structure, gnps_structure, cnts_radius, cnts_point, gnps_point, shells_cnt, shells_gnps)) {
+        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, Init->gnp_geo, hybrid_particles, cnts_structure, gnps_structure, cnts_radius, cnts_points, gnps_points, shells_cnts, shells_gnps)) {
             hout << "Error when extracting observation window "<< i+1 << endl;
             return 0;
         }
@@ -103,7 +103,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Determine the local networks inside the cutoff windows
         Contact_grid *Contacts = new Contact_grid;
         ct0 = time(NULL);
-        if (Contacts->Generate_contact_grid(i, Init->simu_para.particle_type, Init->geom_sample, Init->cutoff_dist, Init->nanotube_geo, Cutwins->cnts_inside, cnts_point, cnts_structure, Cutwins->gnps_inside, gnps_point, gnps_structure)==0) {
+        if (Contacts->Generate_contact_grid(i, Init->simu_para.particle_type, Init->geom_sample, Init->cutoff_dist, Init->nanotube_geo, Cutwins->cnts_inside, cnts_points, cnts_structure, Cutwins->gnps_inside, gnps_points, gnps_structure)==0) {
             hout << "Error when generating contact grid" << endl;
             return 0;
         }
@@ -114,7 +114,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Hoshen-Kopelman algorithm
         Hoshen_Kopelman *HoKo = new Hoshen_Kopelman;
         ct0 = time(NULL);
-        if (!HoKo->Determine_clusters(Init->simu_para, Init->cutoff_dist, Cutwins->cnts_inside, Contacts->sectioned_domain, cnts_structure, cnts_point, cnts_radius, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, Contacts->sectioned_domain_hyb, gnps_structure, gnps_point, hybrid_particles)) {
+        if (!HoKo->Determine_clusters(Init->simu_para, Init->cutoff_dist, Cutwins->cnts_inside, Contacts->sectioned_domain, cnts_structure, cnts_points, cnts_radius, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, Contacts->sectioned_domain_hyb, gnps_structure, gnps_points, hybrid_particles)) {
             hout << "Error when determining clusters" << endl;
             return 0;
         }
@@ -128,7 +128,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Check if Tecplot visualization files were requested for clusters
         if (Init->tec360_flags.clusters) {
             ct0 = time(NULL);
-            if (!Export_tecplot_files_for_clusters("Cluster", i, Init->tec360_flags.clusters, Init->geom_sample, cnts_point, cnts_radius, cnts_structure, HoKo->clusters_cnt, HoKo->isolated, hybrid_particles, HoKo->clusters_gch, HoKo->isolated_gch)) {
+            if (!Export_tecplot_files_for_clusters("Cluster", i, Init->tec360_flags.clusters, Init->geom_sample, cnts_points, cnts_radius, cnts_structure, HoKo->clusters_cnt, HoKo->isolated, hybrid_particles, HoKo->clusters_gch, HoKo->isolated_gch)) {
                 hout << "Error when exporting Tecplot files for clusters" << endl;
                 return 0;
             }
@@ -160,7 +160,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Check if Tecplot visualization files were requested for percolated clusters
         if (Init->tec360_flags.percolated_clusters) {
             ct0 = time(NULL);
-            if (!Export_tecplot_files_for_clusters("Percolated", i, Init->tec360_flags.percolated_clusters, Init->geom_sample, cnts_point, cnts_radius, cnts_structure, HoKo->clusters_cnt, HoKo->isolated, hybrid_particles, HoKo->clusters_gch, HoKo->isolated_gch)) {
+            if (!Export_tecplot_files_for_clusters("Percolated", i, Init->tec360_flags.percolated_clusters, Init->geom_sample, cnts_points, cnts_radius, cnts_structure, HoKo->clusters_cnt, HoKo->isolated, hybrid_particles, HoKo->clusters_gch, HoKo->isolated_gch)) {
                 hout << "Error when exporting Tecplot files for percoalted clusters" << endl;
                 return 0;
             }
@@ -181,7 +181,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
             
             //Perform the electrical analysis to obtain the backbone and calculate the electrical resistance
             ct0 = time(NULL);
-            if (!Electric_A->Perform_analysis_on_clusters(Init->simu_para.avoid_resistance, family, HoKo, Cutwins, cnts_structure, cnts_point, cnts_radius, gnps_structure, gnps_point, window_geo, Init->electric_para, Init->cutoff_dist, hybrid_particles, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
+            if (!Electric_A->Perform_analysis_on_clusters(Init->simu_para.avoid_resistance, family, HoKo, Cutwins, cnts_structure, cnts_points, cnts_radius, gnps_structure, gnps_points, window_geo, Init->electric_para, Init->cutoff_dist, hybrid_particles, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
                 hout << "Error when performing electrical analysis" << endl;
                 return 0;
             }
@@ -219,7 +219,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Calculate the fractions of CNTs that belong to each family and save them to a file
         Clusters_fractions *Fracs = new Clusters_fractions;
         ct0 = time(NULL);
-        if (!Fracs->Calculate_fractions(Init->geom_sample, Cutwins->cnts_inside, Cutwins->gnps_inside, cnts_structure, cnts_point, cnts_radius, HoKo->isolated, hybrid_particles, HoKo->isolated_gch, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
+        if (!Fracs->Calculate_fractions(Init->geom_sample, Cutwins->cnts_inside, Cutwins->gnps_inside, cnts_structure, cnts_points, cnts_radius, HoKo->isolated, hybrid_particles, HoKo->isolated_gch, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
             hout << "Error when calculating clusters fractions" << endl;
             return 0;
         }
@@ -234,7 +234,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Check if Tecplot visualization files were requested for the backbone
         if (Init->tec360_flags.backbone) {
             ct0 = time(NULL);
-            if (!Export_tecplot_files(i, Init->tec360_flags.backbone, Init->geom_sample, cnts_point, cnts_radius, hybrid_particles, HoKo->isolated_gch, cnts_structure, HoKo->isolated, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
+            if (!Export_tecplot_files(i, Init->tec360_flags.backbone, Init->geom_sample, cnts_points, cnts_radius, hybrid_particles, HoKo->isolated_gch, cnts_structure, HoKo->isolated, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
                 hout << "Error when exporting tecplot files for backbone networks" << endl;
                 return 0;
             }
@@ -249,7 +249,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Check if Tecplot visualization files were requested for the triangulations
         if (Init->tec360_flags.triangulations) {
             ct0 = time(NULL);
-            if (!Export_triangulation_tecplot_files(i, Init->geom_sample, cnts_point, gnps_point, hybrid_particles)) {
+            if (!Export_triangulation_tecplot_files(i, Init->geom_sample, cnts_points, gnps_points, hybrid_particles)) {
                 hout << "Error when exporting tecplot files for GNP triangulations" << endl;
                 return 0;
             }

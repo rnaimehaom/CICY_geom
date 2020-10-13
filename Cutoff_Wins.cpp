@@ -455,7 +455,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_g
         vector<long int> struct_temp;
         
         //This bg variable is used to add the new CNT into the corresponding shell or shells
-        Background_vectors bg = Background_vectors();
+        Shells shells = Shells();
         
         //Add the CNT points of the new segment to the 1D vector
         //After dealing with the boundary points, ALL CNTs are inside the shell, and thus
@@ -472,7 +472,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_g
             struct_temp.push_back(j);
             
             //Update the shell of the new CNT points
-            bg.Add_to_cnt_shells(var_shells[0], var_shells[1], var_shells[2], var_shells[3], points_in[P], (int)shells_cnt.size(), shells_cnt);
+            shells.Add_to_cnt_shells(var_shells[0], var_shells[1], var_shells[2], var_shells[3], points_in[P], (int)shells_cnt.size(), shells_cnt);
         }
         
         //Update the radii vector

@@ -5,8 +5,8 @@
 //E-MAIL:       angel.mora@cicy.mx
 //===========================================================================
 
-#ifndef BACKGROUND_VECTORS_H
-#define BACKGROUND_VECTORS_H
+#ifndef SHELLS_H
+#define SHELLS_H
 
 #include<iomanip>
 #include<iostream>
@@ -18,16 +18,16 @@
 #include<time.h>
 #include<math.h>
 #include "Input_Reader.h"
-#include "GenNetwork.h"
+#include "Generate_Network.h"
 
 //-------------------------------------------------------
-class Background_vectors
+class Shells
 {
 public:
     //Data Member
     
     //Constructor
-    Background_vectors(){};
+    Shells(){};
     
     //
     int Generate_shells(const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<GNP> &gnps, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnps);

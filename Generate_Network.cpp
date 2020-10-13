@@ -5,7 +5,7 @@
 //E-MAIL:       angel.mora@cicy.mx
 //===========================================================================
 
-#include "GenNetwork.h"
+#include "Generate_Network.h"
 
 //NOTE ON PERIODICTY (Jul 16 2017):
 //Periodicity was removed as it has not been used in any of the updates of the code since it was uploaded to github
@@ -15,7 +15,7 @@
 //3) When adding the new_cnt vector to the global vector of CNTs, split it into segments. This operation is completely useless with a non-periodic sample and was causing some errors when using the penetrating model so I just deleted it.
 
 //Generate a network of nanoparticles
-int GenNetwork::Generate_nanoparticle_network(const Simu_para &simu_para, const Geom_sample &geom_sample, const Agglomerate_Geo &agg_geo, const Nanotube_Geo &nanotube_geo, const GNP_Geo &gnp_geo, const Cutoff_dist &cutoffs, const Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<double> &cnts_radius_out, vector<vector<long int> > &cstructures, vector<GNP> &gnps)const
+int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, const Geom_sample &geom_sample, const Agglomerate_Geo &agg_geo, const Nanotube_Geo &nanotube_geo, const GNP_Geo &gnp_geo, const Cutoff_dist &cutoffs, const Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<double> &cnts_radius_out, vector<vector<long int> > &cstructures, vector<GNP> &gnps)const
 {
     //Vector of storing the CNT points
     vector<vector<Point_3D> > cnts_points;
@@ -109,7 +109,7 @@ int GenNetwork::Generate_nanoparticle_network(const Simu_para &simu_para, const 
 //---------------------------------------------------------------------------
 //Generate a network defined by points and connections
 //Use the Mersenne Twister for the random number generation
-int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius)const
+int Generate_Network::Generate_cnt_network_threads_mt(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius)const
 {
     //Initial seeds, if any are in network_seeds within geom_sample.
     //However, geom_sample cannot be modified, so copy the seeds to a new vector
@@ -451,7 +451,7 @@ int GenNetwork::Generate_cnt_network_threads_mt(const struct Simu_para &simu_par
 //---------------------------------------------------------------------------
 //This function copies the seeds for the random number generators given in the input file
 //If seeds were not given, seeds are generated
-int GenNetwork::CNT_seeds(const vector<unsigned int> &CNT_seeds, unsigned int net_seeds[])const
+int Generate_Network::CNT_seeds(const vector<unsigned int> &CNT_seeds, unsigned int net_seeds[])const
 {
     //---------------------------------------------------------------------------
     //Random_device is used to generate seeds for the Mersenne twister
@@ -503,7 +503,7 @@ int GenNetwork::CNT_seeds(const vector<unsigned int> &CNT_seeds, unsigned int ne
 //
 //The vector sectioned_domain contains the sub-regions to look for overlapping
 //It is initialized with the number of sub-regions in the sample
-void GenNetwork::Initialize_subregions(const struct Geom_sample &geom_sample, vector<int> &nsubregions, vector<vector<long int> > &sectioned_domain)const
+void Generate_Network::Initialize_subregions(const struct Geom_sample &geom_sample, vector<int> &nsubregions, vector<vector<long int> > &sectioned_domain)const
 {
     //Initialize nsubregions
     
@@ -531,7 +531,7 @@ void GenNetwork::Initialize_subregions(const struct Geom_sample &geom_sample, ve
 //   b) No need to check for penetration (point is in boundary layer or there are no other points in the same sub-region)
 //   c) There was penetration but it was succesfully resolved
 //0: There was penetration but could not be resolved
-int GenNetwork::Check_penetration(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const vector<int> &n_subregions, const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
+int Generate_Network::Check_penetration(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const vector<int> &n_subregions, const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
 {
     //Get the sub-region the point belongs to
     //hout<<"Get_subregion 0"<<endl;
@@ -615,7 +615,7 @@ int GenNetwork::Check_penetration(const struct Geom_sample &geom_sample, const s
 }
 //---------------------------------------------------------------------------
 //This function returns the subregion a point belongs to
-int GenNetwork::Get_subregion(const struct Geom_sample &geom_sample, const vector<int> &n_subregions, const Point_3D &point)const
+int Generate_Network::Get_subregion(const struct Geom_sample &geom_sample, const vector<int> &n_subregions, const Point_3D &point)const
 {
     if (Point_inside_sample(geom_sample, point)) {
         //These variables will give me the region cordinates of the region that a point belongs to
@@ -640,7 +640,7 @@ int GenNetwork::Get_subregion(const struct Geom_sample &geom_sample, const vecto
 //---------------------------------------------------------------------------
 //This functions iterates over a sub-region and determines if there are any penetrating points
 //If there are penetrating points, they are stored in the vector affected_points
-void GenNetwork::Get_penetrating_points(const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<long int> &subregion_vec, const vector<double> &radii, const double &cnt_rad, const double &d_vdw, Point_3D &point, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
+void Generate_Network::Get_penetrating_points(const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<long int> &subregion_vec, const vector<double> &radii, const double &cnt_rad, const double &d_vdw, Point_3D &point, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
 {
     //They are just intermediate variables and I only use them to make the code more readable
     long int coord2;
@@ -677,7 +677,7 @@ void GenNetwork::Get_penetrating_points(const vector<vector<Point_3D> > &cnts, c
 }
 //---------------------------------------------------------------------------
 //This function moves a point according to the number of points it is overlapping
-void GenNetwork::Move_point(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point, vector<double> &cutoffs, vector<double> &distances, vector<Point_3D> &affected_points)const
+void Generate_Network::Move_point(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point, vector<double> &cutoffs, vector<double> &distances, vector<Point_3D> &affected_points)const
 {
     //The number of overlapings will determine how the new point is moved
     //However, first I need to eliminate invalid-points, which are the points of perfect overlapping, i.e.
@@ -711,7 +711,7 @@ void GenNetwork::Move_point(const struct Geom_sample &geom_sample, const struct 
 //This point checks if two points are actually in the same position
 //This used to happen because of a bug in the code. It seems now like a remote possibility
 //so I'll keep it just in case
-int GenNetwork::Check_points_in_same_position(vector<double> &cutoffs, vector<double> &distances, vector<Point_3D> &affected_points)const
+int Generate_Network::Check_points_in_same_position(vector<double> &cutoffs, vector<double> &distances, vector<Point_3D> &affected_points)const
 {
     //hout << "Initial overlaps = " << distances.size();
     //check if any distance is less than the variable Zero
@@ -729,7 +729,7 @@ int GenNetwork::Check_points_in_same_position(vector<double> &cutoffs, vector<do
 }
 //---------------------------------------------------------------------------
 //This function finds the new location for an overlapping point when it overlaps only one point
-void GenNetwork::One_overlapping_point(const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, Point_3D &point)const
+void Generate_Network::One_overlapping_point(const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, Point_3D &point)const
 {
     //When there is overlapping with one point only, then this is the simplest and easiest case
     //Just move the point in the direction form P_old to P_new a distance cutoff from P_old
@@ -746,7 +746,7 @@ void GenNetwork::One_overlapping_point(const vector<double> &cutoffs, const vect
 }
 //---------------------------------------------------------------------------
 //This function finds the new location for an overlapping point when it overlaps two points
-void GenNetwork::Two_overlapping_points(const vector<double> &cutoffs, const vector<Point_3D> &affected_points, Point_3D &point)const
+void Generate_Network::Two_overlapping_points(const vector<double> &cutoffs, const vector<Point_3D> &affected_points, Point_3D &point)const
 {
     //Point variables
     Point_3D P, Q, R, P1, P2;
@@ -789,7 +789,7 @@ void GenNetwork::Two_overlapping_points(const vector<double> &cutoffs, const vec
 //When a point overlaps three or more points, it becomes too difficult to find the new location
 //Hence, this function that finds the two closest points
 //The two closest point are chosen since those would be the more critical ones
-void GenNetwork::Three_or_more_overlapping_points(const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, Point_3D &point)const
+void Generate_Network::Three_or_more_overlapping_points(const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, Point_3D &point)const
 {
     //Use the distances vector to find the two closest points
     //i1 and i2 will be the indices of the closest affected_points, they will be initialized with the first two
@@ -849,7 +849,7 @@ void GenNetwork::Three_or_more_overlapping_points(const vector<double> &cutoffs,
 //Move the point when all points are in the same location
 //After solving the bug that caused multiple points to be in the same location,
 //probably this function is not needed. I leave it here just in case
-void GenNetwork::Overlapping_points_same_position(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point)const
+void Generate_Network::Overlapping_points_same_position(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point)const
 {
     //The new point will be moved depending on wheter it is the first point, second point or other point after the second
     if (!cnt_new.size()) {
@@ -917,7 +917,7 @@ void GenNetwork::Overlapping_points_same_position(const struct Geom_sample &geom
 //I also measure the distance between "point" and the second before that.
 //If the distance  between points is less than the hypotenuse, then it has an
 //incorrect orientation
-int GenNetwork::Check_segment_orientation(const Point_3D &point, const vector<Point_3D> &cnt_new)const
+int Generate_Network::Check_segment_orientation(const Point_3D &point, const vector<Point_3D> &cnt_new)const
 {
     //If at least two points have already been generated, then check if the new point has a valid orientation
     if (cnt_new.size()>=2) {
@@ -951,7 +951,7 @@ int GenNetwork::Check_segment_orientation(const Point_3D &point, const vector<Po
 //a = distance from first to second point
 //b = distance from second to third point
 //c = distance from first to third point
-double GenNetwork::Segment_angle_discriminant(const Point_3D &first, const Point_3D &second, const Point_3D &third)const
+double Generate_Network::Segment_angle_discriminant(const Point_3D &first, const Point_3D &second, const Point_3D &third)const
 {
     //calculate squared distances
     double a2 = first.squared_distance_to(second);
@@ -962,7 +962,7 @@ double GenNetwork::Segment_angle_discriminant(const Point_3D &first, const Point
 }
 //---------------------------------------------------------------------------
 //Calculate the effective portion (length) which falls into the given region defined by a cuboid
-double GenNetwork::Length_inside_sample(const Geom_sample &geom_sample, const Point_3D &prev_point, const Point_3D &new_point, const bool &is_prev_inside_sample, bool &is_new_inside_sample)const
+double Generate_Network::Length_inside_sample(const Geom_sample &geom_sample, const Point_3D &prev_point, const Point_3D &new_point, const bool &is_prev_inside_sample, bool &is_new_inside_sample)const
 {
     //Check if the new point is inside the sample
     is_new_inside_sample = Point_inside_sample(geom_sample, new_point);
@@ -1005,7 +1005,7 @@ double GenNetwork::Length_inside_sample(const Geom_sample &geom_sample, const Po
 }
 //---------------------------------------------------------------------------
 //This function adds a point to a region so penetration can be checked
-void GenNetwork::Add_to_overlapping_regions(const struct Geom_sample &geom_sample, double overlap_max_cutoff, Point_3D point, long int global_num, const vector<int> &n_subregions, vector<vector<long int> > &sectioned_domain)const
+void Generate_Network::Add_to_overlapping_regions(const struct Geom_sample &geom_sample, double overlap_max_cutoff, Point_3D point, long int global_num, const vector<int> &n_subregions, vector<vector<long int> > &sectioned_domain)const
 {
     //A point is added only if it is in the composite domain
     //If the point is in the boundary layer, overlapping is not important
@@ -1086,13 +1086,13 @@ void GenNetwork::Add_to_overlapping_regions(const struct Geom_sample &geom_sampl
 }
 //---------------------------------------------------------------------------
 //Calculates the region to which a point corresponds
-int GenNetwork::Calculate_t(int a, int b, int c, int sx, int sy)const
+int Generate_Network::Calculate_t(int a, int b, int c, int sx, int sy)const
 {
     return a + b*sx + c*sx*sy;
 }
 //---------------------------------------------------------------------------
 //Transform the 2D cnts_points into 1D cpoints and 2D cstructures
-int GenNetwork::Transform_points_cnts(const Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, vector<vector<Point_3D> > &cnts_points, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures)const
+int Generate_Network::Transform_points_cnts(const Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, vector<vector<Point_3D> > &cnts_points, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures)const
 {
     //Variable to count the point numbers
     long int point_count = 0;
@@ -1132,7 +1132,7 @@ int GenNetwork::Transform_points_cnts(const Geom_sample &geom_sample, const stru
     return 1;
 }
 //---------------------------------------------------------------------------
-int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
+int Generate_Network::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
 {
     //Indices to define the beginning and ending of a segment of a CNT that is inside a sample
     int start = 0;
@@ -1207,7 +1207,7 @@ int GenNetwork::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, co
     return 1;
 }
 //---------------------------------------------------------------------------
-int GenNetwork::Add_cnt_segment(const struct Geom_sample &geom_sample, const bool &is_first_inside_sample, const int &start, const int &end, const int &min_points, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
+int Generate_Network::Add_cnt_segment(const struct Geom_sample &geom_sample, const bool &is_first_inside_sample, const int &start, const int &end, const int &min_points, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
 {
     
     //Temporary vector to add the point numbers to the structure vector
@@ -1281,7 +1281,7 @@ int GenNetwork::Add_cnt_segment(const struct Geom_sample &geom_sample, const boo
     return 1;
 }
 //---------------------------------------------------------------------------
-int GenNetwork::Add_boundary_point(const struct Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside, const int &cnt_count, vector<Point_3D> &cpoints, vector<long int> &struct_temp, long int &point_count)const
+int Generate_Network::Add_boundary_point(const struct Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside, const int &cnt_count, vector<Point_3D> &cpoints, vector<long int> &struct_temp, long int &point_count)const
 {
     //Find the coordinates of the point between the ouside (p_outside) and inside (p_inside) that
     //that is located at the sample boundary (one of the faces)
@@ -1309,7 +1309,7 @@ int GenNetwork::Add_boundary_point(const struct Geom_sample &geom_sample, const 
 //Thus, if there are multiple intersections with the planes, we need to check whether or not
 //the interstion is at an actual boundary
 //This function finds that intersecting point at an actual boundary
-Point_3D GenNetwork::Find_intersection_at_boundary(const struct Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside)const
+Point_3D Generate_Network::Find_intersection_at_boundary(const struct Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside)const
 {
     //The line segment defined by p_outside and p_inside is given by:
     //P = p_outside + lambda*T
@@ -1412,7 +1412,7 @@ Point_3D GenNetwork::Find_intersection_at_boundary(const struct Geom_sample &geo
     return boundary;
 }
 //---------------------------------------------------------------------------
-int GenNetwork::Recalculate_vol_fraction_cnts(const Geom_sample &geom_sample, const vector<Point_3D> &cpoints, const vector<double> &radii, const vector<vector<long int> > &cstructures)const
+int Generate_Network::Recalculate_vol_fraction_cnts(const Geom_sample &geom_sample, const vector<Point_3D> &cpoints, const vector<double> &radii, const vector<vector<long int> > &cstructures)const
 {
     //Variable to store the volume of CNTs
     double cnt_vol = 0.0;
@@ -1455,7 +1455,7 @@ int GenNetwork::Recalculate_vol_fraction_cnts(const Geom_sample &geom_sample, co
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //Generate a random value through a probability distribution function
-int GenNetwork::Get_random_value_mt(const string &dist_type, mt19937 &engine, uniform_real_distribution<double> &dist, const double &min, const double &max, double &value)const
+int Generate_Network::Get_random_value_mt(const string &dist_type, mt19937 &engine, uniform_real_distribution<double> &dist, const double &min, const double &max, double &value)const
 {
     //Check if limits are correctly defined
     if(min>max) { hout << "Error, the minimum value is larger than the maximum value (Get_random_value)!" << endl; return 0; }
@@ -1486,7 +1486,7 @@ int GenNetwork::Get_random_value_mt(const string &dist_type, mt19937 &engine, un
 }
 //---------------------------------------------------------------------------
 //Randomly generate a seed (intial point of a CNT or GNP center) in the given cuboid
-int GenNetwork::Get_seed_point_mt(const cuboid &cub, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_z, uniform_real_distribution<double> &dist)const
+int Generate_Network::Get_seed_point_mt(const cuboid &cub, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_z, uniform_real_distribution<double> &dist)const
 {
     
     point.x = cub.poi_min.x + cub.len_x*dist(engine_x);
@@ -1502,7 +1502,7 @@ int GenNetwork::Get_seed_point_mt(const cuboid &cub, Point_3D &point, mt19937 &e
 }
 //---------------------------------------------------------------------------
 //Randomly generate an initial direction, then generate the rotation matrix that results in that rotation
-int GenNetwork::Get_initial_direction_mt(const string &dir_distrib_type, const double &ini_sita, const double &ini_pha, mt19937 &engine_inital_direction, uniform_real_distribution<double> &dist_initial, MathMatrix &rotation)const
+int Generate_Network::Get_initial_direction_mt(const string &dir_distrib_type, const double &ini_sita, const double &ini_pha, mt19937 &engine_inital_direction, uniform_real_distribution<double> &dist_initial, MathMatrix &rotation)const
 {
     if(dir_distrib_type=="random")
     {
@@ -1564,7 +1564,7 @@ int GenNetwork::Get_initial_direction_mt(const string &dir_distrib_type, const d
     return 1;
 }
 //---------------------------------------------------------------------------
-int GenNetwork::Get_normal_direction_mt(const double &omega, double &cnt_sita, double &cnt_pha, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
+int Generate_Network::Get_normal_direction_mt(const double &omega, double &cnt_sita, double &cnt_pha, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
 {
     
     //sita centers around 0 and obeys a normal distribution in (-omega, +omega)
@@ -1582,7 +1582,7 @@ int GenNetwork::Get_normal_direction_mt(const double &omega, double &cnt_sita, d
 }
 //---------------------------------------------------------------------------
 //Transform angles into matrix
-MathMatrix GenNetwork::Get_transformation_matrix(const double &sita, const double &pha)const
+MathMatrix Generate_Network::Get_transformation_matrix(const double &sita, const double &pha)const
 {
     //M = M_pha*M_sita
     //          |cos(pha) -sin(pha) 0|
@@ -1609,7 +1609,7 @@ MathMatrix GenNetwork::Get_transformation_matrix(const double &sita, const doubl
 }
 //---------------------------------------------------------------------------
 //Calculate the coordinates of the new CNT point (transformation of coordinates)
-Point_3D GenNetwork::Get_new_point(MathMatrix &Matrix, const double &Rad)const
+Point_3D Generate_Network::Get_new_point(MathMatrix &Matrix, const double &Rad)const
 {
     //Point = Matrix*v
     //v = [0; 0; Rad]
@@ -1620,7 +1620,7 @@ Point_3D GenNetwork::Get_new_point(MathMatrix &Matrix, const double &Rad)const
 }
 //---------------------------------------------------------------------------
 //This function checks if a point is inside a sample
-int GenNetwork::Point_inside_sample(const struct Geom_sample &geom_sample, const Point_3D &point)const
+int Generate_Network::Point_inside_sample(const struct Geom_sample &geom_sample, const Point_3D &point)const
 {
     if(point.x<geom_sample.origin.x||point.x>geom_sample.x_max||
        point.y<geom_sample.origin.y||point.y>geom_sample.y_max||
@@ -1636,7 +1636,7 @@ int GenNetwork::Point_inside_sample(const struct Geom_sample &geom_sample, const
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //Generate a GNP network
-int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, vector<GNP> &gnps, double &gnp_vol_tot, double &gnp_wt_tot)const
+int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, vector<GNP> &gnps, double &gnp_vol_tot, double &gnp_wt_tot)const
 {
 
     //geom_sample cannot be modified, so copy the seeds to an array if they were specified in
@@ -1797,7 +1797,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
 }
 //This function copies the seeds for the random number generators given in the input file
 //If seeds were not given, seeds are generated
-int GenNetwork::GNP_seeds(const vector<unsigned int> &GNP_seeds, unsigned int net_seeds[])const
+int Generate_Network::GNP_seeds(const vector<unsigned int> &GNP_seeds, unsigned int net_seeds[])const
 {
     //---------------------------------------------------------------------------
     //Random_device is used to generate seeds for the Mersenne twister
@@ -1835,7 +1835,7 @@ int GenNetwork::GNP_seeds(const vector<unsigned int> &GNP_seeds, unsigned int ne
     hout<<endl;
     return 1;
 }
-int GenNetwork::Initialize_gnp_subregions(const Geom_sample &sample_geom, int n_subregion[], vector<vector<int> > &sectioned_domain)const
+int Generate_Network::Initialize_gnp_subregions(const Geom_sample &sample_geom, int n_subregion[], vector<vector<int> > &sectioned_domain)const
 {   
     //Calculate the number of variables along each direction
     //Make sure there is at least one subregion along each direction
@@ -1855,7 +1855,7 @@ int GenNetwork::Initialize_gnp_subregions(const Geom_sample &sample_geom, int n_
 //This fuction generates a GNP with a square base and generates other usefuld geometric parameters:
 //its volume, the equations of the planes for the faces, thu unit normal vectors to the planes,
 //and the vertices
-int GenNetwork::Generate_gnp(const GNP_Geo &gnp_geo, GNP &gnp, mt19937 &engine_l, mt19937 &engine_t, uniform_real_distribution<double> &dist)const
+int Generate_Network::Generate_gnp(const GNP_Geo &gnp_geo, GNP &gnp, mt19937 &engine_l, mt19937 &engine_t, uniform_real_distribution<double> &dist)const
 {
     //Define side length for the squared GNP surface
     gnp.l = gnp_geo.len_min + (gnp_geo.len_max - gnp_geo.len_min)*dist(engine_l);
@@ -1890,7 +1890,7 @@ int GenNetwork::Generate_gnp(const GNP_Geo &gnp_geo, GNP &gnp, mt19937 &engine_l
     
     return 1;
 }
-int GenNetwork::Update_gnp_plane_equations(GNP &gnp)const
+int Generate_Network::Update_gnp_plane_equations(GNP &gnp)const
 {
     //Calculate the plane normals (as unit vectors) and their equations
     //Normal is calcualted as (P2-P1)x(P3-P1)
@@ -1913,7 +1913,7 @@ int GenNetwork::Update_gnp_plane_equations(GNP &gnp)const
 //This function checks whether the newly generated GNP penetrates another GNP
 //If there is interpenetration, then the GNP is moved
 //If the attempts to relocate the GNP exceed the number of maximum attempts, the GNP is rejected
-int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const int n_subregions[], GNP &gnp_new, vector<vector<int> > &sectioned_domain, bool &rejected)const
+int Generate_Network::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const int n_subregions[], GNP &gnp_new, vector<vector<int> > &sectioned_domain, bool &rejected)const
 {
     //Variable to count the number of attempts
     int attempts = 0;
@@ -2006,7 +2006,7 @@ int GenNetwork::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, 
 }
 //This function finds all the subregions the GNP_new occupies and those subregions where there might be
 //close enough GNPs below the van der Waals distance
-int GenNetwork::Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gnp_new, const int n_subregions[], set<int> &subregions)const
+int Generate_Network::Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gnp_new, const int n_subregions[], set<int> &subregions)const
 {
     //Number of points to discretize the GNP along the x direction (of the GNP local coordinates)
     int n_points_x = max(2, 1 + (int)(gnp_new.l/geom_sample.gs_minx));
@@ -2081,7 +2081,7 @@ int GenNetwork::Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gn
     
     return 1;
 }
-int GenNetwork::Add_gnp_subregions_to_set_for_gnp_point(const Geom_sample &geom_sample, const Point_3D &new_point, const int n_subregions[], set<int> &subregions)const
+int Generate_Network::Add_gnp_subregions_to_set_for_gnp_point(const Geom_sample &geom_sample, const Point_3D &new_point, const int n_subregions[], set<int> &subregions)const
 {
     //Minimum and maximum coordinates of the overlapping subregions
     //Initialize them with the maximum and minimum values, respectively, so they can be updated
@@ -2175,7 +2175,7 @@ int GenNetwork::Add_gnp_subregions_to_set_for_gnp_point(const Geom_sample &geom_
 }
 //From a given list of subregions, this function fids all GNPs in those subregions
 //A set is the putput value to avoid repetition of GNP numbers
-int GenNetwork::Get_gnps_in_subregions(const vector<vector<int> > &sectioned_domain, const set<int> &subregions, set<int> &gnp_set)const
+int Generate_Network::Get_gnps_in_subregions(const vector<vector<int> > &sectioned_domain, const set<int> &subregions, set<int> &gnp_set)const
 {
     //hout<<"sectioned_domain.size="<<sectioned_domain.size()<<endl;
     for (set<int>::iterator i = subregions.begin(); i != subregions.end(); i++) {
@@ -2197,7 +2197,7 @@ int GenNetwork::Get_gnps_in_subregions(const vector<vector<int> > &sectioned_dom
     return 1;
 }
 //This function moves a GNP if needed
-int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP &gnp_new, bool &displaced) const
+int Generate_Network::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP &gnp_new, bool &displaced) const
 {
     //Create a new Collision_detection object to determine whether two GNPs interpenetrate
     //eachother or not, and their distances if they do not interpenetrate each other
@@ -2333,7 +2333,7 @@ int GenNetwork::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP
 }
 //This function determines the direction in wich a GNP should be moved in case it is touching
 //another GNP
-int GenNetwork::Find_direction_of_touching_gnps(Collision_detection &GJK_EPA, const GNP &gnpA, const GNP &gnpB, Point_3D &N)const
+int Generate_Network::Find_direction_of_touching_gnps(Collision_detection &GJK_EPA, const GNP &gnpA, const GNP &gnpB, Point_3D &N)const
 {
     //Find a point V in the Minkowski sum
     Point_3D V = gnpA.center - gnpB.center;
@@ -2432,7 +2432,7 @@ int GenNetwork::Find_direction_of_touching_gnps(Collision_detection &GJK_EPA, co
     return 1;
 }
 //This function moves a GNP on a given direction and updates the plane equations of its faces
-int GenNetwork::Move_gnp(const Point_3D &displacement, GNP &gnp)const
+int Generate_Network::Move_gnp(const Point_3D &displacement, GNP &gnp)const
 {
     //Move the GNP center
     gnp.center = gnp.center + displacement;
@@ -2451,7 +2451,7 @@ int GenNetwork::Move_gnp(const Point_3D &displacement, GNP &gnp)const
     return 1;
 }
 //This function adds a GNP to all the subregions it occupies (as given by the subregions vector)
-int GenNetwork::Add_valid_gnp_to_subregions(const int &gnp_new_idx, const set<int> &subregions, vector<vector<int> > &sectioned_domain)const
+int Generate_Network::Add_valid_gnp_to_subregions(const int &gnp_new_idx, const set<int> &subregions, vector<vector<int> > &sectioned_domain)const
 {
     //Also, since gnp_new was successfully generated, add it to all corresponding sub regions
     for (set<int>::iterator i = subregions.begin(); i != subregions.end(); i++) {
@@ -2466,7 +2466,7 @@ int GenNetwork::Add_valid_gnp_to_subregions(const int &gnp_new_idx, const set<in
     return 1;
 }
 //This function calculates the generated volume of a GNP and adds it to the global variables
-int GenNetwork::Calculate_generated_gnp_vol_and_update_total_vol(const GNP_Geo gnp_geom, const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol_tot, double &gnp_wt_tot)const
+int Generate_Network::Calculate_generated_gnp_vol_and_update_total_vol(const GNP_Geo gnp_geom, const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol_tot, double &gnp_wt_tot)const
 {
     //---------------------------------------------------------------------------
     //Add the volume and weight corresponding to the GNP
@@ -2500,7 +2500,7 @@ int GenNetwork::Calculate_generated_gnp_vol_and_update_total_vol(const GNP_Geo g
 }
 //This function approximates the volume of a GNP inside the sample depending of the number of points in
 //the discretization of its middle plane that are inside the sample
-int GenNetwork::Approximate_gnp_volume_inside_sample(const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol)const
+int Generate_Network::Approximate_gnp_volume_inside_sample(const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol)const
 {
     //---------------------------------------------------------------------------
     //Number of points per side to approximate volume
@@ -2578,7 +2578,7 @@ int GenNetwork::Approximate_gnp_volume_inside_sample(const Geom_sample &sample_g
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //Generate 3D nantube networks with ovelapping
-int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct GNP_Geo &gnp_geo, const struct Cutoff_dist &cutoffs, const struct Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<Point_3D> &gpoints, vector<GCH> &hybrid_particles, vector<double> &cnts_radius_out, vector<vector<long int> > &cstructures, vector<vector<long int> > &gstructures)const
+int Generate_Network::Generate_nanofiller_network(const struct Simu_para &simu_para, const struct Geom_sample &geom_sample, const struct Agglomerate_Geo &agg_geo, const struct Nanotube_Geo &nanotube_geo, const struct GNP_Geo &gnp_geo, const struct Cutoff_dist &cutoffs, const struct Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<Point_3D> &gpoints, vector<GCH> &hybrid_particles, vector<double> &cnts_radius_out, vector<vector<long int> > &cstructures, vector<vector<long int> > &gstructures)const
 {
     //Define a two-dimensional vector of three-dimensional points for storing the CNT threads
     vector<vector<Point_3D> > cnts_points;
@@ -2700,7 +2700,7 @@ int GenNetwork::Generate_nanofiller_network(const struct Simu_para &simu_para, c
 //---------------------------------------------------------------------------
 //Generate a network defined by points and connections
 //Use the Mersenne Twister for the random number generation
-int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, vector<double> &cnts_radius)const
+int Generate_Network::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &gnp_geo, const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, vector<double> &cnts_radius)const
 {
     //Generate random seed in terms of local time
     //unsigned int time_seed = 1453384844;
@@ -2922,7 +2922,7 @@ int GenNetwork::Generate_cnt_network_threads_over_gnps_mt(const struct GNP_Geo &
     return 1;
 }
 //Use the Mersenne Twister for the random number generation
-int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const string &particle_type, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const
+int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const string &particle_type, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const
 {
     return 1;
 }
@@ -2931,7 +2931,7 @@ int GenNetwork::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Ge
 //The function also calculates the maximum possible number of CNTs that can be accomodated on a GNP surface without CNT penetration
 //If more CNTs than those possible are required to keep the weight ratio equal to 1, then the funtion terminates
 //with 0, this terminating the generetion process
-int GenNetwork::Calculate_number_of_CNTs_on_GNP_surface(const struct Nanotube_Geo &nanotube_geo, const struct GNP_Geo &gnp_geo, const cuboid &gnp, const double &cnt_rad, const double &cnt_length, int &ns)const
+int Generate_Network::Calculate_number_of_CNTs_on_GNP_surface(const struct Nanotube_Geo &nanotube_geo, const struct GNP_Geo &gnp_geo, const cuboid &gnp, const double &cnt_rad, const double &cnt_length, int &ns)const
 {
     //Calculate the GNP area
     double GNP_area = gnp.len_x*gnp.wid_y;
@@ -2970,7 +2970,7 @@ int GenNetwork::Calculate_number_of_CNTs_on_GNP_surface(const struct Nanotube_Ge
     }
 }
 //
-int GenNetwork::Generate_cnt_seeds(const struct Nanotube_Geo &nanotube_geo, const cuboid &gnp, vector<Point_3D> &seeds, vector<double> &radii, const double &d_vdw, const int &n_cnts, const double &z_coord, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_rand, uniform_real_distribution<double> &dist)
+int Generate_Network::Generate_cnt_seeds(const struct Nanotube_Geo &nanotube_geo, const cuboid &gnp, vector<Point_3D> &seeds, vector<double> &radii, const double &d_vdw, const int &n_cnts, const double &z_coord, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_rand, uniform_real_distribution<double> &dist)
 {
     //Initialize a point
     Point_3D point(0.0,0.0,z_coord);
@@ -2997,7 +2997,7 @@ int GenNetwork::Generate_cnt_seeds(const struct Nanotube_Geo &nanotube_geo, cons
 //---------------------------------------------------------------------------
 //Randomly generate a CNT seed (intial point of a CNT) in the surface of the GNP
 //Note that the circle with certer at point and radius cnt_rad has to lie inside the surface of the GNP
-int GenNetwork::Get_seed_point_2d_mt(const struct cuboid &cub, const double &cnt_rad, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, uniform_real_distribution<double> &dist)const
+int Generate_Network::Get_seed_point_2d_mt(const struct cuboid &cub, const double &cnt_rad, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, uniform_real_distribution<double> &dist)const
 {
     //Adding cnt_rad and subtracting 2*cnt_rad to len_x, will make the CNT seed to be entirely inside the GNP surface
     point.x = -cub.len_x/2 + cnt_rad + (cub.len_x - 2*cnt_rad)*dist(engine_x);
@@ -3012,7 +3012,7 @@ int GenNetwork::Get_seed_point_2d_mt(const struct cuboid &cub, const double &cnt
     
     return 1;
 }
-int GenNetwork::Check_seed_overlapping(const vector<Point_3D> &seeds, const double &cnt_rad, const double &d_vdw, Point_3D &point)const
+int Generate_Network::Check_seed_overlapping(const vector<Point_3D> &seeds, const double &cnt_rad, const double &d_vdw, Point_3D &point)const
 {
     //cutoff_p is used for the cutoff between two points (of different CNTs), distance is the actual distance
     //between those two points
@@ -3033,7 +3033,7 @@ int GenNetwork::Check_seed_overlapping(const vector<Point_3D> &seeds, const doub
     return 0;
 }
 //This function generates all CNTs in one side of a GNP. CNTs grow independently of each other
-int GenNetwork::Grow_cnts_on_gnp_surface(const struct Geom_sample &geom_sample, const struct cuboid &excub, const GCH &hybrid, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, vector<double> &cnts_radius, const vector<int> &n_subregions, const double &cnt_rad, const double  &cnt_length, const double &overlap_max_cutoff, const int &penetrating_model_flag, const int &ns, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
+int Generate_Network::Grow_cnts_on_gnp_surface(const struct Geom_sample &geom_sample, const struct cuboid &excub, const GCH &hybrid, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, vector<double> &cnts_radius, const vector<int> &n_subregions, const double &cnt_rad, const double  &cnt_length, const double &overlap_max_cutoff, const int &penetrating_model_flag, const int &ns, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
 {
     //---------------------------------------------------------------------------
     //Initialize a point to be used in the rest of the function
@@ -3129,7 +3129,7 @@ int GenNetwork::Grow_cnts_on_gnp_surface(const struct Geom_sample &geom_sample, 
     return 1;
 }
 //This function generates all CNTs in one side of a GNP. CNTs grow parallel
-int GenNetwork::Grow_CNTs_on_GNP_surface_parallel(const struct Geom_sample &geom_sample, const struct cuboid &excub, const struct cuboid &gnp, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, vector<Point_3D> &gnp_discrete, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, vector<double> &cnts_radius, const vector<int> &n_subregions, const MathMatrix &multiplier, const Point_3D &gnp_poi, const double &cnt_rad, const double  &cnt_length, const int &penetrating_model_flag, const int &ns, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
+int Generate_Network::Grow_CNTs_on_GNP_surface_parallel(const struct Geom_sample &geom_sample, const struct cuboid &excub, const struct cuboid &gnp, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, vector<Point_3D> &gnp_discrete, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, vector<double> &cnts_radius, const vector<int> &n_subregions, const MathMatrix &multiplier, const Point_3D &gnp_poi, const double &cnt_rad, const double  &cnt_length, const int &penetrating_model_flag, const int &ns, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
 {
     //---------------------------------------------------------------------------
     //Initialize a point to be used in the rest of the function
@@ -3216,7 +3216,7 @@ int GenNetwork::Grow_CNTs_on_GNP_surface_parallel(const struct Geom_sample &geom
     return 1;
 }
 //This function generates a CNT by displacing an initial CNT
-int GenNetwork::Copy_CNT(const vector<Point_3D> &initial_cnt, vector<Point_3D> &new_cnt)const
+int Generate_Network::Copy_CNT(const vector<Point_3D> &initial_cnt, vector<Point_3D> &new_cnt)const
 {
     //Calculate the displacement of the new CNT
     Point_3D displacement = new_cnt.front() - initial_cnt.front();
@@ -3239,7 +3239,7 @@ int GenNetwork::Copy_CNT(const vector<Point_3D> &initial_cnt, vector<Point_3D> &
 //This function will be used to "grow" the CNTs in the surface of a GNP
 //1: successfully grown CNT
 //0: could not solve penetration of CNT
-int GenNetwork::Grow_single_cnt_on_gnp(const struct Geom_sample &geom_sample, const struct cuboid &excub, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<vector<int> > &global_coord_hybrid, const vector<vector<long int> > &sect_domain_hybrid, vector<Point_3D> &new_cnt, vector<double> &cnts_radius, const vector<int> &n_subregions, const MathMatrix &seed_multiplier, const double &cnt_rad, const double  &cnt_length, const int &penetrating_model_flag, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
+int Generate_Network::Grow_single_cnt_on_gnp(const struct Geom_sample &geom_sample, const struct cuboid &excub, const struct Nanotube_Geo &nanotube_geo, const struct Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<vector<Point_3D> > &gnps_points, vector<vector<Point_3D> > &particle, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<vector<int> > &global_coord_hybrid, const vector<vector<long int> > &sect_domain_hybrid, vector<Point_3D> &new_cnt, vector<double> &cnts_radius, const vector<int> &n_subregions, const MathMatrix &seed_multiplier, const double &cnt_rad, const double  &cnt_length, const int &penetrating_model_flag, int &point_overlap_count, int &point_overlap_count_unique, int &cnt_reject_count, mt19937 &engine_sita, mt19937 &engine_pha, uniform_real_distribution<double> &dist)const
 {
     //Initialize the multiplier matrix with the initial rotation
     MathMatrix multiplier = seed_multiplier;
@@ -3297,7 +3297,7 @@ int GenNetwork::Grow_single_cnt_on_gnp(const struct Geom_sample &geom_sample, co
     return 1;
 }
 //This functions adds to the global structure the CNTs generated for a hybrid particle
-int GenNetwork::Add_CNTs_to_hybrid_structure(const struct Geom_sample &geom_sample, const vector<vector<Point_3D> > &particle, vector<Point_3D> &new_cnt, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, const vector<int> &n_subregions, const double &overlap_max_cutoff)const
+int Generate_Network::Add_CNTs_to_hybrid_structure(const struct Geom_sample &geom_sample, const vector<vector<Point_3D> > &particle, vector<Point_3D> &new_cnt, vector<vector<int> > &global_coord_hybrid, vector<vector<long int> > &sect_domain_hybrid, const vector<int> &n_subregions, const double &overlap_max_cutoff)const
 {
     int CNT_number = (int)particle.size();
     //Loop over the generated CNTs, i.e. over particle.size()
@@ -3316,7 +3316,7 @@ int GenNetwork::Add_CNTs_to_hybrid_structure(const struct Geom_sample &geom_samp
     return 1;
 }
 //This functions adds to the global structure the CNTs generated for a hybrid particle
-int GenNetwork::Add_CNTs_to_global_structure(const struct Geom_sample &geom_sample, const vector<vector<Point_3D> > &particle, vector<vector<Point_3D> > &cnts_points, vector<vector<int> > &global_coordinates, vector<vector<long int> > &sectioned_domain, vector<int> &n_subregions, vector<double> &cnts_radius, double &cnt_rad, double &overlap_max_cutoff, int &penetrating_model_flag)const
+int Generate_Network::Add_CNTs_to_global_structure(const struct Geom_sample &geom_sample, const vector<vector<Point_3D> > &particle, vector<vector<Point_3D> > &cnts_points, vector<vector<int> > &global_coordinates, vector<vector<long int> > &sectioned_domain, vector<int> &n_subregions, vector<double> &cnts_radius, double &cnt_rad, double &overlap_max_cutoff, int &penetrating_model_flag)const
 {
     //Loop over the generated CNTs, i.e. over particle.size()
     for (int j = 0; j < (int)particle.size(); j++) {
@@ -3347,7 +3347,7 @@ int GenNetwork::Add_CNTs_to_global_structure(const struct Geom_sample &geom_samp
     return 1;
 }
 //This function calculates the generated volume and adds it to the global variables
-int GenNetwork::Calculate_generated_volume(const struct GNP_Geo &gnp_geo, const struct cuboid &gvcub, const GCH &hybrid, const vector<vector<Point_3D> > &particle, const double &step_vol_para, const double &step_wei_para, double &vol_sum_cnt, double &wt_sum_cnt, double &vol_sum_gnp, double &wt_sum_gnp, double &vol_sum_tot, double &wt_sum_tot)const
+int Generate_Network::Calculate_generated_volume(const struct GNP_Geo &gnp_geo, const struct cuboid &gvcub, const GCH &hybrid, const vector<vector<Point_3D> > &particle, const double &step_vol_para, const double &step_wei_para, double &vol_sum_cnt, double &wt_sum_cnt, double &vol_sum_gnp, double &wt_sum_gnp, double &vol_sum_tot, double &wt_sum_tot)const
 {
     //Variable to store the total length of CNTs inside the sample
     //Since all nanotubes have the same radius, then only the total length is needed to
@@ -3401,7 +3401,7 @@ int GenNetwork::Calculate_generated_volume(const struct GNP_Geo &gnp_geo, const 
 }
 //---------------------------------------------------------------------------
 //Calculate the effective portion (length) which falls into the given region defined by a cuboid
-double GenNetwork::Effective_length_given_region(const struct cuboid &cub, const Point_3D last_point, const Point_3D new_point)const
+double Generate_Network::Effective_length_given_region(const struct cuboid &cub, const Point_3D last_point, const Point_3D new_point)const
 {
     //Check if the last point is inside the given region
     int last_bool = Point_inside_cuboid(cub, last_point);
@@ -3434,7 +3434,7 @@ double GenNetwork::Effective_length_given_region(const struct cuboid &cub, const
         return 0.0; //if both points are outside
 }
 //This function calculates the generated volume of a GNP and adds it to the global variables
-int GenNetwork::Calculate_generated_gnp_volume(const struct GNP_Geo &gnp_geo, const struct cuboid &gvcub, const GCH &hybrid, double &vol_sum, double &wt_sum)const
+int Generate_Network::Calculate_generated_gnp_volume(const struct GNP_Geo &gnp_geo, const struct cuboid &gvcub, const GCH &hybrid, double &vol_sum, double &wt_sum)const
 {
     //---------------------------------------------------------------------------
     //Add the volume and weight corresponding to the GNP
@@ -3456,7 +3456,7 @@ int GenNetwork::Calculate_generated_gnp_volume(const struct GNP_Geo &gnp_geo, co
     return 1;
 }
 //This function determines if a GNP is close enough to the boundaries
-int GenNetwork::Is_close_to_boundaries(const struct cuboid &gvcub, const GCH &hybrid)const
+int Generate_Network::Is_close_to_boundaries(const struct cuboid &gvcub, const GCH &hybrid)const
 {
     //Calculate half the diagonal of the GNP, i.e. the radius of the sphere that encloses the GNP
     double sum = hybrid.gnp.len_x*hybrid.gnp.len_x + hybrid.gnp.wid_y*hybrid.gnp.wid_y + hybrid.gnp.hei_z*hybrid.gnp.hei_z;
@@ -3475,7 +3475,7 @@ int GenNetwork::Is_close_to_boundaries(const struct cuboid &gvcub, const GCH &hy
     
 }
 //
-int GenNetwork::Approximate_gnp_volume(const struct cuboid &gvcub, const GCH &hybrid, double &gnp_vol)const
+int Generate_Network::Approximate_gnp_volume(const struct cuboid &gvcub, const GCH &hybrid, double &gnp_vol)const
 {
     //---------------------------------------------------------------------------
     //Number of points per side to approximate volume
@@ -3517,7 +3517,7 @@ int GenNetwork::Approximate_gnp_volume(const struct cuboid &gvcub, const GCH &hy
 //This function takes a GNP and generates a discretized version.
 //This dicretized version consists of a vector of points that approximates the six surfaces of the GNP with a square lattice.
 //The distance between points is equal to the step size of the CNTs.
-int GenNetwork::Discretize_gnp(const GCH &hybrid, const double &step, vector<Point_3D> &gnp_discrete)const
+int Generate_Network::Discretize_gnp(const GCH &hybrid, const double &step, vector<Point_3D> &gnp_discrete)const
 {
     
     //The surface is squared, so generate all points in a single line from -l/2 to l/2
@@ -3638,7 +3638,7 @@ int GenNetwork::Discretize_gnp(const GCH &hybrid, const double &step, vector<Poi
 //   b) No need to check for penetration (point is in boundary layer or there are no other points in the same sub-region)
 //   c) There was penetration but it was succesfully resolved
 //0: There was penetration but could not be resolved
-int GenNetwork::Check_penetration_in_gch(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<Point_3D> > &gnps_points, const vector<vector<Point_3D> > &particle, const vector<Point_3D> &gnp_discrete, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<vector<int> > &global_coord_hybrid, const vector<vector<long int> > &sect_domain_hybrid, const vector<double> &radii, const vector<Point_3D> &cnt_new, const vector<int> &n_subregions, const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
+int Generate_Network::Check_penetration_in_gch(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<Point_3D> > &gnps_points, const vector<vector<Point_3D> > &particle, const vector<Point_3D> &gnp_discrete, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<vector<int> > &global_coord_hybrid, const vector<vector<long int> > &sect_domain_hybrid, const vector<double> &radii, const vector<Point_3D> &cnt_new, const vector<int> &n_subregions, const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
 {
     //Get the sub-region the point belongs to
     int subregion = Get_subregion(geom_sample, n_subregions, point);
@@ -3737,7 +3737,7 @@ int GenNetwork::Check_penetration_in_gch(const struct Geom_sample &geom_sample, 
 }
 //This functions iterates over a sub-region and determines if there are any penetrating points
 //If there are penetrating points, they are stored in the vector affected_points
-int GenNetwork::Get_penetrating_points(const vector<vector<Point_3D> > &cnts, const vector<vector<Point_3D> > &gnps_points,  const vector<vector<int> > &global_coordinates, const vector<long int> &subregion_vec, const vector<double> &radii, const double &cnt_rad, const double &d_vdw, const int &hybrid_flag, Point_3D &point, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
+int Generate_Network::Get_penetrating_points(const vector<vector<Point_3D> > &cnts, const vector<vector<Point_3D> > &gnps_points,  const vector<vector<int> > &global_coordinates, const vector<long int> &subregion_vec, const vector<double> &radii, const double &cnt_rad, const double &d_vdw, const int &hybrid_flag, Point_3D &point, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
 {
     //They are just intermediate variables and I only use them to make the code more readable
     long int coord2;
@@ -3800,7 +3800,7 @@ int GenNetwork::Get_penetrating_points(const vector<vector<Point_3D> > &cnts, co
 //This function checks if a given point is below a given cutoff distance
 //If the point is below the given cutoff distance, it is added to the vectors of cutoffs_p and distances
 //which are used to calculate the new position of the overlapping points
-int GenNetwork::Is_below_cutoff(const Point_3D &point_overlap, const Point_3D &point, const double &cutoff_p, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
+int Generate_Network::Is_below_cutoff(const Point_3D &point_overlap, const Point_3D &point, const double &cutoff_p, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
 {
     //Check if the second point is in the cube of size 2cutoff_p and centered in P1
     //This is easier and faster to check than calculating the distance from poin to point every time
@@ -3826,7 +3826,7 @@ int GenNetwork::Is_below_cutoff(const Point_3D &point_overlap, const Point_3D &p
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //Generate a number of ellipsoids
-int GenNetwork::Get_ellip_clusters(const struct cuboid &cub, const struct Agglomerate_Geo &agg_geo)const
+int Generate_Network::Get_ellip_clusters(const struct cuboid &cub, const struct Agglomerate_Geo &agg_geo)const
 {
     double epsilon = 0.01;						//A ratio for extending ellipsoids
     double ellip_volume = 0.0;
@@ -4027,7 +4027,7 @@ int GenNetwork::Get_ellip_clusters(const struct cuboid &cub, const struct Agglom
 }
 //---------------------------------------------------------------------------
 //Print the ellipsoid surfaces by grids
-void GenNetwork::Export_cluster_ellipsoids_mesh(const struct cuboid &cub, const vector<struct elliparam> &ellips)const
+void Generate_Network::Export_cluster_ellipsoids_mesh(const struct cuboid &cub, const vector<struct elliparam> &ellips)const
 {
     ofstream otec("Cluster_Ellipsoid_Mesh.dat");
     otec << "TITLE = Cluster_Ellipsoid_Mesh" << endl;
@@ -4089,7 +4089,7 @@ void GenNetwork::Export_cluster_ellipsoids_mesh(const struct cuboid &cub, const 
 }
 //---------------------------------------------------------------------
 //Export the data of ellipsoid surfaces
-void GenNetwork::Export_cluster_ellipsoids_data(const vector<struct elliparam> &ellips, const double &ellip_ratio)const
+void Generate_Network::Export_cluster_ellipsoids_data(const vector<struct elliparam> &ellips, const double &ellip_ratio)const
 {
     ofstream out("Cluster_Ellipsoids_Data.dat");
     out <<"%The number of clusters and the sum of their volume fraction" << endl;
@@ -4109,7 +4109,7 @@ void GenNetwork::Export_cluster_ellipsoids_data(const vector<struct elliparam> &
 }
 //---------------------------------------------------------------------------
 //Generate a number of sperical clusters in regular arrangement (Increase the number of clusters which cannot be achieved by random distribution)
-int GenNetwork::Get_spherical_clusters_regular_arrangement(const struct cuboid &cub, struct Agglomerate_Geo &agg_geo)const
+int Generate_Network::Get_spherical_clusters_regular_arrangement(const struct cuboid &cub, struct Agglomerate_Geo &agg_geo)const
 {
     int snum = 2;			//The number of spheres on each side of RVE
     double sd_x = 0.5*cub.len_x/snum;
@@ -4209,7 +4209,7 @@ int GenNetwork::Get_spherical_clusters_regular_arrangement(const struct cuboid &
 }
 //---------------------------------------------------------------------------
 //This function checks if a point is inside a cuboid
-int GenNetwork::Point_inside_cuboid(const struct cuboid &cub, const Point_3D &point)const
+int Generate_Network::Point_inside_cuboid(const struct cuboid &cub, const Point_3D &point)const
 {
     if(point.x<cub.poi_min.x||point.x>cub.poi_min.x+cub.len_x||
        point.y<cub.poi_min.y||point.y>cub.poi_min.y+cub.wid_y||
@@ -4223,7 +4223,7 @@ int GenNetwork::Point_inside_cuboid(const struct cuboid &cub, const Point_3D &po
 //---------------------------------------------------------------------------
 //Calculate all intersection points between the new segment and surfaces of RVE
 //(using a parametric equatio:  the parameter 0<t<1, and sort all intersection points from the smaller t to the greater t)
-int GenNetwork::Get_intersecting_point_RVE_surface(const struct cuboid &cub, const Point_3D &point0, const Point_3D &point1, vector<Point_3D> &ipoi_vec)const
+int Generate_Network::Get_intersecting_point_RVE_surface(const struct cuboid &cub, const Point_3D &point0, const Point_3D &point1, vector<Point_3D> &ipoi_vec)const
 {
     double t_temp[6];
     //The planes (surfaces of RVE) perpendicular to X axis
@@ -4296,7 +4296,7 @@ int GenNetwork::Get_intersecting_point_RVE_surface(const struct cuboid &cub, con
 }
 //---------------------------------------------------------------------------
 //Checking the angle between any two segments in each nanotube (if less than PI/2, send error message)
-int GenNetwork::CNTs_quality_testing(const vector<vector<Point_3D> > &cnts_points)const
+int Generate_Network::CNTs_quality_testing(const vector<vector<Point_3D> > &cnts_points)const
 {
     //---------------------------------------------------------------------------
     //Checking the angle between two segments
@@ -4336,7 +4336,7 @@ int GenNetwork::CNTs_quality_testing(const vector<vector<Point_3D> > &cnts_point
 }
 //---------------------------------------------------------------------------
 //Generate the nodes and tetrahedron elements of nanotubes (No const following this function because a sum operation on two Point_3D points inside)
-int GenNetwork::Generate_cnts_nodes_elements(vector<vector<Node> > &nodes, vector<vector<Element> > &eles, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radius)
+int Generate_Network::Generate_cnts_nodes_elements(vector<vector<Node> > &nodes, vector<vector<Element> > &eles, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radius)
 {
     //Looping the generated nanotubes
     for(int i=0; i<(int)cnts_points.size(); i++)
@@ -4450,7 +4450,7 @@ int GenNetwork::Generate_cnts_nodes_elements(vector<vector<Node> > &nodes, vecto
 }
 //---------------------------------------------------------------------------
 //Generate the nodes and tetrahedron elements of nanotubes (No const following this function because a sum operation on two Point_3D points inside). This function uses a 1D point vector and a 2D structure vector that references the point vector
-int GenNetwork::Generate_cnts_nodes_elements(vector<vector<Node> > &nodes, vector<vector<Element> > &eles, const vector<Point_3D> &cnts_points, const vector<double> &cnts_radius, const vector<vector<long int> > &structure)
+int Generate_Network::Generate_cnts_nodes_elements(vector<vector<Node> > &nodes, vector<vector<Element> > &eles, const vector<Point_3D> &cnts_points, const vector<double> &cnts_radius, const vector<vector<long int> > &structure)
 {
     //Looping the generated nanotubes
     for(int i=0; i<(int)structure.size(); i++)
@@ -4573,7 +4573,7 @@ int GenNetwork::Generate_cnts_nodes_elements(vector<vector<Node> > &nodes, vecto
 }
 //---------------------------------------------------------------------------
 //Calculate the angles of a verctor in the spherical coordinate
-int GenNetwork::Get_angles_vector_in_spherial_coordinates(const Point_3D &normal, double &sita, double &pha)const
+int Generate_Network::Get_angles_vector_in_spherial_coordinates(const Point_3D &normal, double &sita, double &pha)const
 {
     if(normal.x==0&&normal.y==0&&normal.z==0) { hout << "Error, three elements of the vector are all zero!" << endl; return 0; }
     sita =  acos(normal.z/sqrt(normal.x*normal.x+normal.y*normal.y+normal.z*normal.z));
@@ -4585,7 +4585,7 @@ int GenNetwork::Get_angles_vector_in_spherial_coordinates(const Point_3D &normal
 }
 //---------------------------------------------------------------------------
 //Calculate a group of equidistant points along the circumference which is on the plane defined by the center point of the circle and the normal vector
-int GenNetwork::Get_points_circle_in_plane(const Point_3D &center, const double &trans_sita, const double &trans_pha, const double &radius, const int &num_sec, vector<Node> &nod_temp)const
+int Generate_Network::Get_points_circle_in_plane(const Point_3D &center, const double &trans_sita, const double &trans_pha, const double &radius, const int &num_sec, vector<Node> &nod_temp)const
 {
     //Insert the center point firstly
     Node new_node(center.x, center.y, center.z);
@@ -4625,7 +4625,7 @@ int GenNetwork::Get_points_circle_in_plane(const Point_3D &center, const double 
 //---------------------------------------------------------------------------
 //Calculate a group of projected points (which are on the plane with the center point of the circle and the normal vector) 
 //which are projected from a group of points on the previous circumference and projected along the direction of line_vec
-int GenNetwork::Get_projected_points_in_plane(const Point_3D &center, const Point_3D &normal, const Point_3D &line, const int &num_sec, vector<Node> &nod_temp)const
+int Generate_Network::Get_projected_points_in_plane(const Point_3D &center, const Point_3D &normal, const Point_3D &line, const int &num_sec, vector<Node> &nod_temp)const
 {
     //Record the total number of nodes after the previous generation
     const int nod_size = (int)nod_temp.size();  
@@ -4658,7 +4658,7 @@ int GenNetwork::Get_projected_points_in_plane(const Point_3D &center, const Poin
 }
 //---------------------------------------------------------------------------
 //Transform the 2D cnts_points into 1D cpoints and 2D cstructures
-int GenNetwork::Transform_points_gnps(const Geom_sample &geom_sample, const struct GNP_Geo &gnp_geo, vector<vector<Point_3D> > &gnp_points, vector<Point_3D> &gpoints, vector<vector<long int> > &gstructures)const
+int Generate_Network::Transform_points_gnps(const Geom_sample &geom_sample, const struct GNP_Geo &gnp_geo, vector<vector<Point_3D> > &gnp_points, vector<Point_3D> &gpoints, vector<vector<long int> > &gstructures)const
 {
     //Variable to count the point numbers
     long int point_count = 0;

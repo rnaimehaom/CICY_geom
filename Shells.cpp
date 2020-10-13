@@ -5,7 +5,7 @@
 //E-MAIL:       angel.mora@cicy.mx
 //===========================================================================
 
-#include "Background_vectors.h"
+#include "Shells.h"
 
 /*
  
@@ -31,7 +31,7 @@
  
  */
 
-int Background_vectors::Generate_shells(const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<GNP> &gnps, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnps)
+int Shells::Generate_shells(const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<GNP> &gnps, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnps)
 {
     //Calculate the number of shells
     //sample.cut_num is the number of increments from the smallest to the largest observation widows
@@ -85,7 +85,7 @@ int Background_vectors::Generate_shells(const struct Geom_sample &sample, const 
 }
 //This function finds shell sub-region where a point is located.
 //Then it adds the CNT number to the corresponding shell in the 2D vector shells_cnt
-int Background_vectors::Add_to_cnt_shells(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const Point_3D &point, const int &n_shells, vector<vector<int> > &shells_cnt)
+int Shells::Add_to_cnt_shells(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const Point_3D &point, const int &n_shells, vector<vector<int> > &shells_cnt)
 {
     
     //Find the shell that corresponds to the point
@@ -105,7 +105,7 @@ int Background_vectors::Add_to_cnt_shells(const double midpoints[], const double
 }
 //This function finds the shell to which one point belongs to
 //So it uses three times the function that finds the shell to which one coordinate belongs to
-int Background_vectors::Find_minimum_shell(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const Point_3D &point, const int &n_shells)
+int Shells::Find_minimum_shell(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const Point_3D &point, const int &n_shells)
 {
     //Find the shell based on the x coordinate
     //hout << "x_in=";
@@ -124,7 +124,7 @@ int Background_vectors::Find_minimum_shell(const double midpoints[], const doubl
     return shell;
 }
 //This function finds the shell to which one coordinate belongs to
-int Background_vectors::Find_shell(const double &x_in, const double &x_m, const double &x_layer, const double &x_core, const double &dx_half, const int &n_shells)
+int Shells::Find_shell(const double &x_in, const double &x_m, const double &x_layer, const double &x_core, const double &dx_half, const int &n_shells)
 {
     
     //Effective coordinate
@@ -154,7 +154,7 @@ int Background_vectors::Find_shell(const double &x_in, const double &x_m, const 
     }
 }
 //This function finds the shell sub-regions that a GNP occupies.
-int Background_vectors::Add_to_gnp_shells(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const GNP &gnp, const int &n_shells, vector<vector<int> > &shells_gnp)
+int Shells::Add_to_gnp_shells(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const GNP &gnp, const int &n_shells, vector<vector<int> > &shells_gnp)
 {
     //Variables to store the minimum and moximum shell numbers that the GNP occupies
     //Minimum and maximum shell numbers are initialized with the first shell

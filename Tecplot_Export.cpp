@@ -248,7 +248,7 @@ int Tecplot_Export::Export_cnt_network_meshes(const int &zone_flag, const struct
 	vector<vector<Element> > cnts_eles;
 
 	//Define a class of GenNetwork for calling for the function below
-	GenNetwork *Gentemp = new GenNetwork;
+	Generate_Network *Gentemp = new Generate_Network;
 	if(Gentemp->Generate_cnts_nodes_elements(cnts_nodes, cnts_eles, cnts_points, cnts_radius)==0) return 0;
 	delete Gentemp;
     
@@ -391,7 +391,7 @@ int Tecplot_Export::Export_network_meshes(const struct cuboid &cub, const int &n
     if (cnt_clusters.size() && cnt_clusters[n_cluster].size()) {
         //Define a class of GenNetwork for calling for the function below
         //hout << "Define a class of GenNetwork for calling for the function below" << endl;
-        GenNetwork *Gentemp = new GenNetwork;
+        Generate_Network *Gentemp = new Generate_Network;
         if(!Gentemp->Generate_cnts_nodes_elements(cnts_nodes, cnts_eles, cnts_points, cnts_radius, structure)) {
             hout << "Error in Export_cnt_network_meshes when calling Generate_cnts_nodes_elements" << endl;
             return 0;
