@@ -42,6 +42,18 @@ struct Simu_para{
     string particle_type;
     //Seeds (positive integers) for the random number generators to generate a CNT and GNP networks
     vector<unsigned int> CNT_seeds, GNP_seeds;
+    //Criterion to measure nanotube content: vol, wt
+    string criterion;
+    //Variables to store the volume and weight fractions
+    double volume_fraction, weight_fraction;
+    //Criterion for relationship of CNT to GNP content: mr, dens
+    string mixed;
+    //Mass ratio for mixed or hybrid particles
+    double mass_ratio;
+    //Mass ratio for mixed or hybrid particles
+    double volume_ratio;
+    //CNT density on GNPs
+    double cnt_gnp_densinty;
 };
 //The geometry of the sample
 struct Geom_sample{
@@ -112,21 +124,36 @@ struct Nanotube_Geo{
 struct GNP_Geo{
     string keywords;
     bool mark;
-    string criterion;					//Define the volume or weight fraction of GNPs in the sample: vol, wt
-    string growth_type;                 //Define if the generation of the CNTs on the GNP surface should be parallel or independent
-    string orient_distrib_type;			//Define the GNP orientation type (random or specific) in a sample
-    string size_distrib_type;			//Define the distribution type (uniform or normal) of the length (unit: micrometer) of GNP
-    string thick_distrib_type;			//Define the distribution type (uniform or normal) of the thickness (unit: micrometer) of GNP
-    double discr_step_length;                 //Define the step length (unit: micromether) for discretization of the GNP
-    double ini_theta, ini_phi;			//Define initial GNP orientation for 'specific' type the spherical coordinates
-    double len_min, len_max;            //Define the length range (min, max) for the width and length of the GNP surface
-    double t_min, t_max;                //Define the thickness range (min,max) of the GNP
-    double mass_ratio;                  //Define the CNT/GNP mass ratio
-    double volume_fraction;             //Define the volume fraction of GNPs
-    double real_volume;                 //Define the real volume of GNPs
-    double weight_fraction;             //Define the weight fraction of GNPs
-    double real_weight;                 //Define the real weight of GNPs
-    double density;                     //Define the density of GNPs
+    //Criterion to measure nanotube content: vol, wt
+    string criterion;				
+    //CNT growth type on GNP surfaces (parallel or independent)
+    string growth_type;
+    //GNP orientation type (random or specific)
+    string orient_distrib_type;
+    //Length distribution type (uniform or normal)
+    string size_distrib_type;
+    //Thickness distribution type (uniform or normal)
+    string thick_distrib_type;
+    //Step length (unit: micromether) for discretization of the GNP
+    double discr_step_length;
+    //Angles for initial direction (used for 'specific' growth direction)
+    double ini_theta, ini_phi;
+    //GNP length range (min,max)
+    double len_min, len_max;
+    //GNP thickness range (min,max)
+    double t_min, t_max;
+    //CNT/GNP mass ratio
+    double mass_ratio;
+    //GNp volume fraction
+    double volume_fraction;
+    //Volume of GNPs inside the sample
+    double volume;
+    //GNP weight fraction
+    double weight_fraction;
+    //Weight of GNPs inside the sample
+    double weight;
+    //GNP density
+    double density;
 };
 //The parameters of nanotube agglomerates
 struct Agglomerate_Geo{

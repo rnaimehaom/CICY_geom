@@ -342,6 +342,75 @@ int Input::Read_simulation_parameters(struct Simu_para &simu_para, ifstream &inf
             }
         }
     }
+    //If the network is created, then read the amount of nanoparticles inside the sample
+    else if (simu_para.create_read_network=="Create_Network") {
+        
+        //Read the line with the content
+        istringstream istr_content(Get_Line(infile));
+        istr_content >> simu_para.criterion;
+        //
+        if(simu_para.criterion=="vol") {
+            istr_content >> simu_para.volume_fraction;
+
+            if(simu_para.volume_fraction > 1||simu_para.volume_fraction < Zero){
+                hout << "Error: The volume fraction must be between 0 and 1. Input was: "<<simu_para.volume_fraction<<endl; return 0;
+            }
+            else if(simu_para.criterion=="wt")
+            {
+                istr_content >> simu_para.weight_fraction;
+
+                if(simu_para.weight_fraction > 1||simu_para.weight_fraction < Zero) {
+                    hout << "Error: The weight fraction must be between 0 and 1. Input was:"<<simu_para.weight_fraction<< endl; return 0;
+                }
+            }
+            else {
+                hout << "Error: The content of nanoparticles can only be specified in volume (vol) or weight (wt) fraction. Input was: "<<simu_para.criterion<< endl; return 0;
+            }
+        }
+    }
+    
+    //If mixed or hybrid particles were selected, then check if mass ratio or CNT density on GNPs
+    //is specified
+    if (simu_para.particle_type == "Hybrid_particles" || simu_para.particle_type == "GNP_CNT_mix") {
+        istringstream istr_mixed(Get_Line(infile));
+        istr_mixed >> simu_para.mixed;
+        
+        //Check if mass ratio is defined
+        if (simu_para.mixed == "mass_ratio") {
+            
+            //Read the mass ratio
+            istr_mixed >> simu_para.mass_ratio;
+            if (simu_para.mass_ratio < Zero) {
+                hout << "Error: The CNT/GNP mass ratio must be positive. Input was: "<<simu_para.mass_ratio<< endl; return 0;
+            }
+        }
+        //Check if volume ratio is defined
+        if (simu_para.mixed == "volume_ratio") {
+            
+            //Read the volume ratio
+            istr_mixed >> simu_para.volume_ratio;
+            if (simu_para.volume_ratio < Zero) {
+                hout << "Error: The CNT/GNP volume ratio must be positive. Input was: "<<simu_para.volume_ratio<< endl; return 0;
+            }
+        }
+        //Check if CNT density on GNPs is defined
+        else if (simu_para.mixed == "density") {
+            
+            //These options are only valid for hybrid particles, so double check the particle type
+            if (simu_para.particle_type != "Hybrid_particles") {
+                hout << "Error: The CNT density on GNPs must can only specified for hybrid particles. It was specified for mixed particles."<< endl; return 0;
+            }
+            
+            //Read the CNT density
+            istr_mixed >> simu_para.cnt_gnp_densinty;
+            if (simu_para.cnt_gnp_densinty < Zero) {
+                hout << "Error: The CNT density on GNPs must be positive. Input was: "<<simu_para.cnt_gnp_densinty<< endl; return 0;
+            }
+        }
+        else {
+            hout << "Error: The relative content of nanoparticles can only be specified in mass ratio (mr) or CNT density on GNPs (dens). Input was: "<<simu_para.mixed<< endl; return 0;
+        }
+    }
     
     //Flag that defines whether the non-penetrating or penetrating model is used
     istringstream istr_pm_flag(Get_Line(infile));
@@ -609,35 +678,52 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
         return 0;
     }
     
-    //----------------------------------------------------------------------
-	//Read how the CNT content is measured (volume or weight fraction)
-	istringstream istr6(Get_Line(infile));
-    istr6 >> nanotube_geo.criterion;
-	if(nanotube_geo.criterion=="vol")
-	{
-        istr6 >> nanotube_geo.volume_fraction;
+    //---------------------------------------------------------------------------------------
+    //If only CNTs are to be generated, then copy directly the CNT content
+    if (simu_para.particle_type == "CNT_wires") {
         
-		if(nanotube_geo.volume_fraction > 1||nanotube_geo.volume_fraction < Zero){
-            hout << "Error: The volume fraction must be between 0 and 1. Input was: "<<nanotube_geo.volume_fraction<<endl; return 0;
+        //Copy the criterion for measuring content
+        nanotube_geo.criterion = simu_para.criterion;
+        
+        if(nanotube_geo.criterion=="vol")
+        {
+            nanotube_geo.volume_fraction = simu_para.volume_fraction;
+            hout << "    The CNT volume fraction is "<< nanotube_geo.volume_fraction << endl;
+            
+            //Calcualte the total volume of (required) CNTs in the sample
+            nanotube_geo.volume = nanotube_geo.volume_fraction*geom_sample.volume;
         }
-		hout << "    The CNT volume fraction is "<< nanotube_geo.volume_fraction << endl;
-        
-		//Calcualte the total volume of (required) CNTs in the sample
-		nanotube_geo.volume = nanotube_geo.volume_fraction*geom_sample.volume;
-	}
-	else if(nanotube_geo.criterion=="wt")
-	{
-        istr6 >> nanotube_geo.weight_fraction;
-        
-		if(nanotube_geo.weight_fraction > 1||nanotube_geo.weight_fraction < Zero) {
-            hout << "Error: The weight fraction must be between 0 and 1. Input was:"<<nanotube_geo.weight_fraction<< endl; return 0;
+        else if(nanotube_geo.criterion=="wt")
+        {
+            nanotube_geo.weight_fraction = simu_para.weight_fraction;
+            hout << "    The weight fraction is " << nanotube_geo.weight_fraction << endl;
+            
+            //Calculate actual weight of nanotubes
+            nanotube_geo.weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
         }
-		hout << "    The weight fraction is " << nanotube_geo.weight_fraction << endl;
+    }
+    //If mixed or hybrid particles are generated, calculate the fraction using the mass/volume ratio
+    else if (simu_para.particle_type == "GNP_CNT_mix" || simu_para.particle_type == "Hybrid_particles") {
         
-		//Calculate actual weight of nanotubes
-		nanotube_geo.weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
-	}
-	else { hout << "Error: The content of nanotubes can only be specified in volume (vol) or weight (wt) fraction. Input was: "<<nanotube_geo.criterion<< endl; return 0;
+        //Check what is the criterion for mixed/hybrid particles
+        if (simu_para.criterion == "mass_ratio") {
+            
+            //Set the criterion as weight fraction
+            nanotube_geo.criterion = "wt";
+            
+            //Calculate the weight of GNPs from mass ratio
+            nanotube_geo.weight = simu_para.mass_ratio*simu_para.weight_fraction*geom_sample.volume*geom_sample.matrix_density/(simu_para.mass_ratio + 1.0);
+        }
+        else if (simu_para.criterion == "volume_ratio") {
+            
+            //Set the criterion as volume fraction
+            nanotube_geo.criterion = "vol";
+            
+            //Calculate the volume of GNPs from volume ratio
+            nanotube_geo.volume = simu_para.volume_ratio*simu_para.volume_fraction*geom_sample.volume/(simu_para.volume_ratio + 1.0);
+            
+        }
+        //If density is selected, the amount of CNTs is determined at generation time
     }
     
     //Get the geometry of the extended domain for CNTs
@@ -805,170 +891,75 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
         return 0;
     }
     
-    //----------------------------------------------------------------------
-    //Define how the GNP content is measured (volume or weight fraction)
-    istringstream istr7(Get_Line(infile));
-    istr7 >> gnp_geo.criterion;
-    if(gnp_geo.criterion=="vol")
-    {
-        //Check the particle type
-        //If mixed CNTs+GNPs or hybrid particles are used, then the fraction of GNPs needs to be calculated from the CNT fraction
-        //Then the CNT fraction needs to be adjusted
-        if (simu_para.particle_type == "GNP_CNT_mix" ) {
-            
-            if (nanotube_geo.criterion != "vol") {
-                hout << "Error: When the particle type is "<<simu_para.particle_type<<", CNT content and GNP content must be measured in the same way. CNT content is measured in  "<<nanotube_geo.criterion<<",  GNP content is measured in "<<gnp_geo.criterion<< endl;
-                return 0;
-            }
-            
-            //The volume fraction input for CNTs is now the total carbon volume fraction
-            double total_vol_frac = nanotube_geo.volume_fraction;
-            
-            //Calculate the GNP volume fraction from the total carbon volume fraction
-            gnp_geo.volume_fraction = nanotube_geo.density*total_vol_frac/(gnp_geo.mass_ratio*gnp_geo.density + nanotube_geo.density);
-            
-            //Adjust the CNT volume fraction
-            nanotube_geo.volume_fraction = total_vol_frac - gnp_geo.volume_fraction;
-            
-            //Adjust the total nanotube volume
-            nanotube_geo.volume = nanotube_geo.volume_fraction*geom_sample.volume;
-            
-            hout << "    Given the CNT/GNP mass ratio of " << gnp_geo.mass_ratio << ", the CNT volume fraction was adjusted to " << nanotube_geo.volume_fraction << endl;
-            hout << "    The GNP volume fraction is " << gnp_geo.volume_fraction <<endl;
-        }
-        else if(simu_para.particle_type == "Hybrid_particles") {
-            
-            //The volume fraction input for CNTs is now the total carbon volume fraction
-            double total_vol_frac = nanotube_geo.volume_fraction;
-            
-            //Calculate the GNP volume fraction
-            gnp_geo.volume_fraction = nanotube_geo.density*total_vol_frac/(gnp_geo.mass_ratio*gnp_geo.density + nanotube_geo.density);
-            
-            //NOTE: I AM NOT SURE WHY THIS ADJUSTMENT IS NOT DONE FOR HYBRID PARTICLES
-            //FOR SOME REASON I KEEP THE TOTAL CARBON CONTENT IN nanotube_geo.volume_fraction
-            //(LOOK AT HOW THE OUTPUT FOR CNT VOLUME FRACTION IS DONE)
-            //PROBABLY THE ANSWER TO THIS IS IN THE CODE FOR GENERATING HYBRID PARTICLES
-            //I WILL LEAVE THE CODE LIKE THIS FOR NOW (10-SEPT-2020)
-            //[SEE NOTES BELOW for 'wt' and 'dens']
-            //Adjust the CNT volume fraction
-            //nanotube_geo.volume_fraction = nanotube_geo.volume_fraction - gnp_geo.volume_fraction;
-            
-            //Adjust the total volume of the nanotube network
-            //nanotube_geo.real_volume = nanotube_geo.volume_fraction*geom_sample.volume;
-            
-            hout << "    Given the CNT/GNP mass ratio of " << gnp_geo.mass_ratio << ", the CNT volume fraction is " << (nanotube_geo.volume_fraction - gnp_geo.volume_fraction) << endl;
-            hout << "    The GNP volume fraction is " << gnp_geo.volume_fraction <<endl;
-            
-        }
-        else {
-            
-            istr7 >> gnp_geo.volume_fraction;
-            //Check that the volume fraction is between 0 and 1
-            if(gnp_geo.volume_fraction>1||gnp_geo.volume_fraction<Zero) {
-                hout << "Error: The volume fraction must be between 0 and 1. Input was: "<<gnp_geo.volume_fraction<< endl;
-                return 0;
-            }
-            
-        }
+    //---------------------------------------------------------------------------------------
+    //Compute the volume/weight fraction
+    
+    //If only GNPs are to be generated, then copy directly the CNT content
+    if (simu_para.particle_type == "GNP_cuboids") {
         
-        //Calculate the actual volume of GNPs
-        gnp_geo.real_volume = gnp_geo.volume_fraction*geom_sample.volume;
-    }
-    else if(gnp_geo.criterion=="wt")
-    {
+        //Copy the criterion for measuring content
+        gnp_geo.criterion = simu_para.criterion;
         
-        //Check the particle type
-        //If mixed CNTs+GNPs or hybrid particles are used, then the fraction of GNPs needs to be calculated from the CNT fraction
-        //Then the CNT fraction needs to be adjusted
-        if (simu_para.particle_type == "GNP_CNT_mix" || simu_para.particle_type == "Hybrid_particles") {
+        if (gnp_geo.criterion=="vol")
+        {
             
-            //The weight fraction input for CNTs is now the total carbon weight fraction
-            double total_wt_frac = nanotube_geo.weight_fraction;
+            gnp_geo.volume_fraction = simu_para.volume_fraction;
+            hout << "    The GNP volume fraction is "<< gnp_geo.volume_fraction << endl;
             
-            //Calculate the GNP weight fraction
-            gnp_geo.weight_fraction = total_wt_frac/(1+gnp_geo.mass_ratio);
-            
-            //NOTE: FOR WEIGHT FRACTION I DO THIS ADJUSTMENT BELOW FOR BOTH MIXED PARTICLES AND HYBRID
-            //PARTICLES. IS IT AN ERROR IN THE SENSE THAT SINCE I DID NOT USE WEIGHT FRACTION THEN I
-            //FORGOT TO CORRECT IT HERE? OR THE ERROR IS IN VOL?
-            //AS IN THE NOTE BEFORE, PROBABLY THE ANSWER IS IN THE CODE FOR GENERATION OF HYBRID
-            //PARTICLES (10-SEP-2020)
-            //Adjust the CNT weight fraction
-            nanotube_geo.weight_fraction = total_wt_frac - gnp_geo.weight_fraction;
-            //Adjust the real weight of nanotubes
-            nanotube_geo.weight = nanotube_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
-            
-            hout << "    Given the CNT/GNP mass ratio of " << gnp_geo.mass_ratio << ", the CNT weight fraction was adjusted to " << nanotube_geo.weight_fraction << endl;
-            hout << "    The GNP weight fraction is " << gnp_geo.weight_fraction <<endl;
-        } else {
-            
-            istr7 >> gnp_geo.weight_fraction;
-            if(gnp_geo.weight_fraction>1||gnp_geo.weight_fraction<0){
-                hout << "Error: the weight fraction must be between 0 and 1." << endl; return 0;
-            }
-            hout << "    The weight fraction is " << gnp_geo.weight_fraction << endl;
+            //Calculate the actual volume of GNPs
+            gnp_geo.volume = gnp_geo.volume_fraction*geom_sample.volume;
         }
-        
-        //Calculate the actual weight of GNPs
-        gnp_geo.real_weight = gnp_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
-    }
-    else if(gnp_geo.criterion=="dens") {
-        
-        if(simu_para.particle_type == "Hybrid_particles")  {
-            
-            double CNT_dens;
-            istr7 >> CNT_dens;
-            
-            if (CNT_dens<=Zero) {
-                hout << "Error: CNT density per unit are must be greater than zero. Input was: "<< CNT_dens<< endl;
-                return 0;
-            }
-            
-            //Calculate the mass ratio from the CNT density and CNT density per unit area
-            //Use the smallest CNT geometry and largest GNP thickness to minimize mas ratio M
-            //A minimum M will result in a maximum volume of GNP
-            double M = 2*nanotube_geo.density*PI*nanotube_geo.rad_min*nanotube_geo.rad_min*nanotube_geo.len_min*CNT_dens;
-            M = M/(gnp_geo.density*gnp_geo.t_max);
-            
-            hout << "Calculated mass ratio is " << M << endl;
+        else if (gnp_geo.criterion=="wt")
+        {
 
+            gnp_geo.weight_fraction = simu_para.weight_fraction;
+            hout << "    The GNP weight fraction is "<< gnp_geo.weight_fraction << endl;
             
-            //NOTE: IT SEEMS THAT HERE I KEEP THE TOTAL CNT CONTENT IN nanotube_geo.volume_fraction
-            //IN CONTRAST TO WHAT WAS OBSERVED IN THE NOTE ABOVE (10-SEP-2020)
-            if (nanotube_geo.criterion=="vol") {
-                
-                //Calculate the GNP volume fraction
-                gnp_geo.volume_fraction = nanotube_geo.volume_fraction*nanotube_geo.density/(M*gnp_geo.density);
-            }
-            else {
-                
-                //At this point of the code for sure nanotube_geo.criterion is either 'vol' or 'wt'
-                
-                //Calculate the GNP weight fraction
-                gnp_geo.weight_fraction = nanotube_geo.weight_fraction/M;
-            }
-            
-            
-        }
-        else {
-            hout << "Error: When GNP content is specified in 'dens', particle type can only be 'Hybrid_particles'. Particle type was: "<< simu_para.particle_type << endl;
-            return 0;
+            //Calculate the actual weight of GNPs
+            gnp_geo.weight = gnp_geo.weight_fraction*geom_sample.volume*geom_sample.matrix_density;
         }
     }
-    else {
-        hout << "Error: GNP content can only be specified in 'vol', 'wt' or from 'dens'. Input was: "<< gnp_geo.criterion << endl;
-        return 0;
+    //If mixed or hybrid particles are generated, calculate the fraction using the mass/volume ratio
+    else if (simu_para.particle_type == "GNP_CNT_mix" || simu_para.particle_type == "Hybrid_particles") {
+        
+        //Check what is the criterion for mixed/hybrid particles
+        if (simu_para.criterion == "mass_ratio") {
+            
+            //Set the criterion as weight fraction
+            gnp_geo.criterion = "wt";
+            
+            //Calculate the weight of GNPs from mass ratio
+            gnp_geo.weight = simu_para.weight_fraction*geom_sample.volume*geom_sample.matrix_density/(simu_para.mass_ratio + 1.0);
+        }
+        else if (simu_para.criterion == "volume_ratio") {
+            
+            //Set the criterion as volume fraction
+            gnp_geo.criterion = "vol";
+            
+            //Calculate the volume of GNPs from volume ratio
+            gnp_geo.volume = simu_para.volume_fraction*geom_sample.volume/(simu_para.volume_ratio + 1.0);
+            
+        }
+        else if (simu_para.criterion == "density") {
+            
+            //Set the criterion as volume fraction
+            gnp_geo.criterion = "vol";
+            
+            //Calculate the volume ratio using the smallest CNT geometry and largest GNP geometry
+            double vol_ratio = 2*simu_para.cnt_gnp_densinty*PI*nanotube_geo.rad_min*nanotube_geo.rad_min*nanotube_geo.len_min/gnp_geo.t_max;
+            
+            //Calculate the GNP volume using the calculated volume ratio
+            gnp_geo.volume = simu_para.volume_fraction*geom_sample.volume/(vol_ratio + 1.0);
+        }
     }
     
+    //---------------------------------------------------------------------------------------
     //Get the geometry of the extended domain for GNPs
-    /*geom_sample.ex_dom_gnp.poi_min = geom_sample.origin - Point_3D(gnp_geo.len_max/2,gnp_geo.len_max/2,gnp_geo.len_max/2);
-    geom_sample.ex_dom_gnp.len_x = geom_sample.len_x + gnp_geo.len_max;
-    geom_sample.ex_dom_gnp.wid_y = geom_sample.wid_y + gnp_geo.len_max;
-    geom_sample.ex_dom_gnp.hei_z = geom_sample.hei_z + gnp_geo.len_max;*/
-    geom_sample.ex_dom_gnp.poi_min = geom_sample.origin;
-    geom_sample.ex_dom_gnp.len_x = geom_sample.len_x;
-    geom_sample.ex_dom_gnp.wid_y = geom_sample.wid_y;
-    geom_sample.ex_dom_gnp.hei_z = geom_sample.hei_z;
+    double len_max_halved = gnp_geo.len_max/2.0;
+    geom_sample.ex_dom_gnp.poi_min = geom_sample.origin - Point_3D(len_max_halved,len_max_halved,len_max_halved);
+    geom_sample.ex_dom_gnp.len_x = geom_sample.len_x + len_max_halved;
+    geom_sample.ex_dom_gnp.wid_y = geom_sample.wid_y + len_max_halved;
+    geom_sample.ex_dom_gnp.hei_z = geom_sample.hei_z + len_max_halved;
     geom_sample.ex_dom_gnp.volume = geom_sample.ex_dom_gnp.len_x*geom_sample.ex_dom_gnp.wid_y*geom_sample.ex_dom_gnp.hei_z;
     
     //Determine the overlapping of the overlapping sub-regions
@@ -976,7 +967,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
         
         //If only GNPs are specified, use the GNP overlapping, which is only the var de Waals
         //distance since the points of a GNP discretization are on its surfaces
-        geom_sample.gs_overlap = geom_sample.gs_minx/(2.0*sqrt(2.0));
+        geom_sample.gs_overlap = geom_sample.gs_minx/(sqrt(8.0));
     }
     //If CNTs are also generated, use the overlapping specified for them since it is larger
     

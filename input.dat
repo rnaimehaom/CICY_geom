@@ -23,15 +23,26 @@ Test
 Hybrid_particles
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %This keyword defines if the nanoparticle network is created or read from a file.
-%There are three possible options: 'Create_Network', 'Read_Network', and 'Network_From_Seeds'
-%Create_Network: to generate a new structure
+%There are three possible options: 'Read_Network', 'Create_Network', and 'Network_From_Seeds'
 %Read_Network: to read the data of network from a file
+%Create_Network: to generate a new structure. In the next line content is specified and, for
+%    mixed or hybrid particles, mass ratio or CNTs density on GNPs.
+%    Define how content is measured (volume or weight fraction)
+%    vol: for volume fraction, especify the value after 'vol', for example: vol 0.01
+%    wt: for weight fraction, especify the value after 'wt', for example: wt 0.005
+%    For mixed or hybrid particles, in the next line define the CNT/GNP mass ratio,
+%    volume ratio, or CNT density on GNPs
+%    mass_ratio: CNT/GNP mass ratio, for example: mass_ratio 1.0
+%    volume_ratio: CNT/GNP volume ratio, for example: volume_ratio 1.0
+%    density: number of CNTs per micron squared on GNPs [CNTs/micron2], for example: density 200
+%             NOTE: 'density' option is only valid for Hybrid_particles
 %Network_From_Seeds: to generate a new structure from specific seeds (positive integers) for the
-%random number generators. All seeds need to be specified in the next line separated by a space
-%For CNTs 7 seeds are needed. For GNPs 6 seeds are needed.
-%If both CNTs and GNPs are generated (GNP_CNT_mix or Hybrid_particles), CNT seeds are input first
-%in one line and GNP seeds in the next line.
+%    random number generators. All seeds need to be specified in the next line separated by a space
+%    For CNTs 7 seeds are needed. For GNPs 6 seeds are needed.
+%    If both CNTs and GNPs are generated (GNP_CNT_mix or Hybrid_particles), CNT seeds are input
+%    first in one line and GNP seeds in the next line.
 Create_Network
+vol 0.001000
 %Indicate if non-penetrating model is used or no
 % 1: Use non-penetrating model
 % 0: Use penetrating model
@@ -123,12 +134,6 @@ points 5
 uniform 0.005000 0.005000
 %Define the density of the CNTs (in gr/micron^3)
 1.78e-12
-%------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define how the CNT content is measured (volume or weight fraction)
-%vol: for volume fraction, especify the value after 'vol', for example: vol 0.01
-%wt: for weight fraction, especify the value after 'wt', for example: wt 0.005
-%wt 0.005
-vol 0.001000
 %--------------------------------End
 %
 %
@@ -188,16 +193,6 @@ uniform 0.03 0.03
 1.0
 %Define the GNP density  (in gr/micron^3)
 2.25e-12
-%------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define how the GNP content is measured (volume, weight fraction or by the CNTs density per unit area)
-%vol: for volume fraction, especify the value after 'vol', for example: vol 0.01
-%wt: for weight fraction, especify the value after 'wt', for example: wt 0.01
-%dens: for the CNT density per unit area in [CNTs/micron2], for example: dens 200
-%      NOTE: 'dens' option is only valid when Hybrid_particles is selected as particle type
-%      NOTE: 'dens' option will result in recalculating the mass ratio, input value for mass ratio will be ignored,
-%            and with the new mass ratio the volume/weight fraction of GNPs is calculated
-%wt 0.005
-vol 0.001000
 %--------------------------------End
 %
 %========================================================================================================

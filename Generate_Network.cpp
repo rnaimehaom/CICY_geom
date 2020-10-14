@@ -1687,7 +1687,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
     bool wt_crit = gnp_geo.criterion == "wt";
     
     //---------------------------------------------------------------------------
-    while( (vol_crit&&gnp_vol_tot < gnp_geo.real_volume) || (wt_crit&&gnp_wt_tot < gnp_geo.real_weight) )
+    while( (vol_crit&&gnp_vol_tot < gnp_geo.volume) || (wt_crit&&gnp_wt_tot < gnp_geo.weight) )
     {
         //---------------------------------------------------------------------------
         //Generate a GNP
