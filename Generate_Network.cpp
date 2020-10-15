@@ -56,7 +56,11 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     //---------------------------------------------------------------------------
     //Transform the 2D cnts_points into 1D cpoints and 2D cstructures
     if(Transform_points_cnts(geom_sample, nanotube_geo, cnts_points, cpoints, cnts_radius_in, cnts_radius_out, cstructures)==0) {
-        hout<<"Error in Transform_points for CNTs."<<endl;return 0;}
+        hout<<"Error in Transform_points for CNTs."<<endl; return 0;
+    }
+    if (!Recalculate_vol_fraction_cnts(geom_sample, simu_para, nanotube_geo, cpoints, cnts_radius_out, cstructures)) {
+        hout<<"Error in Recalculate_vol_fraction_cnts."<<endl; return 0;
+    }
     
     //---------------------------------------------------------------------------
     //Check if Tecplot visualization files were requested for CNTs
@@ -140,7 +144,6 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
     //---------------------------------------------------------------------------
     //Variables for the generated CNT volume and weight
     double vol_sum = 0;
-    double wt_sum = 0;
     
     //Variable to count the generated CNT seeds
     int cnt_seed_count = 0;
@@ -168,16 +171,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
     //Define cutoff for overlapping
     double overlap_max_cutoff = 2*nanotube_geo.rad_max + cutoffs.van_der_Waals_dist;
     //Initialize the vector sub-regions
-    Initialize_subregions(geom_sample, n_subregions, sectioned_domain);
-    
-    //Generate cuboids that represent the extended domain and the composite domain
-    //To calculate the effective portion (length) which falls into the given region (RVE)
-    struct cuboid gvcub;                    //generate a cuboid to represent the composite domain
-    gvcub.poi_min = geom_sample.origin;
-    gvcub.len_x = geom_sample.len_x;
-    gvcub.wid_y = geom_sample.wid_y;
-    gvcub.hei_z = geom_sample.hei_z;
-    gvcub.volume = geom_sample.volume;
+    Initialize_subregions(geom_sample, n_subregions, sectioned_domain);         
     
     //Get the time when generation started
     ct0 = time(NULL);
@@ -214,8 +208,6 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         //---------------------------------------------------------------------------
         //Cross-sectional area of the current CNT. It is used to calculate the CNT volume.
         const double cnt_cross_area = PI*cnt_rad*cnt_rad;
-        //Linear density of current CNT. It is used to calculate the CNT weight.
-        const double cnt_lin_dens = cnt_cross_area*nanotube_geo.density;
         
         //---------------------------------------------------------------------------
         //Randomly generate an initial direction, then generate the rotation matrix that results in that rotation
@@ -314,8 +306,8 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                     new_cnt.push_back(cnt_poi);
                     
                     //---------------------------------------------------------------------------
-                    //Check if the target volume/weight fraction has been reached
-                    if( (nanotube_geo.criterion == "vol"&&(vol_sum + cnt_len*cnt_cross_area) >= nanotube_geo.volume) || (nanotube_geo.criterion == "wt"&&(wt_sum + cnt_len*cnt_lin_dens) >= nanotube_geo.weight)) {
+                    //Check if the target volume fraction has been reached
+                    if( (vol_sum + cnt_len*cnt_cross_area) >= nanotube_geo.volume) {
                         
                         //Set the terminate variable to true so that the main while-loop is terminated
                         terminate = true;
@@ -360,7 +352,6 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         {
             //Update the volume and weigth of generated CNTs
             vol_sum += cnt_len*cnt_cross_area;
-            wt_sum += cnt_len*cnt_lin_dens;
             
             //If the new_cnt vector has at least two points, then it can be added to the rest of the points
             cnts_points.push_back(new_cnt);
@@ -393,7 +384,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         //hout << "done"<<endl;
         
         //Check progress
-        if ( (nanotube_geo.criterion == "vol"&&vol_sum > vol_completed*nanotube_geo.volume)) {
+        if (vol_sum > vol_completed*nanotube_geo.volume) {
             //Get the time
             ct1 = time(NULL);
             
@@ -412,7 +403,10 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         //Calculate matrix weight
         double matrix_weight = (geom_sample.volume - vol_sum)*geom_sample.matrix_density;
         
-        hout << "The weight fraction of generated CNTs is: " << wt_sum/(matrix_weight + wt_sum) << endl;
+        //Calculate the CNT weight
+        double cnt_weight = vol_sum*nanotube_geo.density;
+        
+        hout << endl << "The weight fraction of generated CNTs is: " << cnt_weight/(matrix_weight + cnt_weight);
         hout << ", the target weight fraction was " << nanotube_geo.weight_fraction << endl << endl;
 
     } else if(nanotube_geo.criterion == "vol") {
@@ -1123,10 +1117,6 @@ int Generate_Network::Transform_points_cnts(const Geom_sample &geom_sample, cons
         hout<<"There are "<<cnt_count<<" CNTs with "<<cpoints.size() << " points inside the sample."<<endl;
     }
     
-    if (!Recalculate_vol_fraction_cnts(geom_sample, cpoints, radii_out, cstructures)) {
-        hout<<"Error in Recalculate_vol_fraction_cnts."<<endl;
-    }
-    
     return 1;
 }
 //---------------------------------------------------------------------------
@@ -1410,7 +1400,7 @@ Point_3D Generate_Network::Find_intersection_at_boundary(const Geom_sample &geom
     return boundary;
 }
 //---------------------------------------------------------------------------
-int Generate_Network::Recalculate_vol_fraction_cnts(const Geom_sample &geom_sample, const vector<Point_3D> &cpoints, const vector<double> &radii, const vector<vector<long int> > &cstructures)const
+int Generate_Network::Recalculate_vol_fraction_cnts(const Geom_sample &geom_sample, const Simu_para &simu_para, const Nanotube_Geo &nano_geo, const vector<Point_3D> &cpoints, const vector<double> &radii, const vector<vector<long int> > &cstructures)const
 {
     //Variable to store the volume of CNTs
     double cnt_vol = 0.0;
@@ -1444,7 +1434,14 @@ int Generate_Network::Recalculate_vol_fraction_cnts(const Geom_sample &geom_samp
         cnt_vol = cnt_vol + PI*radii[i]*radii[i]*cnt_len;
     }
     
-    hout<<"CNT volume fraction after removing CNT outside the sample and small segments is: "<<cnt_vol/geom_sample.volume<<endl;
+    if (simu_para.criterion == "vol") {
+        hout<<"CNT volume fraction after removing CNT outside the sample and small segments is: "<<cnt_vol/geom_sample.volume<<endl;
+    }
+    else {
+        double cnt_wt = cnt_vol*nano_geo.density;
+        double matrix_wt = (geom_sample.volume - cnt_vol)*geom_sample.matrix_density;
+        hout<<"CNT weight fraction after removing CNT outside the sample and small segments is: "<<cnt_wt/(cnt_wt+matrix_wt)<<endl;
+    }
     
     return 1;
 }
@@ -1662,8 +1659,6 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
     //---------------------------------------------------------------------------
     //Total volume of generated GNPs, initialized at zero
     gnp_vol_tot = 0;
-    //Total weight of generated GNPs, initialized at zero
-    gnp_wt_tot = 0;
     
     //Variable to count the number of GNPs that were deleted due to penetration
     int gnp_reject_count = 0;
@@ -1682,12 +1677,8 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
         return 1;
     }
     
-    //Booleans for the content criterion
-    bool vol_crit = gnp_geo.criterion == "vol";
-    bool wt_crit = gnp_geo.criterion == "wt";
-    
     //---------------------------------------------------------------------------
-    while( (vol_crit&&gnp_vol_tot < gnp_geo.volume) || (wt_crit&&gnp_wt_tot < gnp_geo.weight) )
+    while( gnp_vol_tot < gnp_geo.volume )
     {
         //---------------------------------------------------------------------------
         //Generate a GNP
@@ -1770,8 +1761,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
             //Calculate matrix weight
             double matrix_weight = (geom_sample.volume - gnp_vol_tot)*geom_sample.matrix_density;
             
-            hout << "The weight fraction of generated GNPs inside the sample is: " << gnp_wt_tot/(matrix_weight + gnp_wt_tot) << endl;
-            hout << ", the target weight fraction was " << gnp_geo.weight_fraction << endl << endl;
+            hout << endl << "The weight fraction of generated GNPs inside the sample is: " << gnp_wt_tot/(matrix_weight + gnp_wt_tot) << ", the target weight fraction was " << gnp_geo.weight_fraction << endl;
         }
         else if(gnp_geo.criterion == "vol") {
             
@@ -1782,7 +1772,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
         hout << "There are " << gnps.size() << " GNPs inside the sample. ";
         //If there were rejected GNPs, also output that information
         if (gnp_reject_count) {
-            hout<<"In total "<<(int)gnps.size()+gnp_reject_count<<" GNPs were generated, from which "<<gnp_reject_count<<" were rejected."<< endl;
+            hout<<"In total "<<(int)gnps.size()+gnp_reject_count<<" GNPs were generated, from which "<<gnp_reject_count<<" were rejected."<< endl << endl ;
         }
     }
     

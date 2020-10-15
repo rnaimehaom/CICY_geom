@@ -46,7 +46,7 @@ struct Simu_para{
     string criterion;
     //Variables to store the volume and weight fractions
     double volume_fraction, weight_fraction;
-    //Criterion for relationship of CNT to GNP content: mr, dens
+    //Criterion for relationship of CNT to GNP content: mass_ratio, volume_ratio, density
     string mixed;
     //Mass ratio for mixed or hybrid particles
     double mass_ratio;
