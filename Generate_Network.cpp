@@ -54,12 +54,15 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     }
     
     //---------------------------------------------------------------------------
-    //Transform the 2D cnts_points into 1D cpoints and 2D cstructures
-    if(Transform_points_cnts(geom_sample, nanotube_geo, cnts_points, cpoints, cnts_radius_in, cnts_radius_out, cstructures)==0) {
-        hout<<"Error in Transform_points for CNTs."<<endl; return 0;
-    }
-    if (!Recalculate_vol_fraction_cnts(geom_sample, simu_para, nanotube_geo, cpoints, cnts_radius_out, cstructures)) {
-        hout<<"Error in Recalculate_vol_fraction_cnts."<<endl; return 0;
+    //If there are CNTS, transform the 2D cnts_points into 1D cpoints and 2D cstructures
+    //Also, remove the CNTs in the boundary layer
+    if (simu_para.particle_type != "GNP_cuboids") {
+        if(Transform_points_cnts(geom_sample, nanotube_geo, cnts_points, cpoints, cnts_radius_in, cnts_radius_out, cstructures)==0) {
+            hout<<"Error in Transform_points for CNTs."<<endl; return 0;
+        }
+        if (!Recalculate_vol_fraction_cnts(geom_sample, simu_para, nanotube_geo, cpoints, cnts_radius_out, cstructures)) {
+            hout<<"Error in Recalculate_vol_fraction_cnts."<<endl; return 0;
+        }
     }
     
     //---------------------------------------------------------------------------
@@ -1662,6 +1665,8 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
     
     //Variable to count the number of GNPs that were deleted due to penetration
     int gnp_reject_count = 0;
+    //Variable to count the number of GNPs ignored because they were not even partially inside the sample
+    int gnp_ignored_count = 0;
     
     //sectioned_domain[i] contains all the points in sub-region i, a negative number indicates the discretized GNP
     //Sub-region i is an overlapping subregion to check for penetrations
@@ -1737,26 +1742,44 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
         }
         else {
             //The GNP was not rejected, so update generated volume/weight and add it to the
-            //vectorof GNPs
+            //vector of GNPs
+            
+            //Flag to determine if a GNP can be added or not into the vector of GNPs
+            bool is_all_outside = false;
             
             //Calculate (or approximate) the generated volume
             //hout<<"Calculate_generated_gnp_vol_and_update_total_vol"<<endl;
-            if (!Calculate_generated_gnp_vol_and_update_total_vol(gnp_geo, geom_sample, gnp, gnp_vol_tot, gnp_wt_tot)) {
+            if (!Calculate_generated_gnp_vol_and_update_total_vol(gnp_geo, geom_sample, gnp, gnp_vol_tot, is_all_outside)) {
                 hout<<"Error in Calculate_generated_gnp_volume."<<endl;
+                return 0;
             }
             
-            //Update the GNP flag
-            gnp.flag = (int)gnps.size();
+            //Only add the GNP if it is at least partially inside
+            if (!is_all_outside) {
+                
+                //Update the GNP flag
+                gnp.flag = (int)gnps.size();
+                
+                //Add the current particle to the vector of particles
+                gnps.push_back(gnp);
+            }
+            else {
+                
+                //The GNP is completely outside so increase the count of ignored GNPs
+                gnp_ignored_count++;
+                
+            }
             
-            //Add the current particle to the vector of particles
-            gnps.push_back(gnp);
         }
     }
     
-    if (simu_para.particle_type == "GNP_cuboids") {
+    if (simu_para.particle_type == "GNP_cuboids" || simu_para.particle_type == "GNP_CNT_mix") {
         
-        //Print the number of GNPs when GNPs only or mixed fillers are generated
+        //Print the amount of generated GNPs when GNPs only or mixed fillers are generated
         if(gnp_geo.criterion == "wt") {
+            
+            //Update the weight from the volume
+            gnp_wt_tot = gnp_vol_tot*gnp_geo.density;
             
             //Calculate matrix weight
             double matrix_weight = (geom_sample.volume - gnp_vol_tot)*geom_sample.matrix_density;
@@ -1769,11 +1792,12 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
             hout << ", the target volume fraction was " << gnp_geo.volume_fraction << endl;
         }
         
-        hout << "There are " << gnps.size() << " GNPs inside the sample. ";
+        hout << "There are " << (int)gnps.size()<< " GNPs inside the sample domain. ";
         //If there were rejected GNPs, also output that information
-        if (gnp_reject_count) {
-            hout<<"In total "<<(int)gnps.size()+gnp_reject_count<<" GNPs were generated, from which "<<gnp_reject_count<<" were rejected."<< endl << endl ;
+        if (gnp_reject_count || gnp_ignored_count) {
+            hout<<"In total "<<(int)gnps.size()+gnp_ignored_count+gnp_reject_count<<" GNPs were generated, from which "<<gnp_reject_count<<" were rejected and "<<gnp_ignored_count<<" were ignored.";
         }
+        hout<< endl << endl ;
     }
     
     return 1;
@@ -2449,7 +2473,7 @@ int Generate_Network::Add_valid_gnp_to_subregions(const int &gnp_new_idx, const 
     return 1;
 }
 //This function calculates the generated volume of a GNP and adds it to the global variables
-int Generate_Network::Calculate_generated_gnp_vol_and_update_total_vol(const GNP_Geo gnp_geom, const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol_tot, double &gnp_wt_tot)const
+int Generate_Network::Calculate_generated_gnp_vol_and_update_total_vol(const GNP_Geo gnp_geom, const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol_tot, bool &is_all_outside)const
 {
     //---------------------------------------------------------------------------
     //Add the volume and weight corresponding to the GNP
@@ -2458,11 +2482,11 @@ int Generate_Network::Calculate_generated_gnp_vol_and_update_total_vol(const GNP
     //Iterate over the eight vertices of the GNP and check if all of them are inside the sample
     for (int i = 0; i < 8; i++) {
         
-        //Check if current vertex is inside the sample
+        //Check if current vertex is outside the sample
         if (!Point_inside_sample(sample_geom, gnp.vertices[i])) {
             
-            //Vertex i is not inside the sample, then approximate the GNP volume
-            if (!Approximate_gnp_volume_inside_sample(sample_geom, gnp, gnp_vol)) {
+            //Vertex i is outside the sample, then approximate the GNP volume
+            if (!Approximate_gnp_volume_inside_sample(sample_geom, gnp, gnp_vol, is_all_outside)) {
                 hout << "Error in Calculate_generated_volume when calling Approximate_gnp_volume_inside_sample." << endl;
                 return 0;
             }
@@ -2473,17 +2497,14 @@ int Generate_Network::Calculate_generated_gnp_vol_and_update_total_vol(const GNP
     }
     
     //hout << "Total volume = " << gnp_vol_tot << ". Approximated volume = " << gnp_vol <<endl;
-    //Update the total weight
+    //Update the total volume
     gnp_vol_tot = gnp_vol_tot + gnp_vol;
-    
-    //Update the weight from the volume
-    gnp_wt_tot = gnp_wt_tot + gnp_vol*gnp_geom.density;
     
     return 1;
 }
 //This function approximates the volume of a GNP inside the sample depending of the number of points in
 //the discretization of its middle plane that are inside the sample
-int Generate_Network::Approximate_gnp_volume_inside_sample(const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol)const
+int Generate_Network::Approximate_gnp_volume_inside_sample(const Geom_sample &sample_geom, const GNP &gnp, double &gnp_vol, bool &is_all_outside)const
 {
     //---------------------------------------------------------------------------
     //Number of points per side to approximate volume
@@ -2535,8 +2556,22 @@ int Generate_Network::Approximate_gnp_volume_inside_sample(const Geom_sample &sa
         }
     }
     
-    //Approximate the volume inside
-    gnp_vol = gnp_vol*((double)points_in/(n_points*n_points));
+    //Check if all points where outside the sample
+    if (points_in == 0) {
+        
+        //All points are outside the sample, so set the is_all_outside flag to true
+        is_all_outside = true;
+        
+        //Directly set the GNP volume to zero
+        gnp_vol = 0.0;
+    }
+    else {
+        
+        //The gnp is partially outside the sample, so approximate the volume inside
+        gnp_vol = gnp_vol*((double)points_in/(n_points*n_points));
+    }
+    
+    
     
     return 1;
 }
