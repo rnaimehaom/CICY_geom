@@ -401,11 +401,6 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
             //The CNT can be ignored as it is completely outside the sample
             cnt_ignore_count++;
         }
-        else if (new_cnt.size() <= 1) {
-            
-            //If the CNT could not grow beyond the seed, then it is actually a rejected CNT
-            cnt_reject_count++;
-        }
         //hout << "done"<<endl;
         
         //Check progress
