@@ -63,6 +63,7 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         if (!Recalculate_vol_fraction_cnts(geom_sample, simu_para, nanotube_geo, cpoints, cnts_radius_out, cstructures)) {
             hout<<"Error in Recalculate_vol_fraction_cnts."<<endl; return 0;
         }
+        hout<<endl;
     }
     
     //---------------------------------------------------------------------------
@@ -153,6 +154,8 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
     
     //Variable to coun the number of rejected CNTs
     int cnt_reject_count = 0;
+    //Variable to count the number of ignored CNTs
+    int cnt_ignore_count = 0;
     
     //Variable to count the number of times that a point had to be relocated
     int point_overlap_count = 0;
@@ -188,11 +191,11 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
     while(!terminate)
     {
         //---------------------------------------------------------------------------
-        //Define a vector for a new nanotube
+        //Vector for a new nanotube
         vector<Point_3D> new_cnt;
         
         //---------------------------------------------------------------------------
-        //Randomly generate a length of a CNT
+        //Randomly generate a CNT length
         double cnt_length;
         //hout<<"Get_random_value_mt 1"<<endl;
         if(Get_random_value_mt(nanotube_geo.len_distrib_type, engine_rand, dist, nanotube_geo.len_min, nanotube_geo.len_max, cnt_length)==0) return 0;
@@ -200,7 +203,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         int step_num = (int)(cnt_length/nanotube_geo.step_length) + 1;
         
         //---------------------------------------------------------------------------
-        //Randomly generate a radius of a CNT
+        //Randomly generate a CNT radius
         double cnt_rad;
         //hout<<"Get_random_value_mt 2"<<endl;
         if(!Get_random_value_mt(nanotube_geo.rad_distrib_type, engine_rand, dist, nanotube_geo.rad_min, nanotube_geo.rad_max, cnt_rad)) {
@@ -262,6 +265,9 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         //Get the location of the seed
         bool is_prev_in_sample = Point_inside_sample(geom_sample, new_cnt[0]);
         
+        //Variable to count the number of points of the new CNT that are inside the sample
+        int points_in = (is_prev_in_sample)? 1: 0;
+        
         //Variable to store the length of the current CNT that is inside the sample
         double cnt_len = 0.0;
         
@@ -300,6 +306,12 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                     //Calculate the segment length inside the sample and add it to the total CNT length
                     bool is_new_inside_sample;
                     cnt_len = cnt_len + Length_inside_sample(geom_sample, new_cnt.back(), cnt_poi, is_prev_in_sample, is_new_inside_sample);
+                    
+                    //If the new point, cnt_poi, is inside the sample, then increase the number
+                    //of points inside the sample of the new CNT
+                    if (is_new_inside_sample) {
+                        points_in++;
+                    }
                     
                     //For the next iteration of the for loop, cnt_poi will become previous point,
                     //so update the boolean is_prev_in_sample for the next iteration
@@ -351,7 +363,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         //If size is 0, the CNT was rejected
         //If size is 1, then only the CNT seed was generated in a valid position but the second point
         //could not be placed in a valid position (i.e., without interpenetrating another CNT)
-        if(new_cnt.size() >= 2)
+        if(new_cnt.size() >= 2 && points_in)
         {
             //Update the volume and weigth of generated CNTs
             vol_sum += cnt_len*cnt_cross_area;
@@ -383,6 +395,16 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                     
                 }
             }
+        }
+        else if (!points_in){
+            
+            //The CNT can be ignored as it is completely outside the sample
+            cnt_ignore_count++;
+        }
+        else if (new_cnt.size() <= 1) {
+            
+            //If the CNT could not grow beyond the seed, then it is actually a rejected CNT
+            cnt_reject_count++;
         }
         //hout << "done"<<endl;
         
@@ -439,7 +461,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
     //============================================================================
     
     hout << "There were " << point_overlap_count_unique << " overlapping points and ";
-    hout << point_overlap_count << " overlaps, " << cnt_reject_count << " CNTs were rejected." << endl;
+    hout << point_overlap_count << " overlaps, " << cnt_reject_count << " CNTs were rejected and "<<cnt_ignore_count<<" were ignored." << endl;
     
     return 1;
 }
@@ -483,8 +505,8 @@ int Generate_Network::CNT_seeds(const vector<unsigned int> &CNT_seeds, unsigned 
     for (int i = 0; i < 7; i++) {
         hout<<net_seeds[i]<<' ';
     }
+    hout<<endl<<endl;
     
-    hout<<endl;
     return 1;
 }
 //---------------------------------------------------------------------------
@@ -1115,8 +1137,8 @@ int Generate_Network::Transform_points_cnts(const Geom_sample &geom_sample, cons
     }
     
     if (cnts_points.size()) {
-        hout<<"Radii="<<radii_in.size()<<endl;
-        hout << "There are " << cnts_points.size() << " CNTs with "<<n_points<<" points in the generation domain."<<endl;
+        //hout<<"Radii="<<radii_in.size()<<endl;
+        hout << "There are " << cnts_points.size() << " CNTs with "<<n_points<<" points at least partially inside the sample before trimming."<<endl;
         hout<<"There are "<<cnt_count<<" CNTs with "<<cpoints.size() << " points inside the sample."<<endl;
     }
     
