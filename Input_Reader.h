@@ -77,6 +77,8 @@ struct Geom_sample{
     double win_delt_x, win_delt_y, win_delt_z;
     //Define the number of cutoff times (0: the maxmum size, n: the maxmum size - n*step_length(delta), n>=1)
     int cut_num;
+    //Cuboid for the sample
+    cuboid sample;
     //Cuboid for the extended domain for GNPs
     cuboid ex_dom_gnp;
     //Cuboid for the extended domain for CNTs

@@ -479,7 +479,13 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
 	//Read the lower-left corner of the sample, its length, width and height
 	istringstream istr0(Get_Line(infile));
 	istr0 >> geom_sample.origin.x >> geom_sample.origin.y >> geom_sample.origin.z;
+    geom_sample.sample.poi_min.x = geom_sample.origin.x;
+    geom_sample.sample.poi_min.y = geom_sample.origin.y;
+    geom_sample.sample.poi_min.z = geom_sample.origin.z;
 	istr0 >> geom_sample.len_x >> geom_sample.wid_y >> geom_sample.hei_z;
+    geom_sample.sample.len_x = geom_sample.len_x;
+    geom_sample.sample.wid_y = geom_sample.wid_y;
+    geom_sample.sample.hei_z = geom_sample.hei_z;
 	if(geom_sample.len_x<=0||geom_sample.wid_y<=0||geom_sample.hei_z<=0)
 	{
 		hout << "Error: the dimensions of the sample along each direction should be positive." << endl;
@@ -491,6 +497,9 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
     geom_sample.x_max = geom_sample.origin.x + geom_sample.len_x;
     geom_sample.y_max = geom_sample.origin.y + geom_sample.wid_y;
     geom_sample.z_max = geom_sample.origin.z + geom_sample.hei_z;
+    geom_sample.sample.max_x = geom_sample.sample.poi_min.x + geom_sample.sample.len_x;
+    geom_sample.sample.max_y = geom_sample.sample.poi_min.y + geom_sample.sample.wid_y;
+    geom_sample.sample.max_z = geom_sample.sample.poi_min.z + geom_sample.sample.hei_z;
     
 	//----------------------------------------------------------------------
 	//Read the maxmimum and minimum side lengths of the observation window and decrement in x, y and z directions
@@ -758,6 +767,9 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     geom_sample.ex_dom_cnt.len_x = geom_sample.len_x + 2*nanotube_geo.len_max;
     geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y + 2*nanotube_geo.len_max;
     geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + 2*nanotube_geo.len_max;
+    geom_sample.ex_dom_cnt.max_x = geom_sample.ex_dom_cnt.poi_min.x +  geom_sample.len_x;
+    geom_sample.ex_dom_cnt.max_y = geom_sample.ex_dom_cnt.poi_min.y +  geom_sample.wid_y;
+    geom_sample.ex_dom_cnt.max_z = geom_sample.ex_dom_cnt.poi_min.z +  geom_sample.hei_z;
     
     //Determine the overlapping of the overlapping sub-regions for CNTs
     geom_sample.gs_overlap_cnt = 2*nanotube_geo.rad_max + cutoff_dist.van_der_Waals_dist;
@@ -1016,7 +1028,9 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     geom_sample.ex_dom_gnp.len_x = geom_sample.len_x + len_max_halved;
     geom_sample.ex_dom_gnp.wid_y = geom_sample.wid_y + len_max_halved;
     geom_sample.ex_dom_gnp.hei_z = geom_sample.hei_z + len_max_halved;
-    geom_sample.ex_dom_gnp.volume = geom_sample.ex_dom_gnp.len_x*geom_sample.ex_dom_gnp.wid_y*geom_sample.ex_dom_gnp.hei_z;
+    geom_sample.ex_dom_gnp.max_x = geom_sample.ex_dom_gnp.poi_min.x + geom_sample.len_x;
+    geom_sample.ex_dom_gnp.max_y = geom_sample.ex_dom_gnp.poi_min.y + geom_sample.wid_y;
+    geom_sample.ex_dom_gnp.max_z = geom_sample.ex_dom_gnp.poi_min.z + geom_sample.hei_z;
     
     //Determine the overlapping of the overlapping sub-regions for GNPs
     geom_sample.gs_overlap_gnp = geom_sample.gs_minx/(sqrt(8.0));

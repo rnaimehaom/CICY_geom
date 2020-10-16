@@ -150,8 +150,8 @@ struct cuboid
     Point_3D poi_min;
     //Cuboid's length, width and height
     double len_x, wid_y, hei_z;
-    //Cuboid's volume
-    double volume;
+    //Cuboid's maximum corrdinates
+    double max_x, max_y, max_z;
 };
 //---------------------------------------------------------------------------
 //Data structure for a cuboid

@@ -253,12 +253,12 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const struct Geom_sample 
         {sample_geo.origin.x+sample_geo.len_x/2.0,
         sample_geo.origin.y+sample_geo.wid_y/2.0,
         sample_geo.origin.z+sample_geo.hei_z/2.0},
-        {sample_geo.origin.x+(sample_geo.len_x-sample_geo.win_max_x)/2.0,
-        sample_geo.origin.y+(sample_geo.wid_y-sample_geo.win_max_y)/2.0,
-        sample_geo.origin.z+(sample_geo.hei_z-sample_geo.win_max_z)/2.0},
-        {sample_geo.origin.x+(sample_geo.len_x-sample_geo.win_min_x)/2.0,
-        sample_geo.origin.y+(sample_geo.wid_y-sample_geo.win_min_y)/2.0,
-        sample_geo.origin.z+(sample_geo.hei_z-sample_geo.win_min_z)/2.0},
+        {sample_geo.sample.poi_min.x+(sample_geo.sample.len_x-sample_geo.win_max_x)/2.0,
+        sample_geo.sample.poi_min.y+(sample_geo.sample.wid_y-sample_geo.win_max_y)/2.0,
+        sample_geo.sample.poi_min.z+(sample_geo.sample.hei_z-sample_geo.win_max_z)/2.0},
+        {sample_geo.sample.poi_min.x+(sample_geo.sample.len_x-sample_geo.win_min_x)/2.0,
+        sample_geo.sample.poi_min.y+(sample_geo.sample.wid_y-sample_geo.win_min_y)/2.0,
+        sample_geo.sample.poi_min.z+(sample_geo.sample.hei_z-sample_geo.win_min_z)/2.0},
         {sample_geo.win_delt_x/2.0, sample_geo.win_delt_y/2.0, sample_geo.win_delt_z/2.0}
     };
     

@@ -48,15 +48,18 @@ int Shells::Generate_shells(const struct Geom_sample &sample, const vector<Point
     //half step of observation window increment (or decrement) is needed several times
     //To reduce computations, these values are calcualted here and stored in arrays that are used
     //in the rest of the functions
-    double midpoints[] = {sample.origin.x+sample.len_x/2.0,
-        sample.origin.y+sample.wid_y/2.0,
-        sample.origin.z+sample.hei_z/2.0};
-    double boundary_layer[] = {sample.origin.x+(sample.len_x-sample.win_max_x)/2.0,
-        sample.origin.y+(sample.wid_y-sample.win_max_y)/2.0,
-        sample.origin.z+(sample.hei_z-sample.win_max_z)/2.0};
-    double core[] = {sample.origin.x+(sample.len_x-sample.win_min_x)/2.0,
-        sample.origin.y+(sample.wid_y-sample.win_min_y)/2.0,
-        sample.origin.z+(sample.hei_z-sample.win_min_z)/2.0};
+    double midpoints[] = {
+        sample.sample.poi_min.x+sample.sample.len_x/2.0,
+        sample.sample.poi_min.y+sample.sample.wid_y/2.0,
+        sample.sample.poi_min.z+sample.sample.hei_z/2.0};
+    double boundary_layer[] = {
+        sample.sample.poi_min.x+(sample.sample.len_x-sample.win_max_x)/2.0,
+        sample.sample.poi_min.y+(sample.sample.wid_y-sample.win_max_y)/2.0,
+        sample.sample.poi_min.z+(sample.sample.hei_z-sample.win_max_z)/2.0};
+    double core[] = {
+        sample.sample.poi_min.x+(sample.sample.len_x-sample.win_min_x)/2.0,
+        sample.sample.poi_min.y+(sample.sample.wid_y-sample.win_min_y)/2.0,
+        sample.sample.poi_min.z+(sample.sample.hei_z-sample.win_min_z)/2.0};
     double half_step[] = {sample.win_delt_x/2.0, sample.win_delt_y/2.0, sample.win_delt_z/2.0};
     
     

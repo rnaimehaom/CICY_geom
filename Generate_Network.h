@@ -81,8 +81,8 @@ public:
     MathMatrix Get_transformation_matrix(const double &theta, const double &phi)const;
     //Calculate the coordinates of the new CNT point (transformation of coordinates)
     Point_3D Get_new_point(MathMatrix &Matrix, const double &Rad)const;
-    //This function checks if a point is inside a sample
-    int Point_inside_sample(const Geom_sample &geom_sample, const Point_3D &point)const;
+    //This function checks if a point is inside a cuboid
+    int Is_point_inside_cuboid(const cuboid &cub, const Point_3D &point)const;
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
@@ -118,8 +118,6 @@ public:
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
-    //This function checks if a point is inside a cuboid
-    int Point_inside_cuboid(const struct cuboid &cub, const Point_3D &point)const;
     
 };
 //-------------------------------------------------------

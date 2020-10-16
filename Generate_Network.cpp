@@ -267,7 +267,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         //hout<<"Growth of CNT"<<endl;
         
         //Get the location of the seed
-        bool is_prev_in_sample = Point_inside_sample(geom_sample, new_cnt[0]);
+        bool is_prev_in_sample = Is_point_inside_cuboid(geom_sample.sample, new_cnt[0]);
         
         //Variable to count the number of points of the new CNT that are inside the sample
         int points_in = (is_prev_in_sample)? 1: 0;
@@ -293,7 +293,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
             cnt_poi.flag = 1;
             
             //Check if the new point, cnt_poi, is inside the extended domain
-            if(Point_inside_cuboid(geom_sample.ex_dom_cnt, cnt_poi))
+            if(Is_point_inside_cuboid(geom_sample.ex_dom_cnt, cnt_poi))
             {
                 //If the point is inside the extended domain, then check for penetration if non-penetrating
                 //model is used, or just add it if penetrating model is used
@@ -629,7 +629,7 @@ int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Na
 //This function returns the subregion a point belongs to
 int Generate_Network::Get_cnt_point_subregion(const Geom_sample &geom_sample, const int n_subregions[], const Point_3D &point)const
 {
-    if (Point_inside_sample(geom_sample, point)) {
+    if (Is_point_inside_cuboid(geom_sample.sample, point)) {
         //These variables will give me the region cordinates of the region that a point belongs to
         int a, b, c;
         //Calculate the region-coordinates
@@ -884,7 +884,7 @@ int Generate_Network::Check_segment_orientation(const Point_3D &point, const vec
 double Generate_Network::Length_inside_sample(const Geom_sample &geom_sample, const Point_3D &prev_point, const Point_3D &new_point, const bool &is_prev_inside_sample, bool &is_new_inside_sample)const
 {
     //Check if the new point is inside the sample
-    is_new_inside_sample = Point_inside_sample(geom_sample, new_point);
+    is_new_inside_sample = Is_point_inside_cuboid(geom_sample.sample, new_point);
     
     //Check how to calculate the length inside the sample depending on the location (either
     //inside or outside) of the two points
@@ -928,7 +928,7 @@ void Generate_Network::Add_cnt_point_to_overlapping_regions(const Geom_sample &g
 {
     //A point is added only if it is in the composite domain
     //If the point is in the boundary layer, overlapping is not important
-    if (Point_inside_sample(geom_sample, point)) {
+    if (Is_point_inside_cuboid(geom_sample.sample, point)) {
         //Save coordinates of the point
         double x = point.x;
         double y = point.y;
@@ -1063,13 +1063,13 @@ int Generate_Network::Add_cnts_inside_sample(const struct Geom_sample &geom_samp
     int min_points = nano_geo.min_points;
     
     //Check where is the first point of the CNT
-    bool is_first_inside_sample = Point_inside_sample(geom_sample, cnt[0]);
+    bool is_first_inside_sample = Is_point_inside_cuboid(geom_sample.sample, cnt[0]);
     
     //Scan all remaining points in the current CNT
     for (int i = 1; i < cnt_points; i++) {
         
         //Check if the point is inside the sample
-        if (Point_inside_sample(geom_sample, cnt[i])) {
+        if (Is_point_inside_cuboid(geom_sample.sample, cnt[i])) {
             
             //Update the last inside point
             last_inside = i;
@@ -1338,7 +1338,7 @@ int Generate_Network::Recalculate_vol_fraction_cnts(const Geom_sample &geom_samp
         //Initialize the length of the CNT
         double cnt_len = 0.0;
         
-        /*if (!Point_inside_sample(geom_sample, cpoints[cstructures[i][0]])) {
+        /*if (!Is_point_inside_cuboid(geom_sample.sample, cpoints[cstructures[i][0]])) {
             hout<<"Point outside the sample: cpoints["<<cstructures[i][0]<<"(i="<<i<<", j="<<0<<")]="<<cpoints[cstructures[i][0]].str()<<" CNT with "<<cstructures[i].size()<<" points"<<endl;
         }*/
         
@@ -1352,7 +1352,7 @@ int Generate_Network::Recalculate_vol_fraction_cnts(const Geom_sample &geom_samp
             //Add the length of two consecutive points
             cnt_len = cnt_len + cpoints[prev].distance_to(cpoints[curr]);
             
-            /*if (!Point_inside_sample(geom_sample, cpoints[curr])) {
+            /*if (!Is_point_inside_cuboid(geom_sample.sample, cpoints[curr])) {
                 hout<<"A point is outside the sample: cpoints["<<curr<<"(i="<<i<<", j="<<j<<")]="<<cpoints[curr].str()<<endl;
             }*/
         }
@@ -1540,20 +1540,18 @@ Point_3D Generate_Network::Get_new_point(MathMatrix &Matrix, const double &Rad)c
     
     return Point;
 }
-//---------------------------------------------------------------------------
-//This function checks if a point is inside a sample
-int Generate_Network::Point_inside_sample(const Geom_sample &geom_sample, const Point_3D &point)const
+//This function checks if a point is inside a cuboid
+int Generate_Network::Is_point_inside_cuboid(const cuboid &cub, const Point_3D &point)const
 {
-    if(point.x<geom_sample.origin.x||point.x>geom_sample.x_max||
-       point.y<geom_sample.origin.y||point.y>geom_sample.y_max||
-       point.z<geom_sample.origin.z||point.z>geom_sample.z_max) {
-        //Point is outside sample, return false (0)
-        return 0;
-    }
+    if(point.x<cub.poi_min.x||point.x>cub.max_x||
+       point.y<cub.poi_min.y||point.y>cub.max_y||
+       point.z<cub.poi_min.z||point.z>cub.max_z) {
+              //Point is outside cuboid, return false (0)
+              return 0;
+          }
     
     return 1;
 }
-//---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
@@ -1994,7 +1992,7 @@ int Generate_Network::Get_gnp_subregions(const Geom_sample &geom_sample, const G
                 
 
                 //Check if new_point is inside the sample
-                if (Point_inside_sample(geom_sample, new_point)) {
+                if (Is_point_inside_cuboid(geom_sample.sample, new_point)) {
                     
                     //If the point is inside the sample, then add the subregion the GNP point occupies
                     if (!Add_gnp_subregions_to_set_for_gnp_point(geom_sample, new_point, n_subregions, subregions)) {
@@ -2404,7 +2402,7 @@ int Generate_Network::Calculate_generated_gnp_vol_and_update_total_vol(const GNP
     for (int i = 0; i < 8; i++) {
         
         //Check if current vertex is outside the sample
-        if (!Point_inside_sample(sample_geom, gnp.vertices[i])) {
+        if (!Is_point_inside_cuboid(sample_geom.sample, gnp.vertices[i])) {
             
             //Vertex i is outside the sample, then approximate the GNP volume
             if (!Approximate_gnp_volume_inside_sample(sample_geom, gnp, gnp_vol, is_all_outside)) {
@@ -2470,7 +2468,7 @@ int Generate_Network::Approximate_gnp_volume_inside_sample(const Geom_sample &sa
             Point_3D new_point = start + dir_up_new*lambda_up;
             
             //Check if new point is inside the sample
-            if (Point_inside_sample(sample_geom, new_point)) {
+            if (Is_point_inside_cuboid(sample_geom.sample, new_point)) {
                 //The point is inside the sample, so increase the number of points inside the sample
                 points_in++;
             }
@@ -2622,7 +2620,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
         }
         
         //Get the location of the initial point
-        bool is_prev_in_sample = Point_inside_sample(geom_sample, new_cnt[0]);
+        bool is_prev_in_sample = Is_point_inside_cuboid(geom_sample.sample, new_cnt[0]);
         
         //Variable to count the number of points of the new CNT that are inside the sample
         int points_in = (is_prev_in_sample)? 1: 0;
@@ -2648,7 +2646,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
             new_point.flag = 1;
             
             //Check if the new point, cnt_poi, is inside the extended domain
-            if(Point_inside_cuboid(geom_sample.ex_dom_cnt, new_point))
+            if(Is_point_inside_cuboid(geom_sample.ex_dom_cnt, new_point))
             {
                 //If the point is inside the extended domain, then check for penetration if non-penetrating
                 //model is used, or just add it if penetrating model is used
@@ -3322,15 +3320,3 @@ int Generate_Network::Move_point_inside_gnp(const Point_3D &P_gnp, const double 
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-//This function checks if a point is inside a cuboid
-int Generate_Network::Point_inside_cuboid(const struct cuboid &cub, const Point_3D &point)const
-{
-    if(point.x<cub.poi_min.x||point.x>cub.poi_min.x+cub.len_x||
-       point.y<cub.poi_min.y||point.y>cub.poi_min.y+cub.wid_y||
-       point.z<cub.poi_min.z||point.z>cub.poi_min.z+cub.hei_z) {
-              //Point is outside cuboid, return false (0)
-              return 0;
-          }
-    
-    return 1;
-}
