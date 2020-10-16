@@ -348,7 +348,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const struct Geom_sample 
             //This was not done becuase, in the for loop, a segement is added only when it finds a point
             //outside the sample
             //Add the current segment to the structure
-            if (Add_cnt_segment_to_structure(sample_geo, window_geo, vars_shells, start, end, cnts.min_points, CNT, point_location, points_in, structure, shells_cnt, radii, segments, first_idx, last_idx)) {
+            if (!Add_cnt_segment_to_structure(sample_geo, window_geo, vars_shells, start, end, cnts.min_points, CNT, point_location, points_in, structure, shells_cnt, radii, segments, first_idx, last_idx)) {
                 hout<<"Error when adding a CNT segment (Add_cnt_segment_to_structure 2)."<<endl;
                 return 0;
             }
@@ -386,7 +386,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_g
     
     //Get the new CNT number
     int new_CNT = (int)structure.size();
-    hout<<"New segment added CNT="<<CNT<<" new CNT="<<new_CNT<<endl;
+    //hout<<"New segment added CNT="<<CNT<<" new CNT="<<new_CNT<<endl;
     
     //Variables for the (possibly) outside and inside points for the start of the segment
     long int p_out_start = structure[CNT][new_start];
