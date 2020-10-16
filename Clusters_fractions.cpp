@@ -256,10 +256,10 @@ double Clusters_fractions::GNP_cluster_volume(const struct cuboid &gvcub, const 
         //Current GNP
         int GNP = cluster[i];
         
-        //Approximate volume of GNP
+        /*/Approximate volume of GNP
         if (!GN_tmp->Approximate_gnp_volume(gvcub, hybrid_particles[GNP], single_gnp)) {
             return 0;
-        }
+        }*/
         
         //Add volume of GNP to total
         volume = volume + single_gnp;
