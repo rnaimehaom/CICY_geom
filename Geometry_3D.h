@@ -119,10 +119,11 @@ public:
     Plane_3D(double a, double b, double c, double d);
     Plane_3D(const Point_3D &P1, const Point_3D &P2, const Point_3D &P3);
     
-    //Determine if a point is on in this plane, where the point is given as a Point_3D object
+    //Determine if a point is on this plane, where the point is given as a Point_3D object
     int contain(const Point_3D &point_temp)const;
-    //Determine if a point is on in this plane, where the point is given by its three components
+    //Determine if a point is on this plane, where the point is given by its three components
     int contain(const double dx, const double dy, const double dz)const;
+    double distance_to(const Point_3D &P)const;
     string str() const;
 };
 //---------------------------------------------------------------------------

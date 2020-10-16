@@ -759,8 +759,8 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y + 2*nanotube_geo.len_max;
     geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + 2*nanotube_geo.len_max;
     
-    //Determine the overlapping of the overlapping sub-regions
-    geom_sample.gs_overlap = 2*nanotube_geo.rad_max + cutoff_dist.van_der_Waals_dist;
+    //Determine the overlapping of the overlapping sub-regions for CNTs
+    geom_sample.gs_overlap_cnt = 2*nanotube_geo.rad_max + cutoff_dist.van_der_Waals_dist;
     
 	return 1;
 }
@@ -1018,14 +1018,8 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     geom_sample.ex_dom_gnp.hei_z = geom_sample.hei_z + len_max_halved;
     geom_sample.ex_dom_gnp.volume = geom_sample.ex_dom_gnp.len_x*geom_sample.ex_dom_gnp.wid_y*geom_sample.ex_dom_gnp.hei_z;
     
-    //Determine the overlapping of the overlapping sub-regions
-    if (simu_para.particle_type == "GNP_cuboids") {
-        
-        //If only GNPs are specified, use the GNP overlapping, which is only the var de Waals
-        //distance since the points of a GNP discretization are on its surfaces
-        geom_sample.gs_overlap = geom_sample.gs_minx/(sqrt(8.0));
-    }
-    //If CNTs are also generated, use the overlapping specified for them since it is larger
+    //Determine the overlapping of the overlapping sub-regions for GNPs
+    geom_sample.gs_overlap_gnp = geom_sample.gs_minx/(sqrt(8.0));
     
     return 1;
 }

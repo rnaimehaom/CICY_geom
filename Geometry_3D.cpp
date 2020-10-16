@@ -397,6 +397,16 @@ int Plane_3D::contain(const double dx, const double dy, const double dz)const
     //out of the plane
 	return 0;
 }
+//---------------------------------------------------------------------------
+//Function to determine the distance from a plane to a point
+double Plane_3D::distance_to(const Point_3D &P)const
+{
+    double num = coef[0]*P.x + coef[1]*P.y + coef[2]*P.z + coef[3];
+    double den = sqrt(coef[0]*coef[0] + coef[1]*coef[1] + coef[2]*coef[2]);
+    
+    return abs(num/den);
+}
+//---------------------------------------------------------------------------
 string Plane_3D::str() const
 {
     string str = to_string(coef[0])+ "x ";

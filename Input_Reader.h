@@ -69,8 +69,8 @@ struct Geom_sample{
     double matrix_density;
     //Minimum size for background grids (overlapping sub-regions)
     double gs_minx, gs_miny, gs_minz;
-    //Overlapping of background gids
-    double gs_overlap;
+    //Overlapping of background grids
+    double gs_overlap_cnt, gs_overlap_gnp;
     //Minimum, maximum, and step decrement of the observation window
     double win_min_x, win_min_y, win_min_z;
     double win_max_x, win_max_y, win_max_z;

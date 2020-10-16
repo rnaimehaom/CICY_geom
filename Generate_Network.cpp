@@ -22,7 +22,7 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     //Vector for radii, internal variable
     vector<double> cnts_radius_in;
     
-    double carbon_vol = 0, carbon_weight = 0;
+    double gnp_vol_tot = 0, gnp_wt_tot = 0;
     if (simu_para.particle_type == "CNT_wires") {
         
         //Generate a network defined by points
@@ -34,20 +34,28 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     } else if (simu_para.particle_type == "GNP_cuboids") {
         
         //Generate a GNP network
-        if (!Generate_gnp_network_mt(simu_para, gnp_geo, geom_sample, cutoffs, gnps, carbon_vol, carbon_weight)) {
+        vector<vector<int> > sectioned_domain_gnp;
+        if (!Generate_gnp_network_mt(simu_para, gnp_geo, geom_sample, cutoffs, gnps, sectioned_domain_gnp, gnp_vol_tot, gnp_wt_tot)) {
             hout << "Error in generating a GNP network" << endl;
+            return 0;
+        }
+        
+    } else if (simu_para.particle_type == "GNP_CNT_mix") {
+        
+        //Generate a GNP network
+        vector<vector<int> > sectioned_domain_gnp;
+        if (!Generate_gnp_network_mt(simu_para, gnp_geo, geom_sample, cutoffs, gnps, sectioned_domain_gnp, gnp_vol_tot, gnp_wt_tot)) {
+            hout << "Error in generating a GNP network for mixed particles" << endl;
+            return 0;
+        }
+        
+        //Generate a CNT network within a GNP network
+        if (!Generate_cnt_network_threads_among_gnps_mt(simu_para, gnp_geo, nanotube_geo, geom_sample, cutoffs, gnps, sectioned_domain_gnp, gnp_vol_tot, gnp_wt_tot, cnts_points, cnts_radius_in)) {
+            hout<<"Error in generating a CNT network for mixed particles"<<endl;
             return 0;
         }
         
     } else if (simu_para.particle_type == "Hybrid_particles") {
-    } else if (simu_para.particle_type == "GNP_CNT_mix") {
-        
-        //Generate a GNP network
-        if (!Generate_gnp_network_mt(simu_para, gnp_geo, geom_sample, cutoffs, gnps, carbon_vol, carbon_weight)) {
-            hout << "Error in generating a GNP network" << endl;
-            return 0;
-        }
-        
     } else {
         hout << "Error: the type of particles shoud be one of the following: CNT_wires, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input value was: " << simu_para.particle_type << endl;
         return 0;
@@ -173,11 +181,12 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
     //n_subregions[0] is the number of subregions along x
     //n_subregions[1] is the number of subregions along y
     //n_subregions[2] is the number of subregions along z
-    vector<int> n_subregions;
-    //Define cutoff for overlapping
-    double overlap_max_cutoff = 2*nanotube_geo.rad_max + cutoffs.van_der_Waals_dist;
+    int n_subregions[3];
     //Initialize the vector sub-regions
-    Initialize_subregions(geom_sample, n_subregions, sectioned_domain);         
+    if (!Initialize_cnt_subregions(geom_sample, n_subregions, sectioned_domain)) {
+        hout << "Error in Generate_network_threads_mt when calling Initialize_cnt_subregions" <<endl;
+        return 0;
+    }
     
     //Get the time when generation started
     ct0 = time(NULL);
@@ -195,21 +204,16 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         vector<Point_3D> new_cnt;
         
         //---------------------------------------------------------------------------
-        //Randomly generate a CNT length
-        double cnt_length;
+        //Randomly generate a CNT length and CNT radius
+        double cnt_length, cnt_rad;
         //hout<<"Get_random_value_mt 1"<<endl;
-        if(Get_random_value_mt(nanotube_geo.len_distrib_type, engine_rand, dist, nanotube_geo.len_min, nanotube_geo.len_max, cnt_length)==0) return 0;
-        //Calculate the total number of growth step for a CNT
-        int step_num = (int)(cnt_length/nanotube_geo.step_length) + 1;
-        
-        //---------------------------------------------------------------------------
-        //Randomly generate a CNT radius
-        double cnt_rad;
-        //hout<<"Get_random_value_mt 2"<<endl;
-        if(!Get_random_value_mt(nanotube_geo.rad_distrib_type, engine_rand, dist, nanotube_geo.rad_min, nanotube_geo.rad_max, cnt_rad)) {
-            hout << "Error in Generate_network_threads_mt when calling Get_random_value_mt" <<endl;
+        if (!Get_length_and_radius(nanotube_geo, engine_rand, dist, cnt_length, cnt_rad)) {
+            hout << "Error in Generate_network_threads_mt when calling Get_length_and_radius" <<endl;
             return 0;
         }
+        
+        //Calculate the number of CNT growth steps
+        int step_num = (int)(cnt_length/nanotube_geo.step_length) + 1;
         
         //---------------------------------------------------------------------------
         //Cross-sectional area of the current CNT. It is used to calculate the CNT volume.
@@ -228,13 +232,13 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         //Randomly generate a seed (initial point) of a CNT in the extended domain
         Point_3D cnt_poi;
         //hout<<"Get_seed_point_mt"<<endl;
-        if(Get_seed_point_mt(geom_sample.ex_dom_cnt, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
+        if(Get_point_in_cuboid_mt(geom_sample.ex_dom_cnt, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
         
         //Check overlapping of the intial point
         int counter = 1;
         //hout<<"Check_penetration (while)"<<endl;
         while (simu_para.penetration_model_flag && !Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
-            if(Get_seed_point_mt(geom_sample.ex_dom_cnt, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
+            if(Get_point_in_cuboid_mt(geom_sample.ex_dom_cnt, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
             cnt_seed_count++;                    //record the number of seed generations
             //hout << "Seed deleted" << endl;
             if (counter == MAX_ATTEMPTS) {
@@ -354,6 +358,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                 //to terminate the CNT growth
                 break;
             }
+            //for-loop ends here
         }
         
         //---------------------------------------------------------------------------
@@ -391,7 +396,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                     global_coordinates.back().push_back(CNT);
                     global_coordinates.back().push_back(ii);
                     //Add point to an overlapping region in the vector sectioned_domain
-                    Add_to_overlapping_regions(geom_sample, overlap_max_cutoff, new_cnt[ii], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
+                    Add_cnt_point_to_overlapping_regions(geom_sample, new_cnt[ii], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
                     
                 }
             }
@@ -414,7 +419,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
             //When the next 10% is completed send another message
             vol_completed = vol_completed + 0.1;
         }
-        
+        //while-loop ends here
     }
     
     //Output the CNT content generated
@@ -433,27 +438,6 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         hout << endl << "The volume fraction of generated CNTs was " << vol_sum/geom_sample.volume;
         hout << ", the target volume fraction was " << nanotube_geo.volume_fraction << endl << endl;
     }
-    
-    //============================================================================
-    //=========== TEST CODE
-    
-    /*/ROTATE THE X-AXIS SO THAT THE Y-AXIS BECOMES THE Z-AXIS
-    double Px, Py, Pz;
-    for (int i = 0; i < (int)cnts_points.size(); i++) {
-        for (int j = 0; j < (int)cnts_points[i].size(); j++) {
-            //Save original coordinates
-            Px = cnts_points[i][j].x;
-            Py = cnts_points[i][j].y;
-            Pz = cnts_points[i][j].z;
-            //Apply rotation
-            cnts_points[i][j].x = Px;
-            cnts_points[i][j].y = -Pz + geom_sample.wid_y;
-            cnts_points[i][j].z = Py;
-        }
-    }//*/
-    
-    //=========== TEST CODE
-    //============================================================================
     
     hout << "There were " << point_overlap_count_unique << " overlapping points and ";
     hout << point_overlap_count << " overlaps, " << cnt_reject_count << " CNTs were rejected and "<<cnt_ignore_count<<" were ignored." << endl;
@@ -515,27 +499,43 @@ int Generate_Network::CNT_seeds(const vector<unsigned int> &CNT_seeds, unsigned 
 //
 //The vector sectioned_domain contains the sub-regions to look for overlapping
 //It is initialized with the number of sub-regions in the sample
-void Generate_Network::Initialize_subregions(const Geom_sample &geom_sample, vector<int> &nsubregions, vector<vector<long int> > &sectioned_domain)const
+int Generate_Network::Initialize_cnt_subregions(const Geom_sample &sample_geom, int n_subregion[], vector<vector<long int> > &sectioned_domain)const
 {
-    //Initialize nsubregions
-    
-    //variable to store the number of subregions
-    int s;
+    //Calculate the number of variables along each direction
+    //Make sure there is at least one subregion along each direction
+    //
     //Number of subregions along x
-    s = (int)(geom_sample.len_x/geom_sample.gs_minx);
-    //Add the number of sub-regions to the vector
-    nsubregions.push_back(s);
+    n_subregion[0] = max(1, (int)(sample_geom.len_x/sample_geom.gs_minx));
     //Number of subregions along y
-    s = (int)(geom_sample.wid_y/geom_sample.gs_miny);
-    //Add the number of sub-regions to the vector
-    nsubregions.push_back(s);
+    n_subregion[1] = max(1, (int)(sample_geom.wid_y/sample_geom.gs_miny));
     //Number of subregions along z
-    s = (int)(geom_sample.hei_z/geom_sample.gs_minz);
-    //Add the number of sub-regions to the vector
-    nsubregions.push_back(s);
+    n_subregion[2] = max(1, (int)(sample_geom.hei_z/sample_geom.gs_minz));
     
     //Initialize sectioned_domain
-    sectioned_domain.assign(nsubregions[0]*nsubregions[1]*nsubregions[2], vector<long int>());
+    sectioned_domain.assign(n_subregion[0]*n_subregion[1]*n_subregion[2], vector<long int>());
+    
+    return 1;
+}
+//Get_random_value_mt(const string &dist_type, mt19937 &engine, uniform_real_distribution<double> &dist, const double &min, const double &max, double &value)const
+int Generate_Network::Get_length_and_radius(const Nanotube_Geo &nanotube_geo, mt19937 &engine, uniform_real_distribution<double> &dist, double &cnt_length, double &cnt_rad)const
+{
+    //---------------------------------------------------------------------------
+    //Randomly generate a CNT length
+    //hout<<"Get_random_value_mt CNT length"<<endl;
+    if(Get_random_value_mt(nanotube_geo.len_distrib_type, engine, dist, nanotube_geo.len_min, nanotube_geo.len_max, cnt_length)==0) {
+        hout << "Error in Generate_network_threads_mt when calling Get_random_value_mt CNT length" <<endl;
+        return 0;
+    }
+    
+    //---------------------------------------------------------------------------
+    //Randomly generate a CNT radius
+    //hout<<"Get_random_value_mt CNT radius"<<endl;
+    if(!Get_random_value_mt(nanotube_geo.rad_distrib_type, engine, dist, nanotube_geo.rad_min, nanotube_geo.rad_max, cnt_rad)) {
+        hout << "Error in Generate_network_threads_mt when calling Get_random_value_mt CNT radius" <<endl;
+        return 0;
+    }
+    
+    return 1;
 }
 //---------------------------------------------------------------------------
 //Check if the current CNT is penetrating another CNT, i.e. is the new point is overlapping other point
@@ -543,11 +543,11 @@ void Generate_Network::Initialize_subregions(const Geom_sample &geom_sample, vec
 //   b) No need to check for penetration (point is in boundary layer or there are no other points in the same sub-region)
 //   c) There was penetration but it was succesfully resolved
 //0: There was penetration but could not be resolved
-int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const vector<int> &n_subregions, const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
+int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const int n_subregions[], const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
 {
     //Get the sub-region the point belongs to
     //hout<<"Get_subregion 0"<<endl;
-    int subregion = Get_subregion(geom_sample, n_subregions, point);
+    int subregion = Get_cnt_point_subregion(geom_sample, n_subregions, point);
     
     //If the sub-region is -1, then the point is in the boundary layer, so there is no need to check penetration
     if (subregion == -1) {
@@ -566,7 +566,7 @@ int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Na
         
         //Check if there are any penetrations in the corresponding sub-region
         //hout<<"Get_penetrating_points"<<endl;
-        Get_penetrating_points(cnts, global_coordinates, sectioned_domain[subregion], radii, cnt_rad, d_vdw, point, affected_points, cutoffs_p, distances);
+        Get_penetrating_points(cnts, global_coordinates, sectioned_domain[subregion], radii, cnt_rad+d_vdw, point, affected_points, cutoffs_p, distances);
         
         //--------------------------------------------------------------------------------------------
         //Check if there are any penetrating points
@@ -590,7 +590,7 @@ int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Na
             //Find the new point
             //hout << "Point " << global_coordinates.size()-1+cnt_new.size() << " in CNT " << cnts.size() << " is overlapping." <<endl;
             //hout << "Moved a point from initial position (" << point.x << ", " << point.y << ", " << point.z << ")." << endl;
-            Move_point(geom_sample, nanotube_geo, cnt_new, point, cutoffs_p, distances, affected_points);
+            Move_point(cnt_new, point, cutoffs_p, distances, affected_points);
             //hout << "Moved a point to final position (" << point.x << ", " << point.y << ", " << point.z << ")." << endl;
             
             //Check that the new point is within the permited orientation repect to the previous segment
@@ -604,7 +604,7 @@ int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Na
             
             //Need to update point sub-region as it could be relocated to a new sub-region
             //hout<<"Get_subregion 1"<<endl;
-            subregion = Get_subregion(geom_sample, n_subregions, point);
+            subregion = Get_cnt_point_subregion(geom_sample, n_subregions, point);
             //Check if after moving the point it is now in the boundary layer
             if (subregion == -1) {
                 //If the point is now in the boundary layer, terminate the function
@@ -627,7 +627,7 @@ int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Na
 }
 //---------------------------------------------------------------------------
 //This function returns the subregion a point belongs to
-int Generate_Network::Get_subregion(const Geom_sample &geom_sample, const vector<int> &n_subregions, const Point_3D &point)const
+int Generate_Network::Get_cnt_point_subregion(const Geom_sample &geom_sample, const int n_subregions[], const Point_3D &point)const
 {
     if (Point_inside_sample(geom_sample, point)) {
         //These variables will give me the region cordinates of the region that a point belongs to
@@ -652,7 +652,7 @@ int Generate_Network::Get_subregion(const Geom_sample &geom_sample, const vector
 //---------------------------------------------------------------------------
 //This functions iterates over a sub-region and determines if there are any penetrating points
 //If there are penetrating points, they are stored in the vector affected_points
-void Generate_Network::Get_penetrating_points(const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<long int> &subregion_vec, const vector<double> &radii, const double &cnt_rad, const double &d_vdw, Point_3D &point, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
+void Generate_Network::Get_penetrating_points(const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<long int> &subregion_vec, const vector<double> &radii, const double &rad_plus_dvdw, Point_3D &point, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
 {
     //They are just intermediate variables and I only use them to make the code more readable
     long int coord2;
@@ -664,17 +664,23 @@ void Generate_Network::Get_penetrating_points(const vector<vector<Point_3D> > &c
     //hout << "Check0 " << subregion_vec.size() << ' ';
     //hout << "CNT1=" << point.flag <<" ("<< point.x<<", "<<point.y<< ", " <<point.z<<") r1=" << cnt_rad<<endl;
     for (long int i = 0; i < (long int)subregion_vec.size(); i++) {
+        
         //hout << "Check1 " ;
         coord2 = subregion_vec[i];
         //hout << "coord2="<<coord2<<" global_coordinates.size()="<<global_coordinates.size()<<endl;
+        
         CNT2 = global_coordinates[coord2][0];
         P2 = global_coordinates[coord2][1];
+        
         //hout << "Check4 ";
-        cutoff_p = cnt_rad + radii[CNT2] + d_vdw;
-        //Check is the second point is in the cube of size 2cutoff_p and centered in P1
+        cutoff_p = rad_plus_dvdw + radii[CNT2];
+        
+        //Check if the second point is in the cube of size 2cutoff_p and centered in P1
         //This is easier and faster to check than calculating the distance from poin to point every time
         if ( (cnts[CNT2][P2].x<point.x+cutoff_p)&&(cnts[CNT2][P2].x>point.x-cutoff_p)&&(cnts[CNT2][P2].y<point.y+cutoff_p)&&(cnts[CNT2][P2].y>point.y-cutoff_p)&&(cnts[CNT2][P2].z<point.z+cutoff_p)&&(cnts[CNT2][P2].z>point.z-cutoff_p) ) {
+            
             distance = point.distance_to(cnts[CNT2][P2]);
+            
             //If it is inside the cube, then it is worth to take the time to calculate the distance from point ot point
             if (distance < cutoff_p) {
                 affected_points.push_back(cnts[CNT2][P2]);
@@ -689,13 +695,12 @@ void Generate_Network::Get_penetrating_points(const vector<vector<Point_3D> > &c
 }
 //---------------------------------------------------------------------------
 //This function moves a point according to the number of points it is overlapping
-void Generate_Network::Move_point(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point, vector<double> &cutoffs, vector<double> &distances, vector<Point_3D> &affected_points)const
+void Generate_Network::Move_point(const vector<Point_3D> &cnt_new, Point_3D &point, vector<double> &cutoffs, vector<double> &distances, vector<Point_3D> &affected_points)const
 {
     //The number of overlapings will determine how the new point is moved
     //However, first I need to eliminate invalid-points, which are the points of perfect overlapping, i.e.
     //points in the exact same location
-    int initial_overlappings = (int)affected_points.size();
-    int overlappings = Check_points_in_same_position(cutoffs, distances, affected_points);
+    int overlappings = (int)affected_points.size();
     if (overlappings == 1){
         //Handle the case with only one overlapping point
         //hout << "ovelappings == 1"<<endl;
@@ -710,34 +715,7 @@ void Generate_Network::Move_point(const Geom_sample &geom_sample, const Nanotube
         //that handles the case with two overlapping points
         //hout << "ovelappings >= 3"<<endl;
         Three_or_more_overlapping_points(cutoffs, distances, affected_points, point);
-    } else {//if (!ovelappings) {
-        //If after cheking for points in the same position there are no ovelappings,
-        //then all points are overlapping are in the same location
-        //hout << "ovelappings == 0"<<endl;
-        Overlapping_points_same_position(geom_sample, nanotube_geo, cnt_new, point);
-        hout << "There were " << initial_overlappings - overlappings << " points overlapping in exactly the same location: ";
-        hout << "P("<<point.x<<", "<<point.y<<", "<<point.z<<")."<<endl;
     }
-}
-//---------------------------------------------------------------------------
-//This point checks if two points are actually in the same position
-//This used to happen because of a bug in the code. It seems now like a remote possibility
-//so I'll keep it just in case
-int Generate_Network::Check_points_in_same_position(vector<double> &cutoffs, vector<double> &distances, vector<Point_3D> &affected_points)const
-{
-    //hout << "Initial overlaps = " << distances.size();
-    //check if any distance is less than the variable Zero
-    for (int i = (int)distances.size()-1; i >= 0 ; i--) {
-        if (distances[i] < Zero){
-            //Delete points that are in the exact same location
-            distances.erase(distances.begin()+i);
-            cutoffs.erase(cutoffs.begin()+i);
-            affected_points.erase(affected_points.begin()+i);
-        }
-    }
-    //hout << ", valid overlaps = " << distances.size() <<endl;
-    //This is the number of valid overlapping points
-    return (int)distances.size();
 }
 //---------------------------------------------------------------------------
 //This function finds the new location for an overlapping point when it overlaps only one point
@@ -858,71 +836,6 @@ void Generate_Network::Three_or_more_overlapping_points(const vector<double> &cu
     Two_overlapping_points(two_cutoffs, two_affected_points, point);
 }
 //---------------------------------------------------------------------------
-//Move the point when all points are in the same location
-//After solving the bug that caused multiple points to be in the same location,
-//probably this function is not needed. I leave it here just in case
-void Generate_Network::Overlapping_points_same_position(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<Point_3D> &cnt_new, Point_3D &point)const
-{
-    //The new point will be moved depending on wheter it is the first point, second point or other point after the second
-    if (!cnt_new.size()) {
-        //Point is the first point
-        //Move the point to a random location
-        point.x = ((double)rand()/RAND_MAX)*geom_sample.ex_dom_cnt.len_x + geom_sample.ex_dom_cnt.poi_min.x;
-        point.y = ((double)rand()/RAND_MAX)*geom_sample.ex_dom_cnt.wid_y + geom_sample.ex_dom_cnt.poi_min.y;
-        point.z = ((double)rand()/RAND_MAX)*geom_sample.ex_dom_cnt.hei_z + geom_sample.ex_dom_cnt.poi_min.z;
-    } else if (cnt_new.size() == 1) {
-        //point is the second point
-        //If there is only one point, just move the new point to a new direction
-        
-        //Generate a rotation matrix
-        double phi = ((double)rand()/RAND_MAX)*2*PI;
-        //For the second point, the limitation on the angles is not important since there are no other
-        //segments to compare with
-        double theta = ((double)rand()/RAND_MAX)*2*PI - PI;
-        MathMatrix rotation(3,3);
-        rotation = Get_transformation_matrix(theta, phi);
-        
-        //Calculate new point
-        //The operation point = cnt_new.front() + Get_new_point(rotation, nanotube_geo.len_max)
-        //has to be done in two steps because I get an error. The types of Point_3D are different
-        //one is const and the other is not
-        point = cnt_new.front();
-        point = point + Get_new_point(rotation, nanotube_geo.len_max);
-    } else {
-        //point is the third point of higher
-        //If there are 2 or more points, calculate the z_i unit vector and then move the new point
-        //to a random direction
-        
-        //Generate a rotation matrix
-        double phi = ((double)rand()/RAND_MAX)*2*PI;
-        double theta = ((double)rand()/RAND_MAX)*PI - PI/2;
-        MathMatrix rotation(3,3);
-        rotation = Get_transformation_matrix(theta, phi);
-        
-        //Calculate the z_i unit vector
-        //The operation Point_3D z_i = cnt_new.back() - cnt_new[cnt_new.size()-2];
-        //has to be done in two steps because I get an error.
-        Point_3D z_i = cnt_new.back();
-        z_i = z_i - cnt_new[cnt_new.size()-2];
-        z_i = z_i/(z_i.distance_to(z_i)); //unit vector
-        
-        //Calculate new point
-        //temporary matrix to store a matrix vector multiplication
-        MathMatrix vec(3,1);
-        vec.element[0][0] = z_i.x;
-        vec.element[1][0] = z_i.y;
-        vec.element[2][0] = z_i.z;
-        //Rotate unit vector, and multiply by the magnitude of the segment length
-        vec = (rotation*vec)*nanotube_geo.step_length;
-        //Add coordintes to last point in cnt_new to create new point
-        point = cnt_new.back();
-        point.x = point.x + vec.element[0][0];
-        point.y = point.y + vec.element[1][0];
-        point.z = point.z + vec.element[2][0];
-        
-    }
-}
-//---------------------------------------------------------------------------
 //This function checks that "point" is within the bounds of the segment orientation.
 //The criterion is just checking the point is not more than pi/2 respect with the previous
 //segment. In the limiting case we have a straight triangle. So I calculate the hypotenuse.
@@ -945,32 +858,26 @@ int Generate_Network::Check_segment_orientation(const Point_3D &point, const vec
         
         //Thus an invalid angle happens when a^2 + b^2 - c^2 > 0
         //Check if this is the case
-        if (Segment_angle_discriminant(point, cnt_new.back(), cnt_new[last-1]) > Zero) {
+        
+        double a2 = point.squared_distance_to(cnt_new.back());
+        double b2 = cnt_new.back().squared_distance_to(cnt_new[last-1]);
+        double c2 = point.squared_distance_to(cnt_new[last-1]);
+        
+        double angle_discriminant = a2 + b2 - c2;
+        
+        if (angle_discriminant > Zero) {
             //The point is not in a valid position
             return 0;
-        } else {
+        }
+        else {
             //The point is in a valid position
             return 1;
         }
-    } else {
+    }
+    else {
         //If point is the first or second point, its orientation does not matter
         return 1;
     }
-}
-//---------------------------------------------------------------------------
-//Given three points, this function calculates the sides of the triangle defined by these three points
-//Then it returns the quantity a^2 + b^2 - c^2
-//a = distance from first to second point
-//b = distance from second to third point
-//c = distance from first to third point
-double Generate_Network::Segment_angle_discriminant(const Point_3D &first, const Point_3D &second, const Point_3D &third)const
-{
-    //calculate squared distances
-    double a2 = first.squared_distance_to(second);
-    double b2 = second.squared_distance_to(third);
-    double c2 = first.squared_distance_to(third);
-    
-    return (a2 + b2 - c2);
 }
 //---------------------------------------------------------------------------
 //Calculate the effective portion (length) which falls into the given region defined by a cuboid
@@ -1017,7 +924,7 @@ double Generate_Network::Length_inside_sample(const Geom_sample &geom_sample, co
 }
 //---------------------------------------------------------------------------
 //This function adds a point to a region so penetration can be checked
-void Generate_Network::Add_to_overlapping_regions(const Geom_sample &geom_sample, double overlap_max_cutoff, Point_3D point, long int global_num, const vector<int> &n_subregions, vector<vector<long int> > &sectioned_domain)const
+void Generate_Network::Add_cnt_point_to_overlapping_regions(const Geom_sample &geom_sample, Point_3D point, long int global_num, const int n_subregions[], vector<vector<long int> > &sectioned_domain)const
 {
     //A point is added only if it is in the composite domain
     //If the point is in the boundary layer, overlapping is not important
@@ -1060,17 +967,17 @@ void Generate_Network::Add_to_overlapping_regions(const Geom_sample &geom_sample
         
         //Assign value of flag according to position of point
         //The first operand eliminates the periodicity on the boundary
-        if ((a > 0) && (x >= x1) && (x <= x1+overlap_max_cutoff))
+        if ((a > 0) && (x >= x1) && (x <= x1+geom_sample.gs_overlap_cnt))
             fx = -1;
-        else if ((a < n_subregions[0]-1) && (x >= x2-overlap_max_cutoff) && (x <= x2 ))
+        else if ((a < n_subregions[0]-1) && (x >= x2-geom_sample.gs_overlap_cnt) && (x <= x2 ))
             fx = 1;
-        if ((b > 0) && (y >= y1) && (y <= y1+overlap_max_cutoff))
+        if ((b > 0) && (y >= y1) && (y <= y1+geom_sample.gs_overlap_cnt))
             fy = -1;
-        else if ((b < n_subregions[1]-1) && (y >= y2-overlap_max_cutoff) && (y <= y2 ))
+        else if ((b < n_subregions[1]-1) && (y >= y2-geom_sample.gs_overlap_cnt) && (y <= y2 ))
             fy = 1;
-        if ((c > 0) && (z >= z1) && (z <= z1+overlap_max_cutoff))
+        if ((c > 0) && (z >= z1) && (z <= z1+geom_sample.gs_overlap_cnt))
             fz = -1;
-        else if ((c < n_subregions[2]-1) && (z >= z2-overlap_max_cutoff) && (z <= z2 ))
+        else if ((c < n_subregions[2]-1) && (z >= z2-geom_sample.gs_overlap_cnt) && (z <= z2 ))
             fz = 1;
         
         //Create array for loop over overlaping regions
@@ -1501,7 +1408,7 @@ int Generate_Network::Get_random_value_mt(const string &dist_type, mt19937 &engi
 }
 //---------------------------------------------------------------------------
 //Randomly generate a seed (intial point of a CNT or GNP center) in the given cuboid
-int Generate_Network::Get_seed_point_mt(const cuboid &cub, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_z, uniform_real_distribution<double> &dist)const
+int Generate_Network::Get_point_in_cuboid_mt(const cuboid &cub, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_z, uniform_real_distribution<double> &dist)const
 {
     
     point.x = cub.poi_min.x + cub.len_x*dist(engine_x);
@@ -1651,7 +1558,7 @@ int Generate_Network::Point_inside_sample(const Geom_sample &geom_sample, const 
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //Generate a GNP network
-int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, vector<GNP> &gnps, double &gnp_vol_tot, double &gnp_wt_tot)const
+int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, vector<GNP> &gnps, vector<vector<int> > &sectioned_domain, double &gnp_vol_tot, double &gnp_wt_tot)const
 {
 
     //geom_sample cannot be modified, so copy the seeds to an array if they were specified in
@@ -1685,9 +1592,6 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
     //Variable to count the number of GNPs ignored because they were not even partially inside the sample
     int gnp_ignored_count = 0;
     
-    //sectioned_domain[i] contains all the points in sub-region i, a negative number indicates the discretized GNP
-    //Sub-region i is an overlapping subregion to check for penetrations
-    vector<vector<int> > sectioned_domain;
     //n_subregions[0] is the number of subregions along x
     //n_subregions[1] is the number of subregions along y
     //n_subregions[2] is the number of subregions along z
@@ -1720,7 +1624,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
         //Randomly generate a point inside the extended domain, this will be the displacement
         //applied to the GNP, i.e, its random location
         //hout<<"Get_seed_point_mt"<<endl;
-        if(Get_seed_point_mt(geom_sample.ex_dom_gnp, gnp.center, engine_x, engine_y, engine_z, dist)==0) return 0;
+        if(Get_point_in_cuboid_mt(geom_sample.ex_dom_gnp, gnp.center, engine_x, engine_y, engine_z, dist)==0) return 0;
         //hout<<"gnp.center="<<gnp.center.str()<<endl;
         
         //Generate the GNP and all its remaining geometric parameters (vertices, planes, normal vectors)
@@ -2089,7 +1993,7 @@ int Generate_Network::Get_gnp_subregions(const Geom_sample &geom_sample, const G
                 Point_3D new_point = start_x + diff_x*lambda_x;
                 
 
-                //Check if the midpoint is inside the sample
+                //Check if new_point is inside the sample
                 if (Point_inside_sample(geom_sample, new_point)) {
                     
                     //If the point is inside the sample, then add the subregion the GNP point occupies
@@ -2143,32 +2047,32 @@ int Generate_Network::Add_gnp_subregions_to_set_for_gnp_point(const Geom_sample 
     
     //Update subregion coordinates in case the point is in the overlapping part of the subregion
     //The first operand eliminates the periodicity on the boundary
-    if ((a > 0) && (new_point.x >= x1) && (new_point.x <= x1+geom_sample.gs_overlap)) {
+    if ((a > 0) && (new_point.x >= x1) && (new_point.x <= x1+geom_sample.gs_overlap_gnp)) {
         //The point is in the "left" side of the overlapping region (along the x axis),
         //then the minimum a-coordinate needs to be updated again
         min_a = min_a - 1;
     }
-    else if ((a < n_subregions[0]-1) && (new_point.x >= x2-geom_sample.gs_overlap) && (new_point.x <= x2 )) {
+    else if ((a < n_subregions[0]-1) && (new_point.x >= x2-geom_sample.gs_overlap_gnp) && (new_point.x <= x2 )) {
         //The point is in the "right" side of the overlapping region (along the x axis),
         //then the maximum a-coordinate needs to be updated again
         max_a = max_a + 1;
     }
-    if ((b > 0) && (new_point.y >= y1) && (new_point.y <= y1+geom_sample.gs_overlap)) {
+    if ((b > 0) && (new_point.y >= y1) && (new_point.y <= y1+geom_sample.gs_overlap_gnp)) {
         //The point is in the "left" side of the overlapping region (along the y axis),
         //then the minimum a-coordinate needs to be updated again
         min_b = min_b - 1;
     }
-    else if ((b < n_subregions[1]-1) && (new_point.y >= y2-geom_sample.gs_overlap) && (new_point.y <= y2 )){
+    else if ((b < n_subregions[1]-1) && (new_point.y >= y2-geom_sample.gs_overlap_gnp) && (new_point.y <= y2 )){
         //The point is in the "right" side of the overlapping region (along the y axis),
         //then the maximum a-coordinate needs to be updated again
         max_b = max_b + 1;
     }
-    if ((c > 0) && (new_point.z >= z1) && (new_point.z <= z1+geom_sample.gs_overlap)) {
+    if ((c > 0) && (new_point.z >= z1) && (new_point.z <= z1+geom_sample.gs_overlap_gnp)) {
         //The point is in the "left" side of the overlapping region (along the z axis),
         //then the minimum a-coordinate needs to be updated again
         min_c = min_c - 1;
     }
-    else if ((c < n_subregions[2]-1) && (new_point.z >= z2-geom_sample.gs_overlap) && (new_point.z <= z2 )) {
+    else if ((c < n_subregions[2]-1) && (new_point.z >= z2-geom_sample.gs_overlap_gnp) && (new_point.z <= z2 )) {
         //The point is in the "right" side of the overlapping region (along the z axis),
         //then the maximum a-coordinate needs to be updated again
         max_c = max_c + 1;
@@ -2595,6 +2499,825 @@ int Generate_Network::Approximate_gnp_volume_inside_sample(const Geom_sample &sa
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
+//This function generates CNTs for a mixed nanoparticle network
+int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Nanotube_Geo &nanotube_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, const double &gnp_vol_tot, const double &gnp_wt_tot, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius)const
+{
+    //Initial seeds, if any are in network_seeds within geom_sample.
+    //However, geom_sample cannot be modified, so copy the seeds to a new vector
+    unsigned int net_seeds[7];
+    if (!CNT_seeds(simu_para.CNT_seeds, net_seeds)) {
+        hout<<"Error in CNT_seeds"<<endl;
+        return 0;
+    }
+    
+    //Use the seeds generated above
+    std::mt19937 engine_x(net_seeds[0]);
+    std::mt19937 engine_y(net_seeds[1]);
+    std::mt19937 engine_z(net_seeds[2]);
+    std::mt19937 engine_phi(net_seeds[3]);
+    std::mt19937 engine_theta(net_seeds[4]);
+    std::mt19937 engine_rand(net_seeds[5]);
+    std::mt19937 engine_initial_direction(net_seeds[6]);
+    
+    // "Filter" MT's output to generate double values, uniformly distributed on the closed interval [0, 1].
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+    // "Filter" MT's output to generate double values, uniformly distributed on the closed interval [-1, 1].
+    std::uniform_real_distribution<double> dist_initial(-1.0, 1.0);
+
+    //---------------------------------------------------------------------------
+    //Time variables to keep track of generation time
+    time_t ct0, ct1;
+    
+    //---------------------------------------------------------------------------
+    //Variables for the generated CNT volume and weight
+    double vol_sum = 0;
+    
+    //Variable to count the generated CNT seeds
+    int cnt_seed_count = 0;
+    
+    //Variable to coun the number of rejected CNTs
+    int cnt_reject_count = 0;
+    //Variable to count the number of ignored CNTs
+    int cnt_ignore_count = 0;
+    
+    //Variable to count the number of times that a point had to be relocated
+    int point_overlap_count = 0;
+    //Variable to count the number of points that were overlapping other points
+    int point_overlap_count_unique = 0;
+    
+    //---------------------------------------------------------------------------
+    //Vectors for handling CNT penetration
+    //global_coordinates[i][0] stores the CNT number of global point i
+    //global_coordinates[i][1] stores the local point number of global point i
+    vector<vector<int> > global_coordinates;
+    //sectioned_domain[i] contains all the points in sub-region i.
+    //Sub-region i is an overlapping subregion to check for penetrations
+    vector<vector<long int> > sectioned_domain;
+    //n_subregions[0] is the number of subregions along x
+    //n_subregions[1] is the number of subregions along y
+    //n_subregions[2] is the number of subregions along z
+    int n_subregions[3];
+    //Initialize the vector sub-regions
+    Initialize_cnt_subregions(geom_sample, n_subregions, sectioned_domain);
+    
+    //Get the time when generation started
+    ct0 = time(NULL);
+    //Check when 10% is completed
+    double vol_completed = 0.1;
+    
+    //Boolean to terminate the main while loop, initialized to false to start the loop
+    bool terminate = false;
+    
+    //---------------------------------------------------------------------------
+    while(!terminate)
+    {
+        //---------------------------------------------------------------------------
+        //Vector for a new nanotube
+        vector<Point_3D> new_cnt;
+        
+        //---------------------------------------------------------------------------
+        //Randomly generate a CNT length and CNT radius
+        double cnt_length, cnt_rad;
+        //hout<<"Get_random_value_mt 1"<<endl;
+        if (!Get_length_and_radius(nanotube_geo, engine_rand, dist, cnt_length, cnt_rad)) {
+            hout << "Error in Generate_network_threads_mt when calling Get_length_and_radius" <<endl;
+            return 0;
+        }
+        
+        //Calculate the number of CNT growth steps
+        int step_num = (int)(cnt_length/nanotube_geo.step_length) + 1;
+        
+        //---------------------------------------------------------------------------
+        //Cross-sectional area of the current CNT. It is used to calculate the CNT volume.
+        const double cnt_cross_area = PI*cnt_rad*cnt_rad;
+        
+        //---------------------------------------------------------------------------
+        //Randomly generate an initial direction, then generate the rotation matrix that results in that rotation
+        MathMatrix multiplier(3,3);
+        //hout<<"Get_initial_direction_mt"<<endl;
+        if (!Get_initial_direction_mt(nanotube_geo.dir_distrib_type, nanotube_geo.ini_theta, nanotube_geo.ini_phi, engine_initial_direction, dist_initial, multiplier)) {
+            hout << "Error in Generate_network_threads_mt when calling Get_initial_direction_mt" <<endl;
+            return 0;
+        }
+        
+        //---------------------------------------------------------------------------
+        //Generate an initial point of the CNT in the extended domain
+        Point_3D new_point;
+        if (Generate_initial_point_of_cnt(geom_sample, simu_para, cnts_points, cnts_radius, new_cnt, cnt_rad+cutoffs.van_der_Waals_dist, global_coordinates, sectioned_domain, gnps, sectioned_domain_gnp, n_subregions, new_point, engine_x, engine_y, engine_z, dist) != 1) {
+            hout << "Error in Generate_network_threads_mt when calling Generate_initial_point_of_cnt" <<endl;
+            return 0;
+        }
+        
+        //Add the CNT seed to the current CNT vector
+        new_cnt.push_back(new_point);
+        
+        //---------------------------------------------------------------------------
+        //Increase the count of initial CNT points generated
+        cnt_seed_count++;
+        //hout << "Seed="<<cnt_seed_count<<endl;
+        int max_seed = 1E9;
+        if(cnt_seed_count>max_seed) {
+            hout << "The number of generated seeds is lager than "<<max_seed<<", but the nanotube generation still fails to acheive the requested volume fraction." << endl;
+            return 0;
+        }
+        
+        //Get the location of the initial point
+        bool is_prev_in_sample = Point_inside_sample(geom_sample, new_cnt[0]);
+        
+        //Variable to count the number of points of the new CNT that are inside the sample
+        int points_in = (is_prev_in_sample)? 1: 0;
+        
+        //Variable to store the length of the current CNT that is inside the sample
+        double cnt_len = 0.0;
+        
+        //Start generation of a CNT siven the generated seed
+        for(int i = 0; i < step_num; i++)
+        {
+            //Randomly generate a direction in the spherical coordinates
+            //To have the positive Z-axis to be a central axis
+            //Then, the radial angle, theta, obeys a normal distribution (theta \in fabs[(-omega,+omega)]) and the zonal angle, phi, obeys a uniform distribution (phi \in (0,2PI))
+            double cnt_theta = 0, cnt_phi = 0;
+            if(Get_normal_direction_mt(nanotube_geo.angle_max, cnt_theta, cnt_phi, engine_theta, engine_phi, dist)==0) return 0;
+            
+            //Calculate the rotation matrix for current segment
+            multiplier = multiplier*Get_transformation_matrix(cnt_theta, cnt_phi);
+            
+            //hout << "i="<<i<<"<"<<step_num<<endl;
+            new_point = new_point + Get_new_point(multiplier, nanotube_geo.step_length);
+            //1 means that point is not the intial point
+            new_point.flag = 1;
+            
+            //Check if the new point, cnt_poi, is inside the extended domain
+            if(Point_inside_cuboid(geom_sample.ex_dom_cnt, new_point))
+            {
+                //If the point is inside the extended domain, then check for penetration if non-penetrating
+                //model is used, or just add it if penetrating model is used
+                
+                //Check for penetration
+                //hout << "Check penetration ";
+                int mixed_interpenetration = 1;
+                if (simu_para.penetration_model_flag) {
+                    
+                    //Get the status on mixed penetration
+                    mixed_interpenetration = Check_mixed_interpenetration(geom_sample, cnts_points, cnts_radius, new_cnt, cnt_rad+cutoffs.van_der_Waals_dist, global_coordinates, sectioned_domain, gnps, sectioned_domain_gnp, n_subregions, new_point);
+                    if (mixed_interpenetration == -1) {
+                        hout << "Error in Generate_network_threads_mt when calling Check_mixed_interpenetration (CNT initial point)" <<endl;
+                        return -1;
+                    }
+                    
+                }
+                
+                if (!simu_para.penetration_model_flag || mixed_interpenetration) {
+                    
+                    //---------------------------------------------------------------------------
+                    //If the penetrating model is used or if new_point was placed
+                    //in a valid position (i.e., without penetrating another CNT or GNP)
+                    //then add the point to the generated CNTs
+                    
+                    //Calculate the segment length inside the sample and add it to the total CNT length
+                    bool is_new_inside_sample;
+                    cnt_len = cnt_len + Length_inside_sample(geom_sample, new_cnt.back(), new_point, is_prev_in_sample, is_new_inside_sample);
+                    
+                    //If new_point is inside the sample, then increase the number
+                    //of points inside the sample of the new CNT
+                    if (is_new_inside_sample) {
+                        points_in++;
+                    }
+                    
+                    //For the next iteration of the for loop, cnt_poi will become previous point,
+                    //so update the boolean is_prev_in_sample for the next iteration
+                    is_prev_in_sample = is_new_inside_sample;
+                    
+                    //Add the new point to the current CNT
+                    new_cnt.push_back(new_point);
+                    
+                    //---------------------------------------------------------------------------
+                    //Check if the target volume fraction has been reached
+                    if( (vol_sum + cnt_len*cnt_cross_area) >= nanotube_geo.volume) {
+                        
+                        //Set the terminate variable to true so that the main while-loop is terminated
+                        terminate = true;
+                        
+                        //Break the for-loop so that the current CNT stops its growth
+                        break;
+                    }
+                    
+                } else {
+                    //---------------------------------------------------------------------------
+                    //If the penetrating point could not be accommodated, then delete the current CNT
+                    //so that a new one is generated
+                    //hout << "Penetrating point could not be accommodated" <<endl;
+                    
+                    //Clear the new_cnt vector so that it is not added to the rest of CNTs
+                    new_cnt.clear();
+                    
+                    //Increase the count of rejected cnts
+                    cnt_reject_count++;
+                    
+                    //Break the for-loop to terminate the CNT growth
+                    break;
+                }
+                //hout << "done" << endl;
+            }
+            else {
+                
+                //If the point is outside the extended domain, break the for-loop
+                //to terminate the CNT growth
+                break;
+            }
+            //for-loop ends here
+        }
+        
+        //---------------------------------------------------------------------------
+        //Store the CNT points
+        //hout << "Store CNT ";
+        //Check that is a valid CNT
+        //If size is 0, the CNT was rejected
+        //If size is 1, then only the CNT seed was generated in a valid position but the second point
+        //could not be placed in a valid position (i.e., without interpenetrating another CNT)
+        if(new_cnt.size() >= 2 && points_in)
+        {
+            //Update the volume and weigth of generated CNTs
+            vol_sum += cnt_len*cnt_cross_area;
+            
+            //If the new_cnt vector has at least two points, then it can be added to the rest of the points
+            cnts_points.push_back(new_cnt);
+            
+            //Add the radius to the vector of radii
+            cnts_radius.push_back(cnt_rad);
+            
+            //Perform these operations when the non-overlapping model is used
+            if (simu_para.penetration_model_flag) {
+                
+                //Variable needed for updating global_coordinates
+                vector<int> empty;
+                
+                int CNT = (int)cnts_points.size()-1;
+                
+                //Scan all points in the CNT that was just generated
+                for(int ii=0; ii<(int)new_cnt.size(); ii++)
+                {
+                    
+                    //Add global coordinate
+                    global_coordinates.push_back(empty);
+                    global_coordinates.back().push_back(CNT);
+                    global_coordinates.back().push_back(ii);
+                    //Add point to an overlapping region in the vector sectioned_domain
+                    Add_cnt_point_to_overlapping_regions(geom_sample, new_cnt[ii], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
+                    
+                }
+            }
+        }
+        else if (!points_in){
+            
+            //The CNT can be ignored as it is completely outside the sample
+            cnt_ignore_count++;
+        }
+        //hout << "done"<<endl;
+        
+        //Check progress
+        if (vol_sum > vol_completed*nanotube_geo.volume) {
+            //Get the time
+            ct1 = time(NULL);
+            
+            //Output elapsed time
+            hout << "Completed " << vol_completed*100 << " % of target volume. Elapsed time: " << (int)(ct1-ct0) << " secs." <<endl;
+            
+            //When the next 10% is completed send another message
+            vol_completed = vol_completed + 0.1;
+        }
+        //while-loop ends here
+    }
+    
+    //Output the CNT content generated
+    if(nanotube_geo.criterion == "wt") {
+        
+        //Calculate matrix weight
+        double matrix_weight = (geom_sample.volume - vol_sum)*geom_sample.matrix_density;
+        
+        //Calculate the CNT weight
+        double cnt_weight = vol_sum*nanotube_geo.density;
+        
+        hout << endl << "The weight fraction of generated CNTs is: " << cnt_weight/(matrix_weight + cnt_weight);
+        hout << ", the target weight fraction was " << nanotube_geo.weight_fraction << endl << endl;
+
+    } else if(nanotube_geo.criterion == "vol") {
+        hout << endl << "The volume fraction of generated CNTs was " << vol_sum/geom_sample.volume;
+        hout << ", the target volume fraction was " << nanotube_geo.volume_fraction << endl << endl;
+    }
+    
+    hout << "There were " << point_overlap_count_unique << " overlapping points and ";
+    hout << point_overlap_count << " overlaps, " << cnt_reject_count << " CNTs were rejected and "<<cnt_ignore_count<<" were ignored." << endl;
+    
+    
+    return 1;
+}
+//This function generates the initial point of a CNT
+//If non-penetrating model is used, then it also makes sure that the initial point of a CNT
+//is in a valid position (i.e., without interpenetrations)
+int Generate_Network::Generate_initial_point_of_cnt(const Geom_sample &geom_sample, const Simu_para &simu_para, const vector<vector<Point_3D> > &cnts, const vector<double> &radii, const vector<Point_3D> &new_cnt, const double &rad_plus_dvdw, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, const int n_subregions[], Point_3D &new_point, mt19937 &engine_x, mt19937 &engine_y, mt19937 &engine_z, uniform_real_distribution<double> &dist)const
+{
+    //Variable to count the attempts
+    int attempts = 0;
+    
+    while (attempts <= MAX_ATTEMPTS) {
+        
+        //Genereta a new seed point
+        if(!Get_point_in_cuboid_mt(geom_sample.ex_dom_cnt, new_point, engine_x, engine_y, engine_z, dist)){
+            hout << "Error in Generate_network_threads_mt when calling Get_point_in_cuboid_mt (CNT initial point)" <<endl;
+            return -1;
+        }
+        
+        if (simu_para.penetration_model_flag) {
+            
+            //If non-penetrating model is used, then make sure the intial point of the CNT
+            //is in a valid position
+            int interpenetration = Check_mixed_interpenetration(geom_sample, cnts, radii, new_cnt, rad_plus_dvdw, global_coordinates, sectioned_domain_cnt, gnps, sectioned_domain_gnp, n_subregions, new_point);
+            if (interpenetration == -1) {
+                hout << "Error in Generate_network_threads_mt when calling Check_mixed_interpenetration (CNT initial point)" <<endl;
+                return -1;
+            }
+            else if (interpenetration) {
+                
+                //There is no interpenetration, so loop can be terminated
+                return 1;
+            }
+        }
+        else {
+            
+            //There is no interpenetration, so loop can be terminated
+            return 1;
+        }
+        
+        //Increase the number of attempts
+        attempts++;
+    }
+    
+    //There is still penetration so terminate with 0 and output error message
+    hout << "Error: Too many attempts to resolve overlapping of an intial CNT point . ";
+    hout << new_point.x << ' ' << new_point.y << ' ' << new_point.z << endl;
+    return 0;
+}
+//This function checks if a CNT point is penetrating a CNT or GNP
+int Generate_Network::Check_mixed_interpenetration(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts, const vector<double> &radii, const vector<Point_3D> &new_cnt, const double &rad_plus_dvdw, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, const int n_subregions[], Point_3D &new_point)const
+{
+    //Vector that stores the coordintes of the points that the input point "new_point" is penetrating
+    vector<Point_3D> affected_points;
+    //Vector that stores the distance at which the two points should be
+    vector<double> cutoffs_p;
+    //Vector that stores the distance at which the two points actually are
+    vector<double> distances;
+    
+    //Variable to count the number of attempts
+    int attempts = 0;
+    
+    //Loop while the maximum numbe of attempts has not been reached
+    while (attempts <= MAX_ATTEMPTS) {
+        
+        //Get the subregion of CNT point
+        int subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
+        if (subregion == -1) {
+            //If the sub-region is -1, then the point is in te boundary layer,
+            //so there is no need to check penetration
+            return 1;
+        }
+        
+        //Check if point is too close or penetrating a GNP
+        if (!Get_gnp_penetrating_points(gnps, sectioned_domain_gnp[subregion], rad_plus_dvdw, new_point, affected_points, cutoffs_p, distances)) {
+            hout<<"Error in Check_mixed_interpenetration when calling Get_gnp_penetrating_points"<<endl;
+            return -1;
+        }
+        
+        if (affected_points[0].flag == -1) {
+            //This is a special case when the point is inside a GNP
+            //Since the point is inside a GNP, there is no need to check other points
+            //because there cannot be penetration with other CNTs, this would have
+            //been avoided due to using the non-penetrating model
+            
+            //Move the point for this special case
+            if (!Move_point_inside_gnp(affected_points[0], cutoffs_p[0], new_point)) {
+                hout<<"Error in Check_mixed_interpenetration when calling Move_point_inside_gnp"<<endl;
+                return -1;
+            }
+            
+            //Check if the segment has a valid orientation
+            if (!Check_segment_orientation(new_point, new_cnt)) {
+                //When not in a valid position it cannot be moved again so a new CNT is needed
+                return 0;
+            }
+        }
+        else {
+            
+            //Check if point is too close or penetrating another CNT
+            Get_penetrating_points(cnts, global_coordinates, sectioned_domain_cnt[subregion], radii, rad_plus_dvdw, new_point, affected_points, cutoffs_p, distances);
+            
+            //Check if there are any penetrating points
+            if (affected_points.size()) {
+                
+                //Move the point depending on the case
+                Move_point(new_cnt, new_point, cutoffs_p, distances, affected_points);
+                
+                //Check if the segment has a valid orientation
+                if (!Check_segment_orientation(new_point, new_cnt)) {
+                    //When not in a valid position it cannot be moved again so a new CNT is needed
+                    return 0;
+                }
+            }
+            else {
+                
+                //The point does not need to be moved so terminate with true
+                return 1;
+            }
+        }
+        
+        //Clear the vectors affected_points, contact_coordinates and temporal_contacts
+        //so they are used in the next iteration
+        affected_points.clear();
+        cutoffs_p.clear();
+        distances.clear();
+    }
+    
+    //The point could not be accomodated so terminate with false
+    return 0;
+}
+//This function finsd the GNPs that are too close to a CNT point penetrating the GNP
+//The points in the GNP that are in contact with the CNT are also found
+int Generate_Network::Get_gnp_penetrating_points(const vector<GNP> &gnps, const vector<int> &subregion_gnp, const double &cutoff, const Point_3D &new_point, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
+{
+    //Variable to store the index of the affected point when new_point is inside the GNP
+    size_t idx_negative = -1;
+    
+    //Scan all GNPs in the subregion
+    for (size_t i = 0; i < subregion_gnp.size(); i++) {
+        
+        //Get the GNP number of the current subregion
+        int GNP_i = subregion_gnp[i];
+        
+        //Find the distance from new_point to GNP  and the closest point in the GNP
+        double distance = 0;
+        Point_3D P = Get_gnp_point_closest_to_point(gnps[GNP_i], new_point, distance);
+        
+        //Check if distance is below the cutoff
+        if (distance < cutoff) {
+            
+            //Add the current point, distance and cutoff to the output vectors
+            affected_points.push_back(P);
+            cutoffs_p.push_back(cutoff);
+            distances.push_back(distance);
+        }
+        
+        if (idx_negative == -1 && P.flag == -1) {
+            idx_negative = i;
+        }
+    }
+    
+    //Check if:
+    //1) new_point was inside a GNP (idx_negative != -1)
+    //2) more than one points were found (affected_points.size() > 1)
+    //3) the affected point found for the case of new_point being inside a GNP is not the first one (idx_negative != 0)
+    //Conditions 1 to 3 can be condensed into one condition. If idx_negative is 1 or more, this
+    //means that it is at least the second element of the vector, thus there are more than
+    //one elements in the vector
+    if (idx_negative > 0) {
+        
+        //Move the "internal point" to the front of the vector
+        Point_3D tmp = affected_points[0];
+        affected_points[0] = affected_points[idx_negative];
+        affected_points[idx_negative] = tmp;
+        
+        //Move the distance to the "internal point" to the front of the vector
+        double tmp_d = distances[0];
+        distances[0] = distances[idx_negative];
+        distances[idx_negative] = tmp_d;
+        
+        //Move the cutoff of the "internal point" to the front of the vector
+        tmp_d = cutoffs_p[0];
+        cutoffs_p[0] = cutoffs_p[idx_negative];
+        cutoffs_p[idx_negative] = tmp_d;
+    }
+    
+    return 1;
+}
+//This function finds the point on a GNP closest to a given point
+Point_3D Generate_Network::Get_gnp_point_closest_to_point(const GNP &gnp, const Point_3D &P, double &distance) const
+{
+    //
+    Point_3D P_out;
+    
+    //These vectors are used more than once
+    Point_3D V0P = P - gnp.vertices[0];
+    Point_3D V1P = P - gnp.vertices[1];
+    
+    //Check if P is above plane 0
+    if (gnp.faces[0].N.dot(V0P) > Zero) {
+        
+        //Call the function to find the point P and distance to closest simplex
+        //above the plane of face 0
+        return Get_point_closest_to_large_gnp_face(gnp, 0, 1, 2, 3, 0, P, distance);
+    }
+    else {
+        
+        //Check if P is above plane 1
+        if (gnp.faces[1].N.dot(P - gnp.vertices[4]) > Zero) {
+            
+            //Call the function to find the point P and distance to closest simplex
+            //above the plane of face 1
+            return Get_point_closest_to_large_gnp_face(gnp, 4, 5, 6, 7, 1, P, distance);
+        }
+        else {
+            
+            //Check if point P is above face 2
+            if (gnp.faces[2].N.dot(V0P) > Zero) {
+                
+                //Face V0V3V7V4 (2), edge V0V4, or edge V3V7 is closest
+                if (gnp.faces[3].N.dot(V0P) > Zero) {
+                    
+                    //Edge V0V4 is closest
+                    return Distance_from_point_to_edge(P, gnp.vertices[0], gnp.vertices[4], distance);
+                }
+                else {
+                    if (gnp.faces[5].N.dot(P - gnp.vertices[3]) > Zero) {
+                        
+                        //Edge V3V7 is closest
+                        return Distance_from_point_to_edge(P, gnp.vertices[3], gnp.vertices[7], distance);
+                    }
+                    else {
+                        
+                        //Face V0V3V7V4 (2) is closest
+                        distance = gnp.faces[2].distance_to(P);
+                        
+                        //Calcualte point in plane
+                        Point_3D P_proj = P - gnp.faces[2].N*distance;
+                        
+                        return P_proj;
+                    }
+                }
+            }
+            else {
+                
+                //Check if point P is above face 4
+                if (gnp.faces[4].N.dot(V1P) > Zero) {
+                    
+                    //Face V1V2V6V5 (4), edge V1V5, or edge V2V6 is closest
+                    if (gnp.faces[3].N.dot(V1P) > Zero) {
+                        
+                        //Edge V1V5 is closest
+                        return Distance_from_point_to_edge(P, gnp.vertices[1], gnp.vertices[5], distance);
+                    }
+                    else {
+                        if (gnp.faces[5].N.dot(P - gnp.vertices[2]) > Zero) {
+                            
+                            //Edge V2V6 is closest
+                            return Distance_from_point_to_edge(P, gnp.vertices[2], gnp.vertices[6], distance);
+                        }
+                        else {
+                            
+                            //Face V1V2V6V5 (4) is closest
+                            distance = gnp.faces[4].distance_to(P);
+                            
+                            //Calcualte point in plane
+                            Point_3D P_proj = P - gnp.faces[4].N*distance;
+                            
+                            return P_proj;
+                        }
+                    }
+                }
+                else {
+                    
+                    //Face V0V1V5V4 or face V2V3V7V6 is closest or P is inside
+                    if (gnp.faces[3].N.dot(V0P) > Zero) {
+                        
+                        //Face V0V1V5V4 (3) is closest
+                        distance = gnp.faces[3].distance_to(P);
+                        
+                        //Calcualte point in plane
+                        Point_3D P_proj = P - gnp.faces[3].N*distance;
+                        
+                        return P_proj;
+                    }
+                    else {
+                        if (gnp.faces[5].N.dot(P - gnp.vertices[2]) > Zero) {
+                            
+                            //Face V2V3V7V6 (5) is closest
+                            distance = gnp.faces[5].distance_to(P);
+                            
+                            //Calcualte point in plane
+                            Point_3D P_proj = P - gnp.faces[5].N*distance;
+                            
+                            return P_proj;
+                        }
+                        else {
+                            
+                            //Point is inside GNP
+                            return Distance_from_point_to_internal_face(gnp, P, distance);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return P_out;
+}
+Point_3D Generate_Network::Get_point_closest_to_large_gnp_face(const GNP &gnp, const int &V0, const int &V1, const int &V2, const int &V3, const int &F, const Point_3D &P, double &distance)const
+{
+    //These vectors are used more than once
+    Point_3D V0P = P - gnp.vertices[V0];
+    Point_3D V1P = P - gnp.vertices[V1];
+    
+    //P is above plane 0
+    //Now check if it is outside on the side of face 2
+    if (gnp.faces[2].N.dot(V0P) > Zero) {
+        
+        //P might be closest to V0V3, V0 or V3
+        if (gnp.faces[3].N.dot(V0P) > Zero) {
+            
+            //P is closest to V0
+            //Calcualte the distance between points
+            distance = P.distance_to(gnp.vertices[V0]);
+            
+            return gnp.vertices[V0];
+        }
+        else {
+            if (gnp.faces[5].N.dot(P - gnp.vertices[V3]) > Zero) {
+                
+                //P is closest to V3
+                //Calcualte the distance between points
+                distance = P.distance_to(gnp.vertices[V3]);
+                
+                return gnp.vertices[V3];
+            }
+            else {
+                
+                //P is closest to V0V3
+                return Distance_from_point_to_edge(P, gnp.vertices[V0], gnp.vertices[V3], distance);
+            }
+        }
+    }
+    else {
+
+        //P is above plane 0
+        //Now check if it is outside on the side of face 4
+        if (gnp.faces[4].N.dot(V1P) > Zero) {
+            
+            //P might be closest to V1V2, V1 or V2
+            if (gnp.faces[3].N.dot(V1P) > Zero) {
+                
+                //P is closest to V1
+                //Calcualte the distance between points
+                distance = P.distance_to(gnp.vertices[V1]);
+                
+                return gnp.vertices[V1];
+            }
+            else {
+                if (gnp.faces[5].N.dot(P - gnp.vertices[V2]) > Zero) {
+                    
+                    //P is closest to V2
+                    //Calcualte the distance between points
+                    distance = P.distance_to(gnp.vertices[V2]);
+                    
+                    return gnp.vertices[V2];
+                }
+                else {
+                    
+                    //P is closest to V1V2
+                    return Distance_from_point_to_edge(P, gnp.vertices[V1], gnp.vertices[V2], distance);
+                    
+                }
+            }
+        }
+        else {
+            
+            //Face 0 (V0V1V2V3), V0V1 or V2V3 is closest
+            if (gnp.faces[3].N.dot(V0P) > Zero) {
+                
+                //V0V1 is closest
+                return Distance_from_point_to_edge(P, gnp.vertices[V0], gnp.vertices[V1], distance);
+            }
+            else {
+                if (gnp.faces[5].N.dot(P - gnp.vertices[V3]) > Zero) {
+                    
+                    //V2V3 is closest
+                    return Distance_from_point_to_edge(P, gnp.vertices[V2], gnp.vertices[V3], distance);
+                }
+                else {
+                    
+                    //Face V0V1V2V3 (0) is closest
+                    //Calculate distance from plane to face
+                    distance = gnp.faces[F].distance_to(P);
+                    
+                    //Calcualte point in plane
+                    Point_3D P_proj = P - gnp.faces[F].N*distance;
+                    
+                    return P_proj;
+                }
+            }
+        }
+    }
+    
+}
+//This function calculates the distance from an edge to a point P, it also calculates the point on that
+//edge closest to P
+Point_3D Generate_Network::Distance_from_point_to_edge(const Point_3D &P, const Point_3D &A, const Point_3D &B, double &distance)const
+{
+    //Calcualte vector AB
+    Point_3D AB = B - A;
+    
+    //Calculate vector AP
+    Point_3D AP = P - A;
+    
+    //Calculate the proyeted distance on edge V1V2 (squared quantity)
+    double dot_ = AP.dot(AB);
+    double dp2 = dot_*dot_/AB.length2();
+    
+    //Calculate the distance from AB to the point P
+    distance = sqrt(AP.length2() - dp2);
+    
+    //Calculate the position of the point closest to P in edge AB
+    Point_3D Q = A + AB.unit()*sqrt(dp2);
+    
+    return Q;
+}
+//This function calculates the distance from a face to a point P when the point is inside the GNP
+//It also calculates the point on that face closest to P
+Point_3D Generate_Network::Distance_from_point_to_internal_face(const GNP &gnp, const Point_3D &P, double &distance)const
+{
+    //Array to save the faces closest to P
+    int closest[] = {0,0,0};
+    
+    //Vector from centroid of GNP to point P
+    Point_3D CP = P - gnp.center;
+    
+    //Check if face 0 or 1 is closest
+    if (gnp.faces[0].N.dot(CP) < Zero) {
+        
+        //Closest to face 1
+        closest[0] = 1;
+    }
+    
+    //Check if face 2 or 4 is closest
+    if (gnp.faces[2].N.dot(CP) > Zero) {
+        
+        //Closest to face 2
+        closest[1] = 2;
+    }
+    else {
+        
+        //Closest to face 4
+        closest[1] = 4;
+    }
+    
+    //Check if face 3 or 5 is closest
+    if (gnp.faces[3].N.dot(CP) > Zero) {
+        
+        //Closest to face 3
+        closest[2] = 3;
+    }
+    else {
+        
+        //Closest to face 5
+        closest[2] = 5;
+    }
+    
+    //Initialize the output distance with the distance to the first face
+    distance = gnp.faces[closest[0]].distance_to(P);
+    
+    //Index of minimum
+    int idx = 0;
+    
+    //Iterate over the other two planes
+    for (int i = 1; i < 3; i++) {
+        
+        //Current plane
+        int pl = closest[i];
+        
+        //Distance from P to plane
+        double new_dist = gnp.faces[pl].distance_to(P);
+        
+        if (new_dist < distance) {
+            distance = new_dist;
+            idx = i;
+        }
+    }
+    
+    //Calculate the projection of the plane
+    Point_3D P_Proj = P - gnp.faces[idx].N*distance;
+    
+    //Set the flag to -1
+    P_Proj.flag = -1;
+    
+    return P_Proj;
+}
+int Generate_Network::Move_point_inside_gnp(const Point_3D &P_gnp, const double &cutoff, Point_3D &P_cnt)const
+{
+    //Get the direction vector from CNT point towards GNP point
+    Point_3D D = (P_gnp - P_cnt).unit();
+    
+    //P_cnt will now be a distance cutoff from P_gnp in direction D
+    P_cnt = P_gnp + D*cutoff;
+    
+    return 1;
+}
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
@@ -2669,9 +3392,6 @@ int Generate_Network::Generate_nanofiller_network(const struct Simu_para &simu_p
         hout << "Error: the type of particles shoud be one of the following: CNT_wires, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input value was: " << simu_para.particle_type << endl;
         return 0;
     }
-    
-    //Checking the angle between two segments in one nanotube (if less than PI/2, provide an alarm)
-    //if(CNTs_quality_testing(cnts_points)==0) return 0;
     
     //-----------------------------------------------------------------------------------------------------------------------------------------
     //Transform the 2D cnts_points into 1D cpoints and 2D cstructures
@@ -2955,6 +3675,133 @@ int Generate_Network::Generate_cnt_network_threads_over_gnps_mt(const struct GNP
     hout << "Deleted additional GNPs, now there are " << hybrid_praticles.size() << " GNPs" << endl << endl;
     
     return 1;
+}
+void Generate_Network::Initialize_subregions(const Geom_sample &geom_sample, vector<int> &nsubregions, vector<vector<long int> > &sectioned_domain)const
+{
+    //Initialize nsubregions
+    
+    //variable to store the number of subregions
+    int s;
+    //Number of subregions along x
+    s = (int)(geom_sample.len_x/geom_sample.gs_minx);
+    //Add the number of sub-regions to the vector
+    nsubregions.push_back(s);
+    //Number of subregions along y
+    s = (int)(geom_sample.wid_y/geom_sample.gs_miny);
+    //Add the number of sub-regions to the vector
+    nsubregions.push_back(s);
+    //Number of subregions along z
+    s = (int)(geom_sample.hei_z/geom_sample.gs_minz);
+    //Add the number of sub-regions to the vector
+    nsubregions.push_back(s);
+    
+    //Initialize sectioned_domain
+    sectioned_domain.assign(nsubregions[0]*nsubregions[1]*nsubregions[2], vector<long int>());
+}
+//---------------------------------------------------------------------------
+//This function returns the subregion a point belongs to
+int Generate_Network::Get_subregion(const Geom_sample &geom_sample, const vector<int> &n_subregions, const Point_3D &point)const
+{
+    if (Point_inside_sample(geom_sample, point)) {
+        //These variables will give me the region cordinates of the region that a point belongs to
+        int a, b, c;
+        //Calculate the region-coordinates
+        a = (int)((point.x-geom_sample.origin.x)/geom_sample.gs_minx);
+        //Limit the value of a as it has to go from 0 to n_subregions[0]-1
+        if (a == n_subregions[0]) a--;
+        b = (int)((point.y-geom_sample.origin.y)/geom_sample.gs_miny);
+        //Limit the value of b as it has to go from 0 to n_subregions[1]-1
+        if (b == n_subregions[1]) b--;
+        c = (int)((point.z-geom_sample.origin.z)/geom_sample.gs_minz);
+        //Limit the value of c as it has to go from 0 to n_subregions[2]-1
+        if (c == n_subregions[2]) c--;
+        
+        return (a + (b*n_subregions[0]) + (c*n_subregions[0]*n_subregions[1]));
+    } else {
+        //If the point is in the boundary layer, then there is no need to calculate its sub-region
+        return -1;
+    }
+}
+//---------------------------------------------------------------------------
+//This function adds a point to a region so penetration can be checked
+void Generate_Network::Add_to_overlapping_regions(const Geom_sample &geom_sample, Point_3D point, long int global_num, const vector<int> &n_subregions, vector<vector<long int> > &sectioned_domain)const
+{
+    //A point is added only if it is in the composite domain
+    //If the point is in the boundary layer, overlapping is not important
+    if (Point_inside_sample(geom_sample, point)) {
+        //Save coordinates of the point
+        double x = point.x;
+        double y = point.y;
+        double z = point.z;
+        
+        //These variables will give me the region cordinates of the region that a point belongs to
+        int a, b, c;
+        //Calculate the region-coordinates
+        a = (int)((x-geom_sample.origin.x)/geom_sample.gs_minx);
+        //Limit the value of a as it has to go from 0 to n_subregions[0]-1
+        if (a == n_subregions[0]) a--;
+        b = (int)((y-geom_sample.origin.y)/geom_sample.gs_miny);
+        //Limit the value of b as it has to go from 0 to n_subregions[1]-1
+        if (b == n_subregions[1]) b--;
+        c = (int)((z-geom_sample.origin.z)/geom_sample.gs_minz);
+        //Limit the value of c as it has to go from 0 to n_subregions[2]-1
+        if (c == n_subregions[2]) c--;
+        
+        //These variables are the coordinates of the lower corner of the RVE that defines its geometry
+        double xmin = geom_sample.origin.x;
+        double ymin = geom_sample.origin.y;
+        double zmin = geom_sample.origin.z;
+        
+        //Coordinates of non-overlaping region the point belongs to
+        double x1 = (double)a*geom_sample.gs_minx +  xmin;
+        double x2 = x1 + geom_sample.gs_minx;
+        double y1 = (double)b*geom_sample.gs_miny +  ymin;
+        double y2 = y1 + geom_sample.gs_miny;
+        double z1 = (double)c*geom_sample.gs_minz +  zmin;
+        double z2 = z1 + geom_sample.gs_minz;
+        
+        //Initialize flags for overlaping regions
+        int fx = 0;
+        int fy = 0;
+        int fz = 0;
+        
+        //Assign value of flag according to position of point
+        //The first operand eliminates the periodicity on the boundary
+        if ((a > 0) && (x >= x1) && (x <= x1+geom_sample.gs_overlap_cnt))
+            fx = -1;
+        else if ((a < n_subregions[0]-1) && (x >= x2-geom_sample.gs_overlap_cnt) && (x <= x2 ))
+            fx = 1;
+        if ((b > 0) && (y >= y1) && (y <= y1+geom_sample.gs_overlap_cnt))
+            fy = -1;
+        else if ((b < n_subregions[1]-1) && (y >= y2-geom_sample.gs_overlap_cnt) && (y <= y2 ))
+            fy = 1;
+        if ((c > 0) && (z >= z1) && (z <= z1+geom_sample.gs_overlap_cnt))
+            fz = -1;
+        else if ((c < n_subregions[2]-1) && (z >= z2-geom_sample.gs_overlap_cnt) && (z <= z2 ))
+            fz = 1;
+        
+        //Create array for loop over overlaping regions
+        int temp[2][3] = { {a+fx, b+fy, c+fz}, {a, b, c}};
+        int t;
+        
+        //In this loop I check all regions a point can belong to when it is in an overlaping zone
+        for (int ii = 0; ii < 2; ii++) {
+            if (!fx) ii++; //if flag is zero, do this loop only once
+            for (int jj = 0; jj < 2; jj++) {
+                if (!fy) jj++; //if flag is zero, do this loop only once
+                for (int kk = 0; kk < 2; kk++) {
+                    if (!fz) kk++; //if flag is zero, do this loop only once
+                    //hout <<"a="<<a<<" fx="<<fx<<" b="<<b<<" fy="<<fy<<" c="<<c<<" fz="<<fz;
+                    t = Calculate_t(temp[ii][0],temp[jj][1],temp[kk][2],n_subregions[0],n_subregions[1]);
+                    //hout<<" t="<<t<<" sectioned_domain["<<t<<"].size()="<<sectioned_domain[t].size();
+                    sectioned_domain[t].push_back(global_num);
+                    //hout<<'.'<<endl;
+                }
+            }
+        }
+
+
+    }
 }
 //Use the Mersenne Twister for the random number generation
 int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const string &particle_type, vector<vector<Point_3D> > &gnps_points, vector<GCH> &hybrid_praticles, double &carbon_vol, double &carbon_weight)const
@@ -3345,7 +4192,7 @@ int Generate_Network::Add_CNTs_to_hybrid_structure(const struct Geom_sample &geo
         global_coord_hybrid.back().push_back(CNT_number);
         global_coord_hybrid.back().push_back(j);
         //Add point to an overlapping region in the vector sectioned_domain
-        Add_to_overlapping_regions(geom_sample, overlap_max_cutoff, new_cnt[j], (long int)global_coord_hybrid.size()-1, n_subregions, sect_domain_hybrid);
+        Add_to_overlapping_regions(geom_sample, new_cnt[j], (long int)global_coord_hybrid.size()-1, n_subregions, sect_domain_hybrid);
         
     }
     return 1;
@@ -3369,7 +4216,7 @@ int Generate_Network::Add_CNTs_to_global_structure(const struct Geom_sample &geo
                 global_coordinates.back().push_back(CNT_number);
                 global_coordinates.back().push_back(i);
                 //Add point to an overlapping region in the vector sectioned_domain
-                Add_to_overlapping_regions(geom_sample, overlap_max_cutoff, particle[j][i], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
+                Add_to_overlapping_regions(geom_sample, particle[j][i], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
                 
             }
         }
@@ -3737,7 +4584,7 @@ int Generate_Network::Check_penetration_in_gch(const struct Geom_sample &geom_sa
             //hout << "Point " << cnt_new.size() << " in CNT " << particle.size() << " in hybrid " << gnps_points.size() << " is overlapping." <<endl;
             //hout << "affected_points="<<affected_points.size()<<" cutoffs_p="<<cutoffs_p.size()<<" distances="<<distances.size()<<endl;
             //hout << "Moved a point from initial position (" << point.x << ", " << point.y << ", " << point.z << ")." << endl;
-            Move_point(geom_sample, nanotube_geo, cnt_new, point, cutoffs_p, distances, affected_points);
+            Move_point(cnt_new, point, cutoffs_p, distances, affected_points);
             //hout << "Moved a point to final position (" << point.x << ", " << point.y << ", " << point.z << ")." << endl;
             
             //Check that the new point is within the permited orientation repect to the previous segment
@@ -4325,46 +5172,6 @@ int Generate_Network::Get_intersecting_point_RVE_surface(const struct cuboid &cu
         //---------------------------------------------------------------------------
         //Insert a new point
         ipoi_vec.push_back(point_temp);
-    }
-    
-    return 1;
-}
-//---------------------------------------------------------------------------
-//Checking the angle between any two segments in each nanotube (if less than PI/2, send error message)
-int Generate_Network::CNTs_quality_testing(const vector<vector<Point_3D> > &cnts_points)const
-{
-    //---------------------------------------------------------------------------
-    //Checking the angle between two segments
-    for(int i=0; i<(int)cnts_points.size(); i++)
-    {
-        for (int j=1; j<(int)cnts_points[i].size()-1; j++)
-        {
-            //From the cosines law:
-            //c^2 = a^2 + b^2 -2*a*b*cos(g)
-            //where g is the angle between two consecutive segments, i.e., the angle between a and b
-            
-            //A valid angle is g > pi/2, so from the cosines law:
-            //2*a*b*cos(g) = a^2 + b^2 - c^2 < 0 when g > pi/2
-            //2*a*b*cos(g) = a^2 + b^2 - c^2 > 0 when g < pi/2
-            
-            //Thus an invalid angle happens when a^2 + b^2 - c^2 > 0
-            //Check if this is the case
-            if( Segment_angle_discriminant(cnts_points[i][j-1], cnts_points[i][j], cnts_points[i][j+1]) > Zero )
-            {
-                hout << "Error: there exists at least one angle which is smaller than PI/2!" << endl;
-                hout << setwp(1,20)<<"a^2 + b^2 - c^2="<<Segment_angle_discriminant(cnts_points[i][j-1], cnts_points[i][j], cnts_points[i][j+1])<<endl;
-                hout << "CNT# = "<<i<<endl;
-                hout << "P1 ("<<j-1<<") = "<<cnts_points[i][j-1].x<<' '<<cnts_points[i][j-1].y<<' '<<cnts_points[i][j-1].z<<endl;
-                hout << "P2 ("<<j<<") = "<<cnts_points[i][j].x<<' '<<cnts_points[i][j].y<<' '<<cnts_points[i][j].z<<endl;
-                hout << "P3 ("<<j+1<<") = "<<cnts_points[i][j+1].x<<' '<<cnts_points[i][j+1].y<<' '<<cnts_points[i][j+1].z<<endl;
-                hout << "P1P2 = a =" << cnts_points[i][j-1].distance_to(cnts_points[i][j]) << endl;
-                hout << "P2P3 = b =" << cnts_points[i][j].distance_to(cnts_points[i][j+1]) << endl;
-                hout << "P1P3 = c =" << cnts_points[i][j-1].distance_to(cnts_points[i][j+1]) << endl;
-                hout << endl;                
-                
-                return 0;
-            }
-        }
     }
     
     return 1;
