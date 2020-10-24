@@ -761,12 +761,12 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     //input value for GNP density
     
     //Get the geometry of the extended domain for CNTs
-    geom_sample.ex_dom_cnt.poi_min.x = geom_sample.origin.x - nanotube_geo.len_max;
-    geom_sample.ex_dom_cnt.poi_min.y = geom_sample.origin.y - nanotube_geo.len_max;
-    geom_sample.ex_dom_cnt.poi_min.z = geom_sample.origin.z - nanotube_geo.len_max;
-    geom_sample.ex_dom_cnt.len_x = geom_sample.len_x + 2*nanotube_geo.len_max;
-    geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y + 2*nanotube_geo.len_max;
-    geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + 2*nanotube_geo.len_max;
+    geom_sample.ex_dom_cnt.poi_min.x = geom_sample.origin.x - nanotube_geo.len_max/2.0;
+    geom_sample.ex_dom_cnt.poi_min.y = geom_sample.origin.y - nanotube_geo.len_max/2.0;
+    geom_sample.ex_dom_cnt.poi_min.z = geom_sample.origin.z - nanotube_geo.len_max/2.0;
+    geom_sample.ex_dom_cnt.len_x = geom_sample.len_x + nanotube_geo.len_max;
+    geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y + nanotube_geo.len_max;
+    geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + nanotube_geo.len_max;
     geom_sample.ex_dom_cnt.max_x = geom_sample.ex_dom_cnt.poi_min.x +  geom_sample.len_x;
     geom_sample.ex_dom_cnt.max_y = geom_sample.ex_dom_cnt.poi_min.y +  geom_sample.wid_y;
     geom_sample.ex_dom_cnt.max_z = geom_sample.ex_dom_cnt.poi_min.z +  geom_sample.hei_z;

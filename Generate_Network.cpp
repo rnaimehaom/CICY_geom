@@ -62,6 +62,27 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     }
     
     //---------------------------------------------------------------------------
+    //Check if Tecplot visualization files were requested for CNTs
+    if (tec360_flags.generated_cnts) {
+        
+        //A new Tecplot_Export object
+        Tecplot_Export *Tecexpt = new Tecplot_Export;
+        
+        if (tec360_flags.generated_cnts == 1) {
+            
+            //Export the CNT network as threads in Tecplot
+            if(Tecexpt->Export_network_threads(geom_sample.sample, cnts_points)==0) return 0;
+        }
+        else {
+            
+            //Export the CNT network as 3D "cylinders" in Tecplot
+            if(Tecexpt->Export_cnt_network_meshes(tec360_flags.generated_cnts, geom_sample.sample, cnts_points, cnts_radius_in)==0) return 0;
+        }
+        
+        delete Tecexpt;
+    }
+    
+    //---------------------------------------------------------------------------
     //If there are CNTS, transform the 2D cnts_points into 1D cpoints and 2D cstructures
     //Also, remove the CNTs in the boundary layer
     if (simu_para.particle_type != "GNP_cuboids") {
@@ -75,46 +96,25 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     }
     
     //---------------------------------------------------------------------------
-    //Check if Tecplot visualization files were requested for CNTs
-    if (tec360_flags.generated_cnts) {
-        
-        //A new Tecplot_Export object
-        Tecplot_Export *Tecexpt = new Tecplot_Export;
-        
-        if (tec360_flags.generated_cnts == 1) {
-            
-            //Export the CNT network as threads in Tecplot
-            if(Tecexpt->Export_network_threads(geom_sample.ex_dom_cnt, cnts_points)==0) return 0;
-        }
-        else {
-            
-            //Export the CNT network as 3D "cylinders" in Tecplot
-            if(Tecexpt->Export_cnt_network_meshes(tec360_flags.generated_cnts, geom_sample.ex_dom_cnt, cnts_points, cnts_radius_in)==0) return 0;
-        }
-        
-        delete Tecexpt;
-    }
-    
-    //---------------------------------------------------------------------------
     //Check if Tecplot visualization files were requested for GNPs
     if (tec360_flags.generated_gnps) {
         
         //A new Tecplot_Export object
         Tecplot_Export *Tecexpt = new Tecplot_Export;
         
-        ofstream otec("GNP_cuboids.dat");
-        otec << "TITLE = GNP_cuboids" << endl;
+        ofstream otec("Sample.dat");
+        otec << "TITLE =\"Sample\"" << endl;
         otec << "VARIABLES = X, Y, Z" << endl;
-        struct cuboid gvcub;
-        gvcub.poi_min = geom_sample.origin;
-        gvcub.len_x = geom_sample.len_x;
-        gvcub.wid_y = geom_sample.wid_y;
-        gvcub.hei_z = geom_sample.hei_z;
-        if(Tecexpt->Export_cuboid(otec, gvcub)==0) return 0;
-        string zone_name = "as_generated";
-        if(Tecexpt->Export_randomly_oriented_gnps(otec, gnps)==0) return 0;
-        delete Tecexpt;
+        if(Tecexpt->Export_cuboid(otec, geom_sample.sample)==0) return 0;
         otec.close();
+        
+        ofstream otec2("GNP_cuboids.dat");
+        otec2 << "TITLE =\"GNPs\"" << endl;
+        otec2 << "VARIABLES = X, Y, Z" << endl;
+        string zone_name = "as_generated";
+        if(Tecexpt->Export_randomly_oriented_gnps(otec2, gnps)==0) return 0;
+        delete Tecexpt;
+        otec2.close();
     }
     
     return 1;
@@ -2556,6 +2556,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
     //n_subregions[2] is the number of subregions along z
     int n_subregions[3];
     //Initialize the vector sub-regions
+    //hout<<"Initialize_cnt_subregions"<<endl;
     Initialize_cnt_subregions(geom_sample, n_subregions, sectioned_domain);
     
     //Get the time when generation started
@@ -2565,10 +2566,12 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
     
     //Boolean to terminate the main while loop, initialized to false to start the loop
     bool terminate = false;
+    bool penetration_model_flag = false;
     
     //---------------------------------------------------------------------------
     while(!terminate)
     {
+        //hout<<"CNTs generated:"<<cnts_points.size()<<endl;
         //---------------------------------------------------------------------------
         //Vector for a new nanotube
         vector<Point_3D> new_cnt;
@@ -2600,6 +2603,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
         
         //---------------------------------------------------------------------------
         //Generate an initial point of the CNT in the extended domain
+        //hout<<"Generate_initial_point_of_cnt"<<endl;
         Point_3D new_point;
         if (Generate_initial_point_of_cnt(geom_sample, simu_para, cnts_points, cnts_radius, new_cnt, cnt_rad+cutoffs.van_der_Waals_dist, global_coordinates, sectioned_domain, gnps, sectioned_domain_gnp, n_subregions, new_point, engine_x, engine_y, engine_z, dist) != 1) {
             hout << "Error in Generate_network_threads_mt when calling Generate_initial_point_of_cnt" <<endl;
@@ -2635,6 +2639,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
             //To have the positive Z-axis to be a central axis
             //Then, the radial angle, theta, obeys a normal distribution (theta \in fabs[(-omega,+omega)]) and the zonal angle, phi, obeys a uniform distribution (phi \in (0,2PI))
             double cnt_theta = 0, cnt_phi = 0;
+            //hout<<"Get_normal_direction_mt"<<endl;
             if(Get_normal_direction_mt(nanotube_geo.angle_max, cnt_theta, cnt_phi, engine_theta, engine_phi, dist)==0) return 0;
             
             //Calculate the rotation matrix for current segment
@@ -2652,11 +2657,13 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
                 //model is used, or just add it if penetrating model is used
                 
                 //Check for penetration
-                //hout << "Check penetration ";
+                //hout << "Check penetration "<<endl;
                 int mixed_interpenetration = 1;
+                //if (penetration_model_flag) {
                 if (simu_para.penetration_model_flag) {
                     
                     //Get the status on mixed penetration
+                    //hout<<"Check_mixed_interpenetration"<<endl;
                     mixed_interpenetration = Check_mixed_interpenetration(geom_sample, cnts_points, cnts_radius, new_cnt, cnt_rad+cutoffs.van_der_Waals_dist, global_coordinates, sectioned_domain, gnps, sectioned_domain_gnp, n_subregions, new_point);
                     if (mixed_interpenetration == -1) {
                         hout << "Error in Generate_network_threads_mt when calling Check_mixed_interpenetration (CNT initial point)" <<endl;
@@ -2666,6 +2673,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
                 }
                 
                 if (!simu_para.penetration_model_flag || mixed_interpenetration) {
+                //if (!penetration_model_flag || mixed_interpenetration) {
                     
                     //---------------------------------------------------------------------------
                     //If the penetrating model is used or if new_point was placed
@@ -2674,6 +2682,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
                     
                     //Calculate the segment length inside the sample and add it to the total CNT length
                     bool is_new_inside_sample;
+                    //hout<<"Length_inside_sample"<<endl;
                     cnt_len = cnt_len + Length_inside_sample(geom_sample, new_cnt.back(), new_point, is_prev_in_sample, is_new_inside_sample);
                     
                     //If new_point is inside the sample, then increase the number
@@ -2711,6 +2720,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
                     
                     //Increase the count of rejected cnts
                     cnt_reject_count++;
+                    //hout <<"cnt_reject_count="<<cnt_reject_count<< endl;
                     
                     //Break the for-loop to terminate the CNT growth
                     break;
@@ -2761,6 +2771,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
                     global_coordinates.back().push_back(CNT);
                     global_coordinates.back().push_back(ii);
                     //Add point to an overlapping region in the vector sectioned_domain
+                    //hout<<"Add_cnt_point_to_overlapping_regions"<<endl;
                     Add_cnt_point_to_overlapping_regions(geom_sample, new_cnt[ii], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
                     
                 }
@@ -2821,6 +2832,7 @@ int Generate_Network::Generate_initial_point_of_cnt(const Geom_sample &geom_samp
     while (attempts <= MAX_ATTEMPTS) {
         
         //Genereta a new seed point
+        //hout<<"attempts seed="<<attempts<<endl;
         if(!Get_point_in_cuboid_mt(geom_sample.ex_dom_cnt, new_point, engine_x, engine_y, engine_z, dist)){
             hout << "Error in Generate_network_threads_mt when calling Get_point_in_cuboid_mt (CNT initial point)" <<endl;
             return -1;
@@ -2830,6 +2842,7 @@ int Generate_Network::Generate_initial_point_of_cnt(const Geom_sample &geom_samp
             
             //If non-penetrating model is used, then make sure the intial point of the CNT
             //is in a valid position
+            //hout<<"Check_mixed_interpenetration"<<endl;
             int interpenetration = Check_mixed_interpenetration(geom_sample, cnts, radii, new_cnt, rad_plus_dvdw, global_coordinates, sectioned_domain_cnt, gnps, sectioned_domain_gnp, n_subregions, new_point);
             if (interpenetration == -1) {
                 hout << "Error in Generate_network_threads_mt when calling Check_mixed_interpenetration (CNT initial point)" <<endl;
@@ -2873,6 +2886,7 @@ int Generate_Network::Check_mixed_interpenetration(const Geom_sample &geom_sampl
     while (attempts <= MAX_ATTEMPTS) {
         
         //Get the subregion of CNT point
+        //hout<<"attempts="<<attempts<<endl;
         int subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
         if (subregion == -1) {
             //If the sub-region is -1, then the point is in te boundary layer,
@@ -2881,43 +2895,53 @@ int Generate_Network::Check_mixed_interpenetration(const Geom_sample &geom_sampl
         }
         
         //Check if point is too close or penetrating a GNP
+        //hout<<"Get_gnp_penetrating_points"<<endl;
         if (!Get_gnp_penetrating_points(gnps, sectioned_domain_gnp[subregion], rad_plus_dvdw, new_point, affected_points, cutoffs_p, distances)) {
             hout<<"Error in Check_mixed_interpenetration when calling Get_gnp_penetrating_points"<<endl;
             return -1;
         }
+        //hout<<"sectioned_domain_gnp[subregion].size="<<sectioned_domain_gnp[subregion].size()<<endl;
         
-        if (affected_points[0].flag == -1) {
+        //Check for a special case
+        if (!affected_points.empty() && affected_points[0].flag == -1) {
             //This is a special case when the point is inside a GNP
             //Since the point is inside a GNP, there is no need to check other points
             //because there cannot be penetration with other CNTs, this would have
             //been avoided due to using the non-penetrating model
             
             //Move the point for this special case
+            //hout<<"Move_point_inside_gnp"<<endl;
             if (!Move_point_inside_gnp(affected_points[0], cutoffs_p[0], new_point)) {
                 hout<<"Error in Check_mixed_interpenetration when calling Move_point_inside_gnp"<<endl;
                 return -1;
             }
             
             //Check if the segment has a valid orientation
+            //hout<<"Check_segment_orientation 1"<<endl;
             if (!Check_segment_orientation(new_point, new_cnt)) {
                 //When not in a valid position it cannot be moved again so a new CNT is needed
+                hout<<"Point not in a valid position (special case)"<<endl;
                 return 0;
             }
         }
         else {
             
             //Check if point is too close or penetrating another CNT
+            //hout<<"Get_penetrating_points"<<endl;
             Get_penetrating_points(cnts, global_coordinates, sectioned_domain_cnt[subregion], radii, rad_plus_dvdw, new_point, affected_points, cutoffs_p, distances);
             
             //Check if there are any penetrating points
-            if (affected_points.size()) {
+            if (!affected_points.empty()) {
                 
                 //Move the point depending on the case
+                //hout<<"Move_point"<<endl;
                 Move_point(new_cnt, new_point, cutoffs_p, distances, affected_points);
                 
                 //Check if the segment has a valid orientation
+                //hout<<"Check_segment_orientation 2"<<endl;
                 if (!Check_segment_orientation(new_point, new_cnt)) {
                     //When not in a valid position it cannot be moved again so a new CNT is needed
+                    hout<<"Point not in a valid position"<<endl;
                     return 0;
                 }
             }
@@ -2933,9 +2957,13 @@ int Generate_Network::Check_mixed_interpenetration(const Geom_sample &geom_sampl
         affected_points.clear();
         cutoffs_p.clear();
         distances.clear();
+        
+        //Increase the number of attempts
+        attempts++;
     }
     
     //The point could not be accomodated so terminate with false
+    //hout<<"Point could not be accomodated"<<endl;
     return 0;
 }
 //This function finsd the GNPs that are too close to a CNT point penetrating the GNP
@@ -2943,16 +2971,17 @@ int Generate_Network::Check_mixed_interpenetration(const Geom_sample &geom_sampl
 int Generate_Network::Get_gnp_penetrating_points(const vector<GNP> &gnps, const vector<int> &subregion_gnp, const double &cutoff, const Point_3D &new_point, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
 {
     //Variable to store the index of the affected point when new_point is inside the GNP
-    size_t idx_negative = -1;
+    int idx_negative = -1;
     
     //Scan all GNPs in the subregion
-    for (size_t i = 0; i < subregion_gnp.size(); i++) {
+    for (int i = 0; i < subregion_gnp.size(); i++) {
         
         //Get the GNP number of the current subregion
         int GNP_i = subregion_gnp[i];
         
         //Find the distance from new_point to GNP  and the closest point in the GNP
         double distance = 0;
+        //hout<<"Get_gnp_point_closest_to_point i="<<i<<endl;
         Point_3D P = Get_gnp_point_closest_to_point(gnps[GNP_i], new_point, distance);
         
         //Check if distance is below the cutoff
@@ -2965,7 +2994,7 @@ int Generate_Network::Get_gnp_penetrating_points(const vector<GNP> &gnps, const 
         }
         
         if (idx_negative == -1 && P.flag == -1) {
-            idx_negative = i;
+            idx_negative = (int)affected_points.size() - 1;
         }
     }
     
@@ -2976,6 +3005,7 @@ int Generate_Network::Get_gnp_penetrating_points(const vector<GNP> &gnps, const 
     //Conditions 1 to 3 can be condensed into one condition. If idx_negative is 1 or more, this
     //means that it is at least the second element of the vector, thus there are more than
     //one elements in the vector
+    //hout<<"idx_negative="<<idx_negative<<" > 0"<<endl;
     if (idx_negative > 0) {
         
         //Move the "internal point" to the front of the vector
@@ -2999,18 +3029,26 @@ int Generate_Network::Get_gnp_penetrating_points(const vector<GNP> &gnps, const 
 //This function finds the point on a GNP closest to a given point
 Point_3D Generate_Network::Get_gnp_point_closest_to_point(const GNP &gnp, const Point_3D &P, double &distance) const
 {
-    //
-    Point_3D P_out;
     
     //These vectors are used more than once
     Point_3D V0P = P - gnp.vertices[0];
     Point_3D V1P = P - gnp.vertices[1];
+    
+    //Lambda function to calculate projection on a plane
+    auto calculate_pojection = [](const Point_3D &P, const Point_3D &N, const double &dist) {
+        //Calcualte point in plane
+        Point_3D Q = P - N*dist;
+        //Set flag to 0
+        Q.flag = 0;
+        return Q;
+    };
     
     //Check if P is above plane 0
     if (gnp.faces[0].N.dot(V0P) > Zero) {
         
         //Call the function to find the point P and distance to closest simplex
         //above the plane of face 0
+        //hout<<"P is above face 0"<<endl;
         return Get_point_closest_to_large_gnp_face(gnp, 0, 1, 2, 3, 0, P, distance);
     }
     else {
@@ -3020,34 +3058,37 @@ Point_3D Generate_Network::Get_gnp_point_closest_to_point(const GNP &gnp, const 
             
             //Call the function to find the point P and distance to closest simplex
             //above the plane of face 1
+            //hout<<"P is above face 1"<<endl;
             return Get_point_closest_to_large_gnp_face(gnp, 4, 5, 6, 7, 1, P, distance);
         }
         else {
             
             //Check if point P is above face 2
             if (gnp.faces[2].N.dot(V0P) > Zero) {
-                
+
+                //hout<<"P is above face 2"<<endl;
                 //Face V0V3V7V4 (2), edge V0V4, or edge V3V7 is closest
                 if (gnp.faces[3].N.dot(V0P) > Zero) {
                     
                     //Edge V0V4 is closest
+                    //hout<<"Edge V0V4 is closest"<<endl;
                     return Distance_from_point_to_edge(P, gnp.vertices[0], gnp.vertices[4], distance);
                 }
                 else {
                     if (gnp.faces[5].N.dot(P - gnp.vertices[3]) > Zero) {
                         
                         //Edge V3V7 is closest
+                        //hout<<"Edge V3V7 is closest"<<endl;
                         return Distance_from_point_to_edge(P, gnp.vertices[3], gnp.vertices[7], distance);
                     }
                     else {
                         
                         //Face V0V3V7V4 (2) is closest
+                        //hout<<"Face V0V3V7V4 (2) is closest"<<endl;
                         distance = gnp.faces[2].distance_to(P);
-                        
+
                         //Calcualte point in plane
-                        Point_3D P_proj = P - gnp.faces[2].N*distance;
-                        
-                        return P_proj;
+                        return calculate_pojection(P, gnp.faces[2].N, distance);
                     }
                 }
             }
@@ -3057,26 +3098,28 @@ Point_3D Generate_Network::Get_gnp_point_closest_to_point(const GNP &gnp, const 
                 if (gnp.faces[4].N.dot(V1P) > Zero) {
                     
                     //Face V1V2V6V5 (4), edge V1V5, or edge V2V6 is closest
+                    //hout<<"point P is above face 4"<<endl;
                     if (gnp.faces[3].N.dot(V1P) > Zero) {
                         
                         //Edge V1V5 is closest
+                        //hout<<"Edge V1V5 is closest"<<endl;
                         return Distance_from_point_to_edge(P, gnp.vertices[1], gnp.vertices[5], distance);
                     }
                     else {
                         if (gnp.faces[5].N.dot(P - gnp.vertices[2]) > Zero) {
                             
                             //Edge V2V6 is closest
+                            //hout<<"Edge V2V6 is closest"<<endl;
                             return Distance_from_point_to_edge(P, gnp.vertices[2], gnp.vertices[6], distance);
                         }
                         else {
                             
                             //Face V1V2V6V5 (4) is closest
+                            //hout<<"Face V1V2V6V5 (4) is closest"<<endl;
                             distance = gnp.faces[4].distance_to(P);
                             
                             //Calcualte point in plane
-                            Point_3D P_proj = P - gnp.faces[4].N*distance;
-                            
-                            return P_proj;
+                            return calculate_pojection(P, gnp.faces[4].N, distance);
                         }
                     }
                 }
@@ -3086,27 +3129,26 @@ Point_3D Generate_Network::Get_gnp_point_closest_to_point(const GNP &gnp, const 
                     if (gnp.faces[3].N.dot(V0P) > Zero) {
                         
                         //Face V0V1V5V4 (3) is closest
+                        //hout<<"Face V0V1V5V4 (3) is closest"<<endl;
                         distance = gnp.faces[3].distance_to(P);
                         
                         //Calcualte point in plane
-                        Point_3D P_proj = P - gnp.faces[3].N*distance;
-                        
-                        return P_proj;
+                        return calculate_pojection(P, gnp.faces[3].N, distance);
                     }
                     else {
                         if (gnp.faces[5].N.dot(P - gnp.vertices[2]) > Zero) {
                             
                             //Face V2V3V7V6 (5) is closest
+                            //hout<<"Face V2V3V7V6 (5) is closest"<<endl;
                             distance = gnp.faces[5].distance_to(P);
                             
                             //Calcualte point in plane
-                            Point_3D P_proj = P - gnp.faces[5].N*distance;
-                            
-                            return P_proj;
+                            return calculate_pojection(P, gnp.faces[5].N, distance);
                         }
                         else {
                             
                             //Point is inside GNP
+                            //hout<<"Point is inside GNP"<<endl;
                             return Distance_from_point_to_internal_face(gnp, P, distance);
                         }
                     }
@@ -3114,8 +3156,6 @@ Point_3D Generate_Network::Get_gnp_point_closest_to_point(const GNP &gnp, const 
             }
         }
     }
-    
-    return P_out;
 }
 Point_3D Generate_Network::Get_point_closest_to_large_gnp_face(const GNP &gnp, const int &V0, const int &V1, const int &V2, const int &V3, const int &F, const Point_3D &P, double &distance)const
 {
@@ -3128,57 +3168,81 @@ Point_3D Generate_Network::Get_point_closest_to_large_gnp_face(const GNP &gnp, c
     if (gnp.faces[2].N.dot(V0P) > Zero) {
         
         //P might be closest to V0V3, V0 or V3
+        //hout<<"outside on the side of face 2"<<endl;
         if (gnp.faces[3].N.dot(V0P) > Zero) {
             
             //P is closest to V0
             //Calcualte the distance between points
+            //hout<<"P is closest to V0"<<endl;
             distance = P.distance_to(gnp.vertices[V0]);
             
-            return gnp.vertices[V0];
+            //Create a point with flag zero
+            Point_3D Q = gnp.vertices[V0];
+            Q.flag = 0;
+            
+            return Q;
         }
         else {
             if (gnp.faces[5].N.dot(P - gnp.vertices[V3]) > Zero) {
                 
                 //P is closest to V3
                 //Calcualte the distance between points
+                //hout<<"P is closest to V3"<<endl;
                 distance = P.distance_to(gnp.vertices[V3]);
                 
-                return gnp.vertices[V3];
+                //Create a point with flag zero
+                Point_3D Q = gnp.vertices[V3];
+                Q.flag = 0;
+                
+                return Q;
             }
             else {
                 
                 //P is closest to V0V3
+                //hout<<"P is closest to V0V3"<<endl;
                 return Distance_from_point_to_edge(P, gnp.vertices[V0], gnp.vertices[V3], distance);
             }
         }
     }
     else {
 
-        //P is above plane 0
+        //P is above plane of face 0
         //Now check if it is outside on the side of face 4
         if (gnp.faces[4].N.dot(V1P) > Zero) {
             
             //P might be closest to V1V2, V1 or V2
+            //hout<<"P is outside on the side of face 4"<<endl;
             if (gnp.faces[3].N.dot(V1P) > Zero) {
                 
                 //P is closest to V1
                 //Calcualte the distance between points
+                //hout<<"P is closest to V1"<<endl;
                 distance = P.distance_to(gnp.vertices[V1]);
                 
-                return gnp.vertices[V1];
+                //Create a point with flag zero
+                Point_3D Q = gnp.vertices[V1];
+                Q.flag = 0;
+                
+                return Q;
             }
             else {
                 if (gnp.faces[5].N.dot(P - gnp.vertices[V2]) > Zero) {
                     
                     //P is closest to V2
                     //Calcualte the distance between points
+                    //hout<<"P is closest to V2"<<endl;
                     distance = P.distance_to(gnp.vertices[V2]);
                     
-                    return gnp.vertices[V2];
+                    //Create a point with flag zero
+                    Point_3D Q = gnp.vertices[V2];
+                    Q.flag = 0;
+                    
+                    return Q;
                 }
                 else {
                     
                     //P is closest to V1V2
+                    //hout<<"P is closest to V1V2"<<endl;
                     return Distance_from_point_to_edge(P, gnp.vertices[V1], gnp.vertices[V2], distance);
                     
                 }
@@ -3190,22 +3254,28 @@ Point_3D Generate_Network::Get_point_closest_to_large_gnp_face(const GNP &gnp, c
             if (gnp.faces[3].N.dot(V0P) > Zero) {
                 
                 //V0V1 is closest
+                //hout<<"P is closest to V0V1"<<endl;
                 return Distance_from_point_to_edge(P, gnp.vertices[V0], gnp.vertices[V1], distance);
             }
             else {
                 if (gnp.faces[5].N.dot(P - gnp.vertices[V3]) > Zero) {
                     
                     //V2V3 is closest
+                    //hout<<"P is closest to V2V3"<<endl;
                     return Distance_from_point_to_edge(P, gnp.vertices[V2], gnp.vertices[V3], distance);
                 }
                 else {
                     
                     //Face V0V1V2V3 (0) is closest
+                    //hout<<"P is closest to V0V1V2V3 (0)"<<endl;
                     //Calculate distance from plane to face
                     distance = gnp.faces[F].distance_to(P);
                     
                     //Calcualte point in plane
                     Point_3D P_proj = P - gnp.faces[F].N*distance;
+                    
+                    //Set the flag to 0
+                    P_proj.flag = 0;
                     
                     return P_proj;
                 }
@@ -3233,6 +3303,9 @@ Point_3D Generate_Network::Distance_from_point_to_edge(const Point_3D &P, const 
     
     //Calculate the position of the point closest to P in edge AB
     Point_3D Q = A + AB.unit()*sqrt(dp2);
+    
+    //Set the flag to zero
+    Q.flag = 0;
     
     return Q;
 }
