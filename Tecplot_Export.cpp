@@ -17,7 +17,7 @@ int Tecplot_Export::Export_network_threads(const struct cuboid &cub, const vecto
 
 	//---------------------------------------------------------------------------
 	//Export a 3D cuboid
-	if(Export_cuboid(otec, cub)==0) return 0;
+	//if(Export_cuboid(otec, cub)==0) return 0;
 	
 	//---------------------------------------------------------------------------
 	//Export 3D nanotube threads
@@ -27,6 +27,21 @@ int Tecplot_Export::Export_network_threads(const struct cuboid &cub, const vecto
 	otec.close();
 
 	return 1;
+}
+int Tecplot_Export::Export_network_threads(const struct cuboid &cub, const vector<vector<Point_3D> > &cnts_points, const string &filename)const
+{
+    ofstream otec(filename.c_str());
+    otec << "TITLE = \"CNT_Wires\"" << endl;
+    otec << "VARIABLES = X, Y, Z" << endl;
+    
+    //---------------------------------------------------------------------------
+    //Export 3D nanotube threads
+    if(Export_nano_threads(otec, cnts_points)==0) return 0;
+
+    //---------------------------------------------------------------------------
+    otec.close();
+
+    return 1;
 }
 //---------------------------------------------------------------------------
 //Export the triangulation edges of a single GNP

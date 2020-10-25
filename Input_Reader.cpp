@@ -767,9 +767,9 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     geom_sample.ex_dom_cnt.len_x = geom_sample.len_x + nanotube_geo.len_max;
     geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y + nanotube_geo.len_max;
     geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + nanotube_geo.len_max;
-    geom_sample.ex_dom_cnt.max_x = geom_sample.ex_dom_cnt.poi_min.x +  geom_sample.len_x;
-    geom_sample.ex_dom_cnt.max_y = geom_sample.ex_dom_cnt.poi_min.y +  geom_sample.wid_y;
-    geom_sample.ex_dom_cnt.max_z = geom_sample.ex_dom_cnt.poi_min.z +  geom_sample.hei_z;
+    geom_sample.ex_dom_cnt.max_x = geom_sample.ex_dom_cnt.poi_min.x +  geom_sample.ex_dom_cnt.len_x;
+    geom_sample.ex_dom_cnt.max_y = geom_sample.ex_dom_cnt.poi_min.y +  geom_sample.ex_dom_cnt.wid_y;
+    geom_sample.ex_dom_cnt.max_z = geom_sample.ex_dom_cnt.poi_min.z +  geom_sample.ex_dom_cnt.hei_z;
     
     //Determine the overlapping of the overlapping sub-regions for CNTs
     geom_sample.gs_overlap_cnt = 2*nanotube_geo.rad_max + cutoff_dist.van_der_Waals_dist;
@@ -1028,9 +1028,9 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
     geom_sample.ex_dom_gnp.len_x = geom_sample.len_x + len_max_halved;
     geom_sample.ex_dom_gnp.wid_y = geom_sample.wid_y + len_max_halved;
     geom_sample.ex_dom_gnp.hei_z = geom_sample.hei_z + len_max_halved;
-    geom_sample.ex_dom_gnp.max_x = geom_sample.ex_dom_gnp.poi_min.x + geom_sample.len_x;
-    geom_sample.ex_dom_gnp.max_y = geom_sample.ex_dom_gnp.poi_min.y + geom_sample.wid_y;
-    geom_sample.ex_dom_gnp.max_z = geom_sample.ex_dom_gnp.poi_min.z + geom_sample.hei_z;
+    geom_sample.ex_dom_gnp.max_x = geom_sample.ex_dom_gnp.poi_min.x + geom_sample.ex_dom_gnp.len_x;
+    geom_sample.ex_dom_gnp.max_y = geom_sample.ex_dom_gnp.poi_min.y + geom_sample.ex_dom_gnp.wid_y;
+    geom_sample.ex_dom_gnp.max_z = geom_sample.ex_dom_gnp.poi_min.z + geom_sample.ex_dom_gnp.hei_z;
     
     //Determine the overlapping of the overlapping sub-regions for GNPs
     geom_sample.gs_overlap_gnp = geom_sample.gs_minx/(sqrt(8.0));

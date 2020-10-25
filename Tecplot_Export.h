@@ -23,6 +23,7 @@ public:
     //Member Functions
     //The geometric structure of CNT network (by threads in Tecplot) in a cuboid
     int Export_network_threads(const struct cuboid &cub, const vector<vector<Point_3D> > &cnts_points)const;
+    int Export_network_threads(const struct cuboid &cub, const vector<vector<Point_3D> > &cnts_points, const string &filename)const;
     int Export_triangulation_network_3dlines(const GCH &hybrid, const vector<Point_3D> &cnts_points, const vector<Point_3D> &gnps_points, const vector<vector<long int> > &structure, string filename)const;
     int Export_network_threads(const struct cuboid &cub, const int &n_cluster, const vector<vector<int> > &gnp_clusters, const vector<vector<int> > &cnt_clusters, const vector<vector<long int> > &structure, const vector<Point_3D> &cnts_points, const vector<GCH> &hybrid_particles, string &filename, string &family)const;
     int Export_network_3dlines(const struct cuboid &cub, const int &n_cluster, const vector<vector<int> > &gnp_clusters, const vector<vector<int> > &cnt_clusters, const vector<vector<long int> > &structure, const vector<Point_3D> &cnts_points, const vector<GCH> &hybrid_particles, string &filename, string &family)const;
