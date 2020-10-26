@@ -32,24 +32,14 @@ public:
     Point_3D( double px, double py, double pz );
 
     //Operations with points
-    Point_3D operator+( Point_3D &pt );
-    Point_3D operator+( Point_3D &pt )const;
-    Point_3D operator+( const Point_3D &pt );
     Point_3D operator+( const Point_3D &pt )const;
-    Point_3D operator+( double d );
-    Point_3D operator+( double d )const;
-    Point_3D operator-( double d );
-    Point_3D operator-( double d )const;
-    Point_3D operator-( Point_3D &pt );
-    Point_3D operator-( Point_3D &pt )const;
-    Point_3D operator-( const Point_3D &pt );
     Point_3D operator-( const Point_3D &pt )const;
-    Point_3D operator*( double d );
-    Point_3D operator*( double d )const;
-    Point_3D operator/( double d );
-    Point_3D operator/( double d )const;
+    Point_3D operator+( const double &d )const;
+    Point_3D operator-( const double &d )const;
+    Point_3D operator*( const double &d )const;
+    Point_3D operator/( const double &d )const;
     bool operator==(const Point_3D &pt )const;
-    bool operator!=( Point_3D &pt );
+    bool operator!=( Point_3D &pt )const;
     double distance_to(const Point_3D &pt)const;
     double distance_to(const double &px, const double &py,  const double &pz)const;
     double squared_distance_to(const Point_3D &pt)const;
@@ -58,11 +48,11 @@ public:
     double length2()const;
     Point_3D cross(const Point_3D &point)const;
     double dot(const Point_3D &point)const;
-    Point_3D rotation(const MathMatrix &Matrix, const Point_3D &displacement);
+    Point_3D rotation(const MathMatrix &Matrix, const Point_3D &displacement)const;
     Point_3D unit();
     void make_unit();
     void set(const double &x_, const double &y_, const double &z_);
-    void set(Point_3D &P);
+    void set(const Point_3D &P);
     string str()const;
 };
 //---------------------------------------------------------------------------
@@ -122,25 +112,9 @@ public:
     //Determine if a point is on this plane, where the point is given as a Point_3D object
     int contain(const Point_3D &point_temp)const;
     //Determine if a point is on this plane, where the point is given by its three components
-    int contain(const double dx, const double dy, const double dz)const;
+    int contain(const double &dx, const double &dy, const double &dz)const;
     double distance_to(const Point_3D &P)const;
     string str() const;
-};
-//---------------------------------------------------------------------------
-//Data structure for an ellipsoid
-struct elliparam		
-{
-    //Center point (x,y,z)
-	double x, y, z;
-    //Axes of the ellipsoid, such that a >= b >= c
-    //a, b, and c are the long, middle and short axis, respectively
-	double a, b, c;
-    //Orientation angles of the axes of the ellipsoids with respect to the global axes
-    //Each ellipsoid axis has three orientation angles (9 orientation angles in total)
-    //[(alpha1,beta1,gamma1),(alpha2,beta2,gamma2),(alpha3,beta3,gamma3)]
-    double alpha1, alpha2, alpha3;
-	double beta1, beta2, beta3;
-	double gamma1, gamma2, gamma3;
 };
 //---------------------------------------------------------------------------
 //Data structure for a cuboid

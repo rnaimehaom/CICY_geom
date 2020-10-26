@@ -15,58 +15,10 @@ Point_3D::Point_3D( double px, double py, double pz )
 	y = py;
 	z = pz;
 }
-//---------------------------------------------------------------------------
-Point_3D Point_3D::operator+( Point_3D &pt )
-{
-	Point_3D rp( x + pt.x, y + pt.y, z + pt.z );
-	return rp;
-}
-//---------------------------------------------------------------------------
-Point_3D Point_3D::operator+( Point_3D &pt )const
-{
-    Point_3D rp( x + pt.x, y + pt.y, z + pt.z );
-    return rp;
-}
-//---------------------------------------------------------------------------
-Point_3D Point_3D::operator+( const Point_3D &pt )
-{
-	Point_3D rp( x + pt.x, y + pt.y, z + pt.z );
-	return rp;
-}
-//---------------------------------------------------------------------------
 Point_3D Point_3D::operator+( const Point_3D &pt )const
 {
     Point_3D rp( x + pt.x, y + pt.y, z + pt.z );
     return rp;
-}
-//---------------------------------------------------------------------------
-Point_3D Point_3D::operator+( double d )
-{
-	Point_3D rp( x + d, y + d, z + d );
-	return rp;
-}
-//---------------------------------------------------------------------------
-Point_3D Point_3D::operator+( double d )const
-{
-    Point_3D rp( x + d, y + d, z + d );
-    return rp;
-}//---------------------------------------------------------------------------
-Point_3D Point_3D::operator-( Point_3D &pt )
-{
-	Point_3D rp( x - pt.x, y - pt.y, z - pt.z );
-	return rp;
-}
-//---------------------------------------------------------------------------
-Point_3D Point_3D::operator-( Point_3D &pt )const
-{
-    Point_3D rp( x - pt.x, y - pt.y, z - pt.z );
-    return rp;
-}
-//---------------------------------------------------------------------------
-Point_3D Point_3D::operator-( const Point_3D &pt )
-{
-	Point_3D rp( x - pt.x, y - pt.y, z - pt.z );
-	return rp;
 }
 //---------------------------------------------------------------------------
 Point_3D Point_3D::operator-( const Point_3D &pt )const
@@ -75,37 +27,25 @@ Point_3D Point_3D::operator-( const Point_3D &pt )const
     return rp;
 }
 //---------------------------------------------------------------------------
-Point_3D Point_3D::operator-( double d )
+Point_3D Point_3D::operator+( const double &d )const
 {
-	Point_3D rp( x - d, y - d, z - d );
-	return rp;
+    Point_3D rp( x + d, y + d, z + d );
+    return rp;
 }
 //---------------------------------------------------------------------------
-Point_3D Point_3D::operator-( double d )const
+Point_3D Point_3D::operator-( const double &d )const
 {
     Point_3D rp( x - d, y - d, z - d );
     return rp;
 }
 //---------------------------------------------------------------------------
-Point_3D Point_3D::operator*( double d )
-{
-	Point_3D rp( x*d, y*d, z*d );
-	return rp;
-}
-//---------------------------------------------------------------------------
-Point_3D Point_3D::operator*( double d )const
+Point_3D Point_3D::operator*( const double &d )const
 {
     Point_3D rp( x*d, y*d, z*d );
     return rp;
 }
 //---------------------------------------------------------------------------
-Point_3D Point_3D::operator/( double d )
-{
-	Point_3D rp( x/d, y/d, z/d );
-	return rp;
-}
-//---------------------------------------------------------------------------
-Point_3D Point_3D::operator/( double d )const
+Point_3D Point_3D::operator/( const double &d )const
 {
     Point_3D rp( x/d, y/d, z/d );
     return rp;
@@ -116,7 +56,7 @@ bool Point_3D::operator==(const Point_3D &pt )const
 	return (x==pt.x&&y==pt.y&&z==pt.z);
 }
 //---------------------------------------------------------------------------
-bool Point_3D::operator!=( Point_3D &pt )
+bool Point_3D::operator!=( Point_3D &pt )const
 {
 	return (x!=pt.x||y!=pt.y||z!=pt.z);
 }
@@ -170,7 +110,7 @@ double Point_3D::dot(const Point_3D &point)const
 }
 //---------------------------------------------------------------------------
 //Calculates the rotation of a point plus a displacement
-Point_3D Point_3D::rotation(const MathMatrix &Matrix, const Point_3D &displacement)
+Point_3D Point_3D::rotation(const MathMatrix &Matrix, const Point_3D &displacement)const
 {
     //Rotated point
     //new_point = Matrix*point + displacement
@@ -215,7 +155,7 @@ void Point_3D::set(const double &x_, const double &y_, const double &z_)
     z = z_;
 }
 //---------------------------------------------------------------------------
-void Point_3D::set(Point_3D &P)
+void Point_3D::set(const Point_3D &P)
 {
     //Set the components to be the same as those in point P
     x = P.x;
@@ -384,7 +324,7 @@ int Plane_3D::contain(const Point_3D &point_temp)const
 }
 //---------------------------------------------------------------------------
 //Determine if a point is on in this plane, where the point is given by its three components
-int Plane_3D::contain(const double dx, const double dy, const double dz)const
+int Plane_3D::contain(const double &dx, const double &dy, const double &dz)const
 {
     if( coef[0]*dx+coef[1]*dy+coef[2]*dz+coef[3]==0 ) {
         //in the plane
