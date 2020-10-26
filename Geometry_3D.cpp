@@ -368,10 +368,6 @@ Plane_3D::Plane_3D(const Point_3D &P1, const Point_3D &P2, const Point_3D &P3)
     coef[2] = N.z;
     coef[3] = N.dot(P1)*(-1);
     
-    //Calculate normal vector
-    N.set(coef[0],coef[1],coef[2]);
-    N.make_unit();
-    
     if(coef[0]==0.0&&coef[1]==0.0&&coef[2]==0.0) virtual_plane = false;
     else virtual_plane = true;
 }
