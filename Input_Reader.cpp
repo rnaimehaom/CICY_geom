@@ -73,17 +73,6 @@ int Input::Read_Infile(ifstream &infile)
         Warning_message("Nanotube_Geometry");
     }
     
-    
-    str = Get_Line(infile);
-    if(str=="CNT_Agglomerate_Geometry")    {
-        if(Read_agg_geo_parameters(agg_geo, infile)==0) return 0;
-        //hout<<"i="<<i<<endl;i++;
-    }
-    //If not found then the default values are used
-    else {
-        Warning_message("CNT_Agglomerate_Geometry");
-    }
-    
     str = Get_Line(infile);
     if(str=="GNP_Geometry")    {
         if(Read_gnp_geo_parameters(gnp_geo, infile)==0) return 0;
@@ -206,19 +195,6 @@ int Input::Data_Initialization()
 	nanotube_geo.volume = 0.0;
 	nanotube_geo.weight_fraction = 0.0;
 	nanotube_geo.weight = 0.0;
-
-	//Initialize the geometric paramters of nanotube clusters
-	agg_geo.keywords = "CNT_Agglomerate_Geometry";
-	agg_geo.mark = false;
-	agg_geo.print_key = 1;
-	agg_geo.vol_fra_criterion = 0;
-	agg_geo.amin = 0.0;
-	agg_geo.amax = 0.0;
-	agg_geo.bmin = 0.0;
-	agg_geo.cmin = 0.0;
-	agg_geo.growth_probability = 0.0;
-	agg_geo.volf_clust = 0.0;
-	agg_geo.cnt_real_volume = 0.0;
 
 	//Initialize cutoff distances
 	cutoff_dist.keywords = "Cutoff_Distances";
@@ -774,69 +750,6 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
     //Determine the overlapping of the overlapping sub-regions for CNTs
     geom_sample.gs_overlap_cnt = 2*nanotube_geo.rad_max + cutoff_dist.van_der_Waals_dist;
     
-	return 1;
-}
-//---------------------------------------------------------------------------
-//Read geometric parameters for agglomerates
-int Input::Read_agg_geo_parameters(struct Agglomerate_Geo &agg_geo, ifstream &infile)
-{
-	if(agg_geo.mark)
-	{
-		//Output a message that the keyword has already been iput
-        Warning_message_already_input(agg_geo.keywords);
-        return 0;
-	}
-	else agg_geo.mark = true;
-
-	istringstream istr_clust_para(Get_Line(infile));
-	istr_clust_para >> agg_geo.vol_fra_criterion;
-    //If a negative number is input, it is understood that there are no agglomerates
-    //The same happens if a 0 is input, but fur numerical stability it is better to use
-    //a negative number instead of 0
-    if(agg_geo.vol_fra_criterion<Zero){
-        hout << "    No agglomerates will be generated."<< endl;
-    }
-    else {
-        
-        if(agg_geo.vol_fra_criterion>1){
-            hout << "Error: The volume fraction of agglomerates must be between 0 and 1. Input was: "<<agg_geo.vol_fra_criterion<< endl; return 0; }
-        
-        //If the volume fraction of agglomerates is between 0 and 1, read the rest of parameters
-        
-        istr_clust_para >> agg_geo.amin >> agg_geo.amax;
-        if(agg_geo.amin<Zero||agg_geo.amax<Zero||agg_geo.amin>agg_geo.amax){
-            hout << "Error: The maximum and minimum values for the ellipsoid's (agglomerate's) longest axis must be non-negative and the minimum value must be smaller than the maximum value. Input for minimum was "<< agg_geo.amin<<" and for maximum was "<<agg_geo.amax<<endl; return 0; }
-        
-        istr_clust_para >> agg_geo.bmin >> agg_geo.cmin;
-        if(agg_geo.bmin<Zero||agg_geo.cmin<Zero)
-        {
-            hout << "Error: The minimum values for the ellipsoid's (agglomerate's) middle and shortest axes must be non-negative. Input for middle axis was "<<agg_geo.bmin<<" and for shortest axis was "<<agg_geo.cmin<< endl;
-            return 0;
-        }
-        if(agg_geo.bmin>agg_geo.amin||agg_geo.cmin>agg_geo.amin||agg_geo.cmin>agg_geo.bmin)
-        {
-            hout << "Error: The minimum values for the ellipsoid's (agglomerate's) middle and shortest axes must be smaller than the minimum value of longest axis,";
-            hout<<"and the minimum value of shortest axis must be smaller than the minimum value of middle axis. ";
-            hout<<"Input for middle axis was "<<agg_geo.bmin<<", for shortest axis was "<<agg_geo.cmin<<" and the minimum value of longest axis was "<<agg_geo.amin<< endl;
-            return 0;
-        }
-        
-        istr_clust_para >> agg_geo.growth_probability;
-        if(agg_geo.growth_probability<Zero||agg_geo.growth_probability>1){
-            hout << "Error: The growth probability of nanotubes in agglomerates must be between 0 and 1. Input was: "<<agg_geo.growth_probability<< endl; return 0; }
-        
-        istr_clust_para >> agg_geo.volf_clust;
-        if(agg_geo.volf_clust<Zero||agg_geo.volf_clust>1) {
-            hout << "Error: The volume fraction of nanotubes in agglomerates must be between 0 and 1. Input was: "<<agg_geo.volf_clust<< endl; return 0; }
-
-        istr_clust_para >> agg_geo.print_key;
-        if(agg_geo.print_key<0||agg_geo.print_key>2) {
-            hout << "Error: The print_key for agglomerates can only be 0, 1 or 2. Input was: "<<agg_geo.print_key<< endl; return 0; }
-
-        //clear ellipsoid vector
-        agg_geo.ellips.clear();
-    }
-
 	return 1;
 }
 //---------------------------------------------------------------------------

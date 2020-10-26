@@ -157,21 +157,6 @@ struct GNP_Geo{
     //GNP density
     double density;
 };
-//The parameters of nanotube agglomerates
-struct Agglomerate_Geo{
-    string keywords;
-    int print_key;								//0 denotes "no print"; 1 denotes "only print the nanotubes in the ellipsoids"; 2 denotes "print the nanotubes in the ellipsolds and the surfaces of all ellipsoids".
-    bool mark;
-    double volf_clust;						//Define the volume fraction of nanotubes in clusters
-    double vol_fra_criterion;			//Define the volume fraction of clusters in the sample
-    double amin;								//Define the minimum value of long axis of a cluster ellipsoid
-    double amax;							//Define the maximum value of long axis of a cluster ellipsoid
-    double bmin;								//Define the minimum value of middle axis of a cluster ellipsoid
-    double cmin;								//Define the minimum value of short axis of a cluster ellipsoid
-    double growth_probability;		//Define the growth probability of nanotubes in a cluster
-    double cnt_real_volume;			//Define the real volume of nanotubes in clusters
-    vector<struct elliparam> ellips;  //Define the vector of ellipsoids for nanotube cluster zones
-};
 //The cutoff distances
 struct Cutoff_dist{
     string keywords;
@@ -219,7 +204,6 @@ public:
     struct Simu_para simu_para;
     struct Geom_sample geom_sample;
     struct Nanotube_Geo nanotube_geo;
-    struct Agglomerate_Geo agg_geo;
     struct Cutoff_dist cutoff_dist;
     struct Electric_para electric_para;
     struct GNP_Geo gnp_geo;
@@ -241,7 +225,6 @@ private:
     int Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infile);
     int Read_cutoff_distances(struct Cutoff_dist &cutoff_dist, ifstream &infile);
     int Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstream &infile);
-    int Read_agg_geo_parameters(struct Agglomerate_Geo &agg_geo, ifstream &infile);
     int Read_electrical_parameters(struct Electric_para &electric_para, ifstream &infile);
     int Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile);
     int Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infile);

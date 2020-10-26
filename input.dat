@@ -142,33 +142,6 @@ uniform 0.005000 0.005000
 %
 %
 %========================================================================================================
-%Define the geometric parameters of ellipsoid agglomerates of CNTs
-CNT_Agglomerate_Geometry
-%--------------------------------Start
-%Please input the volume fraction of agglomerates, which are approximated as ellipsoids
-%If a negative number is input, it is understood that there are no agglomerates
-%The same happens if a 0 is input, but fur numerical stability it is better to use a negative number instead of 0
-%In case agglomerates are needed, the following needs to be especified in a single line (in that order):
-% v amin amax bmin cmin p vc key
-%where:
-%v: volume fraction of ellipsoids
-%amin: minimum value of ellipsoid's longest axis
-%amax: maximum value of ellipsoid's longest axis
-%   the longest axis obeys a uniform distribution in (amin, amax)
-%bmin: minimum value of ellipsoid's middle axis which obeys a uniform distribution in (bmin, a)
-%cmin: minimum value of ellipsoid's shortest axis which obeys a uniform distribution in (cmin, b)
-%   if bmin=cmin=0, then spheres will be generated with radii in (amin, amax)
-%p: growth probability of a CNT in an ellipsoid (agglomerate), 0 <= p <= 1
-%vc: volume fraction of cnts in the ellipsoid (agglomerate)
-%key: print key, where 0 is for "no print"; 1 for "only print the nanotubes in the ellipsoids"; 2 for "print the nanotubes in the ellipsoids and the surfaces of all ellipsoids"
-%example: 0.05 0.1 0.1 0 0 1 0.4774648 2
-%0.00418879 0.1 0.1 0 0 1 0.4774648 2
--1
-%--------------------------------End
-%
-%
-%
-%========================================================================================================
 %Define the geometric parameters of the GNPs
 GNP_Geometry
 %--------------------------------Start
