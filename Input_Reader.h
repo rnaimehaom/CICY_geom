@@ -168,11 +168,16 @@ struct Cutoff_dist{
 struct Electric_para{
     string keywords;
     bool mark;
-    double applied_voltage;			//Define the magnitude of the applied voltage
-    double resistivity_CNT;			//Define the resistivity value of the carbon fiber
-    double resistivity_GNP_t, resistivity_GNP_surf; //Define the resistivity value of the GNP along the thicknes direction and along the surface
-    double resistivity_matrix;      //Define the resistivity of the polymer matrix
-    string junction_type;           //Define the type of junctino resistance
+    //Applied voltage
+    double applied_voltage;
+    //CNT resistivity
+    double resistivity_CNT;
+    //GNP resistivities along the thicknes direction and along the surface
+    double resistivity_GNP_t, resistivity_GNP_surf;
+    //Resistivity of the polymer matrix
+    double resistivity_matrix;
+    //Type of junction resistance (constant or exponential)
+    string junction_type;
     //Constants for tunneling
     double e_charge;
     //Constants using Li et al approach
@@ -183,17 +188,22 @@ struct Electric_para{
     double h_plank;
     double e_mass;
     double lambda_barrier;
-    double junction_resistance;     //Define the constant value for junction resistance
+    //Constant value for junction resistance
+    double junction_resistance;
 };
-struct Tecplot_flags{
+struct Visualization_flags{
     string keywords;
     bool mark;
-    int generated_cnts;         //Flag to export generated CNTs
-    int generated_gnps;         //Flag to export generated GNPs
-    int clusters;               //Flag to export clusters as obtained from the Hoshen-Kopelman algorithm
-    int percolated_clusters;    //Flag to export percolated clusters
-    int backbone;               //Flag to export the backbone
-    int triangulations;         //Flag to export triangulations
+    //Flag to export generated nanoparticles
+    int generated_nanoparticles;
+    //Flag to export clusters as obtained from the Hoshen-Kopelman algorithm
+    int clusters;
+    //Flag to export percolated clusters
+    int percolated_clusters;
+    //Flag to export the backbone
+    int backbone;
+    //Flag to export triangulations
+    int triangulations;
 };
 //---------------------------------------------------------------------------
 class Input
@@ -207,17 +217,18 @@ public:
     struct Cutoff_dist cutoff_dist;
     struct Electric_para electric_para;
     struct GNP_Geo gnp_geo;
-    struct Tecplot_flags tec360_flags;
+    struct Visualization_flags vis_flags;
     
     //Constructor
     Input(){};
     
     //Member functions
-    int Data_Initialization();								//Initialize data
+    int Data_Initialization();
     void Warning_message(const string &str);
     void Warning_message_already_input(const string &str);
-    int Read_Infile(ifstream &infile);				//Read data
-    string Get_Line(ifstream &infile)const;		//Read the input data in a whole line (to skip over the comment line starting with a '%')
+    int Read_Infile(ifstream &infile);
+    //Read the input data in a whole line (to skip over the comment line starting with a '%')
+    string Get_Line(ifstream &infile)const;
 private:
     //Member functions
     int Read_application(struct App_name &app_name, ifstream &infile);
@@ -227,7 +238,7 @@ private:
     int Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstream &infile);
     int Read_electrical_parameters(struct Electric_para &electric_para, ifstream &infile);
     int Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile);
-    int Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infile);
+    int Read_visualization_flags(struct Visualization_flags &vis_flags, ifstream &infile);
 };
 //---------------------------------------------------------------------------
 #endif

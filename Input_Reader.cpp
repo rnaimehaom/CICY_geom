@@ -94,8 +94,8 @@ int Input::Read_Infile(ifstream &infile)
     }
     
     str = Get_Line(infile);
-    if(str=="Tecplot_flags")    {
-        if(Read_tecplot_flags(tec360_flags, infile)==0) return 0;
+    if(str=="Visualization_flags")    {
+        if(Read_visualization_flags(vis_flags, infile)==0) return 0;
         //hout<<"i="<<i<<endl;i++;
     }
     //If not found then the default values are used
@@ -209,14 +209,13 @@ int Input::Data_Initialization()
 	electric_para.resistivity_CNT = 0.001;
     
     //Initialize tecplot flags (do not export anything)
-    tec360_flags.keywords = "Tecplot_flags";
-    tec360_flags.mark = false;
-    tec360_flags.generated_cnts = 0;
-    tec360_flags.generated_gnps = 0;
-    tec360_flags.clusters = 0;
-    tec360_flags.percolated_clusters = 0;
-    tec360_flags.backbone = 0;
-    tec360_flags.triangulations = 0;
+    vis_flags.keywords = "Visualization_flags";
+    vis_flags.mark = false;
+    vis_flags.generated_nanoparticles = 0;
+    vis_flags.clusters = 0;
+    vis_flags.percolated_clusters = 0;
+    vis_flags.backbone = 0;
+    vis_flags.triangulations = 0;
 
 	hout << "    Data initialization files" <<endl<<endl;
 
@@ -1030,35 +1029,25 @@ int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstr
     return 1;
 }
 //---------------------------------------------------------------------------
-//Read flags for Tecplot visualization files
-int Input::Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infile)
+//Read flags for visualization files
+int Input::Read_visualization_flags(struct Visualization_flags &vis_flags, ifstream &infile)
 {
-	if(tec360_flags.mark)
+	if(vis_flags.mark)
 	{
 		//Output a message that the keyword has already been iput
-        Warning_message_already_input(tec360_flags.keywords);
+        Warning_message_already_input(vis_flags.keywords);
         return 0;
 	}
-	else tec360_flags.mark = true;
+	else vis_flags.mark = true;
     
-    //Flag to export generated CNTs:
-    // 0: do not export Tecplot files
-    // 1: wires
-    // 2: singlezone meshes
-    // 3: multizone meshes
+    //Flag to export generated nanoparticles:
+    // 0: do not export visualization files
+    // 1: export visualization files (if mixed or hybrid particles generated,
+    //    then two files are generated, one for CNTs and one for GNPs)
     istringstream istr0(Get_Line(infile));
-	istr0 >> tec360_flags.generated_cnts;
-    if (tec360_flags.generated_cnts<0||tec360_flags.generated_cnts>3) {
-        hout<<"Error: Flag to export generated CNTs can only be an integer in [0,3]. Input was: "<<tec360_flags.generated_cnts<<endl;
-    }
-    
-    //Flag to export generated GNPs
-    // 0: do not export Tecplot files
-    // 1: export GNPs as brick elements
-    istringstream istr1(Get_Line(infile));
-    istr1 >> tec360_flags.generated_gnps;
-    if (tec360_flags.generated_gnps<0||tec360_flags.generated_gnps>1) {
-        hout<<"Error: Flag to export generated GNPs can only be 0 or 1. Input was: "<<tec360_flags.generated_gnps<<endl;
+	istr0 >> vis_flags.generated_nanoparticles;
+    if (vis_flags.generated_nanoparticles<0||vis_flags.generated_nanoparticles>1) {
+        hout<<"Error: Flag to export generated CNTs can only be an integer, 0 or 1. Input was: "<<vis_flags.generated_nanoparticles<<endl;
     }
     
     //Flag to export clusters as obtained from the Hoshen-Kopelman algorithm:
@@ -1067,9 +1056,9 @@ int Input::Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infi
     // 2: meshes
     // 3: wires (3D lines) & meshes
     istringstream istr2(Get_Line(infile));
-    istr2 >> tec360_flags.clusters;
-    if (tec360_flags.clusters<0||tec360_flags.clusters>3) {
-        hout<<"Error: Flag to export clusters (from HK76 algorithm) can only be an integer in [0,3]. Input was: "<<tec360_flags.clusters<<endl;
+    istr2 >> vis_flags.clusters;
+    if (vis_flags.clusters<0||vis_flags.clusters>3) {
+        hout<<"Error: Flag to export clusters (from HK76 algorithm) can only be an integer in [0,3]. Input was: "<<vis_flags.clusters<<endl;
     }
 
     //Flag to export percolated clusters:
@@ -1078,9 +1067,9 @@ int Input::Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infi
     // 2: meshes
     // 3: wires (3D lines) & meshes
     istringstream istr3(Get_Line(infile));
-    istr3 >> tec360_flags.percolated_clusters;
-    if (tec360_flags.percolated_clusters<0||tec360_flags.percolated_clusters>3) {
-        hout<<"Error: Flag to export percolated clusters can only be an integer in [0,3]. Input was: "<<tec360_flags.percolated_clusters<<endl;
+    istr3 >> vis_flags.percolated_clusters;
+    if (vis_flags.percolated_clusters<0||vis_flags.percolated_clusters>3) {
+        hout<<"Error: Flag to export percolated clusters can only be an integer in [0,3]. Input was: "<<vis_flags.percolated_clusters<<endl;
     }
     
     //Flag to export the backbone:
@@ -1089,18 +1078,18 @@ int Input::Read_tecplot_flags(struct Tecplot_flags &tec360_flags, ifstream &infi
     // 2: meshes
     // 3: wires (3D lines) & meshes
     istringstream istr4(Get_Line(infile));
-    istr4 >> tec360_flags.backbone;
-    if (tec360_flags.backbone<0||tec360_flags.backbone>3) {
-        hout<<"Error: Flag to export the backbone clusters can only be an integer in [0,3]. Input was: "<<tec360_flags.backbone<<endl;
+    istr4 >> vis_flags.backbone;
+    if (vis_flags.backbone<0||vis_flags.backbone>3) {
+        hout<<"Error: Flag to export the backbone clusters can only be an integer in [0,3]. Input was: "<<vis_flags.backbone<<endl;
     }
     
     //Flag to export triangulations if set to 1
     // 0: do not export Tecplot files
     // 1: export triangulations
     istringstream istr5(Get_Line(infile));
-    istr5 >> tec360_flags.triangulations;
-    if (tec360_flags.triangulations<0||tec360_flags.triangulations>1) {
-        hout<<"Error: Flag to export triangulation can only be 0 or 1. Input was: "<<tec360_flags.triangulations<<endl;
+    istr5 >> vis_flags.triangulations;
+    if (vis_flags.triangulations<0||vis_flags.triangulations>1) {
+        hout<<"Error: Flag to export triangulation can only be 0 or 1. Input was: "<<vis_flags.triangulations<<endl;
     }
     
 	return 1;

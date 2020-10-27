@@ -28,9 +28,6 @@ using namespace hns;
 class App_Network_3D
 {
 public:
-    //Data Member
-    //vector<Point_3D> cnps;			//Define 3D point verctor of nanotuber points
-    //vector<double> cnts_radius;		//Define the radius of every nanotube in the network
     
     //Constructor
     App_Network_3D(){};

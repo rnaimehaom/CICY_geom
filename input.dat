@@ -197,15 +197,14 @@ Electrical_Parameters
 constant 1e7
 %--------------------------------End
 %========================================================================================================
-%Define flags for Tecplot visualization files
-Tecplot_flags
+%Define flags for visualization files
+Visualization_flags
 %--------------------------------Start
 %
-%Flag to export generated CNTs:
-% 0: do not export Tecplot files
-% 1: wires
-% 2: singlezone meshes
-% 3: multizone meshes
+%Flag to export generated nanoparticles:
+% 0: do not export visualization files
+% 1: export visualization files (if mixed or hybrid particles generated,
+%    then two files are generated, one for CNTs and one for GNPs)
 0
 %Flag to export generated GNPs
 % 0: do not export Tecplot files

@@ -15,7 +15,7 @@
 //3) When adding the new_cnt vector to the global vector of CNTs, split it into segments. This operation is completely useless with a non-periodic sample and was causing some errors when using the penetrating model so I just deleted it.
 
 //Generate a network of nanoparticles
-int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const GNP_Geo &gnp_geo, const Cutoff_dist &cutoffs, const Tecplot_flags &tec360_flags, vector<Point_3D> &cpoints, vector<double> &cnts_radius_out, vector<vector<long int> > &cstructures, vector<GNP> &gnps)const
+int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const GNP_Geo &gnp_geo, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, vector<Point_3D> &cpoints, vector<double> &cnts_radius_out, vector<vector<long int> > &cstructures, vector<GNP> &gnps)const
 {
     //Vector of storing the CNT points
     vector<vector<Point_3D> > cnts_points;
@@ -63,7 +63,7 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     
     //---------------------------------------------------------------------------
     //Check if visualization files were requested for generated nanoparticles
-    if (tec360_flags.generated_cnts) {
+    if (vis_flags.generated_nanoparticles) {
         
         VTK_Export vtk_exp;
         
