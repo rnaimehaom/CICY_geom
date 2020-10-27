@@ -231,14 +231,14 @@ public:
     string Get_Line(ifstream &infile)const;
 private:
     //Member functions
-    int Read_application(struct App_name &app_name, ifstream &infile);
-    int Read_simulation_parameters(struct Simu_para &simu_para, ifstream &infile);
-    int Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infile);
-    int Read_cutoff_distances(struct Cutoff_dist &cutoff_dist, ifstream &infile);
-    int Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstream &infile);
-    int Read_electrical_parameters(struct Electric_para &electric_para, ifstream &infile);
-    int Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile);
-    int Read_visualization_flags(struct Visualization_flags &vis_flags, ifstream &infile);
+    int Read_application(App_name &app_name, ifstream &infile);
+    int Read_simulation_parameters(Simu_para &simu_para, ifstream &infile);
+    int Read_sample_geometry(Geom_sample &geom_sample, ifstream &infile);
+    int Read_cutoff_distances(Cutoff_dist &cutoff_dist, ifstream &infile);
+    int Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &infile);
+    int Read_electrical_parameters(Electric_para &electric_para, ifstream &infile);
+    int Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile);
+    int Read_visualization_flags(Visualization_flags &vis_flags, ifstream &infile);
 };
 //---------------------------------------------------------------------------
 #endif

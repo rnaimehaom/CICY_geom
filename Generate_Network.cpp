@@ -1021,7 +1021,7 @@ int Generate_Network::Transform_points_cnts(const Geom_sample &geom_sample, cons
     return 1;
 }
 //---------------------------------------------------------------------------
-int Generate_Network::Add_cnts_inside_sample(const struct Geom_sample &geom_sample, const struct Nanotube_Geo &nano_geo, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
+int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, const Nanotube_Geo &nano_geo, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
 {
     //Indices to define the beginning and ending of a segment of a CNT that is inside a sample
     int start = 0;
@@ -1182,7 +1182,6 @@ int Generate_Network::Add_boundary_point(const Geom_sample &geom_sample, const P
 {
     //Find the coordinates of the point between the ouside (p_outside) and inside (p_inside) that
     //that is located at the sample boundary (one of the faces)
-    //Find_intersection_at_boundary(const struct Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside)
     Point_3D boundary = Find_intersection_at_boundary(geom_sample, p_outside, p_inside);
     
     //Update the points flag

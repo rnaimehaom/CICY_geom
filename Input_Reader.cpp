@@ -235,7 +235,7 @@ void Input::Warning_message_already_input(const string &str)
 }
 //---------------------------------------------------------------------------
 //Read the application type
-int Input::Read_application(struct App_name &app_name, ifstream &infile)
+int Input::Read_application(App_name &app_name, ifstream &infile)
 {
 	if(app_name.mark)
 	{
@@ -252,7 +252,7 @@ int Input::Read_application(struct App_name &app_name, ifstream &infile)
 }
 //---------------------------------------------------------------------------
 //Read the simulation parameters
-int Input::Read_simulation_parameters(struct Simu_para &simu_para, ifstream &infile)
+int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
 {
 	if(simu_para.mark)
 	{
@@ -440,7 +440,7 @@ int Input::Read_simulation_parameters(struct Simu_para &simu_para, ifstream &inf
 }
 //---------------------------------------------------------------------------
 //Read sample geometry
-int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infile)
+int Input::Read_sample_geometry(Geom_sample &geom_sample, ifstream &infile)
 {
 	if(geom_sample.mark)
 	{
@@ -570,7 +570,7 @@ int Input::Read_sample_geometry(struct Geom_sample &geom_sample, ifstream &infil
 }
 //---------------------------------------------------------------------------
 //Read cutoff distances
-int Input::Read_cutoff_distances(struct Cutoff_dist &cutoff_dist, ifstream &infile)
+int Input::Read_cutoff_distances(Cutoff_dist &cutoff_dist, ifstream &infile)
 {
     if(cutoff_dist.mark)
     {
@@ -599,7 +599,7 @@ int Input::Read_cutoff_distances(struct Cutoff_dist &cutoff_dist, ifstream &infi
 }
 //---------------------------------------------------------------------------
 //Read the geometric parameters of nanotubes
-int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstream &infile)
+int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &infile)
 {
 	if(nanotube_geo.mark)
 	{
@@ -753,7 +753,7 @@ int Input::Read_nanotube_geo_parameters(struct Nanotube_Geo &nanotube_geo, ifstr
 }
 //---------------------------------------------------------------------------
 //Readi the geometric parameters of GNPs
-int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
+int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
 {
     if(gnp_geo.mark)
     {
@@ -951,7 +951,7 @@ int Input::Read_gnp_geo_parameters(struct GNP_Geo &gnp_geo, ifstream &infile)
 }
 //---------------------------------------------------------------------------
 //Read electrical properties of materials
-int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstream &infile)
+int Input::Read_electrical_parameters(Electric_para &electric_para, ifstream &infile)
 {
     if(electric_para.mark)
     {
@@ -1030,7 +1030,7 @@ int Input::Read_electrical_parameters(struct Electric_para &electric_para, ifstr
 }
 //---------------------------------------------------------------------------
 //Read flags for visualization files
-int Input::Read_visualization_flags(struct Visualization_flags &vis_flags, ifstream &infile)
+int Input::Read_visualization_flags(Visualization_flags &vis_flags, ifstream &infile)
 {
 	if(vis_flags.mark)
 	{
