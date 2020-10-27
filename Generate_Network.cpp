@@ -80,6 +80,10 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         }
         
         delete Tecexpt;
+        
+        VTK_Export vtk_exp;
+        
+        vtk_exp.Export_cnts_2D_vector(cnts_points, "cnts_generated.vtk");
     }
     
     //---------------------------------------------------------------------------
@@ -121,6 +125,9 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         }
         
         delete Tecexpt;
+        
+        VTK_Export vtk_exp;
+        vtk_exp.Export_cnts_1D_vector(cpoints, cstructures, "cnts_sample.vtk");
     }
     
     //---------------------------------------------------------------------------
@@ -150,6 +157,10 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         otec3.close();
         
         delete Tecexpt;
+        
+        VTK_Export vtk_exp;
+        vtk_exp.Export_gnps(gnps, "gnps_generated.vtk");
+        vtk_exp.Export_hybrid_material(cpoints, cstructures, gnps, "mixed_particles_sample.vtk");
     }
     
     return 1;

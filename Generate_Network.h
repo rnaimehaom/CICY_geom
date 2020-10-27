@@ -26,6 +26,7 @@
 #include "Hns.h"
 #include "Tecplot_Export.h"
 #include "Collision_detection.h"
+#include "VTK_Export.h"
 
 using namespace hns;
 
