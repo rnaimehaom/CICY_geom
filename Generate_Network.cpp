@@ -62,28 +62,20 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     }
     
     //---------------------------------------------------------------------------
-    //Check if Tecplot visualization files were requested for CNTs
+    //Check if visualization files were requested for generated nanoparticles
     if (tec360_flags.generated_cnts) {
-        
-        //A new Tecplot_Export object
-        Tecplot_Export *Tecexpt = new Tecplot_Export;
-        
-        if (tec360_flags.generated_cnts == 1) {
-            
-            //Export the CNT network as threads in Tecplot
-            if(Tecexpt->Export_network_threads(geom_sample.sample, cnts_points)==0) return 0;
-        }
-        else {
-            
-            //Export the CNT network as 3D "cylinders" in Tecplot
-            if(Tecexpt->Export_cnt_network_meshes(tec360_flags.generated_cnts, geom_sample.sample, cnts_points, cnts_radius_in)==0) return 0;
-        }
-        
-        delete Tecexpt;
         
         VTK_Export vtk_exp;
         
-        vtk_exp.Export_cnts_2D_vector(cnts_points, "cnts_generated.vtk");
+        //Export generated CNTs if any
+        if (cnts_points.size()) {
+            vtk_exp.Export_cnts_2D_vector(cnts_points, "cnts_generated.vtk");
+        }
+        
+        //Export generated GNPs if any
+        if (gnps.size()) {
+            vtk_exp.Export_gnps(gnps, "gnps_generated.vtk");
+        }
     }
     
     //---------------------------------------------------------------------------
@@ -97,70 +89,6 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
             hout<<"Error in Recalculate_vol_fraction_cnts."<<endl; return 0;
         }
         hout<<endl;
-    }
-    
-    //---------------------------------------------------------------------------
-    //Check if Tecplot visualization files were requested for CNTs
-    if (tec360_flags.generated_cnts) {
-        
-        //A new Tecplot_Export object
-        Tecplot_Export *Tecexpt = new Tecplot_Export;
-        
-        if (tec360_flags.generated_cnts == 1) {
-            
-            string filename = "CNT_wires_sample.dat";
-            ofstream otec(filename.c_str());
-            otec << "TITLE = \"Wires\"" << endl;
-            otec << "VARIABLES = X, Y, Z" << endl;
-            
-            //---------------------------------------------------------------------------
-            //Export 3D nanotube threads
-            if(Tecexpt->Export_nano_threads(otec, cpoints, cstructures)==0) return 0;
-            otec.close();
-        }
-        else {
-            
-            //Export the CNT network as 3D "cylinders" in Tecplot
-            //if(Tecexpt->Export_cnt_network_meshes(tec360_flags.generated_cnts, geom_sample.sample, cnts_points, cnts_radius_in)==0) return 0;
-        }
-        
-        delete Tecexpt;
-        
-        VTK_Export vtk_exp;
-        vtk_exp.Export_cnts_1D_vector(cpoints, cstructures, "cnts_sample.vtk");
-    }
-    
-    //---------------------------------------------------------------------------
-    //Check if Tecplot visualization files were requested for GNPs
-    if (tec360_flags.generated_gnps) {
-        
-        //A new Tecplot_Export object
-        Tecplot_Export *Tecexpt = new Tecplot_Export;
-        
-        ofstream otec("Sample.dat");
-        otec << "TITLE =\"Sample\"" << endl;
-        otec << "VARIABLES = X, Y, Z" << endl;
-        if(Tecexpt->Export_cuboid(otec, geom_sample.sample)==0) return 0;
-        otec.close();
-        
-        ofstream otec2("GNP_cuboids.dat");
-        otec2 << "TITLE =\"GNPs\"" << endl;
-        otec2 << "VARIABLES = X, Y, Z" << endl;
-        string zone_name = "as_generated";
-        if(Tecexpt->Export_randomly_oriented_gnps(otec2, gnps)==0) return 0;
-        otec2.close();
-        
-        ofstream otec3("Ext_domain.dat");
-        otec3 << "TITLE =\"Extended Domain\"" << endl;
-        otec3 << "VARIABLES = X, Y, Z" << endl;
-        if(Tecexpt->Export_cuboid(otec3, geom_sample.ex_dom_cnt)==0) return 0;
-        otec3.close();
-        
-        delete Tecexpt;
-        
-        VTK_Export vtk_exp;
-        vtk_exp.Export_gnps(gnps, "gnps_generated.vtk");
-        vtk_exp.Export_hybrid_material(cpoints, cstructures, gnps, "mixed_particles_sample.vtk");
     }
     
     return 1;

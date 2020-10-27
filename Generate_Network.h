@@ -22,9 +22,7 @@
 #include "Input_Reader.h"
 #include "Geometry_3D.h"
 #include "MathMatrix.h"
-#include "Fem_3D.h"
 #include "Hns.h"
-#include "Tecplot_Export.h"
 #include "Collision_detection.h"
 #include "VTK_Export.h"
 
