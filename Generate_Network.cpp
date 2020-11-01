@@ -2906,14 +2906,20 @@ int Generate_Network::Check_mixed_interpenetration(const Geom_sample &geom_sampl
             //because there cannot be penetration with other CNTs, this would have
             //been avoided due to using the non-penetrating model
             
-            //Move the point for this special case
+            //Go to the special case when the CNT point is inside the GNP
+            //hout<<"Deal_with_point_inside_gnp"<<endl;
             if (!Deal_with_point_inside_gnp(geom_sample, affected_gnp, rad_plus_dvdw, new_cnt, new_point)) {
                 //new_point could not be accomodated so reject it
                 return 0;
             }
             
-            //Check if the segment has a valid orientation, only when new_cnt.back() is inside the sample
-            if (Is_point_inside_cuboid(geom_sample.sample, new_cnt.back())) {
+            //Check if the segment has a valid orientation, only when:
+            //new_cnt has at least two points
+            //AND
+            //new_cnt.back() is inside the sample
+            //hout<<"Is_point_inside_cuboid"<<endl;
+            if (new_cnt.size() >= 2 && Is_point_inside_cuboid(geom_sample.sample, new_cnt.back())) {
+                
                 //hout<<"Check_segment_orientation 1"<<endl;
                 if (!Check_segment_orientation(new_point, new_cnt)) {
                     //When not in a valid position it cannot be moved again so a new CNT is needed
@@ -3305,6 +3311,7 @@ int Generate_Network::Deal_with_point_inside_gnp(const Geom_sample &geom_sample,
     if (new_cnt.empty()) {
         
         //Find the closest face and relocate it
+        //hout<<"Find_closest_face_and_relocate"<<endl;
         new_point = Find_closest_face_and_relocate(gnp, new_point, cutoff);
         
         //Nothing more to do, just terminate the function
