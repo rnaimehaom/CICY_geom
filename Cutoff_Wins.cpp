@@ -7,83 +7,28 @@
 
 #include "Cutoff_Wins.h"
 
-/*
- Input:
-    vector<vector<int> > shells_cnt
-        List with all CNTs grouped into sub-regions in order to reduce computational cost of finding the CNTs intersected by the boundaries of the observation window
-    int window
-        Current sub-region that contains the CNTs to be trimmed
-    struct Geom_sample sample
-        Geometry of the generated sample
-    struct Nanotube_Geo cnts
-        Geometry of the CNTs
-    vector<vector<long int> > structure
-        Vector with the structure. Since CNTs might get trimmed, this vector will be modified to delete points and add more CNTs and points.
-    vector<double> radii
-        List of radii. Using this vector allows for the code to be able to work with CNTs of different radii. As CNTs might be added, the radii of the new CNTs need also to be included in the vector
-    vector<Point_3D> points_in
-        Vector with the point coordinates. Since points at the boundaries of the observation window are going to be added, this vector needs to be modified
- 
- Output (These three are class variables):
-    vector<int> cnts_inside
-        List with the CNTs that are inside the observation window and that will be used for future computations
-    vector<int> cnts_inside
-        List with the GNPs that are inside the observation window and that will be used for future computations
-    vector<vector<int> > boundary_cnt
-        Vectors that contains the CNTs on each of the six boundaries. These are needed to determine percolation
-            boundary_cnt[0] corresponds to x0
-            boundary_cnt[1] corresponds to x1
-            boundary_cnt[2] corresponds to y0
-            boundary_cnt[3] corresponds to y1
-            boundary_cnt[4] corresponds to z0
-            boundary_cnt[5] corresponds to z1
-    vector<vector<int> > boundary_cnt
-        Vectors that contains the CNTs on each of the six boundaries. These are needed to determine percolation
-            boundary_gnp[0] corresponds to x0
-            boundary_gnp[1] corresponds to x1
-            boundary_gnp[2] corresponds to y0
-            boundary_gnp[3] corresponds to y1
-            boundary_gnp[4] corresponds to z0
-            boundary_gnp[5] corresponds to z1
- 
- Modified inputs:
-    vector<vector<long int> > structure
-    vector<double> radii
-    vector<Point_3D> points_in
- 
- */
-
 //This function removes the points that are outside the observation window.
 //The vector cnts_inside is created so only the CNTs inside the obseration window are considered in other functions
-int Cutoff_Wins::Extract_observation_window(const int &window, const string &particle_type, const struct Geom_sample &sample_geo, const struct Geom_sample &window_geo, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, vector<GCH> &hybrid_particles, vector<vector<long int> > &structure, vector<vector<long int> > &structure_gnp, vector<double> &radii, vector<Point_3D> &points_in, vector<Point_3D> &points_gnp, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnp)
+int Cutoff_Wins::Extract_observation_window(const int &window, const string &particle_type, const Geom_sample &sample_geo, const cuboid &window_geo, const Nanotube_Geo &cnts_geo, vector<GNP> &gnps, vector<vector<long int> > &structure, vector<double> &radii, vector<Point_3D> &points_in, vector<vector<int> > &shells_cnt, vector<Shell> &shells_gnp)
 {
-    if (!Set_global_variables_for_geometry(sample_geo, window)) {
-        hout << "Error in Extract_observation_window when calling Set_global_variables_for_geometry" << endl;
-        return 0;
-    }
-    
-    //Output the current window geometry
-    hout<<"Observation window geometry:"<<endl;
-    hout<<"xmin="<<xmin<<" ymin="<<ymin<<" zmin="<<zmin<<endl;
-    hout<<"w_x="<<w_x<<" w_y="<<w_y<<" w_z="<<w_z<<endl;
     
     //Vector to save initial seeds
     vector<long int> seeds;
     //Save the initial points of the CNTs that are attached to the GNP
-    //Check if particle type is the hybrid
+    /* /Check if particle type is the hybrid
     //hout << "Save seeds" << endl;
     if (particle_type == "Hybrid_particles") {
         if (!Save_seeds(hybrid_particles, structure, seeds)) {
             hout << "Error in Extract_observation_window when calling Save_seeds" << endl;
             return 0;
         }
-    }
+    }*/
     
     //Trim the CNTs if there are CNTs in the structure
     //Check if the generated structure has CNTs, this happens when the particle type is not GNPs
     if (particle_type != "GNP_cuboids") {
         
-        if (!Trim_boundary_cnts(window, sample_geo, window_geo, cnts, points_in, structure, shells_cnt, radii)) {
+        if (!Trim_boundary_cnts(window, sample_geo, window_geo, cnts_geo, points_in, structure, shells_cnt, radii)) {
             hout << "Error in Extract_observation_window when calling Trim_boundary_cnts" << endl;
             return 0;
         }
@@ -105,11 +50,11 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
         
         //hout << "Compare_seeds" << endl;
         //Compare the initial points of the CNTs attached to the GNPs
-        //If they are different, that means that the CNT is not attached to the GNP anymore
+        /* /If they are different, that means that the CNT is not attached to the GNP anymore
         if (!Compare_seeds(hybrid_particles, structure, seeds)) {
             hout << "Error in Extract_observation_window when calling Compare_seeds" << endl;
             return 0;
-        }
+        }*/
         
         //Set the flag to 1 as hybrid particles are being used
         hybrid_flag = 1;
@@ -118,122 +63,17 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
     //Remove GNPs that are outside the observation window
     //Check if the structure has GNPs, this happens when the particle type is not CNT
     if (particle_type != "CNT_wires") {
-        //Scan every GNP that is the boundary region. Delete GNPs and GNP points when needed.
-        if (!Trim_boundary_gnps(hybrid_flag, gnps, hybrid_particles, shells_gnp[window], points_gnp, structure_gnp)){
-            hout << "Error in Extract_observation_window when calling Trim_boundary_gnps" << endl;
-            return 0;
-        }
     
         //Fill the vector gnps_inside
-        if (!Fill_gnps_inside(structure_gnp)) {
+        if (!Fill_gnps_inside(window, window_geo, gnps, shells_gnp)) {
             hout << "Error in Extract_observation_window when calling Fill_gnps_inside" << endl;
             return 0;
         }
     }
     
-    //Current shells are not needed, so clear them
-    shells_cnt[window].clear();
-    shells_gnp[window].clear();
-    
     return 1;
 }
-//This function sets global variables
-int Cutoff_Wins::Set_global_variables_for_geometry(const struct Geom_sample &sample, const int &window)
-{
-    //These are variables for the geometry of the observation window
-    //Dimensions of the current observation window
-    w_x = sample.win_max_x - ((double)window)*sample.win_delt_x;
-    w_y = sample.win_max_y - ((double)window)*sample.win_delt_y;
-    w_z = sample.win_max_z - ((double)window)*sample.win_delt_z;
-    
-    //Check that the current observation window is not smaller than the minimum observation window
-    if (w_x < sample.win_min_x) {
-        //If the current observation window is smaller than the minimum observation window, set the observation window equal to the minimum
-        w_x = sample.win_min_x;
-    }
-    if (w_y < sample.win_min_y) {
-        //If the current observation window is smaller than the minimum observation window, set the observation window equal to the minimum
-        w_y = sample.win_min_y;
-    }
-    if (w_z < sample.win_min_z) {
-        //If the current observation window is smaller than the minimum observation window, set the observation window equal to the minimum
-        w_z = sample.win_min_z;
-    }
-    
-    //These variables are the coordinates of the lower corner of the observation window
-    xmin = sample.origin.x + (sample.len_x - w_x)/2;
-    ymin = sample.origin.y + (sample.wid_y - w_y)/2;
-    zmin = sample.origin.z + (sample.hei_z - w_z)/2;
-    
-    return 1;
-}
-
-//This function scans all hybrid particles and saves the intial points of its CNTs
-int Cutoff_Wins::Save_seeds(const vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, vector<long int> &seeds)
-{
-    //Initialize the seeds vector with the same size as structure
-    seeds.clear();
-    seeds.assign(structure.size(), -1);
-    
-    //Loop over the hybrid particles
-    for (int i = 0; i < (int)hybrid_particles.size(); i++) {
-        //variable to store the CNT number
-        int CNT;
-        
-        //Scan top CNTs
-        for (int j = 0; j < (int)hybrid_particles[i].cnts_top.size(); j++) {
-            CNT = hybrid_particles[i].cnts_top[j];
-            seeds[CNT] = structure[CNT].front();
-        }
-        
-        //Scan bottom CNTs
-        for (int j = 0; j < (int)hybrid_particles[i].cnts_bottom.size(); j++) {
-            CNT = hybrid_particles[i].cnts_bottom[j];
-            seeds[CNT] = structure[CNT].front();
-        }
-    }
-    
-    return 1;
-}
-//This function scans all hybrid particles and saves the intial points of its CNTs
-//If no CNTs have their initial point on the GNP, then it is removed (as this means the GNP has no CNTS attached)
-int Cutoff_Wins::Compare_seeds(vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, const vector<long int> &seeds)
-{
-    //Loop over the hybrid particles
-    for (int i = (int)hybrid_particles.size()-1; i >= 0; i--) {
-        //variable to store the CNT number
-        int CNT;
-        
-        //Temporary variables
-        vector<int> top_tmp, bottom_tmp;
-        //Scan top CNTs
-        for (int j = 0; j < (int)hybrid_particles[i].cnts_top.size(); j++) {
-            CNT = hybrid_particles[i].cnts_top[j];
-            //Check if seeds are still the same. If so, save the CNT number in the temporary variable
-            if (structure[CNT].size() && seeds[CNT] == structure[CNT].front()) {
-                top_tmp.push_back(CNT);
-            }
-        }
-        //Update the vector of CNTs at the top surface of the GNP
-        hybrid_particles[i].cnts_top = top_tmp;
-        
-        //Scan bottom CNTs
-        for (int j = 0; j < (int)hybrid_particles[i].cnts_bottom.size(); j++) {
-            CNT = hybrid_particles[i].cnts_bottom[j];
-            //Check if seeds are still the same. If so, save the CNT number in the temporary variable
-            if (structure[CNT].size() && seeds[CNT] == structure[CNT].front()) {
-                bottom_tmp.push_back(CNT);
-            }
-        }
-        //Update the vector of CNTs at the bottom surface of the GNP
-        hybrid_particles[i].cnts_bottom = bottom_tmp;
-        
-    }
-    
-    return 1;
-}
-
-int Cutoff_Wins::Trim_boundary_cnts(const int &window, const struct Geom_sample &sample_geo, const struct Geom_sample &window_geo, const struct Nanotube_Geo &cnts, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii)
+int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample_geo, const cuboid &window_geo, const Nanotube_Geo &cnts, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii)
 {
     //String to save the location of a point (inside the window, outside the window, or at a boundary)
     string point_location;
@@ -379,7 +219,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const struct Geom_sample 
     return 1;
 }
 //===========================================================================
-int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_geo, const struct Geom_sample &window_geo, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &end_point_loc, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx)
+int Cutoff_Wins::Add_cnt_segment_to_structure(const Geom_sample &sample_geo, const cuboid &window_geo, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &end_point_loc, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx)
 {
     //Variable used in case the start index needs to change
     int new_start = start;
@@ -411,7 +251,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_g
         }
         
         //Add to the boundary vectors, this happens when the first point is either outside or at a boundary
-        Add_to_boundary_vectors(points_in[p_out_start], p_out_start, new_CNT);
+        Add_to_boundary_vectors(window_geo, points_in[p_out_start], p_out_start, new_CNT);
     }
     
     //Variables for the (possibly) outside and inside points for the end of the segment
@@ -436,7 +276,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_g
         }
         
         //Add to the boundary vectors, this happens when the last point is either outside or at a boundary
-        Add_to_boundary_vectors(points_in[p_out_end], p_out_end, new_CNT);
+        Add_to_boundary_vectors(window_geo, points_in[p_out_end], p_out_end, new_CNT);
     }
     
     //At this point all points in the segment are inside the observation window (or its boundary)
@@ -488,7 +328,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const struct Geom_sample &sample_g
     
     return 1;
 }
-int Cutoff_Wins::Substitute_boundary_point(const struct Geom_sample &window_geo, const Point_3D &p_inside, Point_3D &p_outside)
+int Cutoff_Wins::Substitute_boundary_point(const cuboid &window_geo, const Point_3D &p_inside, Point_3D &p_outside)
 {
     //The line segment defined by p_outside and p_inside is given by:
     //P = p_outside + lambda*T
@@ -508,48 +348,48 @@ int Cutoff_Wins::Substitute_boundary_point(const struct Geom_sample &window_geo,
     //Check if any of the x-boundaries is intersected
     double lambda_x = -1.0;
     //x-left boundary
-    if ( (p_outside.x - window_geo.origin.x) < Zero ) {
+    if ( (p_outside.x - window_geo.poi_min.x) < Zero ) {
         
         //Calculate the lambda value
-        lambda_x = calc_lambda(window_geo.origin.x, p_outside.x, T.x);
+        lambda_x = calc_lambda(window_geo.poi_min.x, p_outside.x, T.x);
     }
     //x-right boundary
-    else if ( (window_geo.x_max - p_outside.x) < Zero ) {
+    else if ( (window_geo.max_x - p_outside.x) < Zero ) {
         
         //Calculate the lambda value
-        lambda_x = calc_lambda(window_geo.x_max, p_outside.x, T.x);
+        lambda_x = calc_lambda(window_geo.max_x, p_outside.x, T.x);
     }
     //hout<<"lambda_x="<<lambda_x<<endl;
     
     //Check if any of the y-boundaries is intersected
     double lambda_y = -1.0;
     //y-left boundary
-    if ( (p_outside.y - window_geo.origin.y) < Zero ) {
+    if ( (p_outside.y - window_geo.poi_min.y) < Zero ) {
         
         //Calculate the lambda value
-        lambda_y = calc_lambda(window_geo.origin.y, p_outside.y, T.y);
+        lambda_y = calc_lambda(window_geo.poi_min.y, p_outside.y, T.y);
     }
     //y-right boundary
-    else if ( (window_geo.y_max - p_outside.y) < Zero ) {
+    else if ( (window_geo.max_y - p_outside.y) < Zero ) {
         
         //Calculate the lambda value
-        lambda_y = calc_lambda(window_geo.y_max, p_outside.y, T.y);
+        lambda_y = calc_lambda(window_geo.max_y, p_outside.y, T.y);
     }
     //hout<<"lambda_y="<<lambda_y<<endl;
     
     //Check if any of the z-boundaries is intersected
     double lambda_z = -1.0;
     //z-left boundary
-    if ( (p_outside.z - window_geo.origin.z) < Zero ) {
+    if ( (p_outside.z - window_geo.poi_min.z) < Zero ) {
         
         //Calculate the lambda value
-        lambda_z = calc_lambda(window_geo.origin.z, p_outside.z, T.z);
+        lambda_z = calc_lambda(window_geo.poi_min.z, p_outside.z, T.z);
     }
     //z-right boundary
-    else if ( (window_geo.z_max - p_outside.z) < Zero ) {
+    else if ( (window_geo.max_z - p_outside.z) < Zero ) {
         
         //Calculate the lambda value
-        lambda_z = calc_lambda(window_geo.z_max, p_outside.z, T.z);
+        lambda_z = calc_lambda(window_geo.max_z, p_outside.z, T.z);
     }
     //hout<<"lambda_z="<<lambda_z<<endl;
     
@@ -566,27 +406,11 @@ int Cutoff_Wins::Substitute_boundary_point(const struct Geom_sample &window_geo,
     
     return 1;
 }
-
 //This function checks in which of these three location a point is placed:
 //outside the observation window
 //inside the observation window
 //at the boundary of the observation window
-string Cutoff_Wins::Where_is(Point_3D point)
-{
-    double x = point.x;
-    double y = point.y;
-    double z = point.z;
-    //If the point is outside the observation window then any these conditions needs to be true
-    if ((x < xmin)||(x > xmin+w_x)||(y < ymin)||(y > ymin+w_y)||(z < zmin)||(z > zmin+w_z))
-        return "outside";
-    //If the point it's at a boundary of the observation window, then only one of these conditions needs to be true,
-    //provided that it is not outside
-    else if ((abs(x - xmin) < Zero)||(abs(x - (xmin+w_x)) < Zero)||(abs(y - ymin) < Zero)||(abs(y - (ymin+w_y)) < Zero)||(abs(z - zmin) < Zero)||(abs(z - (zmin+w_z)) < Zero))
-        return "boundary";
-    //If the point is not outside the observation window nor at the boundary, then it's inside
-    else
-        return "inside";
-}string Cutoff_Wins::Where_is(const Point_3D &point, const Geom_sample &window_geo)
+string Cutoff_Wins::Where_is(const Point_3D &point, const cuboid &window_geo)
 {
     double x = point.x;
     double y = point.y;
@@ -594,86 +418,77 @@ string Cutoff_Wins::Where_is(Point_3D point)
     
     //If the point is close enough to the boudary of the observation window, then consider this point
     //to be at the boundary
-    if ((abs(x - window_geo.origin.x) < Zero)||(abs(x - window_geo.x_max) < Zero)||(abs(y - window_geo.origin.y) < Zero)||(abs(y - window_geo.y_max) < Zero)||(abs(z - window_geo.origin.z) < Zero)||(abs(z - window_geo.z_max) < Zero))
+    if ((abs(x - window_geo.poi_min.x) < Zero)||(abs(x - window_geo.max_x) < Zero)||(abs(y - window_geo.poi_min.y) < Zero)||(abs(y - window_geo.max_y) < Zero)||(abs(z - window_geo.poi_min.z) < Zero)||(abs(z - window_geo.max_z) < Zero))
     return "boundary";
     //If the point is outside the observation window then any these conditions needs to be true
-    else if ((x < window_geo.origin.x)||(x > window_geo.x_max)||(y < window_geo.origin.y)||(y > window_geo.y_max)||(z < window_geo.origin.z)||(z > window_geo.z_max))
+    else if ((x < window_geo.poi_min.x)||(x > window_geo.max_x)||(y < window_geo.poi_min.y)||(y > window_geo.max_y)||(z < window_geo.poi_min.z)||(z > window_geo.max_z))
         return "outside";
     
     //If the point is not outside the observation window nor at the boundary, then it's inside
     else
         return "inside";
 }
-
-int Cutoff_Wins::Get_intersecting_point_on_boundary(const Point_3D &point0, const Point_3D &point1, vector<Point_3D> &ipoi_vec)
+string Cutoff_Wins::Where_is_with_boundary(const Point_3D &point, const cuboid &window_geo, int &boundary)
 {
-    double t_temp[6];
-    //The planes (surfaces of RVE) perpendicular to X axis
-    t_temp[0] = (xmin - point0.x)/(point1.x - point0.x);
-    t_temp[1] = (xmin + w_x - point0.x)/(point1.x - point0.x);
-    //The planes (surfaces of RVE) perpendicular to Y axis
-    t_temp[2] = (ymin - point0.y)/(point1.y - point0.y);
-    t_temp[3] = (ymin + w_y - point0.y)/(point1.y - point0.y);
-    //The planes (surfaces of RVE) perpendicular to Z axis
-    t_temp[4] = (zmin - point0.z)/(point1.z - point0.z);
-    t_temp[5] = (zmin + w_z - point0.z)/(point1.z - point0.z);
+    double x = point.x;
+    double y = point.y;
+    double z = point.z;
     
-    vector<double> t_ratio;
-    for(int i=0; i<6; i++)
-    {
-        if(t_temp[i]>=0&&t_temp[i]<1)
-        {
-            //Binary insertion sort
-            int left = 0;
-            int right = (int)t_ratio.size()-1;
-            while(right>=left)
-            {
-                int middle = (left + right)/2;
-                if(fabs(t_ratio[middle] - t_temp[i])<Zero) goto T_Value_Same; //the case with same values
-                else if(t_ratio[middle] > t_temp[i]) right = middle - 1;
-                else left = middle + 1;
-            }
-            t_ratio.insert(t_ratio.begin()+left, t_temp[i]);	//insertion
-        T_Value_Same: ;
-        }
+    //Lambda function to determine if a coordinate is boundaded
+    auto is_bounded = [](const double &coord, const double &bound_min, const double &bound_max){
+        return (coord - bound_min >= Zero && coord - bound_max <= Zero);
+    };
+    
+    //Check if coordinates are bounded by the sample
+    //In case a coordinate is not bounded, then return outside directly
+    bool is_x_bounded = is_bounded(x, window_geo.poi_min.x, window_geo.max_x);
+    if (!is_x_bounded) {
+        return "outside";
+    }
+    bool is_y_bounded = is_bounded(y, window_geo.poi_min.y, window_geo.max_y);
+    if (!is_y_bounded) {
+        return "outside";
+    }
+    bool is_z_bounded = is_bounded(y, window_geo.poi_min.z, window_geo.max_z);
+    if (!is_z_bounded) {
+        return "outside";
     }
     
-    if((int)t_ratio.size()<1||(int)t_ratio.size()>3)
-    {
-        hout << "Error, the number of intersection points between the segement and the surfaces of RVE is " << (int)t_ratio.size() << ", less than one or more than three!" << endl;
-        return 0;
+    //At this point, all coordinates are bounded
+    //Thus, the point is either inside or at a boundary
+    //Then, check if the point is close enough to the boudary of the observation window so that
+    //it is considered to be at the boundary
+    if (abs(x - window_geo.poi_min.x) < Zero) {
+        boundary = 4;
+        return "boundary";
     }
-    
-    Point_3D point_temp;
-    for(int i=0; i<(int)t_ratio.size(); i++)
-    {
-        point_temp.x = point0.x+(point1.x-point0.x)*t_ratio[i];
-        point_temp.y = point0.y+(point1.y-point0.y)*t_ratio[i];
-        point_temp.z = point0.z+(point1.z-point0.z)*t_ratio[i];
-        point_temp.flag = 1;		//a temporary point
-        
-        //---------------------------------------------------------------------------
-        //Error correction
-        if(fabs(point_temp.x-xmin)<Zero) point_temp.x = xmin;
-        else if(fabs(point_temp.x-xmin-w_x)<Zero) point_temp.x = xmin + w_x;
-        
-        if(fabs(point_temp.y-ymin)<Zero) point_temp.y = ymin;
-        else if(fabs(point_temp.y-ymin-w_y)<Zero) point_temp.y = ymin + w_y;
-        
-        if(fabs(point_temp.z-zmin)<Zero) point_temp.z = zmin;
-        else if(fabs(point_temp.z-zmin-w_z)<Zero) point_temp.z = zmin + w_z;
-        
-        //---------------------------------------------------------------------------
-        //Insert a new point
-        ipoi_vec.push_back(point_temp);
+    else if(abs(x - window_geo.max_x) < Zero) {
+        boundary = 2;
+        return "boundary";
     }
-    
-    return 1;
+    else if (abs(y - window_geo.poi_min.y) < Zero){
+        boundary = 5;
+        return "boundary";
+    }
+    else if(abs(y - window_geo.max_y) < Zero){
+        boundary = 3;
+        return "boundary";
+    }
+    else if (abs(z - window_geo.poi_min.z) < Zero){
+        boundary = 1;
+        return "boundary";
+    }
+    else if(abs(z - window_geo.max_z) < Zero) {
+        boundary = 0;
+        return "boundary";
+    }
+    //If the point is bounded and not at a boundary of the observation window, then it's inside
+    else
+        return "inside";
 }
-
-//Add the corrent point to the corrsponding boundary vector.
+//Add a point to the corrsponding boundary vector.
 //The boundary vectors are used in the direct electrifying algorithm to find the nodes with known boundary conditions
-void Cutoff_Wins::Add_to_boundary_vectors(Point_3D point3d, long int point, int new_CNT)
+void Cutoff_Wins::Add_to_boundary_vectors(const cuboid &window_geo, const Point_3D &point3d, const long int &point, const int &new_CNT)
 {
     //Add point and CNT to the boundary vector
     double x = point3d.x;
@@ -681,17 +496,17 @@ void Cutoff_Wins::Add_to_boundary_vectors(Point_3D point3d, long int point, int 
     double z = point3d.z;
     
     //hout<<"P=("<<point3d.x<<", "<<point3d.y<<", "<<point3d.z<<") ";
-    if ( abs(x - xmin) < Zero){
+    if ( abs(x - window_geo.poi_min.x) < Zero){
         Add_CNT_to_boundary(boundary_cnt[0], new_CNT, point,0,0);
-    } else if ( abs(x - (xmin+w_x)) < Zero ){
+    } else if ( abs(x - window_geo.max_x) < Zero ){
         Add_CNT_to_boundary(boundary_cnt[1], new_CNT, point,0,1);
-    } else if ( abs(y - ymin) < Zero ){
+    } else if ( abs(y - window_geo.poi_min.y) < Zero ){
         Add_CNT_to_boundary(boundary_cnt[2], new_CNT, point,1,0);
-    } else if ( abs(y - (ymin+w_y)) < Zero ){
+    } else if ( abs(y - window_geo.max_y) < Zero ){
         Add_CNT_to_boundary(boundary_cnt[3], new_CNT, point,1,1);
-    } else if ( abs(z - zmin) < Zero ) {
+    } else if ( abs(z - window_geo.poi_min.z) < Zero ) {
         Add_CNT_to_boundary(boundary_cnt[4], new_CNT, point,2,0);
-    } else if ( abs(z - (zmin+w_z)) < Zero ) {
+    } else if ( abs(z - window_geo.max_z) < Zero ) {
         Add_CNT_to_boundary(boundary_cnt[5], new_CNT, point,2,1);
     }
 }
@@ -700,7 +515,7 @@ void Cutoff_Wins::Add_to_boundary_vectors(Point_3D point3d, long int point, int 
 //The flags are used in the direct electrifying algorithm:
 //flag1: indicates the direction 0 is x, 1 is y, 2 is z
 //flag2: indicates which boundary 0 is for x0, y0 or z0; 1 is for x1, y1 or z1
-void Cutoff_Wins::Add_CNT_to_boundary(vector<int> &boundary, int CNT, long int point, short int flag1, short int flag2)
+void Cutoff_Wins::Add_CNT_to_boundary(vector<int> &boundary, const int &CNT, const long int &point, const short int &flag1, const short int &flag2)
 {
     if (!boundary.size()) {
         //If the boundary vector is empty, then just add the CNT
@@ -723,71 +538,6 @@ void Cutoff_Wins::Add_CNT_to_boundary(vector<int> &boundary, int CNT, long int p
 
     }
     //hout<<"CNT "<<CNT<<" boundary ("<<flag1<<", "<<flag2<<")"<<endl;
-}
-//This function eliminates the case when, after a CNT is split, the last point of one CNT is the same as the frist point of the other CNT
-int Cutoff_Wins::Change_repeated_seed(const int &CNT_original, const int &CNT_previous, int &index2_previous, int &index1_current, vector<vector<long int> > &structure, vector<Point_3D> &points_in)
-{
-    //last point of previous CNT segment
-    long int last = structure[CNT_original][index2_previous];
-    
-    //first point of new CNT segment
-    long int first = structure[CNT_original][index1_current];
-    
-    //Check if the new CNT segment can be modified
-    if (structure.back().size() > 2) {
-        
-        //If there are more than two points in the new CNT segment, then the modification can be done in this segment since one point is going to be removed
-        
-        //increase index1 of the new segment
-        index1_current++;
-        //thus, update the first point of the new CNT segment
-        first = structure[CNT_original][index1_current];;
-        
-        //remove the first point in the new CNT segment
-        structure.back().erase(structure.back().begin());
-        
-        //Make the first point of the new CNT segment equal to the last point of the previous segment
-        //I set them equal component wise to keep the flags unchanged
-        points_in[first].x = points_in[last].x;
-        points_in[first].y = points_in[last].y;
-        points_in[first].z = points_in[last].z;
-        
-        //The last point of the previous segment has the new CNT number
-        //so set it back to the previous CNT number
-        points_in[last].flag = CNT_previous;
-    }
-    //If the new CNT segment has 2 points, then check if the previous CNT segment has more than 2 points
-    else if (structure[CNT_previous].size() > 2) {
-        
-        //If there are more than two points in the previous CNT segment, then the modification can be done in this segment since one point is going to be removed
-        
-        //decrease index2 of the previous segment
-        index2_previous--;
-        //thus, update the last point of the previous CNT segment
-        last = structure[CNT_original][index2_previous];
-        
-        //remove the last point of the previous segment
-        structure[CNT_previous].pop_back();
-        
-        //Make the the last point of the previous segment equal to first point of the new CNT segment
-        //I set them equal component wise to keep the flags unchanged
-        points_in[last].x = points_in[first].x;
-        points_in[last].y = points_in[first].y;
-        points_in[last].z = points_in[first].z;
-        
-    }
-    //If none of the two cases happened, then the two segments have two poins
-    else {
-        
-        //The last point of the previous segment has the new CNT number
-        //so set it back to the previous CNT number as the new segment will be deleted
-        points_in[last].flag = CNT_previous;
-        
-        //return 0 and deal with the problem outside this function
-        return 0;
-    }
-    
-    return 1;
 }
 //Fill the vector cnts_inside
 int Cutoff_Wins::Fill_cnts_inside(const vector<vector<long int> > &structure)
@@ -812,219 +562,666 @@ int Cutoff_Wins::Fill_cnts_inside(const vector<vector<long int> > &structure)
     else
         return 1;
 }
-//
-int Cutoff_Wins::Trim_boundary_gnps(const int &hybrid_flag, const struct GNP_Geo &gnps, const vector<GCH> &hybrid_particles, const vector<int> &shell_gnp, vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp)
+//Function that fills the vector gnps_inside
+int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, const vector<GNP> &gnps, const vector<Shell> &shells_gnp)
 {
-    //Empty vector to increase size of other vectors
-    //Initialize the vector of boundary_flags with empty vectors
-    vector<short int> empty_short;
-    boundary_flags_gnp.assign(points_gnp.size(), empty_short);
-    
-    //Initialize the vector of boundary_flags with empty vectors
-    vector<int> empty_int;
-    boundary_gnp.assign(6, empty_int);
-    
-    //Scan all particles inside the current shell
-    for (int i = 0; i < (int)shell_gnp.size(); i++) {
+    //Itertate over all GNPs
+    for (int i = 0; i < (int)gnps.size(); i++) {
         
-        //Current GNP number
-        int gnp_n = shell_gnp[i];
-        
-        //Check if the center is outside the observation window or is close enough to the boundary of the window that part of it is outside
-        if (Where_is(hybrid_particles[gnp_n].center) == "outside" || Is_close_to_boundaries(hybrid_particles[gnp_n])) {
+        //Check if GNP i is inside the window
+        if (window < shells_gnp[i].shell_min) {
             
-            //If it outside or close enough check which points are still inside the window
-            //and remove the ones outside
-            if (!Remove_gnp_points_outside(hybrid_flag, gnps, hybrid_particles[gnp_n], points_gnp, structure_gnp[gnp_n])) {
-                hout << "Error in Trim_boundary_gnps when calling Remove_gnp_points_outside" << endl;
+            //The GNP is completely inside the observation window, so add it the the vector of gnps_inside
+            gnps_inside.push_back(i);
+        }
+        else if (window >= shells_gnp[i].shell_min && window <= shells_gnp[i].shell_max) {
+            
+            //The GNP might be partially outside, so check if boundary points need to be added
+            if (!Find_gnp_boundary_points(window_geo, gnps[i])) {
+                hout<<"Error in Fill_gnps_inside when calling Find_gnp_boundary_points"<<endl;
                 return 0;
             }
         }
+        //If window > shells_gnp[i].shell_max, then the GNP is outside the observation window
+        //so it is ignored and not included in the vector of gnps_inside
     }
+    
     return 1;
 }
-//This function determines if a GNP is close enough to the boundaries
-int Cutoff_Wins::Is_close_to_boundaries(const GCH &hybrid)
+//This function determines if a GNP is partially inside an observation window or inside of it
+//If it is partially inside, the boundary points are calculated
+int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, const GNP &gnp)
 {
-    //Calculate half the diagonal of the GNP, i.e. the radius of the sphere that encloses the GNP
-    double sum = hybrid.gnp.len_x*hybrid.gnp.len_x + hybrid.gnp.wid_y*hybrid.gnp.wid_y + hybrid.gnp.hei_z*hybrid.gnp.hei_z;
-    double radius = sqrt(sum)/2;
+    //Vector to accumulate all boundary points vertices
+    vector<vector<Point_3D> > points_acc(6);
     
-    if (hybrid.center.x < xmin + radius || hybrid.center.x > xmin + w_x - radius) {
-        return 1;
-    } else if (hybrid.center.y < ymin + radius || hybrid.center.y > ymin + w_y - radius) {
-        return 1;
-    } else if (hybrid.center.z < zmin + radius || hybrid.center.z > zmin + w_z - radius) {
-        return 1;
+    //Vector to store vertices inside the window
+    vector<int> inside_v;
+    
+    //Vector to keep track of vertex locations
+    vector<string> locations(8, "");
+    
+    //Find the locations of all vertices of the GNP
+    for (int i = 0; i < 8; i++) {
+        
+        //Variable for the boundary location
+        int boundary_l;
+        
+        //Get the location of vertex i
+        locations[i] = Where_is_with_boundary(gnp.vertices[i], window_geo, boundary_l);
+        
+        //Increase a counter if needed
+        if (locations[i] == "inside") {
+            inside_v.push_back(i);
+        }
+        else if (locations[i] == "boundary") {
+            
+            //Accumulate a vertex on a boundary on its corresponding boundary
+            points_acc[boundary_l].push_back(gnp.vertices[i]);
+        }
     }
     
-    //If none of the cases above, then the GNP is not close to the boundaries
+    //Check if there are any vertices inside the window
+    if (inside_v.size() > 0) {
+        
+        //The GNP is at least partially inside
+        //So first add it to the vector of GNPs inside
+        gnps_inside.push_back(gnp.flag);
+        
+        //If the GNP is completely inside, then there no boundary points to calculate
+        //So just terminate the function
+        if (inside_v.size() == 8) {
+            return 1;
+        }
+        
+        //Accumulate all points at window boundaries
+        if (!Accumulate_boundary_points_due_to_intersections(window_geo, gnp, locations, points_acc)) {
+            hout<<"Error in Find_gnp_boundary_points when calling Accumulate_boundary_points_due_to_intersections"<<endl;
+            return 0;
+        }
+        
+        //Calculate the average point of the points accumulated at each boundary and add it
+        //to the vector gnp_boundary_pts
+        for (int i = 0; i < (int)points_acc.size(); i++) {
+            
+            //Check if any point was accumulated at boundary i
+            if (points_acc[i].size()) {
+                
+                //Point to store the average
+                Point_3D P_avg(0,0,0);
+                P_avg.flag = gnp.flag;
+                
+                //Add all points in the boundary
+                for (int j = 0; j < (int)points_acc[i].size(); j++) {
+                    P_avg = P_avg + points_acc[i][j];
+                }
+                
+                //Add GNP number to corresponding boundary
+                boundary_gnp[i].push_back(gnp.flag);
+                
+                //Add the GNP point number for boundary points
+                boundary_gnp_pts[i].push_back((int)gnp_boundary_pts.size());
+                
+                //Add the average to the boundary vector
+                gnp_boundary_pts.push_back(P_avg/((double)points_acc[i].size()));
+            }
+        }
+        
+    }
+    //If there were no vertices inside the window, even if there are vertices at the boundary,
+    //the GNP can be considered to be outside the window
+    //In such case, it is not added to the vector gnps_inside
+    
+    return 1;
+}
+//This function accumulates all boundary points due to intersections of GNP edges with window faces,
+//and intersections due to window edges with GNP faces
+//If a window vertex is inside the GNP, then it is added to the corresponding boundaries
+int Cutoff_Wins::Accumulate_boundary_points_due_to_intersections(const cuboid &window_geo, const GNP &gnp, const vector<string> &locations, vector<vector<Point_3D> > &points_acc)
+{
+    //Find intersections of GNP edges with window boundaries
+    if (!Find_intersections_of_gnp_edges_with_window_boundaries(window_geo, gnp, locations, points_acc)) {
+        hout<<"Error in Accumulate_boundary_points_due_to_intersections when calling Find_intersections_of_GNP_edges_with_window_boundaries"<<endl;
+        return 0;
+    }
+    
+    //Find intersections of window edges with GNP surfaces
+    if (!Find_intersections_of_window_edges_with_gnp_faces(window_geo, gnp, points_acc)) {
+        hout<<"Error in Accumulate_boundary_points_due_to_intersections when calling Find_intersections_of_window_edges_with_gnp_faces"<<endl;
+        return 0;
+    }
+    
+    //Check if a sample vertex is inside the GNP and, if so, accumulate it
+    //into the corresponding boundaries
+    if (!Find_window_vertex_inside_gnp(window_geo, gnp, points_acc)) {
+        hout<<"Error in Accumulate_boundary_points_due_to_intersections when calling Find_window_vertex_inside_gnp"<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//This function finds the intersections of GNP edges with faces of the observation window
+int Cutoff_Wins::Find_intersections_of_gnp_edges_with_window_boundaries(const cuboid &window_geo, const GNP &gnp, const vector<string> &locations, vector<vector<Point_3D> > &points_acc)
+{
+    //Adjacency matrix of GNP vertices
+    int adj[][3] = {
+        {1,3,4},
+        {2,5,6},
+        {1,3,6},
+        {0,2,7},
+        {0,5,7},
+        {1,4,6},
+        {2,5,7},
+        {3,4,6}
+    };
+    
+    //Array of visited vertices
+    int visited[][3] = {
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0}
+    };
+    
+    //Go throug all vertices and find those that have a vertex inside the window and
+    //one vertex outside the window
+    for (int i = 0; i < (int)locations.size(); i++) {
+        
+        //Go through all adjacent vertices
+        for (int j = 0; j < 3; j++) {
+            
+            //Get adjacent vertex
+            int v = adj[i][j];
+            
+            //Check if edge has been visited
+            if (!visited[i][v]) {
+                
+                //Check if the vertices go inside-outside
+                if (locations[i] == "inside" && locations[v] == "outside") {
+                    
+                    //A boundary point is needed
+                    Point_3D P = gnp.vertices[v];
+                    
+                    //Substitute P (which has the coordinates of the outside vertex)
+                    //by the intersection at the boundary
+                    if (!Substitute_boundary_point(window_geo, gnp.vertices[i], P)) {
+                        hout<<"Error in Find_boundary_points_partially_inside_case when calling Substitute_boundary_point"<<endl;
+                        return 0;
+                    }
+                    
+                    //Check in which boundary P is located
+                    int P_boundary;
+                    string P_loc = Where_is_with_boundary(P, window_geo, P_boundary);
+                    
+                    //Double check that P is actually at the boundary
+                    if (P_loc != "boundary") {
+                        hout<<"Error in Find_boundary_points_partially_inside_case calculating point at boundary. Point P is not at bundary but it should be since one vertex is inside the sample and the second vertex is outside. Location is: "<<P_loc<<". V1="<<gnp.vertices[i].str()<<". V2="<<gnp.vertices[v].str()<<endl;
+                        return 0;
+                    }
+                    
+                    //Accumulate P into the corresponding boundary
+                    points_acc[P_boundary].push_back(P);
+                    
+                    //Mark edge as visited (done twice because the adjacency matrix is symmetric)
+                    visited[i][j] = 1;
+                    visited[j][i] = 1;
+                }
+                
+                //Check if the vertices go outside-outside
+                else if (locations[i] == "outside" && locations[v] == "outside") {
+                    
+                    //Go to the case where two outside vertices intersect a sample boundary
+                    vector<Point_3D> Pts;
+                    if (!Find_two_intersections_of_gnp_edges_with_window(window_geo, gnp, gnp.vertices[i], gnp.vertices[v], Pts)) {
+                        hout<<"Error in Find_boundary_points_partially_inside_case when calling Find_two_intersections_of_gnp_edges_with_window"<<endl;
+                        return 0;
+                    }
+                    
+                    //If intersections were found, add them to the accumulator
+                    if (Pts.size()) {
+                        for (int k = 0; k < (int)Pts.size(); k++) {
+                            //Add to the corresponding boundary as indicated by the point flag
+                            points_acc[Pts[k].flag].push_back(Pts[k]);
+                        }
+                    }
+                    
+                    //Mark edge as visited (done twice because the adjacency matrix is symmetric)
+                    visited[i][j] = 1;
+                    visited[j][i] = 1;
+                }
+            }
+            
+        }
+    }
+    
+    return 1;
+}
+//This function checks if any of the corners of the window is inside a GNP
+int Cutoff_Wins::Find_two_intersections_of_gnp_edges_with_window(const cuboid &window_geo, const GNP &gnp, const Point_3D &V1, const Point_3D &V2, vector<Point_3D> &Pts)
+{
+    //Lambda function to check if a window boundary is between two vertex coordinates
+    auto find_calc_intersection = [&](const double &V1_coord, const double &V2_coord, const double &window_coord){
+        
+        //Check if the boundary coordinate is between the vertex coordinates
+        if ((V1_coord - window_coord < Zero && V2_coord - window_coord > Zero) ||
+            (V2_coord - window_coord < Zero && V1_coord - window_coord > Zero)) {
+            
+            //Calculate the value of lambda at the intersection with the boundary
+            double lambda = (window_coord - V1_coord)/(V2_coord - V1_coord);
+            
+            //Calculate the point at window_coord
+            Point_3D P = V1 + (V2 - V1)*lambda;
+            
+            //Variable to store the boundary
+            int P_loc;
+            
+            //Check if P is actually at a face, not just the plane
+            if (Where_is_with_boundary(P, window_geo, P_loc) == "boundary") {
+                
+                //Add P to the vector of points since it is actually at a face
+                //Also set the point flag equal to the boundary number
+                P.flag = P_loc;
+                Pts.push_back(P);
+            }
+        }
+    };
+    
+    //Go boundary by boundary, and check if there is an intersection
+    //x-boundaries
+    find_calc_intersection(V1.x, V2.x, window_geo.poi_min.x);
+    find_calc_intersection(V1.x, V2.x, window_geo.max_x);
+    //y-boundaries
+    find_calc_intersection(V1.y, V2.y, window_geo.poi_min.y);
+    find_calc_intersection(V1.y, V2.y, window_geo.max_y);
+    //z-boundaries
+    find_calc_intersection(V1.z, V2.z, window_geo.poi_min.z);
+    find_calc_intersection(V1.z, V2.z, window_geo.max_z);
+    
+    return 1;
+}
+//This function finds the intersections of window edges with faces of a GNP
+int Cutoff_Wins::Find_intersections_of_window_edges_with_gnp_faces(const cuboid &window_geo, const GNP &gnp, vector<vector<Point_3D> > &points_acc)
+{
+    //Array of window vertices
+    Point_3D window_vertices[] = {
+        Point_3D(window_geo.max_x, window_geo.max_y, window_geo.max_z),     //0
+        window_geo.poi_min + Point_3D(0,window_geo.wid_y,window_geo.hei_z), //1
+        window_geo.poi_min + Point_3D(0,0,window_geo.hei_z),                //2
+        window_geo.poi_min + Point_3D(window_geo.len_x,0,window_geo.hei_z), //3
+        window_geo.poi_min + Point_3D(window_geo.len_x,window_geo.wid_y,0), //4
+        window_geo.poi_min + Point_3D(0,window_geo.wid_y,0),                //5
+        window_geo.poi_min,                                                 //6
+        window_geo.poi_min + Point_3D(window_geo.len_x,0,0),                //7
+    };
+    
+    //Adjacency matrix of window vertices
+    int adj[][3] = {
+        {1,3,4},
+        {2,5,6},
+        {1,3,6},
+        {0,2,7},
+        {0,5,7},
+        {1,4,6},
+        {2,5,7},
+        {3,4,6}
+    };
+    
+    //Array of visited vertices
+    int visited[][3] = {
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0}
+    };
+    
+    //Array of boundaries to be added
+    int boundaries[][3] = {
+        {0,0,3},
+        {3,0,3},
+        {4,0,4},
+        {2,5,2},
+        {2,3,1},
+        {4,1,1},
+        {5,4,1},
+        {5,2,5}
+    };
+    
+    //Go through all vertices of the sample
+    for (int i = 0; i < 8; i++) {
+        
+        //Go through all adjacent vertices and check if the edge iv intersects a GNP face
+        for (int j = 0; j < 3; j++) {
+            
+            //Get adjacent vertex
+            int v = adj[i][j];
+            
+            //Check if current edge has been visited
+            if (!visited[i][j]) {
+                
+                //Check if the edge iv intersects a GNP face
+                Point_3D P;
+                if (Does_edge_intersect_gnp(window_vertices[i], window_vertices[v], gnp, P)) {
+                    
+                    //Edge iv intersects a GNP face
+                    //Intersection is stored in P
+                    //Add P to the correspoding boundaries
+                    int b1 = boundaries[i][j];
+                    int b2 = boundaries[j][i];
+                    
+                    points_acc[b1].push_back(P);
+                    points_acc[b2].push_back(P);
+                }
+                
+                //Mark edge as visited (done twice because the adjacency matrix is symmetric)
+                visited[i][j] = 1;
+                visited[j][i] = 1;
+            }
+        }
+    }
+    
+    return 1;
+}
+//This function determines if an edge defined by two points intersects a GNP face
+int Cutoff_Wins::Does_edge_intersect_gnp(const Point_3D &V1, const Point_3D &V2, const GNP &gnp, Point_3D &P)
+{
+    //Adjacency matrix of GNP faces
+    int adj_face[][4] = {
+        {2,3,4,5},
+        {2,3,4,5},
+        {0,1,3,5},
+        {0,1,2,4},
+        {0,1,3,5},
+        {0,1,2,4},
+    };
+    
+    //Vertices on each plane to calculate dot products
+    int V[] = {0,4,0,0,1,2};
+    
+    //Lambda (anonymous) function to calculate the lambda value of a line defined by two points
+    auto calc_lambda = [](const Point_3D &N, const double &d, const Point_3D &P1, const Point_3D &P1P2){
+        return ((-N.dot(P1) - d)/(N.dot(P1P2)));
+    };
+    
+    //Go through all GNP faces
+    for (int i = 0; i < 6; i++) {
+        
+        //Check wich side of GNP face i are the vertices of the edge
+        int v1_loc = gnp.faces[i].N.dot(V1 - V[i]) > Zero;
+        int v2_loc = gnp.faces[i].N.dot(V2 - V[i]) > Zero;
+        
+        //If signs are different, then edge V1V2 intersects the plane of GNP face i
+        if (v2_loc != v1_loc) {
+            
+            //Signs are different, so edge V1V2 intersects the plane of GNP face i
+            //Now get the intersection
+            
+            //First calculate the lambda of the line equation
+            //Calculate the vector P1P2
+            Point_3D V1V2 = V2 - V1;
+            double lambda = calc_lambda(gnp.faces[i].N, gnp.faces[i].coef[3], V1, V1V2);
+            
+            //Calculate the point at the plane of GNP face i
+            P = V1 + V1V2*lambda;
+            
+            bool ignore_flag = false;
+            
+            //Check if P is bounded by the adjacent faces of GNP face i
+            for (int j = 0; j < 4; j++) {
+                
+                //Get adjacent face j
+                int face_j = adj_face[i][j];
+                
+                //Check if P is "above" face_j
+                if (gnp.faces[face_j].N.dot(P - V[face_j]) > Zero) {
+                    
+                    //Set the ignore flag to true
+                    ignore_flag = true;
+                    
+                    //break the for-loop with index j
+                    break;
+                }
+            }
+            
+            //Check if the intersection was valid or it should be ignored
+            if (!ignore_flag) {
+                
+                //The intersection is valid and should not be ignored, then return 1
+                return 1;
+            }
+        }
+    }
+    
+    //If this part of the code is reached, then no intersections or invalid intersections were found
     return 0;
 }
-//Function that removes points from the discretization of GNPs
-//Only points outside the observation window are removed
-int Cutoff_Wins::Remove_gnp_points_outside(const int &hybrid_flag, const struct GNP_Geo &gnps, const GCH &hybrid, vector<Point_3D> &points_gnp, vector<long int> &gnp_discrete)
+//This function finds is a sample vertex is inside a GNP and accumulates it into the corresponding boundaries
+int Cutoff_Wins::Find_window_vertex_inside_gnp(const cuboid &window_geo, const GNP &gnp, vector<vector<Point_3D> > &points_acc)
 {
-    //vector to store projection points on each boundary
-    vector<int> empty;
-    vector<vector<int> > boundaries(6, empty);
+    //Array of window vertices
+    Point_3D window_vertices[] = {
+        Point_3D(window_geo.max_x, window_geo.max_y, window_geo.max_z),     //0
+        window_geo.poi_min + Point_3D(0,window_geo.wid_y,window_geo.hei_z), //1
+        window_geo.poi_min + Point_3D(0,0,window_geo.hei_z),                //2
+        window_geo.poi_min + Point_3D(window_geo.len_x,0,window_geo.hei_z), //3
+        window_geo.poi_min + Point_3D(window_geo.len_x,window_geo.wid_y,0), //4
+        window_geo.poi_min + Point_3D(0,window_geo.wid_y,0),                //5
+        window_geo.poi_min,                                                 //6
+        window_geo.poi_min + Point_3D(window_geo.len_x,0,0),                //7
+    };
     
-    //Select an inside point that will be used as a reference point to calculate intersections
-    //of the outside points with the boundary
-    Point_3D inside_point;
-    if (Find_inside_point(hybrid, inside_point)) {
+    //Array of boundaries that need to be added if a window vertex is inside the GNP
+    int boundaries[][3] = {
+        {0,2,3},
+        {0,3,4},
+        {0,4,5},
+        {0,2,5},
+        {1,2,3},
+        {1,3,4},
+        {1,4,5},
+        {1,2,5},
+    };
+    
+    //Iterate over all window vertices
+    for (int i = 0; i < 8; i++) {
         
-        //If an inside point was found, find the projections on the boundaries and fill the boundary vectors
-        
-        //Vector that stores the points inside or at the boundary from the discretization
-        vector<long int> gnp_discrete_in;
-        
-        //scan all points in the hybrid discretization
-        for (int i = 0; i < (int) gnp_discrete.size(); i++) {
+        //Check if vertex i is inside the GNP
+        if (gnp.Is_point_inside_gnp(window_vertices[i])) {
             
-            //Get point number
-            long int P = gnp_discrete[i];
+            //Add the window vertes to three boundaries
+            int b = boundaries[i][0];
+            points_acc[b].push_back(window_vertices[i]);
+            b = boundaries[i][1];
+            points_acc[b].push_back(window_vertices[i]);
+            b = boundaries[i][2];
+            points_acc[b].push_back(window_vertices[i]);
             
-            //Check if P is outside
-            if (Where_is(points_gnp[P]) == "outside") {
-                
-                //Get projection of P into boundary if P is outside, and add it to the boundary vectors
-                //This is done only when hybrids are not being used
-                if (!hybrid_flag && !Find_projection_in_boundary(inside_point, points_gnp[P], i, boundaries)) {
-                    hout << "Error in Find_inside_outside_sequence when calling Find_projection_in_boundary" << endl;
-                    return 0;
-                }
-            }
-            //If the point is not outside, add it to the vector gnp_discrete_in
-            else {
-                
-                //If there are points in at the boundary, add only the first one to the vector gnp_discrete_in
-                gnp_discrete_in.push_back(P);
-            }
+            //More than one vertex cannot be inside the GNP, so terminate the function
+            return 1;
         }
-        
-        //If there are points at any boundary:
-        // 1) Get the average point at each boundary
-        // 2) Substitute a boundary point by the average point
-        // 3) Fill boundary vectors
-        if (!Add_GNPs_to_boundary(gnp_discrete, boundaries, points_gnp)) {
-            hout << "Error in Remove_gnp_points_outside when calling Add_GNPs_to_boundary" << endl;
-            return 0;
-        }
-        
-        //Add the averaged points projected at each boundary
-        for (int j = 0; j < (int)boundaries.size(); j++) {
-            
-            //First check if there are any points at the boundary
-            if (boundaries[j].size()) {
-                
-                //If there are points in at the boundary, add only the first one to the vector gnp_discrete_in
-                gnp_discrete_in.push_back(gnp_discrete[ boundaries[j][0] ]);
-            }
-        }
-        
-        //From the discretization, only keep the points inside or at the boundary
-        //Those points are in the vector gnp_discrete_in
-        if (!Update_discretization(gnp_discrete, gnp_discrete_in)) {
-            hout << "Error in Remove_gnp_points_outside when calling Update_discretization" << endl;
-            return 0;
-        }
-    }
-    //If no inside point was found, then the whole GNP is outside
-    //Then delete all points from the structure
-    else {
-        
-        gnp_discrete.clear();
     }
     
     return 1;
 }
+
 //
-int Cutoff_Wins::Find_inside_point(const GCH &hybrid, Point_3D &inside_point)
+int Cutoff_Wins::Find_boundary_points_partially_inside_case(const cuboid &window_geo, const GNP &gnp, const vector<string> &locations, const vector<int> &inside_v)
 {
-    if (Where_is(hybrid.center) == "inside") {
+    //Adjacency matrix of GNP vertices
+    int adj[][3] = {
+        {1,3,4},
+        {2,5,6},
+        {1,3,6},
+        {0,2,7},
+        {0,5,7},
+        {1,4,6},
+        {2,5,7},
+        {3,4,6}
+    };
+    
+    //Array of visited vertices
+    int visited[][3] = {
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0},
+        {0,0,0}
+    };
+    
+    //Vector to store boundary points, in case multiple boundaries are intersected
+    vector<vector<Point_3D> > boundary_pts(6);
+    
+    //Go throug all vertices and find those that are inside
+    for (int i = 0; i < (int)locations.size(); i++) {
         
-        //If the center of the GNP is inside, then use it as the inside point
-        inside_point = hybrid.center;
-        
-        //Terminate the function
-        return 1;
-        
-    }
-    else {
-        
-        //First calculate the lower left corner
-        //By doing this, it is assummed the center of the GNP is the origin (0,0,0), thus the center of the hybrid particle is the displacement
-        //to be used in the function that maps to global coordinates
-        Point_3D corner( -hybrid.gnp.len_x/2, -hybrid.gnp.wid_y/2, -hybrid.gnp.hei_z/2);
-        
-        //Loop over the eight possible corners of the GNP
-        for(int i=0; i<2; i++)
-            for(int j=0; j<2; j++)
-                for(int k=0; k<2; k++) {
+        //When vertex i is inside, then a boundary intersection might need to be calculated
+        if (locations[i] == "inside") {
+            
+            //Look for an outside vertex in the adjacency matrix,
+            //only if the edge formed by both vertices has not been visited yet
+            for (int j = 0; j < 3; j++) {
+                
+                //Get adjacent vertex
+                int v = adj[i][j];
+                
+                //Check if edge has been visited
+                //AND
+                //if vertex v is outside
+                if (!visited[i][v] && locations[v] == "outside") {
                     
-                    //If i (j,k) is zero, then add nothing to the x (y,z) coordinate
-                    //If i (j,k) is one, then add the length on direction x (y,z) to the x (y,z) coordinate
-                    Point_3D adjust(((double)i)*hybrid.gnp.len_x, ((double)j)*hybrid.gnp.wid_y, ((double)k)*hybrid.gnp.hei_z);
+                    //A boundary point is needed
+                    Point_3D P = gnp.vertices[v];
                     
-                    //Add the center and the "adjustment" so that the loop calculates the eight coordinates
-                    adjust = corner + adjust;
-                    
-                    //Map to global coordinates
-                    adjust = adjust.rotation(hybrid.rotation, hybrid.center);
-                    
-                    //Check if the calculated corner is inside
-                    if (Where_is(adjust) == "inside") {
-                        
-                        inside_point = adjust;
-                        
-                        //Terminate the function
-                        return 1;
+                    //Substitute P by the intersection at the boundary
+                    if (!Substitute_boundary_point(window_geo, gnp.vertices[i], P)) {
+                        hout<<"Error in Find_boundary_points_partially_inside_case when calling Substitute_boundary_point"<<endl;
+                        return 0;
                     }
+                    
+                    //Check in which boundary is P located
+                    int P_boundary;
+                    string P_loc = Where_is_with_boundary(P, window_geo, P_boundary);
+                    
+                    //Double check that P is actually in the boundary
+                    if (P_loc != "boundary") {
+                        hout<<"Error in Find_boundary_points_partially_inside_case calculating point at boundary. Point P is not at bundary. Location is: "<<P_loc<<endl;
+                        return 0;
+                    }
+                    
+                    //Add P to the corresponding boundary
+                    boundary_pts[P_boundary].push_back(P);
                 }
-        
-        //If the center nor the corners were inside, then return 0
-        return 0;
+                
+                //Mark edge as visited
+                visited[i][v] = 1;
+                visited[v][i] = 1;
+            }
+            
+        }
     }
-}
-//Given two points in a sequence inside-outside, this function finds the projection on the boundary
-//It also adds the point the boundary vector or vectors
-int Cutoff_Wins::Find_projection_in_boundary(const Point_3D &inside, Point_3D &outside, const int &iterator, vector<vector<int> > &boundaries) {
     
-    //Vector that stores the projection on the boundary
-    vector<Point_3D> ipoi_vec;
-    
-    //Get projection on boundary
-    if (!Get_intersecting_point_on_boundary(outside, inside, ipoi_vec)) {
-        hout << "Error in Find_projection_in_boundary when calling Get_intersecting_point_on_boundary" << endl;
-        return 0;
-    }    
-    //for (int i = 0; i < (int)ipoi_vec.size(); i++)
-        //hout << "P"<<i<<"=("<<ipoi_vec[i].x<<", "<<ipoi_vec[i].y<<", "<<ipoi_vec[i].z<<")"<< endl;
-    
-    //Substitute the outside point by the boundary point
-    //By updating the point in this way the flag is preserved
-    outside.x = ipoi_vec.back().x;
-    outside.y = ipoi_vec.back().y;
-    outside.z = ipoi_vec.back().z;
-    
-    //Add point and CNT to the boundary vector
-    if ( abs(outside.x - xmin) < Zero ) {
-        boundaries[0].push_back(iterator);
-    } else if ( abs(outside.x - (xmin+w_x)) < Zero ) {
-        boundaries[1].push_back(iterator);
-    } else if ( abs(outside.y - ymin) < Zero ){
-        boundaries[2].push_back(iterator);
-    } else if ( abs(outside.y - (ymin+w_y)) < Zero ) {
-        boundaries[3].push_back(iterator);
-    } else if ( abs(outside.z - zmin) < Zero ){
-        boundaries[4].push_back(iterator);
-    } else if ( abs(outside.z - (zmin+w_z)) < Zero ) {
-        boundaries[5].push_back(iterator);
+    //Add the averages to the vector of boundary points
+    for (int j = 0; j < (int)boundary_pts.size(); j++) {
+        
+        //Check if there are any points at the boundary
+        if (boundary_pts[j].size()) {
+            
+            //Variable to store the average
+            Point_3D avg(0,0,0);
+            //Set the flag to the GNP number
+            avg.flag = gnp.flag;
+            
+            //Add all points in the boundary
+            for (int k = 0; k < (int)boundary_pts[j].size(); k++) {
+                avg =  avg + boundary_pts[j][k];
+            }
+            
+            //Add the average into the boundary vector for GNPs
+            gnp_boundary_pts.push_back(avg/((double)boundary_pts[j].size()));
+        }
     }
     
     return 1;
 }
+int Cutoff_Wins::Find_boundary_points_in_multiple_boundaries(const GNP &gnp, const vector<vector<int> > &boundary_acc)
+{
+    //Go through all "boundaries"
+    for (int i = 0; i < (int)boundary_acc.size(); i++) {
+        
+        //Check if there are vertices in boundary i
+        if (boundary_acc[i].size()) {
+            
+            //Set the coordinate of the boundary point to zero
+            Point_3D avg(0,0,0);
+            //Se the point's flag equal to the GNP's flag
+            avg.flag = gnp.flag;
+            
+            //Add all vertices in boundary i
+            for (int j = 0; j < boundary_acc[i].size(); j++) {
+                int v = boundary_acc[i][j];
+                avg = avg + gnp.vertices[v];
+            }
+            
+            //Calculate the average and add it to the boundary vectors
+            gnp_boundary_pts.push_back(avg/((double)boundary_acc[i].size()));
+        }
+    }
+    
+    return 1;
+}
+//This function checks if any of the corners of the window is inside a GNP
+Point_3D Cutoff_Wins::Find_corner_inside_gnp(const cuboid &window_geo, const GNP &gnp)
+{
+    //IF a corner is found, this will be stored in C
+    Point_3D C;
+    
+    //Iterate over the corners
+    for (int i = 0; i < 2; i++) {
+        
+        //Set the x-coordinate
+        C.x = (i)? window_geo.max_x : window_geo.poi_min.x;
+        
+        for (int j = 0; j < 2; j++) {
+            
+            //Set the y-coordinate
+            C.y = (j)? window_geo.max_y : window_geo.poi_min.y;
+            
+            for (int k = 0; k < 2; k++) {
+                
+                //Set the z-coordinate
+                C.z = (k)? window_geo.max_z : window_geo.poi_min.z;
+                
+                //Check if C is inside the gnp
+                if (gnp.Is_point_inside_gnp(C)) {
+                    
+                    //Se the flag of C to zero and return it
+                    C.flag = 0;
+                    
+                    return C;
+                }
+            }
+        }
+    }
+    
+    //If no corner was inside, then set the flag of the point to -1
+    C.flag = -1;
+    
+    return C;
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
 //This function add a GNP and GNP point to the boundary vector
 int Cutoff_Wins::Add_GNPs_to_boundary(const vector<long int> &gnp_discrete, const vector<vector<int> > &boundaries, vector<Point_3D> &points_gnp) {
     
@@ -1098,29 +1295,132 @@ int Cutoff_Wins::Find_average_boundary_point(const vector<long int> &gnp_discret
     
     return 1;
 }
-//This function updates the discretization by keeping only those points inside the sample or at the boundaries
-int Cutoff_Wins::Update_discretization(vector<long int> &gnp_discrete, vector<long int> &gnp_discrete_in) {
+//This function eliminates the case when, after a CNT is split, the last point of one CNT is the same as the frist point of the other CNT
+int Cutoff_Wins::Change_repeated_seed(const int &CNT_original, const int &CNT_previous, int &index2_previous, int &index1_current, vector<vector<long int> > &structure, vector<Point_3D> &points_in)
+{
+    //last point of previous CNT segment
+    long int last = structure[CNT_original][index2_previous];
     
-    //resize the gnp_discrete vector
-    gnp_discrete.resize(gnp_discrete_in.size());
+    //first point of new CNT segment
+    long int first = structure[CNT_original][index1_current];
     
-    //Copy the elements of gnp_discrete_in into gnp_discrete
-    for (int i = 0; i < (int)gnp_discrete_in.size(); i++) {
-        gnp_discrete[i] = gnp_discrete_in[i];
+    //Check if the new CNT segment can be modified
+    if (structure.back().size() > 2) {
+        
+        //If there are more than two points in the new CNT segment, then the modification can be done in this segment since one point is going to be removed
+        
+        //increase index1 of the new segment
+        index1_current++;
+        //thus, update the first point of the new CNT segment
+        first = structure[CNT_original][index1_current];;
+        
+        //remove the first point in the new CNT segment
+        structure.back().erase(structure.back().begin());
+        
+        //Make the first point of the new CNT segment equal to the last point of the previous segment
+        //I set them equal component wise to keep the flags unchanged
+        points_in[first].x = points_in[last].x;
+        points_in[first].y = points_in[last].y;
+        points_in[first].z = points_in[last].z;
+        
+        //The last point of the previous segment has the new CNT number
+        //so set it back to the previous CNT number
+        points_in[last].flag = CNT_previous;
+    }
+    //If the new CNT segment has 2 points, then check if the previous CNT segment has more than 2 points
+    else if (structure[CNT_previous].size() > 2) {
+        
+        //If there are more than two points in the previous CNT segment, then the modification can be done in this segment since one point is going to be removed
+        
+        //decrease index2 of the previous segment
+        index2_previous--;
+        //thus, update the last point of the previous CNT segment
+        last = structure[CNT_original][index2_previous];
+        
+        //remove the last point of the previous segment
+        structure[CNT_previous].pop_back();
+        
+        //Make the the last point of the previous segment equal to first point of the new CNT segment
+        //I set them equal component wise to keep the flags unchanged
+        points_in[last].x = points_in[first].x;
+        points_in[last].y = points_in[first].y;
+        points_in[last].z = points_in[first].z;
+        
+    }
+    //If none of the two cases happened, then the two segments have two poins
+    else {
+        
+        //The last point of the previous segment has the new CNT number
+        //so set it back to the previous CNT number as the new segment will be deleted
+        points_in[last].flag = CNT_previous;
+        
+        //return 0 and deal with the problem outside this function
+        return 0;
     }
     
     return 1;
 }
-//Function that fills the vector gnps_inside
-int Cutoff_Wins::Fill_gnps_inside(const vector<vector<long int> > &structure_gnp)
+//This function scans all hybrid particles and saves the intial points of its CNTs
+int Cutoff_Wins::Save_seeds(const vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, vector<long int> &seeds)
 {
-    //Scan all GNP discretizations
-    for (int i = 0; i < (int)structure_gnp.size(); i++) {
-        //Check if there are any points on the GNP
-        if (structure_gnp[i].size()) {
-            //If there are still points in the discretization, that means that at least a fraction of the GNP is inside the observation window
-            gnps_inside.push_back(i);
+    //Initialize the seeds vector with the same size as structure
+    seeds.clear();
+    seeds.assign(structure.size(), -1);
+    
+    //Loop over the hybrid particles
+    for (int i = 0; i < (int)hybrid_particles.size(); i++) {
+        //variable to store the CNT number
+        int CNT;
+        
+        //Scan top CNTs
+        for (int j = 0; j < (int)hybrid_particles[i].cnts_top.size(); j++) {
+            CNT = hybrid_particles[i].cnts_top[j];
+            seeds[CNT] = structure[CNT].front();
+        }
+        
+        //Scan bottom CNTs
+        for (int j = 0; j < (int)hybrid_particles[i].cnts_bottom.size(); j++) {
+            CNT = hybrid_particles[i].cnts_bottom[j];
+            seeds[CNT] = structure[CNT].front();
         }
     }
+    
+    return 1;
+}
+//This function scans all hybrid particles and saves the intial points of its CNTs
+//If no CNTs have their initial point on the GNP, then it is removed (as this means the GNP has no CNTS attached)
+int Cutoff_Wins::Compare_seeds(vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, const vector<long int> &seeds)
+{
+    //Loop over the hybrid particles
+    for (int i = (int)hybrid_particles.size()-1; i >= 0; i--) {
+        //variable to store the CNT number
+        int CNT;
+        
+        //Temporary variables
+        vector<int> top_tmp, bottom_tmp;
+        //Scan top CNTs
+        for (int j = 0; j < (int)hybrid_particles[i].cnts_top.size(); j++) {
+            CNT = hybrid_particles[i].cnts_top[j];
+            //Check if seeds are still the same. If so, save the CNT number in the temporary variable
+            if (structure[CNT].size() && seeds[CNT] == structure[CNT].front()) {
+                top_tmp.push_back(CNT);
+            }
+        }
+        //Update the vector of CNTs at the top surface of the GNP
+        hybrid_particles[i].cnts_top = top_tmp;
+        
+        //Scan bottom CNTs
+        for (int j = 0; j < (int)hybrid_particles[i].cnts_bottom.size(); j++) {
+            CNT = hybrid_particles[i].cnts_bottom[j];
+            //Check if seeds are still the same. If so, save the CNT number in the temporary variable
+            if (structure[CNT].size() && seeds[CNT] == structure[CNT].front()) {
+                bottom_tmp.push_back(CNT);
+            }
+        }
+        //Update the vector of CNTs at the bottom surface of the GNP
+        hybrid_particles[i].cnts_bottom = bottom_tmp;
+        
+    }
+    
     return 1;
 }

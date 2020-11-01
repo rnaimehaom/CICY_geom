@@ -30,6 +30,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     //Shell vectors (used to remove nanoparticles when reduding observation window size)
     vector<vector<int> > shells_cnts;
     vector<vector<int> > shells_gnps;
+    vector<Shell> shell_gnps_new;
     
     //Deprecated:
     vector<GCH> hybrid_particles;
@@ -63,7 +64,8 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     hout << "Generate shells and structure time: "<<(int)(ct1-ct0)<<" secs."<<endl;//*/
     
     //Variable to store the geometry of the observation window
-    struct Geom_sample window_geo;
+    struct Geom_sample window_geom;
+    cuboid window_geo;
     
     for(int i=0; i<=Init->geom_sample.cut_num; i++)
     {
@@ -93,7 +95,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         Cutoff_Wins *Cutwins = new Cutoff_Wins;
         //From this function I get the internal variables cnts_inside and boundary_cnt
         ct0 = time(NULL);
-        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, Init->gnp_geo, hybrid_particles, cnts_structure, gnps_structure, cnts_radius, cnts_points, gnps_points, shells_cnts, shells_gnps)) {
+        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, gnps, cnts_structure, cnts_radius, cnts_points, shells_cnts, shell_gnps_new)) {
             hout << "Error when extracting observation window "<< i+1 << endl;
             return 0;
         }
@@ -164,7 +166,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
             
             //Perform the electrical analysis to obtain the backbone and calculate the electrical resistance
             ct0 = time(NULL);
-            if (!Electric_A->Perform_analysis_on_clusters(Init->simu_para.avoid_resistance, family, HoKo, Cutwins, cnts_structure, cnts_points, cnts_radius, gnps_structure, gnps_points, window_geo, Init->electric_para, Init->cutoff_dist, hybrid_particles, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
+            if (!Electric_A->Perform_analysis_on_clusters(Init->simu_para.avoid_resistance, family, HoKo, Cutwins, cnts_structure, cnts_points, cnts_radius, gnps_structure, gnps_points, window_geom, Init->electric_para, Init->cutoff_dist, hybrid_particles, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
                 hout << "Error when performing electrical analysis" << endl;
                 return 0;
             }
@@ -175,7 +177,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
             
             //Calculate the resistances and resistivities of the polymer matrix
             vector<double> matrix_resistances;
-            if (!Electric_A->Calculate_matrix_resistances(Init->electric_para.resistivity_matrix, window_geo, matrix_resistances)) {
+            if (!Electric_A->Calculate_matrix_resistances(Init->electric_para.resistivity_matrix, window_geom, matrix_resistances)) {
                 hout << "Error when calculating matrix resistances for a sample without percolated clusters" << endl;
                 return 0;
             }
@@ -184,7 +186,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
             vector<double> resistivities;
             //paralel_resistors is initialized with three empty vectors
             vector<vector<double> > paralel_resistors(3,resistivities);
-            if (!Electric_A->Calculate_resistances_and_resistivities(window_geo, matrix_resistances, paralel_resistors, Electric_A->resistors, resistivities)) {
+            if (!Electric_A->Calculate_resistances_and_resistivities(window_geom, matrix_resistances, paralel_resistors, Electric_A->resistors, resistivities)) {
                 hout << "Error when calculating matrix resistivities for a sample without percolated clusters" << endl;
                 return 0;
             }
@@ -232,7 +234,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     return 1;
 }
 //Update the geometry of the observation window
-int App_Network_3D::Update_obseravtion_window_geometry(const int &window, const struct Geom_sample &sample_geo, struct Geom_sample &window_geo)const
+int App_Network_3D::Update_obseravtion_window_geometry(const int &window, const Geom_sample &sample_geo, cuboid &window_geo)const
 {
     //Dimensions of the current observation window
     window_geo.len_x = sample_geo.win_max_x - ((double)window)*sample_geo.win_delt_x;
@@ -240,14 +242,14 @@ int App_Network_3D::Update_obseravtion_window_geometry(const int &window, const 
     window_geo.hei_z = sample_geo.win_max_z - ((double)window)*sample_geo.win_delt_z;
     
     //These variables are the coordinates of the lower corner of the observation window
-    window_geo.origin.x = sample_geo.origin.x + (sample_geo.len_x - window_geo.len_x)/2;
-    window_geo.origin.y = sample_geo.origin.y + (sample_geo.wid_y - window_geo.wid_y)/2;
-    window_geo.origin.z = sample_geo.origin.z + (sample_geo.hei_z - window_geo.hei_z)/2;
+    window_geo.poi_min.x = sample_geo.sample.poi_min.x + (sample_geo.sample.len_x - window_geo.len_x)/2;
+    window_geo.poi_min.y = sample_geo.sample.poi_min.y + (sample_geo.sample.wid_y - window_geo.wid_y)/2;
+    window_geo.poi_min.z = sample_geo.sample.poi_min.z + (sample_geo.sample.hei_z - window_geo.hei_z)/2;
     
     //Boundaries with maximum values of coordinates
-    window_geo.x_max = window_geo.origin.x + window_geo.len_x;
-    window_geo.y_max = window_geo.origin.y + window_geo.wid_y;
-    window_geo.z_max = window_geo.origin.z + window_geo.hei_z;
+    window_geo.max_x = window_geo.poi_min.x + window_geo.len_x;
+    window_geo.max_y = window_geo.poi_min.y + window_geo.wid_y;
+    window_geo.max_z = window_geo.poi_min.z + window_geo.hei_z;
     
     return 1;
 }

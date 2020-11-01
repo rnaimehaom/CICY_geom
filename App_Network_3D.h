@@ -34,7 +34,7 @@ public:
     
     //Member Functions
     int Generate_nanoparticle_resistor_network(Input *Init)const;
-    int Update_obseravtion_window_geometry(const int &window, const struct Geom_sample &sample_geo, struct Geom_sample &window_geo)const;
+    int Update_obseravtion_window_geometry(const int &window, const Geom_sample &sample_geo, cuboid &window_geo)const;
 };
 //---------------------------------------------------------------------------
 #endif

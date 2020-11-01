@@ -128,7 +128,7 @@ struct cuboid
     double max_x, max_y, max_z;
 };
 //---------------------------------------------------------------------------
-//Data structure for a cuboid
+//Data structure for a contact pair
 struct contact_pair
 {
     //Number of first particle (in contact with second particle)
@@ -143,6 +143,12 @@ struct contact_pair
     long int point2;
     //Type of particle 1, "CNT" or "GNP"
     string type2;
+};
+//---------------------------------------------------------------------------
+//Data structure for a shel
+struct Shell {
+    int shell_min;
+    int shell_max;
 };
 //---------------------------------------------------------------------------
 //Data structure for a triangular face based on the indices of a vector of Point_3D objects
@@ -267,6 +273,31 @@ struct GNP {
         
         //Initialize rotation matrix
         rotation = MathMatrix(3,3);
+    }
+    
+    //Function to determine if a point is inside the GNP
+    bool Is_point_inside_gnp(const Point_3D &P)const
+    {
+        //This vector is used multiple times
+        Point_3D V4P = P - vertices[4];
+        
+        //Check if P is between faces 0 and 1
+        if (faces[0].N.dot(P - vertices[0]) < Zero && faces[1].N.dot(V4P) < Zero) {
+            
+            //Check if P is between faces 2 and 4
+            if (faces[2].N.dot(V4P) < Zero && faces[4].N.dot(P - vertices[1]) < Zero) {
+                
+                //Check if P is between faces 3 and 5
+                if (faces[3].N.dot(V4P) < Zero && faces[5].N.dot(P - vertices[2]) < Zero) {
+                    
+                    //Point P is inside the GNP so return true
+                    return true;
+                }
+            }
+        }
+        
+        //If this part of the code is reached, then the point P is outside the GNP
+        return false;
     }
     
 };

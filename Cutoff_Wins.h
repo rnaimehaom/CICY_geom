@@ -16,44 +16,66 @@
 class Cutoff_Wins
 {
 public:
-    //Data Member
-    vector<int> cnts_inside; //List of CNTs inside the observation window
-    vector<int> gnps_inside; //List of GNPs inside the observation window
-    vector<vector<short int> > boundary_flags_cnt; //This vector will help find points on the boundary. This is used in the direct electrifying algorithm
-    vector<vector<short int> > boundary_flags_gnp; //This vector will help find points on the boundary. This is used in the direct electrifying algorithm
-    vector<vector<int> > boundary_cnt; //Boundary vector. It is used to determine percolation
-    vector<vector<int> > boundary_gnp; //Boundary vector. It is used to determine percolation
-    double xmin, ymin, zmin;
-    double w_x, w_y, w_z;
+    
+    //List of CNTs inside the observation window
+    vector<int> cnts_inside;
+    //List of GNPs inside the observation window
+    vector<int> gnps_inside;
+    //CNTs located at a window boundary
+    //boundary_cnt[i] contains CNTs in contact with boundary i
+    vector<vector<int> > boundary_cnt;
+    //GNPs located at a window boundary
+    //boundary_gnp[i] contains GNPs in contact with boundary i
+    vector<vector<int> > boundary_gnp;
+    //GNP points located at a window boundary
+    //boundary_gnp_pts[i] contains GNP pointss at boundary i
+    vector<vector<int> > boundary_gnp_pts;
+    //GNP points that are located at the boundary
+    vector<Point_3D> gnp_boundary_pts;
+    
+    //Deprecated:
+    //This vector will help find points on the boundary. This is used in the direct electrifying algorithm
+    vector<vector<short int> > boundary_flags_cnt;
+    //This vector will help find points on the boundary. This is used in the direct electrifying algorithm
+    vector<vector<short int> > boundary_flags_gnp;
+    
 
     
     //Constructor
     Cutoff_Wins(){};
     
     //Member Functions
-    int Extract_observation_window(const int &window, const string &particle_type, const struct Geom_sample &sample, const struct Geom_sample &window_geo, const struct Nanotube_Geo &cnts, const struct GNP_Geo &gnps, vector<GCH> &hybrid_particles, vector<vector<long int> > &structure, vector<vector<long int> > &structure_gnp, vector<double> &radii, vector<Point_3D> &points_in, vector<Point_3D> &points_gnp, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnp);
-    int Set_global_variables_for_geometry(const struct Geom_sample &sample, const int &window);
-    int Save_seeds(const vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, vector<long int> &seeds);
-    int Compare_seeds(vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, const vector<long int> &seeds);
-    int Trim_boundary_cnts(const int &window, const struct Geom_sample &sample, const struct Geom_sample &window_geo, const struct Nanotube_Geo &cnts, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii);
-    int Add_cnt_segment_to_structure(const struct Geom_sample &sample_geo, const struct Geom_sample &window_geo, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &last_point_loc, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx);
-    int Substitute_boundary_point(const struct Geom_sample &window_geo, const Point_3D &p_inside, Point_3D &p_outside);
-    string Where_is(Point_3D point);
-    string Where_is(const Point_3D &point, const Geom_sample &window_geo);
-    int Get_intersecting_point_on_boundary(const Point_3D &point0, const Point_3D &point1, vector<Point_3D> &ipoi_vec);
-    void Add_to_boundary_vectors(Point_3D point3d, long int point, int new_CNT);
-    void Add_CNT_to_boundary(vector<int> &boundary, int CNT, long int point, short int flag1, short int flag2);
-    int Change_repeated_seed(const int &CNT_original, const int &CNT_previous, int &index2_previous, int &index1_current, vector<vector<long int> > &structure, vector<Point_3D> &points_in);
+    int Extract_observation_window(const int &window, const string &particle_type, const Geom_sample &sample_geo, const cuboid &window_geo, const Nanotube_Geo &cnts_geo, vector<GNP> &gnps, vector<vector<long int> > &structure, vector<double> &radii, vector<Point_3D> &points_in, vector<vector<int> > &shells_cnt, vector<Shell> &shells_gnp);
+    int Trim_boundary_cnts(const int &window, const Geom_sample &sample, const cuboid &window_geo, const Nanotube_Geo &cnts, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii);
+    int Add_cnt_segment_to_structure(const Geom_sample &sample_geo, const cuboid &window_geo, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &last_point_loc, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx);
+    int Substitute_boundary_point(const cuboid &window_geo, const Point_3D &p_inside, Point_3D &p_outside);
+    string Where_is(const Point_3D &point, const cuboid &window_geo);
+    string Where_is_with_boundary(const Point_3D &point, const cuboid &window_geo, int &boundary);
+    void Add_to_boundary_vectors(const cuboid &window_geo, const Point_3D &point3d, const long int &point, const int &new_CNT);
+    void Add_CNT_to_boundary(vector<int> &boundary, const int &CNT, const long int &point, const short int &flag1, const short int &flag2);
     int Fill_cnts_inside(const vector<vector<long int> > &structure);
-    int Trim_boundary_gnps(const int &hybrid_flag, const struct GNP_Geo &gnps, const vector<GCH> &hybrid_particles, const vector<int> &shell_gnp, vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp);
-    int Is_close_to_boundaries(const GCH &hybrid);
-    int Remove_gnp_points_outside(const int &hybrid_flag, const struct GNP_Geo &gnps, const GCH &hybrid, vector<Point_3D> &points_gnp, vector<long int> &gnp_discrete);
-    int Find_inside_point(const GCH &hybrid, Point_3D &inside_point);
-    int Find_projection_in_boundary(const Point_3D &inside, Point_3D &outside, const int &iterator, vector<vector<int> > &boundaries);
+    int Fill_gnps_inside(const int &window, const cuboid &window_geo, const vector<GNP> &gnps, const vector<Shell> &shells_gnp);
+    int Find_gnp_boundary_points(const cuboid &window_geo, const GNP &gnp);
+    int Accumulate_boundary_points_due_to_intersections(const cuboid &window_geo, const GNP &gnp, const vector<string> &locations, vector<vector<Point_3D> > &points_acc);
+    int Find_intersections_of_gnp_edges_with_window_boundaries(const cuboid &window_geo, const GNP &gnp, const vector<string> &locations, vector<vector<Point_3D> > &points_acc);
+    int Find_two_intersections_of_gnp_edges_with_window(const cuboid &window_geo, const GNP &gnp, const Point_3D &V1, const Point_3D &V2, vector<Point_3D> &Pts);
+    int Find_intersections_of_window_edges_with_gnp_faces(const cuboid &window_geo, const GNP &gnp, vector<vector<Point_3D> > &points_acc);
+    int Does_edge_intersect_gnp(const Point_3D &V1, const Point_3D &V2, const GNP &gnp, Point_3D &P);
+    int Find_window_vertex_inside_gnp(const cuboid &window_geo, const GNP &gnp, vector<vector<Point_3D> > &points_acc);
+    
+    
+    
+    int Find_boundary_points_partially_inside_case(const cuboid &window_geo, const GNP &gnp, const vector<string> &locations, const vector<int> &inside_v);
+    int Find_boundary_points_in_multiple_boundaries(const GNP &gnp, const vector<vector<int> > &boundary_acc);
+    Point_3D Find_corner_inside_gnp(const cuboid &window_geo, const GNP &gnp);
+    
+    
+    //Deprecated:
     int Add_GNPs_to_boundary(const vector<long int> &gnp_discrete, const vector<vector<int> > &boundaries, vector<Point_3D> &points_gnp);
     int Find_average_boundary_point(const vector<long int> &gnp_discrete, const vector<int> &boundary, vector<Point_3D> &points_gnp);
-    int Update_discretization(vector<long int> &gnp_discrete, vector<long int> &gnp_discrete_in);
-    int Fill_gnps_inside(const vector<vector<long int> > &structure_gnp);
+    int Change_repeated_seed(const int &CNT_original, const int &CNT_previous, int &index2_previous, int &index1_current, vector<vector<long int> > &structure, vector<Point_3D> &points_in);
+    int Save_seeds(const vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, vector<long int> &seeds);
+    int Compare_seeds(vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, const vector<long int> &seeds);
     
 private:
     
