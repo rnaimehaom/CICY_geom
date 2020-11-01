@@ -16,22 +16,9 @@
  The following shells will have the same form: the volume of the observation window minus the volume of the previous one.
  The last shell region will be the boundary layer. This will be used for the first element of the vector
  
- Input:
-    struct Geom_sample sample
-        Geometry of the generated sample
-    struct Nanotube_Geo cnts
-        Geometry of the CNTs
-    vector<Point_3D> points_in
-        List of points
- 
- Output:
-    vector<vector<int> > shells_cnt
- 
- Modified inputs:
- 
  */
 
-int Shells::Generate_shells(const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<GNP> &gnps, vector<vector<int> > &shells_cnt, vector<vector<int> > &shells_gnps)
+int Shells::Generate_shells(const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<GNP> &gnps, vector<vector<int> > &shells_cnt, vector<Shell> &shells_gnps)
 {
     //Calculate the number of shells
     //sample.cut_num is the number of increments from the smallest to the largest observation widows
@@ -63,26 +50,19 @@ int Shells::Generate_shells(const struct Geom_sample &sample, const vector<Point
     double half_step[] = {sample.win_delt_x/2.0, sample.win_delt_y/2.0, sample.win_delt_z/2.0};
     
     
-    //Scan all points to determine in which sub-regions the CNTs are located and construct the structure vector
+    //Scan all CNT points to determine which shells each CNTs occupies
     for (long int i = 0; i < (long int)points_in.size(); i++) {
         if (!Add_to_cnt_shells(midpoints, boundary_layer, core, half_step, points_in[i], n_shells, shells_cnt)) {
-            hout << "Error in Generate_shells_and_structure when calling Add_to_shell (CNT shells)."<< endl;
+            hout << "Error in Generate_shells_and_structure when calling Add_to_cnt_shells."<< endl;
             return 0;
         }
     }
     
-    //Initialize the shells_gnps vector with the same size as the shells_cnt
-    shells_gnps.assign(n_shells, vector<int>());
-    
-    //Scan all Hybrid particles to determine to which shells they belong
-    for (int i = 0; i < (int)gnps.size(); i++) {
-        //Add GNP to the corresponding shells
-        if (!Add_to_gnp_shells(midpoints, boundary_layer, core, half_step, gnps[i], n_shells, shells_gnps)) {
-            hout << "Error in Generate_shells_and_structure when calling Add_to_shells (GNP shells)."<< endl;
-            return 0;
-        }
+    //Scan all GNPs to determine which shells each CNTs occupies
+    if (!Add_to_gnp_shells(midpoints, boundary_layer, core, half_step, gnps, n_shells, shells_gnps)) {
+        hout << "Error in Generate_shells_and_structure when calling Add_to_gnp_shells."<< endl;
+        return 0;
     }
-    
     
     return 1;
 }
@@ -157,32 +137,32 @@ int Shells::Find_shell(const double &x_in, const double &x_m, const double &x_la
     }
 }
 //This function finds the shell sub-regions that a GNP occupies.
-int Shells::Add_to_gnp_shells(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const GNP &gnp, const int &n_shells, vector<vector<int> > &shells_gnp)
+int Shells::Add_to_gnp_shells(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const vector<GNP> &gnps, const int &n_shells, vector<Shell> &shells_gnp)
 {
-    //Variables to store the minimum and moximum shell numbers that the GNP occupies
-    //Minimum and maximum shell numbers are initialized with the first shell
-    int min_shell = Find_minimum_shell(midpoints, boundary_layer, core, half_step, gnp.vertices[0], n_shells);
-    int max_shell = min_shell;
-    
-    //Iterate over the remaining vertices of the GNP
-    for (int i = 1; i < 8; i++) {
+    //Iterate over all GNPs
+    for (int j = 0; j < (int)gnps.size(); j++) {
         
-        //Find the shell that corresponds to vertex i
-        int shell = Find_minimum_shell(midpoints, boundary_layer, core, half_step, gnp.vertices[i], n_shells);
+        //Variables to store the minimum and maximum shell numbers that the GNP occupies
+        //Minimum and maximum shell numbers are initialized with the shell of the first GNP vertex
+        shells_gnp[j].shell_min = Find_minimum_shell(midpoints, boundary_layer, core, half_step, gnps[j].vertices[0], n_shells);
+        shells_gnp[j].shell_max = shells_gnp[j].shell_min;
         
-        //Check if shell numbers need to be updated
-        if (shell < min_shell) {
-            min_shell = shell;
-        }
-        if (shell > max_shell) {
-            max_shell = shell;
+        //Iterate over the remaining vertices of the GNP
+        for (int i = 1; i < 8; i++) {
+            
+            //Find the shell that corresponds to vertex i
+            int shell = Find_minimum_shell(midpoints, boundary_layer, core, half_step, gnps[j].vertices[i], n_shells);
+            
+            //Check if shell numbers need to be updated
+            if (shell < shells_gnp[j].shell_min) {
+                shells_gnp[j].shell_min = shell;
+            }
+            if (shell > shells_gnp[j].shell_max) {
+                shells_gnp[j].shell_max = shell;
+            }
         }
     }
     
-    //Add the GNP number to all the shells it spans
-    for (int j = min_shell; j <= max_shell; j++) {
-        shells_gnp[j].push_back(gnp.flag);
-    }
     
     return 1;
 }

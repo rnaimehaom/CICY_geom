@@ -29,8 +29,6 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     
     //Shell vectors (used to remove nanoparticles when reduding observation window size)
     vector<vector<int> > shells_cnts;
-    vector<vector<int> > shells_gnps;
-    vector<Shell> shell_gnps_new;
     
     //Deprecated:
     vector<GCH> hybrid_particles;
@@ -53,9 +51,11 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     //delete P;
     
     //----------------------------------------------------------------------
+    //Vector for GNP shells
+    vector<Shell> shell_gnps(gnps.size());
     ct0 = time(NULL);
     Shells *Shell = new Shells;
-    if (!Shell->Generate_shells(Init->geom_sample, cnts_points, gnps, shells_cnts, shells_gnps)) {
+    if (!Shell->Generate_shells(Init->geom_sample, cnts_points, gnps, shells_cnts, shell_gnps)) {
         hout << "Error when generating shells" << endl;
         return 0;
     }
@@ -95,7 +95,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         Cutoff_Wins *Cutwins = new Cutoff_Wins;
         //From this function I get the internal variables cnts_inside and boundary_cnt
         ct0 = time(NULL);
-        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, gnps, cnts_structure, cnts_radius, cnts_points, shells_cnts, shell_gnps_new)) {
+        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, gnps, cnts_structure, cnts_radius, cnts_points, shells_cnts, shell_gnps)) {
             hout << "Error when extracting observation window "<< i+1 << endl;
             return 0;
         }
