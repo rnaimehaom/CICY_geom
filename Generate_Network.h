@@ -114,7 +114,6 @@ public:
     Point_3D Distance_from_point_to_edge(const Point_3D &P, const Point_3D &V1, const Point_3D &V2, double &distance)const;
     int Deal_with_point_inside_gnp(const Geom_sample &geom_sample, const GNP &gnp, const double &cutoff, vector<Point_3D> &new_cnt, Point_3D &new_point)const;
     Point_3D Find_closest_face_and_relocate(const GNP &gnp, const Point_3D &new_point, const double &cutoff)const;
-    bool Is_point_inside_gnp(const GNP &gnp, const Point_3D &P)const;
     Point_3D Find_new_position_one_point_inside_gnp(const GNP &gnp, const Point_3D &P1, const Point_3D &P2, const double &cutoff)const;
     int Find_new_position_two_points_inside_gnp(const Geom_sample &geom_sample, const GNP &gnp, const double &cutoff, vector<Point_3D> &new_cnt, Point_3D &new_point)const;
     vector<int> Find_gnp_faces_intersecting_boundary(const Geom_sample &geom_sample, const GNP &gnp)const;

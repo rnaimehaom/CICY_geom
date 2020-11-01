@@ -63,20 +63,6 @@ public:
     int Does_edge_intersect_gnp(const Point_3D &V1, const Point_3D &V2, const GNP &gnp, Point_3D &P);
     int Find_window_vertex_inside_gnp(const cuboid &window_geo, const GNP &gnp, vector<vector<Point_3D> > &points_acc);
     
-    
-    
-    int Find_boundary_points_partially_inside_case(const cuboid &window_geo, const GNP &gnp, const vector<string> &locations, const vector<int> &inside_v);
-    int Find_boundary_points_in_multiple_boundaries(const GNP &gnp, const vector<vector<int> > &boundary_acc);
-    Point_3D Find_corner_inside_gnp(const cuboid &window_geo, const GNP &gnp);
-    
-    
-    //Deprecated:
-    int Add_GNPs_to_boundary(const vector<long int> &gnp_discrete, const vector<vector<int> > &boundaries, vector<Point_3D> &points_gnp);
-    int Find_average_boundary_point(const vector<long int> &gnp_discrete, const vector<int> &boundary, vector<Point_3D> &points_gnp);
-    int Change_repeated_seed(const int &CNT_original, const int &CNT_previous, int &index2_previous, int &index1_current, vector<vector<long int> > &structure, vector<Point_3D> &points_in);
-    int Save_seeds(const vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, vector<long int> &seeds);
-    int Compare_seeds(vector<GCH> &hybrid_particles, const vector<vector<long int> > &structure, const vector<long int> &seeds);
-    
 private:
     
 };

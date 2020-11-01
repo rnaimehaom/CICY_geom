@@ -3315,7 +3315,7 @@ int Generate_Network::Deal_with_point_inside_gnp(const Geom_sample &geom_sample,
     //is inside the sample (this ensures that the CNT point is outside the GNP)
     //OR
     //outside the GNP (this is evaluated when the last point in new_cnt is in the boundary layer)
-    if (new_cnt.back().flag || !Is_point_inside_gnp(gnp, new_cnt.back())) {
+    if (new_cnt.back().flag || !gnp.Is_point_inside_gnp(new_cnt.back())) {
         
         //Find new position of new_point when new_cnt.back() is outside the GNP but
         //new_point is inside the GNP
@@ -3336,30 +3336,6 @@ int Generate_Network::Deal_with_point_inside_gnp(const Geom_sample &geom_sample,
     
     //If this part of the code was reached, then new_point was successfully relocated
     return 1;
-}
-//This function checks if a point is inside a GNP
-bool Generate_Network::Is_point_inside_gnp(const GNP &gnp, const Point_3D &P)const
-{
-    //This vector is used multiple times
-    Point_3D V4P = P - gnp.vertices[4];
-    
-    //Check if P is between faces 0 and 1
-    if (gnp.faces[0].N.dot(P - gnp.vertices[0]) < Zero && gnp.faces[1].N.dot(V4P) < Zero) {
-        
-        //Check if P is between faces 2 and 4
-        if (gnp.faces[2].N.dot(V4P) < Zero && gnp.faces[4].N.dot(P - gnp.vertices[1]) < Zero) {
-            
-            //Check if P is between faces 3 and 5
-            if (gnp.faces[3].N.dot(V4P) < Zero && gnp.faces[5].N.dot(P - gnp.vertices[2]) < Zero) {
-                
-                //Point P is inside the GNP so return true
-                return true;
-            }
-        }
-    }
-    
-    //If this part of the code is reached, then the point P is outside the GNP
-    return false;
 }
 //Given a CNT point inside a GNP, this function moves it outside the GNP towards the closest face
 Point_3D Generate_Network::Find_closest_face_and_relocate(const GNP &gnp, const Point_3D &new_point, const double &cutoff)const
