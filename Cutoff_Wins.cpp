@@ -497,17 +497,17 @@ void Cutoff_Wins::Add_to_boundary_vectors(const cuboid &window_geo, const Point_
     
     //hout<<"P=("<<point3d.x<<", "<<point3d.y<<", "<<point3d.z<<") ";
     if ( abs(x - window_geo.poi_min.x) < Zero){
-        Add_CNT_to_boundary(boundary_cnt[0], new_CNT, point,0,0);
+        Add_CNT_to_boundary(boundary_cnt[4], new_CNT, point,0,0);
     } else if ( abs(x - window_geo.max_x) < Zero ){
-        Add_CNT_to_boundary(boundary_cnt[1], new_CNT, point,0,1);
+        Add_CNT_to_boundary(boundary_cnt[2], new_CNT, point,0,1);
     } else if ( abs(y - window_geo.poi_min.y) < Zero ){
-        Add_CNT_to_boundary(boundary_cnt[2], new_CNT, point,1,0);
+        Add_CNT_to_boundary(boundary_cnt[5], new_CNT, point,1,0);
     } else if ( abs(y - window_geo.max_y) < Zero ){
         Add_CNT_to_boundary(boundary_cnt[3], new_CNT, point,1,1);
     } else if ( abs(z - window_geo.poi_min.z) < Zero ) {
-        Add_CNT_to_boundary(boundary_cnt[4], new_CNT, point,2,0);
+        Add_CNT_to_boundary(boundary_cnt[1], new_CNT, point,2,0);
     } else if ( abs(z - window_geo.max_z) < Zero ) {
-        Add_CNT_to_boundary(boundary_cnt[5], new_CNT, point,2,1);
+        Add_CNT_to_boundary(boundary_cnt[0], new_CNT, point,2,1);
     }
 }
 
