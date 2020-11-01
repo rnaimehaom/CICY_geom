@@ -436,21 +436,24 @@ string Cutoff_Wins::Where_is_with_boundary(const Point_3D &point, const cuboid &
     
     //Lambda function to determine if a coordinate is boundaded
     auto is_bounded = [](const double &coord, const double &bound_min, const double &bound_max){
-        return (coord - bound_min >= Zero && coord - bound_max <= Zero);
+        return (bound_min - coord <= Zero && coord - bound_max <= Zero);
     };
     
     //Check if coordinates are bounded by the sample
     //In case a coordinate is not bounded, then return outside directly
     bool is_x_bounded = is_bounded(x, window_geo.poi_min.x, window_geo.max_x);
     if (!is_x_bounded) {
+        //hout<<"unbounded x"<<point.str()<<endl;
         return "outside";
     }
     bool is_y_bounded = is_bounded(y, window_geo.poi_min.y, window_geo.max_y);
     if (!is_y_bounded) {
+        //hout<<"unbounded y"<<point.str()<<endl;
         return "outside";
     }
-    bool is_z_bounded = is_bounded(y, window_geo.poi_min.z, window_geo.max_z);
+    bool is_z_bounded = is_bounded(z, window_geo.poi_min.z, window_geo.max_z);
     if (!is_z_bounded) {
+        //hout<<"unbounded z"<<point.str()<<endl;
         return "outside";
     }
     
@@ -565,6 +568,10 @@ int Cutoff_Wins::Fill_cnts_inside(const vector<vector<long int> > &structure)
 //Function that fills the vector gnps_inside
 int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, const vector<GNP> &gnps, const vector<Shell> &shells_gnp)
 {
+    //Initialize boundary vectors
+    boundary_gnp.assign(6, vector<int>());
+    boundary_gnp_pts.assign(6, vector<int>());
+    
     //Itertate over all GNPs
     for (int i = 0; i < (int)gnps.size(); i++) {
         
@@ -608,6 +615,7 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, const GNP &g
         int boundary_l;
         
         //Get the location of vertex i
+        //hout<<"Get the location of vertex i="<<i<<endl;
         locations[i] = Where_is_with_boundary(gnp.vertices[i], window_geo, boundary_l);
         
         //Increase a counter if needed
@@ -617,11 +625,13 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, const GNP &g
         else if (locations[i] == "boundary") {
             
             //Accumulate a vertex on a boundary on its corresponding boundary
+            //hout<<"boundary_l="<<boundary_l<<endl;
             points_acc[boundary_l].push_back(gnp.vertices[i]);
         }
     }
     
     //Check if there are any vertices inside the window
+    //hout<<"Check if there are any vertices inside the window"<<endl;
     if (inside_v.size() > 0) {
         
         //The GNP is at least partially inside
@@ -680,12 +690,14 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, const GNP &g
 int Cutoff_Wins::Accumulate_boundary_points_due_to_intersections(const cuboid &window_geo, const GNP &gnp, const vector<string> &locations, vector<vector<Point_3D> > &points_acc)
 {
     //Find intersections of GNP edges with window boundaries
+    //hout<<"Find_intersections_of_gnp_edges_with_window_boundaries"<<endl;
     if (!Find_intersections_of_gnp_edges_with_window_boundaries(window_geo, gnp, locations, points_acc)) {
         hout<<"Error in Accumulate_boundary_points_due_to_intersections when calling Find_intersections_of_GNP_edges_with_window_boundaries"<<endl;
         return 0;
     }
     
     //Find intersections of window edges with GNP surfaces
+    //hout<<"Find_intersections_of_window_edges_with_gnp_faces"<<endl;
     if (!Find_intersections_of_window_edges_with_gnp_faces(window_geo, gnp, points_acc)) {
         hout<<"Error in Accumulate_boundary_points_due_to_intersections when calling Find_intersections_of_window_edges_with_gnp_faces"<<endl;
         return 0;
@@ -693,6 +705,7 @@ int Cutoff_Wins::Accumulate_boundary_points_due_to_intersections(const cuboid &w
     
     //Check if a sample vertex is inside the GNP and, if so, accumulate it
     //into the corresponding boundaries
+    //hout<<"Find_window_vertex_inside_gnp"<<endl;
     if (!Find_window_vertex_inside_gnp(window_geo, gnp, points_acc)) {
         hout<<"Error in Accumulate_boundary_points_due_to_intersections when calling Find_window_vertex_inside_gnp"<<endl;
         return 0;
@@ -759,7 +772,10 @@ int Cutoff_Wins::Find_intersections_of_gnp_edges_with_window_boundaries(const cu
                     
                     //Double check that P is actually at the boundary
                     if (P_loc != "boundary") {
-                        hout<<"Error in Find_boundary_points_partially_inside_case calculating point at boundary. Point P is not at bundary but it should be since one vertex is inside the sample and the second vertex is outside. Location is: "<<P_loc<<". V1="<<gnp.vertices[i].str()<<". V2="<<gnp.vertices[v].str()<<endl;
+                        hout<<"Error in Find_boundary_points_partially_inside_case calculating point at boundary."<<endl;
+                        hout<<"Point P is not at bundary but it should be since one vertex is inside the sample and the second vertex is outside."<<endl;
+                        hout<<"Location of P is: "<<P_loc<<", P="<<P.str()<<endl;
+                        hout<<"V1="<<gnp.vertices[i].str()<<". V2="<<gnp.vertices[v].str()<<endl;
                         return 0;
                     }
                     
@@ -820,6 +836,7 @@ int Cutoff_Wins::Find_two_intersections_of_gnp_edges_with_window(const cuboid &w
             int P_loc;
             
             //Check if P is actually at a face, not just the plane
+            //hout<<"Check if P is actually at a face, not just the plane"<<endl;
             if (Where_is_with_boundary(P, window_geo, P_loc) == "boundary") {
                 
                 //Add P to the vector of points since it is actually at a face
