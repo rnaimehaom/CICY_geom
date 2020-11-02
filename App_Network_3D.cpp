@@ -106,7 +106,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Determine the local networks inside the cutoff windows
         Contact_grid *Contacts = new Contact_grid;
         ct0 = time(NULL);
-        if (!Contacts->Generate_contact_grid(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->cutoff_dist, Init->nanotube_geo, Cutwins->cnts_inside, cnts_points, cnts_structure, Cutwins->gnps_inside, gnps)) {
+        if (!Contacts->Generate_contact_grid(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Cutwins->cnts_inside, cnts_points, cnts_structure, Cutwins->gnps_inside, gnps)) {
             hout << "Error when generating contact grid" << endl;
             return 0;
         }

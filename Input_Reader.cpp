@@ -406,9 +406,9 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
                 }
                 
                 //Read the CNT density
-                istr_mixed >> simu_para.cnt_gnp_densinty;
-                if (simu_para.cnt_gnp_densinty < Zero) {
-                    hout << "Error: The CNT density on GNPs must be positive. Input was: "<<simu_para.cnt_gnp_densinty<< endl; return 0;
+                istr_mixed >> simu_para.cnt_gnp_density;
+                if (simu_para.cnt_gnp_density < Zero) {
+                    hout << "Error: The CNT density on GNPs must be positive. Input was: "<<simu_para.cnt_gnp_density<< endl; return 0;
                 }
             }
             else {
@@ -747,7 +747,7 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
     geom_sample.ex_dom_cnt.max_z = geom_sample.ex_dom_cnt.poi_min.z +  geom_sample.ex_dom_cnt.hei_z;
     
     //Determine the overlapping of the overlapping sub-regions for CNTs
-    geom_sample.gs_overlap_cnt = 2*nanotube_geo.rad_max + cutoff_dist.van_der_Waals_dist;
+    geom_sample.gs_overlap_cnt = 2*nanotube_geo.rad_max + cutoff_dist.tunneling_dist;
     
 	return 1;
 }
@@ -924,7 +924,7 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
             gnp_geo.criterion = "vol";
             
             //Calculate the volume ratio using the smallest CNT geometry and largest GNP geometry
-            double vol_ratio = 2*simu_para.cnt_gnp_densinty*PI*nanotube_geo.rad_min*nanotube_geo.rad_min*nanotube_geo.len_min/gnp_geo.t_max;
+            double vol_ratio = 2*simu_para.cnt_gnp_density*PI*nanotube_geo.rad_min*nanotube_geo.rad_min*nanotube_geo.len_min/gnp_geo.t_max;
             
             //Calculate the GNP volume using the calculated volume ratio
             gnp_geo.volume = simu_para.volume_fraction*geom_sample.volume/(vol_ratio + 1.0);

@@ -53,7 +53,7 @@ struct Simu_para{
     //Mass ratio for mixed or hybrid particles
     double volume_ratio;
     //CNT density on GNPs
-    double cnt_gnp_densinty;
+    double cnt_gnp_density;
 };
 //The geometry of the sample
 struct Geom_sample{

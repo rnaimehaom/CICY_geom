@@ -15,7 +15,7 @@
  
  */
 
-int Contact_grid::Generate_contact_grid(const int &window, const string &particle_type, const Geom_sample &sample_geom, const cuboid &window_geom, const Cutoff_dist &cutoffs, const Nanotube_Geo &cnts_geo, const vector<int> &cnts_inside, vector<Point_3D> &points_in, const vector<vector<long int> > &structure, const vector<int> &gnps_inside, const vector<GNP> &gnps)
+int Contact_grid::Generate_contact_grid(const int &window, const string &particle_type, const Geom_sample &sample_geom, const cuboid &window_geom, const vector<int> &cnts_inside, vector<Point_3D> &points_in, const vector<vector<long int> > &structure, const vector<int> &gnps_inside, const vector<GNP> &gnps)
 {
     
     //Number of subregions on each direction
