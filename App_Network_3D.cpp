@@ -106,7 +106,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Determine the local networks inside the cutoff windows
         Contact_grid *Contacts = new Contact_grid;
         ct0 = time(NULL);
-        if (Contacts->Generate_contact_grid(i, Init->simu_para.particle_type, Init->geom_sample, Init->cutoff_dist, Init->nanotube_geo, Cutwins->cnts_inside, cnts_points, cnts_structure, Cutwins->gnps_inside, gnps_points, gnps_structure)==0) {
+        if (!Contacts->Generate_contact_grid(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->cutoff_dist, Init->nanotube_geo, Cutwins->cnts_inside, cnts_points, cnts_structure, Cutwins->gnps_inside, gnps)) {
             hout << "Error when generating contact grid" << endl;
             return 0;
         }
@@ -116,11 +116,11 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //----------------------------------------------------------------------
         //Hoshen-Kopelman algorithm
         Hoshen_Kopelman *HoKo = new Hoshen_Kopelman;
-        ct0 = time(NULL);
+        ct0 = time(NULL);/*
         if (!HoKo->Determine_clusters(Init->simu_para, Init->cutoff_dist, Cutwins->cnts_inside, Contacts->sectioned_domain, cnts_structure, cnts_points, cnts_radius, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, Contacts->sectioned_domain_hyb, gnps_structure, gnps_points, hybrid_particles)) {
             hout << "Error when determining clusters" << endl;
             return 0;
-        }
+        }*/
         ct1 = time(NULL);
         hout << "Determine nanotube clusters time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         

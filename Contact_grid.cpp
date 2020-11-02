@@ -13,59 +13,35 @@
  
  The task of finding overlapping points can be computationally expensive. To reduce computational cost, the sample was divided into smaller cubic sub-regions. The cubic sample of size $[a \times a \times a ]$ was divided into $m$ segments in each direction resulting in $m^3$ cubic sub-regions. Then, overlapping points are searched for only on each smaller sub-region rather than in the whole sample. It may happen that two overlapping points belong to different sub-regions. In order to take into account these overlapping points, each sub-region is ``extended". If a point lies exactly at a boundary, then an overlapping point can be at a maximum distance equal to $r_{max}+r_{max}+d_W = 2r_{max}+d_W$ from the boundary. Here, $r_{max}$ is the maximum radii of the CNTs. Then, each boundary plane of each cubic sub-region is translated externally to a parallel plane at a distance $2r_{max}+d_W$.
  
- Input:
-    struct Geom_sample sample
-        Goemetry of the simulated sample
-    struct Cutoff_dist cutoffs
-        Structure that contains the cutoff for tunneling and overlapping
-    struct Nanotube_Geo cnts
-        Structure that contains the geometry of the CNTs
-    vector<int> cnts_inside
-        List of CNTs that are inside the observation window
-    vector<vector<long int> > structure
-        Vector with the structure
-    vector<Point_3D> points_in
-        List of points
-    int window
-        Current observation window. window=0 means the largest observation window
- 
- Output (These three are class variables):
-    vector<vector< long int> > sectioned_domain
-        Vector with overlaping sub-regions. This vector is used to look for contact points in CNTs faster
-    vector<vector< long int> > sectioned_domain_gnps
-        Vector with overlaping sub-regions. This vector is used to look for contact points in GNPs faster
- 
  */
 
-int Contact_grid::Generate_contact_grid(const int &window, const string &particle_type, const struct Geom_sample &sample, const struct Cutoff_dist &cutoffs, const struct Nanotube_Geo &cnts, const vector<int> &cnts_inside, vector<Point_3D> &points_in, const vector<vector<long int> > &structure, const vector<int> &gnps_inside, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp)
+int Contact_grid::Generate_contact_grid(const int &window, const string &particle_type, const Geom_sample &sample_geom, const cuboid &window_geom, const Cutoff_dist &cutoffs, const Nanotube_Geo &cnts_geo, const vector<int> &cnts_inside, vector<Point_3D> &points_in, const vector<vector<long int> > &structure, const vector<int> &gnps_inside, const vector<GNP> &gnps)
 {
-    //Generate the window geometry
-    struct Geom_sample window_geom;
-    if (!Generate_window_geometry(window, sample, window_geom)) {
-        hout << "Error in Generate_contact_grid when calling Generate_window_geometry" << endl;
-        return 0;
-    }
     
-    //Number of regions on each direction
-    int sx = (int)(window_geom.len_x/window_geom.gs_minx);
-    int sy = (int)(window_geom.wid_y/window_geom.gs_miny);
-    int sz = (int)(window_geom.hei_z/window_geom.gs_minz);
+    //Number of subregions on each direction
+    int sx = 1 + (int)(window_geom.len_x/sample_geom.gs_minx);
+    int sy = 1 + (int)(window_geom.wid_y/sample_geom.gs_miny);
+    int sz = 1 + (int)(window_geom.hei_z/sample_geom.gs_minz);
+    int n_regions[] = {sx,sy,sz};
     
-    //Maximum distance between two points in contact inside the sample
-    double cutoff = cutoffs.tunneling_dist + 2*cnts.rad_max;
+    //Variable to store the sizes of the subregions on each direction
+    double l_regions[] = {sample_geom.gs_minx, sample_geom.gs_miny, sample_geom.gs_minz};
+    
+    //Calculate the largest overlapping between the one for CNTs and the one for GNPs
+    double max_overlapping = max(sample_geom.gs_overlap_cnt, sample_geom.gs_overlap_gnp);
     
     //Check if the number of regions needs to be adjusted
-    if (!Adjust_regions_if_needed(cutoff, window_geom, sx, sy, sz)) {
+    if (!Adjust_regions_if_needed(max_overlapping, sample_geom, window_geom, n_regions, l_regions)) {
         hout << "Error in Generate_contact_grid when calling Adjust_regions_if_needed" << endl;
         return 0;
     }
-    //hout<<"There are "<<sx*sy*sz<<" overlapping sub-regions."<<endl;
+    //hout<<"There are "<<n_regions[0]*n_regions[1]*n_regions[2]<<" overlapping sub-regions."<<endl;
     
     //Fill the vector for the sectioned domain for CNTs only when there are CNTs in the structure
-    //Equivalently, this is done when the structure is not made of only GNPs
+    //i.e., when the structure is not made of only GNPs
     if (particle_type != "GNP_cuboids") {
         
-        if (!Fill_sectioned_domain(window_geom, cnts_inside, structure, points_in, cutoff, sx, sy, sz, sectioned_domain)) {
+        if (!Fill_sectioned_domain_cnts(window_geom, cnts_inside, structure, points_in, sample_geom.gs_overlap_cnt, n_regions, l_regions)) {
             hout << "Error in Generate_contact_grid when calling Generate_sectioned_domain_cnts" << endl;
             return 0;
         }
@@ -75,14 +51,8 @@ int Contact_grid::Generate_contact_grid(const int &window, const string &particl
     //Equivalently, this is done when the structure is not made of only CNTs
     if (particle_type != "CNT_wires") {
         
-        //Fill the sectioned domain corresponding to GNP points
-        if (!Fill_sectioned_domain(window_geom, gnps_inside, structure_gnp, points_gnp, cutoff, sx, sy, sz, sectioned_domain_gnps)) {
-            hout << "Error in Generate_contact_grid when calling Generate_sectioned_domain_cnts" << endl;
-            return 0;
-        }
-        
         //Fill the sectioned domain corresponding to GNP numbers
-        if (!Fill_sectioned_domain(window_geom, gnps_inside, structure_gnp, points_gnp, cutoff, sx, sy, sz, sectioned_domain_hyb)) {
+        if (!Fill_sectioned_domain_gnps(window_geom, gnps, gnps_inside, sample_geom.gs_overlap_gnp, n_regions, l_regions)) {
             hout << "Error in Generate_contact_grid when calling Generate_sectioned_domain_cnts" << endl;
             return 0;
         }
@@ -90,46 +60,8 @@ int Contact_grid::Generate_contact_grid(const int &window, const string &particl
     
     return 1;
 }
-//
-int Contact_grid::Generate_window_geometry(const int &window, const struct Geom_sample &sample, struct Geom_sample &window_geom)
-{
-    //Dimensions of the current observation window
-    window_geom.len_x = sample.win_max_x - ((double)window)*sample.win_delt_x;
-    window_geom.wid_y = sample.win_max_y - ((double)window)*sample.win_delt_y;
-    window_geom.hei_z = sample.win_max_z - ((double)window)*sample.win_delt_z;
-    
-    //Check that the current observation window is not smaller than the minimum observation window
-    if (window_geom.len_x < sample.win_min_x) {
-        //If the current observation window is smaller than the minimum observation window, set the observation window equal to the minimum
-        window_geom.len_x = sample.win_min_x;
-    }
-    if (window_geom.wid_y < sample.win_min_y) {
-        //If the current observation window is smaller than the minimum observation window, set the observation window equal to the minimum
-        window_geom.wid_y = sample.win_min_y;
-    }
-    if (window_geom.hei_z < sample.win_min_z) {
-        //If the current observation window is smaller than the minimum observation window, set the observation window equal to the minimum
-        window_geom.hei_z = sample.win_min_z;
-    }
-    
-    //These variables are the coordinates of the lower corner of the observation window
-    window_geom.origin.x = sample.origin.x + (sample.len_x - window_geom.len_x)/2;
-    window_geom.origin.y = sample.origin.y + (sample.wid_y - window_geom.wid_y)/2;
-    window_geom.origin.z = sample.origin.z + (sample.hei_z - window_geom.hei_z)/2;
-    
-    //Sizes of each region
-    window_geom.gs_minx = sample.gs_minx;
-    window_geom.gs_miny = sample.gs_miny;
-    window_geom.gs_minz = sample.gs_minz;
-    
-    //hout<<"Observation window geometry:"<<endl;
-    //hout<<"window_geom.origin.x="<<window_geom.origin.x<<" window_geom.origin.y="<<window_geom.origin.y<<" window_geom.origin.z="<<window_geom.origin.z<<endl;
-    //hout<<"window_geom.len_x="<<window_geom.len_x<<" window_geom.wid_y="<<window_geom.wid_y<<" window_geom.hei_z="<<window_geom.hei_z<<endl;
-    
-    return 1;
-}
-//
-int Contact_grid::Adjust_regions_if_needed(const double &cutoff, struct Geom_sample &window_geom, int &sx, int &sy, int &sz)
+//This function checks if the subregions are too small, and if so, their size is adjusted
+int Contact_grid::Adjust_regions_if_needed(const double &overlapping, const Geom_sample &sample_geom, const cuboid &window_geom, int n_regions[], double l_regions[])
 {
     //hout << "sx = " << sx << '\t' << "dx = " << window_geom.gs_minx << "\n";
     //hout << "sy = " << sy << '\t' << "dy = " << window_geom.gs_miny << "\n";
@@ -137,153 +69,154 @@ int Contact_grid::Adjust_regions_if_needed(const double &cutoff, struct Geom_sam
     
     //Check that the regions are not too small for the maximum cutoff distance 2r_max+tunnel
     //If they are, then change the number of sections to the maximum possible
-    if (window_geom.gs_minx < 2*cutoff) {
-        sx = (int)(window_geom.len_x/(2*(cutoff+Zero)));
-        window_geom.gs_minx = window_geom.len_x/(double)sx;
-        hout << "Modified the number of sections along x. " << "sx = " << sx << '\t' << "dx = " << window_geom.gs_minx << endl;
+    if (sample_geom.gs_minx < 2*overlapping) {
+        n_regions[0] = (int)(window_geom.len_x/(2*(overlapping+Zero)));
+        l_regions[0] = window_geom.len_x/(double)n_regions[0];
+        hout << "Modified the number of sections along x. " << "sx = " << n_regions[0] << '\t' << "dx = " << l_regions[0] << endl;
     }
-    if (window_geom.gs_miny < 2*cutoff) {
-        sy = (int)(window_geom.wid_y/(2*(cutoff+Zero)));
-        window_geom.gs_miny = window_geom.wid_y/(double)sy;
-        hout << "Modified the number of sections along y. " << "sy = " << sy << '\t' << "dy = " << window_geom.gs_miny << endl;
+    if (sample_geom.gs_miny < 2*overlapping) {
+        n_regions[1] = (int)(window_geom.wid_y/(2*(overlapping+Zero)));
+        l_regions[1] = window_geom.wid_y/(double)n_regions[1];
+        hout << "Modified the number of sections along y. " << "sy = " << n_regions[1] << '\t' << "dy = " << l_regions[1] << endl;
     }
-    if (window_geom.gs_minz < 2*cutoff) {
-        sz = (int)(window_geom.hei_z/(2*(cutoff+Zero)));
-        window_geom.gs_minz = window_geom.hei_z/(double)sz;
-        hout << "Modified the number of sections along z. " << "sz = " << sz << '\t' << "dz = " << window_geom.gs_minz  << endl;
+    if (sample_geom.gs_minz < 2*overlapping) {
+        n_regions[2] = (int)(window_geom.hei_z/(2*(overlapping+Zero)));
+        l_regions[2] = window_geom.hei_z/(double)n_regions[2];
+        hout << "Modified the number of sections along z. " << "sz = " << n_regions[2] << '\t' << "dz = " << l_regions[2] << endl;
     }
     return 1;
 }
-//
-int Contact_grid::Fill_sectioned_domain(const struct Geom_sample &window_geom, const vector<int> &particles_inside, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const double &cutoff, const int &sx, const int &sy, const int &sz, vector<vector< long int> > &sectioned_domain)
+//This function fills the sectioned domain vector for CNTs
+int Contact_grid::Fill_sectioned_domain_cnts(const cuboid &window_geom, const vector<int> &cnts_inside, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const double &overlapping, const int n_regions[], const double l_regions[])
 {
-    //There will be sx*sy*sz different regions
-    sectioned_domain.clear();
-    vector<long int> empty_long;
-    sectioned_domain.assign(sx*sy*sz, empty_long);
+    //There will be n_regions[0]*n_regions[1]*n_regions[2] different regions
+    sectioned_domain_cnts.clear();
+    sectioned_domain_cnts.assign(n_regions[0]*n_regions[1]*n_regions[2], vector<long int>());
     
     //First loop over the particles inside the box, then loop over the points inside each particle
-    for (int i = 0; i < (int)particles_inside.size(); i++) {
-        //hout<<"particles_inside["<<i<<"]="<<particles_inside[i]<<' ';
+    for (int i = 0; i < (int)cnts_inside.size(); i++) {
+        //hout<<"cnts_inside["<<i<<"]="<<cnts_inside[i]<<' ';
         
-        //Current particle number (either CNT or GNP)
-        int particle = particles_inside[i];
-        //hout<<"structure["<<particle<<"].size()="<<structure[particle].size()<<endl;
+        //Current CNT number
+        int CNT = cnts_inside[i];
+        //hout<<"structure["<<CNT<<"].size()="<<structure[CNT].size()<<endl;
         
         //Scan each point in the particle
-        for (int j = 0; j < (int)structure[particle].size(); j++) {
+        for (int j = 0; j < (int)structure[CNT].size(); j++) {
             
             //Current point number
-            long int P = structure[particle][j];
-            //hout<<"P=structure["<<particle<<"]["<<j<<"]="<<structure[particle][j]<< endl;
+            long int P = structure[CNT][j];
+            //hout<<"P=structure["<<CNT<<"]["<<j<<"]="<<structure[CNT][j]<< endl;
             
             //Calculate the region-coordinates
             int a, b, c;
             //hout << "points_in[P]=("<<points_in[P].x<<", "<<points_in[P].y<<", "<<points_in[P].z<<")"<< endl;
-            if (!Calculate_region_coordinates(window_geom, points_in[P], sx, sy, sz, a, b, c)) {
+            if (!Calculate_region_coordinates(window_geom, points_in[P], n_regions, l_regions, a, b, c)) {
                 hout << "Error in Generate_sectioned_domain_cnts when calling Calculate_region_coordinates" << endl;
                 return 0;
             }
             
             //Initialize flags for overlaping regions
-            int fx = 0;
-            int fy = 0;
-            int fz = 0;
+            int f_regions[] = {0,0,0};
             
             //Assign value of flag according to position of point
             //hout<<"Calculate_postion_flags"<<endl;
-            if (!Calculate_postion_flags(window_geom, points_in[P], cutoff, a, b, c, sx, sy, sz, fx, fy, fz)) {
+            if (!Calculate_overlapping_flags(window_geom, points_in[P], overlapping, a, b, c, n_regions, l_regions, f_regions)) {
                 hout << "Error in Generate_sectioned_domain_cnts when calling Calculate_postion_flags" << endl;
                 return 0;
             }
             
             //Assign the point P to the correspoding region or regions
             //hout<<"Assign_point_to_region"<<endl;
-            if (!Assign_point_to_region(a, b, c, fx, fy, fz, sx, sy, P, sectioned_domain)) {
+            if (!Assign_point_to_regions_cnts(a, b, c, f_regions, n_regions, P)) {
                 hout << "Error in Generate_sectioned_domain_cnts when calling Assign_point_to_region" << endl;
                 return 0;
             }
-            
         }
     }
     
     return 1;
 }
-//
-int Contact_grid::Calculate_region_coordinates(const struct Geom_sample &window_geom, const Point_3D &point, const int &sx, const int &sy, const int &sz, int &a, int &b, int &c)
+//This function calculates the subregion coordinates for a given point
+int Contact_grid::Calculate_region_coordinates(const cuboid &window_geom, const Point_3D &point, const int n_regions[], const double l_regions[], int &a, int &b, int &c)
 {
     
     //Calculate the region-coordinates
-    a = (int)((point.x-window_geom.origin.x)/window_geom.gs_minx);
-    //Limit the value of a as it has to go from 0 to sx-1
-    if (a == sx) {
-        a--;
-        //hout << " a-- ";
-    }
-    b = (int)((point.y-window_geom.origin.y)/window_geom.gs_miny);
-    //Limit the value of b as it has to go from 0 to sy-1
-    if (b == sy) {
-        b--;
-        //hout << " b-- ";
-    }
-    c = (int)((point.z-window_geom.origin.z)/window_geom.gs_minz);
-    //Limit the value of c as it has to go from 0 to sz-1
-    if (c == sz){
-        c--;
-        //hout << " c-- ";
-    }
+    a = (int)((point.x - window_geom.poi_min.x)/l_regions[0]);
+    b = (int)((point.y - window_geom.poi_min.y)/l_regions[1]);
+    c = (int)((point.z - window_geom.poi_min.z)/l_regions[2]);
     
     return 1;
 }
 //
-int Contact_grid::Calculate_postion_flags(const struct Geom_sample &window_geom, const Point_3D &point, const double &cutoff, const int &a, const int &b, const int &c, const int &sx, const int &sy, const int &sz, int &fx, int &fy, int &fz)
+int Contact_grid::Calculate_overlapping_flags(const cuboid &window_geom, const Point_3D &point, const double &overlapping, const int &a, const int &b, const int &c, const int n_regions[], const double l_regions[], int f_regions[])
 {
     //Coordinates of non-overlaping region the point belongs to
-    double x1 = a*window_geom.gs_minx +  window_geom.origin.x;
-    double x2 = x1 + window_geom.gs_minx;
-    double y1 = b*window_geom.gs_miny +  window_geom.origin.y;
-    double y2 = y1 + window_geom.gs_miny;
-    double z1 = c*window_geom.gs_minz +  window_geom.origin.z;
-    double z2 = z1 + window_geom.gs_minz;
+    double x1 = a*l_regions[0] + window_geom.poi_min.x;
+    double x2 = x1 + l_regions[0];
+    double y1 = b*l_regions[1] +  window_geom.poi_min.y;
+    double y2 = y1 + l_regions[1];
+    double z1 = c*l_regions[2] +  window_geom.poi_min.z;
+    double z2 = z1 + l_regions[2];
     
     //Assign value of flag according to position of point
     //The first operand eliminates the periodicity on the boundary
-    if ((a > 0) && (point.x >= x1) && (point.x <= x1+cutoff))
-        fx = -1;
-    else if ((a < sx-1) && (point.x >= x2-cutoff) && (point.x <= x2 ))
-        fx = 1;
-    if ((b > 0) && (point.y >= y1) && (point.y <= y1+cutoff))
-        fy = -1;
-    else if ((b < sy-1) && (point.y >= y2-cutoff) && (point.y <= y2 ))
-        fy = 1;
-    if ((c > 0) && (point.z >= z1) && (point.z <= z1+cutoff))
-        fz = -1;
-    else if ((c < sz-1) && (point.z >= z2-cutoff) && (point.z <= z2 ))
-        fz = 1;
+    if ((a > 0) && (point.x >= x1) && (point.x <= x1+overlapping))
+        f_regions[0] = -1;
+    else if ((a < n_regions[0]-1) && (point.x >= x2-overlapping) && (point.x <= x2 ))
+        f_regions[0] = 1;
+    if ((b > 0) && (point.y >= y1) && (point.y <= y1+overlapping))
+        f_regions[1] = -1;
+    else if ((b < n_regions[1]-1) && (point.y >= y2-overlapping) && (point.y <= y2 ))
+        f_regions[1] = 1;
+    if ((c > 0) && (point.z >= z1) && (point.z <= z1+overlapping))
+        f_regions[2] = -1;
+    else if ((c < n_regions[2]-1) && (point.z >= z2-overlapping) && (point.z <= z2 ))
+        f_regions[2] = 1;
     
     return 1;
 }
 //
-int Contact_grid::Assign_point_to_region(const int &a, const int &b, const int &c, const int &fx, const int &fy, const int &fz, const int &sx, const int &sy, const long int &P, vector<vector< long int> > &sectioned_domain)
+int Contact_grid::Assign_point_to_regions_cnts(const int &a, const int &b, const int &c, const int f_regions[], const int n_regions[], const long int &P)
 {
-    //Create array for loop over overlaping regions
-    int temp[2][3] = { {a+fx, b+fy, c+fz}, {a, b, c}};
+    //Calculate default rregion
+    int t = Calculate_t(a, b, c, n_regions[0], n_regions[1]);
     
-    //In this loop I check all regions a point can belong to when it is in an overlaping zone
-    for (int ii = 0; ii < 2; ii++) {
-        if (!fx) ii++; //if flag is zero, do this loop only once
-        for (int jj = 0; jj < 2; jj++) {
-            if (!fy) jj++; //if flag is zero, do this loop only once
-            for (int kk = 0; kk < 2; kk++) {
-                if (!fz) kk++; //if flag is zero, do this loop only once
-                //hout <<"a="<<a<<" fx="<<fx<<" b="<<b<<" fy="<<fy<<" c="<<c<<" fz="<<fz;
-                int t = Calculate_t(temp[ii][0],temp[jj][1],temp[kk][2],sx,sy);
-                //hout<<" t="<<t<<" sectioned_domain["<<t<<"].size()="<<sectioned_domain[t].size();
-                sectioned_domain[t].push_back(P);
-                //hout<<'.'<<endl;
-            }
-        }
+    //Assign point to default region
+    sectioned_domain_cnts[t].push_back(P);
+    
+    //Check if P needs to be added to more regions due to their overlapping
+    //Check the flag for the subregion's a-coordinate
+    if (f_regions[0] != 0) {
+        
+        //Calculate the region
+        t = Calculate_t(a+f_regions[0], b, c, n_regions[0], n_regions[1]);
+        
+        //Assign point to region
+        sectioned_domain_cnts[t].push_back(P);
+        
     }
+    //Check the flag for the subregion's b-coordinate
+    if (f_regions[1] != 0) {
+        
+        //Calculate the region
+        t = Calculate_t(a, b+f_regions[1], c, n_regions[0], n_regions[1]);
+        
+        //Assign point to region
+        sectioned_domain_cnts[t].push_back(P);
+        
+    }
+    //Check the flag for the subregion's c-coordinate
+    if (f_regions[2] != 0) {
+        
+        //Calculate the region
+        t = Calculate_t(a, b, c+f_regions[2], n_regions[0], n_regions[1]);
+        
+        //Assign point to region
+        sectioned_domain_cnts[t].push_back(P);
+        
+    }
+    
     return 1;
 }
 //Calculates the region to which a point corresponds
@@ -292,64 +225,163 @@ int Contact_grid::Calculate_t(const int &a, const int &b, const int &c, const in
     return a + b*sx + c*sx*sy;
 }
 //
-int Contact_grid::Fill_sectioned_domain(const struct Geom_sample &window_geom, const vector<int> &hybs_inside, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const double &cutoff, const int &sx, const int &sy, const int &sz, vector<vector<int> > &sectioned_domain_hyb)
+int Contact_grid::Fill_sectioned_domain_gnps(const cuboid &window_geom, const vector<GNP> &gnps, const vector<int> &gnps_inside, const double &overlapping, const int n_regions[], const double l_regions[])
 {
-    //There will be sx*sy*sz different regions
-    sectioned_domain_hyb.clear();
-    vector<int> empty_int;
-    sectioned_domain_hyb.assign(sx*sy*sz, empty_int);
+    //There will be n_regions[0]*n_regions[1]*n_regions[2] different regions
+    sectioned_domain_gnps.clear();
+    sectioned_domain_gnps.assign(n_regions[0]*n_regions[1]*n_regions[2], vector<int>());
+    
+    //Create a Generate_Network object to use its discretization function to fill the GNP subregions
+    Generate_Network gn;
     
     //First loop over the hybrids inside the box, then loop over the points inside each GNP
-    for (int i = 0; i < (int)hybs_inside.size(); i++) {
-        //hout<<"hybs_inside["<<i<<"]="<<cnts_inside[i]<<' ';
-        int GNP = hybs_inside[i];
-        //hout<<"structure["<<GNP<<"].size()="<<structure[GNP].size()<<endl;
-        for (int j = 0; j < (int)structure[GNP].size(); j++) {
-            long int P = structure[GNP][j];
-            //hout<<"P=structure["<<GNP<<"]["<<j<<"]="<<structure[GNP][j]<< endl;
+    for (int i = 0; i < (int)gnps_inside.size(); i++) {
+        
+        //Get the GNP number
+        //hout<<"gnps_inside["<<i<<"]="<<gnps_inside[i]<<' ';
+        int GNP = gnps_inside[i];
+        
+        //Discretize the GNP and add it to all the corresponding subregions
+        if (!Fill_sectioned_domain_single_gnp(window_geom, gnps[GNP], overlapping, n_regions, l_regions)) {
+            hout<<"Error in Fill_sectioned_domain_gnps when calling Fill_sectioned_domain_single_gnp"<<endl;
+            return 0;
+        }
+        
+    }
+    
+    return 1;
+}
+//This function finds all the subregions the GNP_new occupies and those subregions where there might be
+//close enough GNPs below the van der Waals distance
+int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, const GNP &gnp, const double &overlapping, const int n_regions[], const double l_regions[])
+{
+    //Number of points to discretize the GNP along the x direction (of the GNP local coordinates)
+    int n_points_x = max(2, 1 + (int)(gnp.l/l_regions[0]));
+    
+    //Number of points to discretize the GNP along the y direction (of the GNP local coordinates)
+    int n_points_y = max(2, 1 + (int)(gnp.l/l_regions[1]));
+    
+    //Number of points to discretize the GNP along the z direction (of the GNP local coordinates)
+    //Make sure there are at least two points in the discretization along z
+    int n_points_z = max(2, 1 + (int)(gnp.t/l_regions[2]));
+    
+    //Iterate over all points in the discretization
+    //Index k moves the point in the discretization along z
+    for (int k = 0; k < n_points_z; k++) {
+        
+        //Calculate the start and end points along the y-direction
+        
+        //Their locations are proportional to index k and the number of points
+        //in the discretization along z
+        double lambda_z = (double)k/(n_points_z-1);
+        
+        //These points move along edges 3-7 and 0-4 of the GNP
+        Point_3D start1_y = gnp.vertices[7] + (gnp.vertices[3] - gnp.vertices[7])*lambda_z;
+        Point_3D end1_y = gnp.vertices[4] + (gnp.vertices[0] - gnp.vertices[4])*lambda_z;
+        Point_3D diff1_y = end1_y - start1_y;
+        
+        //These points move along edges 2-6 and 1-5 of the GNP
+        Point_3D start2_y = gnp.vertices[6] + (gnp.vertices[2] - gnp.vertices[6])*lambda_z;
+        Point_3D end2_y = gnp.vertices[5] + (gnp.vertices[1] - gnp.vertices[5])*lambda_z;
+        Point_3D diff2_y = end2_y - start2_y;
+        
+        //Index j moves the point in the discretization along y
+        for (int j = 0; j < n_points_y; j++) {
             
-            //Calculate the region-coordinates
-            int a, b, c;
-            //hout << "points_in[P]=("<<points_in[P].x<<", "<<points_in[P].y<<", "<<points_in[P].z<<")"<< endl;
-            if (!Calculate_region_coordinates(window_geom, points_in[P], sx, sy, sz, a, b, c)) {
-                hout << "Error in Generate_sectioned_domain_cnts when calling Calculate_region_coordinates" << endl;
-                return 0;
-            }
+            //Calculate the start and end points along the x-direction
             
-            //Initialize flags for overlaping regions
-            int fx = 0;
-            int fy = 0;
-            int fz = 0;
+            //Their locations are proportional to index j and the number of points
+            //in the discretization along y
+            double lambda_y = (double)j/(n_points_y-1);
             
-            //Assign value of flag according to position of point
-            if (!Calculate_postion_flags(window_geom, points_in[P], cutoff, a, b, c, sx, sy, sz, fx, fy, fz)) {
-                hout << "Error in Generate_sectioned_domain_cnts when calling Calculate_postion_flags" << endl;
-                return 0;
-            }
-            
-            //Create array for loop over overlaping regions
-            int temp[2][3] = { {a+fx, b+fy, c+fz}, {a, b, c}};
-            
-            //In this loop I check all regions a point can belong to when it is in an overlaping zone
-            for (int ii = 0; ii < 2; ii++) {
-                if (!fx) ii++; //if flag is zero, do this loop only once
-                for (int jj = 0; jj < 2; jj++) {
-                    if (!fy) jj++; //if flag is zero, do this loop only once
-                    for (int kk = 0; kk < 2; kk++) {
-                        if (!fz) kk++; //if flag is zero, do this loop only once
-                        //hout <<"a="<<a<<" fx="<<fx<<" b="<<b<<" fy="<<fy<<" c="<<c<<" fz="<<fz;
-                        int t = Calculate_t(temp[ii][0],temp[jj][1],temp[kk][2],sx,sy);
-                        //hout<<" t="<<t<<" sectioned_domain["<<t<<"].size()="<<sectioned_domain[t].size();
-                        //Add the GNP number if the sectioned domain is empty or the last added GNP is not the current GNP
-                        if (!sectioned_domain_hyb[t].size() || sectioned_domain_hyb[t].back() != GNP) {
-                            sectioned_domain_hyb[t].push_back(GNP);
-                        }
-                        //hout<<'.'<<endl;
+            //These points move along the y-direction from start_y to end_y
+            Point_3D start_x = start1_y + diff1_y*lambda_y;
+            Point_3D end_x = start2_y + diff2_y*lambda_y;
+            Point_3D diff_x = end_x - start_x;
+
+            //Index i moves the point in the discretization along x
+            for (int i = 0; i < n_points_x; i++) {
+                
+                //Calculate the position of new_point (the point in the discretization)
+                
+                //The location of new_point is proportional to index i and the number of points
+                //in the discretization along x
+                double lambda_x = (double)i/(n_points_x-1);
+                
+                //Location of new_point
+                Point_3D point = start_x + diff_x*lambda_x;
+
+                //Check if new_point is inside the sample
+                if(point.x>=window_geom.poi_min.x||point.x<=window_geom.max_x||
+                   point.y>=window_geom.poi_min.y||point.y<=window_geom.max_y||
+                   point.z>=window_geom.poi_min.z||point.z<=window_geom.max_z) {
+                    
+                    //If the point is inside the window, then calcualte the region coordinates of the point
+                    int a, b, c;
+                    if (!Calculate_region_coordinates(window_geom, point, n_regions, l_regions, a, b, c)) {
+                        hout<<"Error in Fill_sectioned_domain_single_gnp when calling Calculate_region_coordinates"<<endl;
+                        return 0;
+                    }
+                    
+                    //Initialize flags for overlaping regions
+                    int f_regions[] = {0,0,0};
+                    
+                    if (!Calculate_overlapping_flags(window_geom, point, overlapping, a, b, c, n_regions, l_regions, f_regions)) {
+                        hout<<"Error in Fill_sectioned_domain_single_gnp when calling Calculate_overlapping_flags"<<endl;
+                        return 0;
+                    }
+                    
+                    //Add to the subregion(s) the GNP point occupies
+                    if (!Assign_point_to_regions_gnps(a, b, c, f_regions, n_regions, gnp.flag)) {
+                        hout<<"Error in Fill_sectioned_domain_single_gnp when calling Assign_point_to_regions_gnps"<<endl;
+                        return 0;
                     }
                 }
             }
-            
         }
+    }
+    
+    return 1;
+}
+//
+int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const int &c, const int f_regions[], const int n_regions[], const int &GNP)
+{
+    //Calculate default rregion
+    int t = Calculate_t(a, b, c, n_regions[0], n_regions[1]);
+    
+    //Assign point to default region
+    sectioned_domain_gnps[t].push_back(GNP);
+    
+    //Check if P needs to be added to more regions due to their overlapping
+    //Check the flag for the subregion's a-coordinate
+    if (f_regions[0] != 0) {
+        
+        //Calculate the region
+        t = Calculate_t(a+f_regions[0], b, c, n_regions[0], n_regions[1]);
+        
+        //Assign point to region
+        sectioned_domain_gnps[t].push_back(GNP);
+        
+    }
+    //Check the flag for the subregion's b-coordinate
+    if (f_regions[1] != 0) {
+        
+        //Calculate the region
+        t = Calculate_t(a, b+f_regions[1], c, n_regions[0], n_regions[1]);
+        
+        //Assign point to region
+        sectioned_domain_gnps[t].push_back(GNP);
+        
+    }
+    //Check the flag for the subregion's c-coordinate
+    if (f_regions[2] != 0) {
+        
+        //Calculate the region
+        t = Calculate_t(a, b, c+f_regions[2], n_regions[0], n_regions[1]);
+        
+        //Assign point to region
+        sectioned_domain_gnps[t].push_back(GNP);
+        
     }
     
     return 1;
