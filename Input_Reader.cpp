@@ -584,14 +584,18 @@ int Input::Read_cutoff_distances(Cutoff_dist &cutoff_dist, ifstream &infile)
     //van der Waals distance (in microns)
     //cutoff for tunneling (in microns)
     istringstream istr(Get_Line(infile));
-    istr >> cutoff_dist.van_der_Waals_dist >> cutoff_dist.tunneling_dist;
+    istr >> cutoff_dist.van_der_Waals_dist >> cutoff_dist.tunneling_dist >> cutoff_dist.min_points;
     //hout<<"van_der_Waals_dist="<<cutoff_dist.van_der_Waals_dist<<" tunneling_dist="<<cutoff_dist.tunneling_dist<<endl;
-    if (cutoff_dist.van_der_Waals_dist<Zero) {
+    if (cutoff_dist.van_der_Waals_dist < Zero) {
         hout << "Error: van der Waals distance must be greater than zero. Input was: "<< cutoff_dist.van_der_Waals_dist << endl;
         return 0;
     }
-    if (cutoff_dist.tunneling_dist<Zero) {
+    if (cutoff_dist.tunneling_dist < Zero) {
         hout << "Error: tunneling cutoff distance must be greater than zero. Input was: "<< cutoff_dist.tunneling_dist << endl;
+        return 0;
+    }
+    if (cutoff_dist.min_points < 0) {
+        hout << "Error: min_points must be greater than zero. Input was: "<< cutoff_dist.min_points << endl;
         return 0;
     }
     

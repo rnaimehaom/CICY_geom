@@ -95,7 +95,8 @@ Cutoff_Distances
 %Define the cutoff distances in the same line separated by spaces in the following order:
 %van der Waals distance
 %cutoff distance for tunneling
-0.000340 0.001800
+%minimum number of points for considering tunnels too close and the same
+0.000340 0.001800 5
 %--------------------------------End
 %
 %
