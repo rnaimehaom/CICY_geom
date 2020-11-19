@@ -157,14 +157,15 @@ struct GNP_Geo{
     //GNP density
     double density;
 };
-//The cutoff distances
+//Cutoff distances
 struct Cutoff_dist{
     string keywords;
     bool mark;
     double van_der_Waals_dist;
     double tunneling_dist;
+    int min_points;
 };
-//The electrical parameters
+//Electrical parameters
 struct Electric_para{
     string keywords;
     bool mark;

@@ -128,6 +128,7 @@ struct cuboid
     double max_x, max_y, max_z;
 };
 //---------------------------------------------------------------------------
+//Deprecated:
 //Data structure for a contact pair
 struct contact_pair
 {
@@ -143,6 +144,30 @@ struct contact_pair
     long int point2;
     //Type of particle 1, "CNT" or "GNP"
     string type2;
+};
+//---------------------------------------------------------------------------
+//Data structure for a junction
+struct Junction
+{
+    //Point number on particle 1
+    long int point1;
+    //Type of particle 1, "CNT" or "GNP"
+    string particle1;
+    //Point number on particle 2
+    long int point2;
+    //Type of particle 1, "CNT" or "GNP"
+    string particle2;
+    //Junction distance
+    double junction_dist;
+    
+    Junction(){}
+    Junction(const long int &p1, const string &str1, const long int &p2, const string &str2, const double &jd){
+        point1 = p1;
+        point2 = p2;
+        particle1 = str1;
+        particle2 = str2;
+        junction_dist = jd;
+    }
 };
 //---------------------------------------------------------------------------
 //Data structure for a shel
@@ -214,6 +239,7 @@ struct Edge {
     }
 };
 //---------------------------------------------------------------------------
+//Deprecated:
 //Class structure for GNP-CNT hybrid particles
 class GCH
 {

@@ -10,273 +10,1584 @@
 /*
  
  This function implements the Hoshen-Kopelman algorithm and generates the vector of points that are in contact.
- 
- Input:
-    const struct Geom_sample sample
-        Sample information and geometry
-    struct Cutoff_dist cutoffs
-        Structure that contains the cutoff for tunneling
-    vector<int> cnts_inside
-        List of CNTs that are inside the observation window
-    vector<vector<long int> > sectioned_domain
-        List with all points grouped into sub-regions in order to reduce computacional cost of finding contacts
-    vector<vector<long int> > structure
-        Vector with the structure
-    vector<Point_3D> points_in
-        List of CNT points
-    vector<double> radii
-        List of radii. Using this vector allows for the code to be able to work with CNTs of different radii
-    const vector<int> gnps_inside
-        List of GNPs that are inside the observation window
-    const vector<vector<long int> > sectioned_domain_gnp
-        List with all points grouped into sub-regions in order to reduce computacional cost of finding contacts
-    const vector<vector<long int> > structure_gnp
-        Vector with the structure
-    const vector<Point_3D> points_gnp
-        List of GNP points
-    const vector<GCH> hybrid_particles
-        List of hybrid particles or GNPs
- 
- Output (class variables):
-    vector<int> labels
-        Labels for HK76 (CNTs)
-    vector<int> labels_labels
-        Labels of labels for HK76 (CNTs)
-    vector<int> labels_gnp
-        Labels for HK76 (GNPs)
-    vector<int> labels_labels_gnp
-        Labels of labels for HK76 (GNPs)
-    vector<vector<long int> > contacts_point
-        Vector of point to point contacts. This is helpful for determining the resistor network on the direct electrifying algorithm
-    vector<contact_pair> gnp_contacts
-        List of GNP to GNP contacts
-    vector<contact_pair> mixed_contacts
-        List of CNT to GNP contacts
-    vector<vector<int> > clusters_cnt
-        Vector with clusters of CNT. The size of clusters_cnt is the number of clusters
-    vector<vector<int> > isolated
-        Vector with CNTs tha are isolated, i.e. form a cluster of 1 CNT. Each isolated[i] is a cluster of size 1. Later, non percolated clusters found in vector clusters_cnt are moved to isolated
-    vector<vector<int> > clusters_gch
-        Vector with clusters of GNP. The size of clusters_gch is the number of clusters
-    vector<vector<int> > isolated_gch
-        Vector with GNPs tha are isolated, i.e. form a cluster of 1 GNP. Each isolated_gch[i] is a cluster of size 1. Later, non percolated clusters found in vector clusters_gch are moved to isolated
- 
  It also creates a connectivity vector of the points in contact. This connectivity vector is used to define the elements used in the direct electrifying algorithm.
  */
 
-//To determinate hybrid particle clusters using Hoshen Kopelman Algorithm
-int Hoshen_Kopelman::Determine_clusters(const struct Simu_para &simu_para, const struct Cutoff_dist &cutoffs, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<int> &gnps_inside, const vector<vector<long int> > &sectioned_domain_gnp, const vector<vector<int> > &sectioned_domain_hyb, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, const vector<GCH> &hybrid_particles)
+//This function groups nanoparticles into clusters
+int Hoshen_Kopelman::Determine_clusters(const Simu_para &simu_para, const Cutoff_dist &cutoffs, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, vector<Point_3D> &points_gnp)
 {
-    //There are three distinct cases to make clusters: CNTs, GNPs or having both (either hybrid or mixed
-    //============================================================================================
-    if (simu_para.particle_type == "CNT_wires") {
-        //Label the CNTs and make the data structures for the direct electrifying algorithm
-        if (!Scan_sub_regions_cnt(simu_para, points_in, gnps_inside, hybrid_particles, radii, cutoffs.tunneling_dist, sectioned_domain, structure)){
-            hout << "Error in Determine_clusters when calling Scan_sub_regions_cnt." <<endl;
-            return 0;
-        }
-        //Make the CNT clusters
-        int n_clusters = (int)labels_labels.size();
-        if (!Make_particle_clusters(n_clusters, cnts_inside, labels, isolated, clusters_cnt)){
-            hout << "Error in Determine_clusters when calling Make_particle_clusters for CNT clusters." <<endl;
+    //Label vectors for CNTs and GNPs
+    vector<int> labels_cnt, labels_gnp;
+    
+    //Variable to count the labels from CNT clusters
+    int n_labels_cnt = 0;
+    
+    //Label to store the total number of labels in case there are both CNTs and GNPs
+    int n_total_labels = 0;
+    
+    //Adjacency matrix of labels for merging CNT and GNP labels
+    vector<set<int> > adj_labels;
+    
+    //Variable to store the total number of clusters
+    int n_clusters = 0;
+    
+    //Check if there are CNTs in the sample and make the CNT clusters accordingly
+    if (simu_para.particle_type != "GNP_cuboids") {
+        
+        /* /If hybrid particles are added, a pre-processing is needed before making the CNT clusters
+        if (simu_para.particle_type == "Hybrid_particles") {
+            //
+        }*/
+        
+        //The size of the vector labels has to be equal to the number of CNTs
+        //-1 is the unassigned value for a label
+        labels_cnt.assign(structure.size(), -1);
+        
+        //There are CNTs, make clusters
+        if (!Make_cnt_clusters(points_in, radii, cutoffs, sectioned_domain_cnt, structure, labels_cnt, n_labels_cnt)) {
+            hout<<"Error in Determine_clusters when calling Make_cnt_clusters"<<endl;
             return 0;
         }
         
+        //Provisionally, the total number of labels is the same as the number of CNT labels
+        //This will change if there are GNPs
+        n_total_labels = n_labels_cnt;
+        
+        //Also, provisonally the number of clusters is the same as the number of CNT labels
+        //If GNPs are generated, n_clusters will be updated in Make_mixed_clusters
+        n_clusters = n_labels_cnt;
     }
-    //============================================================================================
-    else if (simu_para.particle_type == "GNP_cuboids") {
-        //Label the GNPs and make the data structures for the direct electrifying algorithm
-        if (!Scan_sub_regions_gnp(points_gnp, hybrid_particles, cutoffs.tunneling_dist, sectioned_domain_gnp)){
-            hout << "Error in Determine_clusters when calling Scan_sub_regions_gnp." <<endl;
+    
+    //Check if there are GNPs in the sample and make the GNP clusters accordingly
+    if (simu_para.particle_type != "CNT_wires") {
+        
+        //Vectors of labels
+        //The size of the vector labels has to be equal to the number of GNPs
+        //-1 is the unassigned value for a label
+        labels_gnp.assign(gnps.size(), -1);
+        
+        //Make GNP clusters
+        if (!Make_gnp_clusters(gnps_inside, sectioned_domain_gnp, gnps, cutoffs.tunneling_dist, n_labels_cnt, n_total_labels, points_gnp, labels_gnp)) {
+            hout<<"Error in Determine_clusters when calling Make_gnp_clusters"<<endl;
             return 0;
         }
-        //Make the GNP clusters
-        int n_clusters = (int)labels_labels_gnp.size();
-        if (!Make_particle_clusters(n_clusters, gnps_inside, labels_gnp, isolated_gch, clusters_gch)){
-            hout << "Error in Determine_clusters when calling Make_particle_clusters for GNP clusters." <<endl;
+        
+        //If there are no CNTs, then the number of clusters is the same as n_total_labels
+        //If CNTs were generated, n_clusters will be updated in Make_mixed_clusters
+        n_clusters = n_total_labels;
+    }
+    
+    //Check if there are both CNTs and GNPs in the sample and merge CNT and GNP clusters as needed
+    if (simu_para.particle_type == "GNP_CNT_mix" || simu_para.particle_type == "Hybrid_particles") {
+        
+        //Make mixed clusters
+        if (!Make_mixed_clusters(n_total_labels, cutoffs, points_in, radii, sectioned_domain_cnt, gnps, sectioned_domain_gnp, labels_cnt, labels_gnp, points_gnp, n_clusters)) {
+            hout<<"Error in Determine_clusters when calling Make_mixed_clusters"<<endl;
             return 0;
         }
     }
-    //============================================================================================
-    else {
-        
-        //Time markers
-        time_t ct0, ct1;
-        
-        ct0 = time(NULL);
-        //Label the CNTs and make the data structures for the direct electrifying algorithm
-        if (!Scan_sub_regions_cnt(simu_para, points_in, gnps_inside, hybrid_particles, radii, cutoffs.tunneling_dist, sectioned_domain, structure)){
-            hout << "Error in Determine_clusters when calling Scan_sub_regions_cnt." <<endl;
+    
+    //Generate cluster vectors
+    if (labels_cnt.size()) {
+        if (!Make_particle_clusters(n_clusters, cnts_inside, labels_cnt, isolated_cnt, clusters_cnt)) {
+            hout<<"Error in Determine_clusters when calling Make_particle_clusters (CNT)"<<endl;
             return 0;
         }
-        ct1 = time(NULL);
-        hout << "Scan_sub_regions_cnt: " << (int)(ct1-ct0) <<" secs." << endl;
-        
-        ct0 = time(NULL);
-        //Label the GNPs and make the data structures for the direct electrifying algorithm
-        if (!Scan_sub_regions_gnp(points_gnp, hybrid_particles, cutoffs.tunneling_dist, sectioned_domain_gnp)){
-            hout << "Error in Determine_clusters when calling Scan_sub_regions_gnp." <<endl;
+    }
+    if (labels_gnp.size()) {
+        if (!Make_particle_clusters(n_clusters, gnps_inside, labels_gnp, isolated_gnp, clusters_gnp)) {
+            hout<<"Error in Determine_clusters when calling Make_particle_clusters (GNP)"<<endl;
             return 0;
         }
-        ct1 = time(NULL);
-        hout << "Scan_sub_regions_gnp: " << (int)(ct1-ct0) <<" secs." << endl;
-        
-        //Vectors for the HK76 for clustering the CNT and GNP clusters
-        vector<int> labels_mixed;
-        vector<int> labels_labels_mixed;
-        ct0 = time(NULL);
-        //Search for mixed contacts
-        if (!Scan_sub_regions_cnt_and_gnp(simu_para, cutoffs.tunneling_dist, points_in, radii, sectioned_domain, structure, points_gnp, hybrid_particles, gnps_inside, sectioned_domain_gnp, sectioned_domain_hyb, labels_mixed, labels_labels_mixed)) {
-            hout << "Error in Determine_clusters when calling Scan_sub_regions_cnt_and_gnp" << endl;
-            return 0;
-        }
-        ct1 = time(NULL);
-        hout << "Scan_sub_regions_cnt_and_gnp: " << (int)(ct1-ct0) <<" secs." << endl;
-        
-        //Make the CNT clusters
-        int n_clusters = (int)labels_labels_mixed.size();
-        ct0 = time(NULL);
-        if (!Make_particle_clusters(n_clusters, cnts_inside, labels, isolated, clusters_cnt)){
-            hout << "Error in Determine_clusters when calling Make_particle_clusters for CNT clusters." <<endl;
-            return 0;
-        }
-        ct1 = time(NULL);
-        hout << "Scan_sub_regions_cnt: " << (int)(ct1-ct0) <<" secs." << endl;
-        
-        ct0 = time(NULL);
-        //Make the GNP clusters
-        if (!Make_particle_clusters(n_clusters, gnps_inside, labels_gnp, isolated_gch, clusters_gch)){
-            hout << "Error in Determine_clusters when calling Make_particle_clusters for GNP clusters." <<endl;
-            return 0;
-        }
-        ct1 = time(NULL);
-        hout << "Scan_sub_regions_cnt: " << (int)(ct1-ct0) <<" secs." << endl;
-        
+    }
+    
+    //Determine percolation
+    
+    return 1;
+}
+//This functions makes CNT clusters
+int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_in, const vector<double> &radii, const Cutoff_dist &cutoffs, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, vector<int> &labels_cnt, int &n_labels_cnt)
+{
+    //Vector of labels of labels
+    vector<int> labels_labels_cnt;
+    
+    //Variables to compress contact segments
+    vector<map<int, set<long int> > > contact_elements(radii.size());
+    map<long int, map<int, long int> > point_contacts;
+    map<long int, map<int, double> > point_contacts_dist;
+    
+    //Label the CNTs
+    if (!Label_cnts_in_window(points_in, radii, cutoffs.tunneling_dist, sectioned_domain_cnt, structure, point_contacts, point_contacts_dist, contact_elements, labels_cnt, labels_labels_cnt)) {
+        hout<<"Error in Make_cnt_clusters when calling Label_cnts_in_window"<<endl;
+        return 0;
+    }
+    
+    //Clean up the labels to find the proper labels, i.e. merged and consecutive labels starting at 0
+    if (!Cleanup_labels(labels_labels_cnt, labels_cnt, n_labels_cnt)) {
+        hout << "Error in Make_cnt_clusters when calling Cleanup_labels" << endl;
+        return 0;
+    }
+    
+    //Compress CNT-CNT contact segments and add junctions
+    if (!Compress_cnt_cnt_contact_segments(cutoffs, point_contacts, point_contacts_dist, contact_elements)) {
+        hout << "Error in Make_cnt_clusters when calling Compress_cnt_cnt_contact_segments" << endl;
+        return 0;
     }
     
     return 1;
 }
-//This function scans all the subregions to look for points close enough for tunneling to happen, i.e. points that are in contact.
-//When points are in contact use the Hoshen-Kopelman algorithm
-int Hoshen_Kopelman::Scan_sub_regions_cnt(const struct Simu_para &simu_para, const vector<Point_3D> &points_in, const vector<int> &gnps_inside, const vector<GCH> &hybrid_particles, const vector<double> &radii, const double &tunnel, const vector<vector<long int> > &sectioned_domain, const vector<vector<long int> > &structure)
+//This function labels the CNTs in a window
+//These labels are used to make clusters
+int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_in, const vector<double> &radii, const double &tunnel_cutoff, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &contact_elements, vector<int> &labels_cnt, vector<int> &labels_labels_cnt)
 {
-    //These ints are just to store the global point number and the CNTs they belong to.
-    //They are just intermediate variables and I only use them to make the code more readable
-    long int P1, P2;
-    int CNT1, CNT2;
-    //Temporary vector of int's to store the contact pair
-    vector<long int> empty;
-    vector<int> empty_int;
-    //the list of contacts has to be the same size as the list of points
-    contacts_point.assign(points_in.size(), empty);
-    //Varable to calculate the cutoff for tunneling
-    double cutoff_t;
-    
-    //Initialize the variables for the labels. The size of the vector labels has to be equal to the number of CNTs
-    //It is initialized to -1 so if there is a bug in the code, there is going to be an error when using the -1 as an index
-    labels.assign(radii.size(), -1);
-    
     //new_label will take the value of the newest cluster
     int new_label = 0;
     
-    //Hybrid particle pre-processing
-    //Set the flag for hybrid particles if the particle type is hybrid
-    int hybrids_flag = simu_para.particle_type == "Hybrid_particles";
-    //If there are hybrid particles the pre-processing functon is called
-    if (hybrids_flag) {
-        if (!Group_cnts_in_gnp(hybrid_particles, gnps_inside, new_label)) {
-            hout << "Error in Scan_sub_regions when calling Group_cnts_in_gnp" << endl;
-            return 0;
-        }
-    }
-    
     //Scan every overlapping sub-region
-    for (long int i = 0; i < (long int)sectioned_domain.size(); i++) {
-        long int inner = (long int)sectioned_domain[i].size();
-        for (long int j = 0; j < inner-1; j++) {
-            P1 = sectioned_domain[i][j];
-            CNT1 = points_in[P1].flag;
-            for (long int k = j+1; k<inner; k++) {
-                P2 = sectioned_domain[i][k];
-                CNT2 = points_in[P2].flag;
-                //If distance below the cutoff and points belong to different CNT
-                cutoff_t = radii[CNT1] + radii[CNT2] + tunnel;
+    for (int i = 0; i < (int)sectioned_domain_cnt.size(); i++) {
+        
+        //Size of subregion i
+        int inner = (int)sectioned_domain_cnt[i].size();
+        
+        //Scan all points in subregion i
+        for (int j = 0; j < inner-1; j++) {
+            
+            //Get first point and its CNT number
+            long int P1 = sectioned_domain_cnt[i][j];
+            int CNT1 = points_in[P1].flag;
+            
+            //For each point P1=sectioned_domain[i][j] scan all remaning points in sectioned_domain[i]
+            for (int k = j+1; k<inner; k++) {
+                
+                //Get second point and its CNT number
+                long int P2 = sectioned_domain_cnt[i][k];
+                int CNT2 = points_in[P2].flag;
                 //hout <<"P1="<<P1<<" CNT1="<<CNT1<<" P2="<<P2<<" CNT2="<<CNT2;
-                //hout <<" cutoff_t="<<cutoff_t;
                 //hout<<" r1="<<radii[CNT1]<<" r2="<<radii[CNT2]<<endl;
-                //First check if the CNTs are different. Only when the CNTs are different the distance between points is calculated
-                //In this way calculation of all distances is avoided
-                if ((CNT1!=CNT2)&&(points_in[P1].distance_to(points_in[P2]) <= cutoff_t)) {
-                    //If there are hybrid particles and both points are CNT seed points, ignore the contact
-                    int ignore_flag = hybrids_flag && (structure[CNT1][0] == P1) && (structure[CNT2][0] == P2);
-                    //Check if the contact has already been added
-                    if (!ignore_flag && !Check_repeated(contacts_point[P1], P2)) {
-                        //Fill the vector of contacts contacts_point
-                        contacts_point[P2].push_back(P1);
-                        contacts_point[P1].push_back(P2);
-                    }
+                
+                //Check if:
+                //The points belong to different CNTs, only when the CNTs are different
+                //the distance between points is calculated
+                //AND
+                //The contact CNT1-CNT2 has not been visited yet
+                if (CNT1 != CNT2) {
                     
-                    //Here is where the actual HK76 algorithm takes place
-                    if (!HK76(CNT1, CNT2, new_label, labels, labels_labels)) {
-                        hout << "Error in Scan_sub_regions_cnt when calling HK76" << endl;
-                        return 0;
+                    //Calculate the distance between points
+                    double dist_junc = points_in[P1].distance_to(points_in[P2]);
+                    //hout <<" junction_dist="<<junction_dist<<endl;
+                    
+                    //Compare the distance between points against the junction distance
+                    //to check whether there is tunneling
+                    if (dist_junc <= radii[CNT1] + radii[CNT2] + tunnel_cutoff) {
+                        
+                        //Here is where the actual HK76 algorithm takes place
+                        if (!HK76(CNT1, CNT2, new_label, labels_cnt, labels_labels_cnt)) {
+                            hout << "Error in Label_cnts_in_window when calling HK76" << endl;
+                            return 0;
+                        }
+                        
+                        //Add points to the respective CNTs in the elements vector
+                        //elements_cnt[CNT1].insert(P1);
+                        //elements_cnt[CNT2].insert(P2);
+                        
+                        //Create a CNT-CNT junction
+                        //Junction j(P1, "CNT", P2, "CNT", dist_junc);
+                        
+                        //Add the junction to the vector of junctions
+                        //junctions.push_back(j);
+                        
+                        //Sort the CNTs as maximum and minimum
+                        int CNTa = min(CNT1, CNT2);
+                        long int Pa = (CNT1 < CNT2)? P1: P2;
+                        int CNTb = max(CNT1, CNT2);
+                        long int Pb = (CNT2 < CNT1)? P1: P2;
+                        
+                        //Add points to the elements used for contacts
+                        //Only add the points to the CNT with lowest number
+                        contact_elements[CNTa][CNTb].insert(Pa);
+                        
+                        
+                        //Make sure whether the contact has been added to the contact_points map
+                        //and keep the smallest separation
+                        //This map eliminates the posibility of a point having two contacts
+                        //with the same CNT
+                        //Also, this map is used to compress "contact segments"
+                        //
+                        //Clauses:
+                        //A: point_contacts.find(Pa) == point_contacts.end()
+                        //B: point_contacts[Pa].find(CNTb) == point_contacts[P1].end()
+                        //C: point_contacts_dist[Pa][CNTb] < junction_dist
+                        //
+                        //If A is true, then Pa is not in point_contacts, thus the statements inside the
+                        //if-statement are evaluated and Pa is added to point_contacts and CNTb is added
+                        //to point_contacts_dist[Pa]
+                        //
+                        //If A, is not true, then Pa is already in point_contacts and B is evaluated.
+                        //If B is true, then CNT is not in point_contacts[Pa], thus the statements inside
+                        //the if-statement are evaluated and Pa is added to point_contacts and CNTb is added
+                        //to point_contacts_dist[Pa].
+                        //
+                        //If A and B are false, then Pa is already in point_contacts and CNTb is already
+                        //in point_contacts[Pa] and C is evaluated. In this case, C is true only if the new
+                        //junction distance is smaller than the one in point_contacts_dist[Pa][CNTb].
+                        //Thus, it is only updated when a smaller junction is found
+                        //
+                        if (point_contacts.find(Pa) == point_contacts.end() || point_contacts[Pa].find(CNTb) == point_contacts[Pa].end() || point_contacts_dist[Pa][CNTb] > dist_junc) {
+                            
+                            //Update the junction distance
+                            point_contacts_dist[Pa][CNTb] = dist_junc;
+                            //point_contacts_dist[P2][CNT1] = dist_junc;
+                            
+                            //Add the correspoding point contacts
+                            point_contacts[Pa][CNTb] = Pb;
+                            //point_contacts[P2][CNT1] = P1;
+                        }
                     }
                 }
             }
         }
     }
     
+    return 1;
+}
+//This function merges labels in the labels vectors, so that labels_labels contains only proper labels
+int Hoshen_Kopelman::Cleanup_labels(vector<int> &labels_labels, vector<int> &labels, int &n_labels)
+{
+    //Map of labels to know which ones are root labels and renumber them to a proper label
+    vector<int> label_map(labels_labels.size(),-1);
+    
+    //This variable will be used to assign the proper label
+    //It is initalized with the value in n_labels
+    //In case there are only CNTs or only GNPs n_labels = 0
+    //In case there are both CNTs and GNPs n_labels = the number of proper CNT labels
+    int proper_label = n_labels;
+    
+    //First scan all the labels of labels to find the root labels
+    //Create a map from root label to proper label
+    //Proper labels are consecutive labels from 0 to N-1, where N is the number of clusters
+    //i.e., these are merged and renumbered labels
+    for (int i = 0; i < (int)labels_labels.size(); i++) {
+        
+        //if labels_labels_tmp[i] > 0, then i is a proper label
+        if (labels_labels[i] > 0) {
+            
+            //Set label_label i with proper label counter
+            label_map[i] = proper_label;
+            
+            //Increse the number of proper labels
+            proper_label++;
+        }
+    }
+    
+    //Update the total number of proper labels
+    n_labels = proper_label;
+    
+    //Scan all labels and change labels to keep only the proper labels
+    for (int i = 0; i < (int)labels.size(); i++) {
+        
+        //Check that labels[i] is a valid label
+        if (labels[i] != -1) {
+            
+            //Find the root label of labels[i]
+            int root = Find_root(labels[i], labels_labels);
+            
+            //Find the proper label
+            int proper = label_map[root];
+            if (proper == -1) {
+                hout << "Invalid proper label " << proper << ". Valid labels are positive integers or 0"<<endl;
+                return 0;
+            }
+            
+            //Change the current label by the proper label
+            labels[i] = proper;
+        }
+    }
+    
+    return 1;
+}
+//This function compresses the "contact segments" for CNT-CNT contacts
+int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoffs, const map<long int, map<int, long int> > &point_contacts, const map<long int, map<int, double> > &point_contacts_dist, const vector<map<int, set<long int> > > &contact_elements)
+{
+    //Iterate over all CNTs
+    for (int i = 0; i < (int)contact_elements.size(); i++) {
+        
+        //Check if CNT i has contacts with other CNTs
+        if (!contact_elements.empty()) {
+            
+            //Iterate over the CNT in contact with CNT i
+            for (map<int, set<long int> >::const_iterator i_map = contact_elements[i].begin(); i_map != contact_elements[i].end(); i_map++) {
+                
+                //Get the CNT number in contact with CNT i
+                int CNTj = i_map->first;
+                
+                //Start the iterator at the beginning of the set
+                set<long int>::const_iterator i_set = i_map->second.begin();
+                
+                //Get the initial points in contact
+                long int Pi0 = *i_set;
+                long int Pj0 = point_contacts.at(Pi0).at(CNTj);
+                
+                //Get the initial junction distance
+                long int d_junction = point_contacts_dist.at(Pi0).at(CNTj);
+                
+                //Variables to store the "compress" contact segment
+                long int Pi_junc = Pi0, Pj_junc = Pj0;
+                double d_junc_min = d_junction;
+                
+                //Iterate over the points in CNT i in contact with CNTj and compress segements
+                for (i_set++; i_set != i_map->second.end(); i_set++) {
+                    
+                    //Get the point in CNT i
+                    long int Pi1 = *i_set;
+                    
+                    //Get the point in CNTj
+                    long int Pj1 = point_contacts.at(Pi1).at(CNTj);
+                    
+                    //Get the junction distance
+                    d_junction = point_contacts_dist.at(Pi1).at(CNTj);
+                    
+                    //Check if the points are close enough to be in the same segment
+                    if (Pi1 - Pi0 >= cutoffs.min_points || abs(Pj1 - Pj0) >= cutoffs.min_points) {
+                        
+                        //A new segment needs to be started
+                        //But first, "compress" the previous segment
+                        //That is, just add the shortest junction found to the
+                        //vector of junctions
+                        Junction j(Pi_junc, "CNT", Pj_junc, "CNT", d_junc_min);
+                        junctions.push_back(j);
+                        
+                        //Add the junction points to the vectors of elements
+                        elements_cnt[i].insert(Pi_junc);
+                        elements_cnt[CNTj].insert(Pj_junc);
+                        
+                        //Start the new segment by resetting the variables to the values
+                        //of the junction that starts the new segment
+                        d_junc_min = d_junction;
+                        Pi_junc = Pi1;
+                        Pj_junc = Pj1;
+                    }
+                    else {
+                        
+                        //Current contact is part of the same segment
+                        //Check if junction distance and points in contact need updating
+                        //Keep the points with the shortest junction distance since this
+                        //is the path of lowest electrical resistance
+                        if (d_junction < d_junc_min) {
+                            
+                            //A shorter distance was found, so update the variables for
+                            //the junction for the compressed contact segment
+                            d_junc_min = d_junction;
+                            Pi_junc = Pi1;
+                            Pj_junc = Pj1;
+                        }
+                    }
+                }
+                
+                //"Compress" the last (or only) segment
+                //That is, just add the shortest junction found in the last (or only) segment
+                //to the vector of junctions
+                Junction j(Pi_junc, "CNT", Pj_junc, "CNT", d_junc_min);
+                junctions.push_back(j);
+            }
+        }
+    }
+    
+    return 1;
+}
+//This function makes the GNP clusters
+int Hoshen_Kopelman::Make_gnp_clusters(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, int &n_total_labels, vector<Point_3D> &points_gnp, vector<int> &labels_gnp)
+{
+    //Vector of labels of labels
+    vector<int> labels_labels_gnp;
+    
+    //Label the GNPs
+    if (!Label_gnps_in_window(gnps_inside, sectioned_domain_gnp, gnps, tunnel_cutoff, n_labels_cnt, points_gnp, labels_gnp, labels_labels_gnp)) {
+        hout<<"Error in Make_gnp_clusters when calling Label_gnps_in_window"<<endl;
+        return 0;
+    }
+    
     //Clean up the labels to find the proper labels, i.e. merged and consecutive labels starting at 0
-    if (!Cleanup_labels(labels, labels_labels)) {
-        hout << "Error in Scan_sub_regions_cnt when calling Cleanup_labels" << endl;
+    if (!Cleanup_labels(labels_labels_gnp, labels_gnp, n_total_labels)) {
+        hout << "Error in Make_cnt_clusters when calling Cleanup_labels" << endl;
         return 0;
     }
     
     return 1;
 }
-//This function does the pre-processing of the hybrid particles
-//A label is assigned to each CNT that belongs to a GNP
-//Thus, there will be as many labels as hybrid particles. Then the HK76 will only solve label conflicts
-int Hoshen_Kopelman::Group_cnts_in_gnp(const vector<GCH> &hybrid_particles, const vector<int> &gnps_inside, int &new_label)
+//This function labels the GNPs so that they can be grouped into clusters
+int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp)
 {
-    //Loop through all the hybrid particles inside the sample and then though all CNTs inside that particle and assign them the same label
-    for (int i = 0; i < (int)gnps_inside.size(); i++) {
-        //CNTs at the top surface
-        int cnts_top = (int)hybrid_particles[i].cnts_top.size();
-        
-        for (int j = 0; j < cnts_top; j++) {
-            int CNT = hybrid_particles[i].cnts_top[j];
-            //The label to be assign is the iterator "i"
-            labels[CNT] = i;
-        }
-        
-        //CNTs at the bottom surface
-        int cnts_bottom = (int)hybrid_particles[i].cnts_bottom.size();
-        
-        for (int j = 0; j < cnts_bottom; j++) {
-            int CNT = hybrid_particles[i].cnts_bottom[j];
-            //The label to be assign is the iterator "i"
-            labels[CNT] = i;
-        }
-        
-        //Update the labels_labels vector with the number of CNTs with label "i"
-        labels_labels.push_back(cnts_top+cnts_bottom);
-    }
+    //new_label will take the value of the newest cluster
+    //Since GNP clusters are made after CNT clusters, the first label for GNPs is equal
+    //to the number of CNT labels
+    int new_label = n_labels_cnt;
     
-    //Update new_label
-    new_label = (int)labels_labels.size();
+    //Collision detection object to find the distance between GNPs
+    Collision_detection CL;
+    
+    //Vector to check if a GNP-GNP contact has already been visited
+    vector<set<int> > visited(gnps.size());
+    
+    //Scan every overlapping sub-region
+    for (int i = 0; i < (int)sectioned_domain_gnp.size(); i++) {
+        
+        //Size of subregion i
+        int inner = (int)sectioned_domain_gnp[i].size();
+        
+        //Scan all GNPs in subregion i
+        for (int j = 0; i < inner-1; j++) {
+            
+            //Get GNP1
+            int GNP1 = sectioned_domain_gnp[i][j];
+            
+            //Campare GNP1 with all other GNPs in sectioned domain i, if any
+            for (int k = j+1; k < inner; k++) {
+                
+                //Get GNP2
+                int GNP2 = sectioned_domain_gnp[i][k];
+                
+                //Sort the GNP numbers
+                int GNPa = min(GNP1, GNP2);
+                int GNPb = max(GNP2, GNP2);
+                
+                //Check if the contact has already been visited
+                if (visited[GNPa].find(GNPb) == visited[GNPa].end()) {
+                    
+                    //Contact GNPa-GNPb has not been visited
+                    
+                    //Variables for the GJK
+                    vector<Point_3D> simplex;
+                    bool flag1, flag2;
+                    
+                    //Get the simplex closest to the origin from the Minkowski sum of GNP1 and -GNP2
+                    if (!CL.GJK(gnps[GNP1], gnps[GNP2], simplex, flag1, flag2)) {
+                        hout<<"Error in Label_gnps_in_window when calling CL.GJK"<<endl;
+                        return 0;
+                    }
+                    
+                    //Variables to store the distance and direction from GNP1 to GNP2
+                    Point_3D N;
+                    double dist;
+                    
+                    //Get the distance between GNP1 and GNP2 using the simplex from GJK
+                    if (!CL.Distance_and_direction_from_simplex_to_origin(simplex, N, dist)) {
+                        hout<<"Error in Label_gnps_in_window when calling CL.Distance_and_direction_from_simplex_to_origin"<<endl;
+                        return 0;
+                    }
+                    
+                    //Check if the separation between GNPs is below the cutoff for tunneling
+                    if (dist <= tunnel_cutoff) {
+                        
+                        //Here is where the actual HK76 algorithm takes place
+                        if (!HK76(GNP1, GNP2, new_label, labels_gnp, labels_labels_gnp)) {
+                            hout << "Error in Label_gnps_in_window when calling HK76" << endl;
+                            return 0;
+                        }
+                        
+                        //Add the points of contact on each GNP
+                        if (!Add_junction_points_for_gnps(gnps[GNP1], gnps[GNP2], N, dist, points_gnp)) {
+                            hout << "Error in Label_gnps_in_window when calling Add_junction_points_for_gnps" << endl;
+                            return 0;
+                        }
+                        
+                        //Create a junction with the GNPs in contact
+                        Junction j((long int)points_gnp.size()-1, "GNP", (long int)points_gnp.size()-2, "GNP", dist);
+                        
+                        //Add the junction to the vector of junctions
+                        junctions.push_back(j);
+                    }
+                    
+                    //Mark the contact as visited
+                    visited[GNPa].insert(GNPb);
+                }
+            }
+        }
+    }
     
     return 1;
 }
-//This function checks if the point Point is in the vector region
-int Hoshen_Kopelman::Check_repeated(const vector<long int> &contacts_vector, const long int &point)
+int Hoshen_Kopelman::Add_junction_points_for_gnps(const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<Point_3D> &points_gnp)
 {
-    for (int i = 0; i < (int)contacts_vector.size(); i++) {
-        if (point == contacts_vector[i]) {
-            return 1;
+    //Vectors to save the simplices in A and B that are closest to each other
+    vector<int> simplexA, simplexB;
+    int v_sumA = 0, v_sumB = 0;
+    if (!Find_closest_simplices_of_gnps_in_contact(GNP_A, GNP_B, N, distance, simplexA, simplexB, v_sumA, v_sumB)) {
+        hout<<"Error in Add_junction_points_for_gnps when calling Find_closest_simplices_of_gnps_in_contact"<<endl;
+        return 0;
+    }
+    
+    //Points to be added to the vector of GNP points
+    Point_3D PointA, PointB;
+    
+    //Using the simplices in GNP_A and GNP_B find the two points that define a junction between
+    //the two GNPs
+    if (simplexA.size() <= simplexB.size()) {
+        
+        //Simplex A is the one with less vertices or it has the same number of vertices as B
+        if (!Find_junction_points_in_gnps(simplexA, simplexB, GNP_A, GNP_B, N, distance, v_sumA, v_sumB, PointA, PointB)) {
+            hout<<"Error in Add_junction_points_for_gnps when calling Find_junction_points_in_gnps (1)"<<endl;
+            return 0;
         }
     }
-    return 0;
+    else {
+        
+        //Simplex B is the one with less vertices
+        //Invert the direction of N
+        //Interchange GNP_A and GNP_B
+        if (!Find_junction_points_in_gnps(simplexB, simplexA, GNP_B, GNP_A, N*(-1.0), distance, v_sumB, v_sumA, PointB, PointA)) {
+            hout<<"Error in Add_junction_points_for_gnps when calling Find_junction_points_in_gnps (2)"<<endl;
+            return 0;
+        }
+    }
+    
+    //Add the calculated points to the vector of GNPs
+    points_gnp.push_back(PointA);
+    points_gnp.push_back(PointB);
+    
+    return 1;
+}
+//This function finds the two simplices that are closest to each other when two GNPs are in
+//electrical contact
+int Hoshen_Kopelman::Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<int> &simplexA, vector<int> &simplexB, int &v_sumA, int &v_sumB)
+{
+    //Iterate over all vertices of the Minkowski sum
+    //i iterates over the vertices of A
+    for (int i = 0; i < 8; i++) {
+        //j iterates over the vertices of B
+        for (int j = 0; j < 8; j++) {
+            
+            //Calculate the point in the Minkowski sum
+            Point_3D Q = GNP_A.vertices[i] - GNP_B.vertices[j];
+            
+            //Check if Q is part of the simplex closest to the origin
+            if (abs(Q.dot(N)) - distance <= Zero) {
+                
+                //Q is at the same distance to the origin as the simplex in the Minkowski sum
+                //that is closest to the origin
+                //Thus, vertex i in GNP_A and vertex j in GNP_B are part of the simplices
+                //In those GNPs that are closest to each other
+                simplexA.push_back(i);
+                simplexB.push_back(j);
+                
+                //Add the vertex number into the corresponding sum variables
+                v_sumA = v_sumA + max(1,i);
+                v_sumB = v_sumB + max(1,j);
+            }
+        }
+    }
+    
+    return 1;
+}
+//This function finds the two points that define the junction between two GNPs
+//It is assumed that simplexA has less or the same number of vertices as simplexB
+//It is also assumed that the direction vector goes from GNP_A to GNP_B
+int Hoshen_Kopelman::Find_junction_points_in_gnps(const vector<int> &simplexA, const vector<int> &simplexB, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, const int &face_sumA, const int &face_sumB, Point_3D &PointA, Point_3D &PointB)
+{
+    //Find the case of determining the junction points
+    if (simplexA.size() == 1) {
+        
+        //Vertex in simplexA
+        int vA = simplexA[0];
+        
+        //PointA is the vertex in simplexA
+        PointA = GNP_A.vertices[vA];
+        
+        //Find PointB, depending on the size of simplexB
+        if (!Find_point_b_for_vertex_in_simplex_a(simplexB, GNP_B, N, distance, PointA, PointB)) {
+            hout<<"Error in Find_junction_points_in_gnps when calling Find_point_b_for_vertex_in_simplex_a"<<endl;
+            return 0;
+        }
+    }
+    else if (simplexA.size() == 2) {
+        
+        //Find PointB, depending on the size of simplexB
+        if (!Find_point_b_for_edge_in_simplex_a(simplexA, simplexB, face_sumB, GNP_A, GNP_B, N, distance, PointA, PointB)) {
+            hout<<"Error in Find_junction_points_in_gnps when calling Find_point_b_for_edge_in_simplex_a"<<endl;
+            return 0;
+        }
+    }
+    else if (simplexA.size() == 4) {
+        
+        //Find PointB, depending on the size of simplexB
+        if (!Find_point_b_for_face_in_simplex_a(simplexA, simplexB, face_sumA, face_sumB, GNP_A, GNP_B, N, distance, PointA, PointB)) {
+            hout<<"Error in Find_junction_points_in_gnps when calling Find_point_b_for_face_in_simplex_a"<<endl;
+            return 0;
+        }
+    }
+    else {
+        hout<<"Error in Find_junction_points_in_gnps: simplexA has an invalid size="<<simplexA.size()<<", it size must be 1, 2, or 4"<<endl;
+        return 0;
+    }
+    
+    //Set the flag of PointA
+    PointA.flag = GNP_A.flag;
+    
+    //Set the flag of PointB
+    PointB.flag = GNP_B.flag;
+    
+    return 1;
+}
+//This function finds the contact points when there is a vertex-vertex, vertex-edge or vertex-face contact
+int Hoshen_Kopelman::Find_point_b_for_vertex_in_simplex_a(const vector<int> &simplexB, const GNP &GNP_B, const Point_3D &N, const double &distance, const Point_3D &PointA, Point_3D &PointB)
+{
+    
+    //Find point B depending on the number of vertices in simplexB
+    if (simplexB.size() == 1) {
+        
+        //Vertex in simplexB
+        int vB = simplexB[0];
+        
+        //PointB is the vertex in simplexB
+        PointB = GNP_B.vertices[vB];
+    }
+    else if (simplexB.size() == 2 || simplexB.size() == 4) {
+        
+        //To find the projection on the edge or face in simplexB, I just need to move PointA
+        //towards the edge or face by the given distance and direction
+        PointB = PointA + N*distance;
+        
+    }
+    else {
+        hout<<"Error in Find_point_b_for_vertex_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 1, 2, or 4"<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//This function finds the contact points when there is an edge-edge or edge-face contact
+int Hoshen_Kopelman::Find_point_b_for_edge_in_simplex_a(const vector<int> &simplexA, const vector<int> &simplexB, const int &face_sum, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, Point_3D &PointA, Point_3D &PointB)
+{
+    
+    //Calculate the displacement from A to B
+    Point_3D disp = N*distance;
+    
+    //Move simplexA towards simplexB
+    Point_3D edgeA[] = {
+        GNP_A.vertices[simplexA[0]] + disp,
+        GNP_A.vertices[simplexA[1]] + disp
+    };
+    
+    //Find points A and B depending on the number of vertices in simplexB
+    if (simplexB.size() == 2) {
+        
+        //Find the midpoint of the intersection of the edges defined by the vertices in
+        //simplices A and B
+        
+        //Lambda function to calculate the lambda value of a point
+        auto calc_lambda = [](const double &x1, const double &x2, const double &x_new){
+            return ((x_new - x1)/(x2 - x1));
+        };
+        
+        //Calculate the lambdas of the vertices of the other edge
+        double lambda0 = calc_lambda(edgeA[0].x, edgeA[1].x, GNP_B.vertices[simplexB[0]].x);
+        double lambda1 = calc_lambda(edgeA[0].x, edgeA[1].x, GNP_B.vertices[simplexB[1]].x);
+        
+        //One of the lambdas will be in the range [0,1]
+        //The other will be either greater than 1 or less than 0
+        //Only if the two edges are perfectly overlappin, one lambda will be
+        //0 and the other 1, so also check for that case
+        if ( (abs(lambda0) < Zero && abs(lambda1 - 1) < Zero) ||
+             (abs(lambda1) < Zero && abs(lambda0 - 1) < Zero) ) {
+            
+            //If the edges are perfectly overlappig, just take the average of the vertices
+            PointB = (GNP_B.vertices[simplexB[0]] + GNP_B.vertices[simplexB[1]])/2;
+        }
+        if (lambda0 >= Zero && lambda0 - 1 <= Zero) {
+            
+            //Vertex 0 in simplexB is on the translated edgeA
+            
+            //Calculate point on translated edgeA
+            Point_3D S0 = edgeA[0] + (edgeA[1] - edgeA[0])*lambda0;
+            
+            //Define PointB based on the sign of lambda 1
+            PointB = (lambda1 < Zero)? (edgeA[0] + S0)/2 : (edgeA[1] + S0)/2;
+        }
+        else {
+            
+            //Vertex 1 in simplexB is on the translated edgeA
+            
+            //Calculate point on translated edgeA
+            Point_3D S1 = edgeA[0] + (edgeA[1] - edgeA[0])*lambda1;
+            
+            //Define PointB based on the sign of lambda 1
+            PointB = (lambda0 < Zero)? (edgeA[0] + S1)/2 : (edgeA[1] + S1)/2;
+        }
+        
+        //Calculate PointA by using the calculated displacement
+        PointA = PointB - disp;
+    }
+    else if (simplexB.size() == 4) {
+        
+        //Find centroid of the intersection of the faces defined by the vertices in
+        //simplices A and B
+        
+        //Get the edges and normals of simplexB
+        vector<Edge> edges(4);
+        vector<int> normals(4);
+        if (!Get_edges_of_face(face_sum, edges, normals)) {
+            hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Get_edges_of_face"<<endl;
+            return 0;
+        }
+        
+        //Variables to count the negative dot products
+        int countA0 = 0, countA1 = 0;
+        
+        //Vector to store the intersected edges
+        vector<int> intersected_edges;
+        
+        //Go though all edges of faceB and find the one that intersects the edgeA
+        for (int i = 0; i < 4; i++) {
+            
+            //Vertex 1 of current edge
+            int v1i = edges[i].v1;
+            
+            //Current normal
+            int Ni = normals[i];
+            
+            //Check in which side of the edge the two points are
+            int dotA0 = (edgeA[0] - GNP_B.vertices[v1i]).dot(GNP_B.faces[Ni].N) < Zero;
+            int dotA1 = (edgeA[1] - GNP_B.vertices[v1i]).dot(GNP_B.faces[Ni].N) < Zero;
+            
+            if (dotA0) {
+                //edgeA[0] is likely inside the face
+                countA0++;
+            }
+            if (dotA1) {
+                //edgeA[1] is likely inside the face
+                countA1++;
+            }
+            if (dotA0 != dotA1) {
+                
+                //edgeA[0] and edgeA[1] are on opposite sides of the edge
+                intersected_edges.push_back(i);
+            }
+        }
+        
+        //Check the case for calculating pointB
+        if (countA0 == 4 && countA1 == 4) {
+            
+            //Both vertices of edgeA are in the face of GNP_B
+            PointB = (edgeA[0] + edgeA[1])/2;
+            
+            //To calculate PointA, move PointB towards simplexA
+            PointA = PointB - disp;
+        }
+        else if (countA0 == 4) {
+            
+            //Only edgeA[0] is on the face of GNP_B
+            if (!Find_intersection_of_edges(intersected_edges, edges, edgeA[1], edgeA[0], GNP_B.vertices, disp, PointA, PointB)) {
+                hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Find_interseection_of_edges (1)"<<endl;
+                return 0;
+            }
+        }
+        else if (countA1 == 4) {
+            
+            //Only edgeA[1] is on the face of GNP_B
+            if (!Find_intersection_of_edges(intersected_edges, edges, edgeA[0], edgeA[1], GNP_B.vertices, disp, PointA, PointB)) {
+                hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Find_interseection_of_edges (2)"<<endl;
+                return 0;
+            }
+        }
+        else {
+            hout<<"Error in Find_point_b_for_edge_in_simplex_a: none of the two vertices of edgeA are in the face of GNP_B, countA1="<<countA0<<", countA2"<<countA1<<endl;
+            return 0;
+        }
+    }
+    else {
+        hout<<"Error in Find_point_b_for_edge_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 2 or 4"<<endl;
+        return 0;
+    }
+    return 1;
+}
+//This function generates the vector of edges and the vector of normals of a given GNP face
+int Hoshen_Kopelman::Get_edges_of_face(const int &face_sum, vector<Edge> &edges, vector<int> &normals)
+{
+    //Make the edges vector depending on the face
+    switch (face_sum) {
+        case 7:
+            edges[0].v1 = 0;
+            edges[0].v2 = 3;
+            edges[1].v1 = 0;
+            edges[1].v2 = 1;
+            edges[2].v1 = 1;
+            edges[2].v2 = 2;
+            edges[3].v1 = 2;
+            edges[3].v2 = 3;
+            normals[0] = 2;
+            normals[1] = 3;
+            normals[2] = 4;
+            normals[3] = 5;
+            break;
+        case 22:
+            edges[0].v1 = 4;
+            edges[0].v2 = 7;
+            edges[1].v1 = 4;
+            edges[1].v2 = 5;
+            edges[2].v1 = 5;
+            edges[2].v2 = 6;
+            edges[3].v1 = 6;
+            edges[3].v2 = 7;
+            normals[0] = 2;
+            normals[1] = 3;
+            normals[2] = 4;
+            normals[3] = 5;
+            break;
+        case 15:
+            edges[0].v1 = 0;
+            edges[0].v2 = 3;
+            edges[1].v1 = 3;
+            edges[1].v2 = 7;
+            edges[2].v1 = 7;
+            edges[2].v2 = 4;
+            edges[3].v1 = 0;
+            edges[3].v2 = 4;
+            normals[0] = 0;
+            normals[1] = 5;
+            normals[2] = 1;
+            normals[3] = 3;
+            break;
+        case 11:
+            edges[0].v1 = 1;
+            edges[0].v2 = 0;
+            edges[1].v1 = 0;
+            edges[1].v2 = 4;
+            edges[2].v1 = 4;
+            edges[2].v2 = 5;
+            edges[3].v1 = 5;
+            edges[3].v2 = 1;
+            normals[0] = 0;
+            normals[1] = 2;
+            normals[2] = 1;
+            normals[3] = 4;
+            break;
+        case 14:
+            edges[0].v1 = 1;
+            edges[0].v2 = 2;
+            edges[1].v1 = 2;
+            edges[1].v2 = 6;
+            edges[2].v1 = 6;
+            edges[2].v2 = 5;
+            edges[3].v1 = 5;
+            edges[3].v2 = 1;
+            normals[0] = 0;
+            normals[1] = 5;
+            normals[2] = 1;
+            normals[3] = 3;
+            break;
+        case 18:
+            edges[0].v1 = 2;
+            edges[0].v2 = 3;
+            edges[1].v1 = 3;
+            edges[1].v2 = 7;
+            edges[2].v1 = 7;
+            edges[2].v2 = 6;
+            edges[3].v1 = 6;
+            edges[3].v2 = 2;
+            normals[0] = 0;
+            normals[1] = 2;
+            normals[2] = 1;
+            normals[3] = 4;
+            break;
+        
+        default:
+            hout<<"Error in Get_edges_of_face. Invalid face number. Face number goes from 0 to 5. Input was "<<face_sum<<endl;
+            return 0;
+    }
+    
+    return 1;
+}
+//This function finds the intersection of and edge in GNP_A and the intersected line-edges of GNP_B
+int Hoshen_Kopelman::Find_intersection_of_edges(const vector<int> &intersected_edges, const vector<Edge> &edges, const Point_3D &P_out, const Point_3D &P_in, const Point_3D verticesB[], const Point_3D &disp, Point_3D &PointA, Point_3D &PointB)
+{
+    //Variable to store the lamda of edgeA
+    double lambda = -1.0;
+    
+    //Iterate over the intersected edges
+    for (int i = 0; i < (int)intersected_edges.size(); i++) {
+        
+        //Get the intersected edge in B
+        int e = intersected_edges[i];
+        
+        //Get the vertices in B
+        int v1 = edges[e].v1;
+        int v2 = edges[e].v2;
+        
+        //Calculate the new lambda
+        double new_lambda = Lambda_of_two_lines(P_in, P_out, verticesB[v1], verticesB[v2]);
+        
+        //Check if lambda needs updating
+        if (new_lambda > lambda) {
+            lambda = new_lambda;
+        }
+    }
+    
+    //Check that lambda is in the range [0,1]
+    if (lambda < Zero || lambda > 1.0) {
+        hout<<"Error in Find_intersection_of_edges: lambda is outside the range [0,1], lambda="<<lambda<<endl;
+        return 0;
+    }
+    
+    //Calculate the intersecting point using the largest lambda found
+    Point_3D I = P_out + (P_in - P_out)*lambda;
+    
+    //Calculate PointB as the average of the inside point and the intersection point
+    PointB = (P_in + I)/2;
+    
+    //Calculate PointA by moving PointB back towards A
+    PointA = PointB - disp;
+    
+    return 1;
+}
+//This function calcualtes the lambda value of the intersection of two lines defined by two points
+//The lambda value corresponds to the line equation defined by the two first points in
+//arguments of the function
+//Lmabda = 0 at P_out
+double Hoshen_Kopelman::Lambda_of_two_lines(const Point_3D &P_in, const Point_3D &P_out, const Point_3D &edge1, const Point_3D &edge2)
+{
+    //Calculate det(A)
+    double detA = (edge2.x - edge1.x)*(P_in.y - P_out.y)
+    - (P_in.x - P_out.x)*(edge2.y - edge1.y);
+    
+    //Calcualte det(A_lambda_P)
+    double detAP = (edge2.x - edge1.x)*(edge1.y - P_out.y)
+    - (edge1.x - P_out.x)*(edge2.y - edge1.y);
+    
+    //Calculate the lambda value
+    return detAP/detA;
+}
+//This function finds the contact points when there is a face-face contact
+int Hoshen_Kopelman::Find_point_b_for_face_in_simplex_a(const vector<int> &simplexA, const vector<int> &simplexB, const int &face_sumA, const int &face_sumB, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, Point_3D &PointA, Point_3D &PointB)
+{
+    //Check the size of simplexB
+    if (simplexB.size() == 4) {
+        
+        //Find the projection of PointA in the surface defined by the four vertices in simplexB
+        
+        //Get the vertices and normals from simplexB
+        vector<Edge> edgesB(4);
+        vector<int> normalsB(4);
+        if (!Get_edges_of_face(face_sumB, edgesB, normalsB)) {
+            hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Get_edges_of_face B"<<endl;
+            return 0;
+        }
+        
+        //Get the vertices in A that are inside or in the boundary of B
+        vector<int> verticesA_inside;
+        if (!Get_vertices_inside_face(simplexA, edgesB, normalsB, GNP_A, GNP_B, verticesA_inside)) {
+            hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Get_vertices_inside_face B"<<endl;
+            return 0;
+        }
+        
+        //Check if the four vertices of A were added to the vector of vertices
+        if (verticesA_inside.size() == 4) {
+            
+            //Faces of GNP_A and GNP_B are perfectly aligned and oriented
+            
+            //Set point A and B to zero
+            PointA.set(0, 0, 0);
+            PointB.set(0, 0, 0);
+            
+            //Get the average point of each GNP face in contact
+            for (int k = 0; k < (int)simplexB.size(); k++) {
+                
+                //Get vertex in A and add it to PointA
+                int vA = simplexA[k];
+                PointA = PointA + GNP_A.vertices[vA];
+                
+                //Get vertex in B and add it to PointB
+                int vB = simplexB[k];
+                PointB = PointB + GNP_B.vertices[vB];
+            }
+            
+            //Calcualte the averages
+            PointA = PointA/4;
+            PointB = PointB/4;
+        }
+        //If not all vertices of A are on face B, then get the vertices of B on face A
+        else {
+            
+            //Get the vertices and normals from simplexA
+            vector<Edge> edgesA(4);
+            vector<int> normalsA(4);
+            if (!Get_edges_of_face(face_sumA, edgesA, normalsA)) {
+                hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Get_edges_of_face A"<<endl;
+                return 0;
+            }
+            
+            //Get the vertices in B that are inside or in the boundary of A
+            vector<int> verticesB_inside;
+            if (!Get_vertices_inside_face(simplexB, edgesA, normalsA, GNP_B, GNP_A, verticesB_inside)) {
+                hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Get_vertices_inside_face A"<<endl;
+                return 0;
+            }
+            
+            //Calcualte the displacement
+            Point_3D disp = N*distance;
+            
+            //Check the case when only one vertex is inside the other face
+            if (verticesA_inside.size() == 0 && verticesB_inside.size() == 1) {
+                
+                //Initialize PointB with the vertes inside face A
+                PointB = GNP_B.vertices[verticesB_inside[0]];
+                
+                //Find intersections with edge in A and get average PointA
+                if (!Average_point_with_two_interserctions(edgesA, normalsA, GNP_A, edgesB, normalsB, GNP_B, disp, verticesB_inside[0], PointB)) {
+                    hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Average_point_with_two_interserctions (1)"<<endl;
+                    return 0;
+                }
+                
+                //Move B towards A to obtain the point in A
+                PointA = PointB - disp;
+            }
+            else if (verticesA_inside.size() == 1 && verticesB_inside.size() == 0) {
+                
+                //Initialize PointA with the vertes inside face B
+                PointA = GNP_A.vertices[verticesA_inside[0]];
+                
+                //Find intersections with edge in B and get average PointB
+                if (!Average_point_with_two_interserctions(edgesB, normalsB, GNP_B, edgesB, normalsB, GNP_B, disp*(-1.0), verticesA_inside[0], PointA)) {
+                    hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Average_point_with_two_interserctions (2)"<<endl;
+                    return 0;
+                }
+                
+                //Move A towards B to obtain the point in B
+                PointB = PointA + disp;
+            }
+            else {
+                
+                //Set B to zero
+                PointB.set(0, 0, 0);
+                
+                //Add displaced vertices of A inside B
+                for (int k = 0; k < (int)verticesA_inside.size(); k++) {
+                    
+                    //Get vertex in A
+                    int vA = verticesA_inside[k];
+                    
+                    //Add the displaced vertex in A
+                    PointB = PointB + GNP_A.vertices[vA] + disp;
+                }
+                
+                //Add vertices in B
+                for (int k = 0; k < (int)verticesB_inside.size(); k++) {
+                    
+                    //Get vertex in B
+                    int vB = verticesB_inside[k];
+                    
+                    //Add the vertex in B
+                    PointB = PointB + GNP_B.vertices[vB];
+                }
+                
+                //Get the number of vertices averaged as a double
+                double n_vertices = (double)(verticesA_inside.size() + verticesB_inside.size());
+                
+                //Get the average
+                PointB = PointB/n_vertices;
+                
+                //Calculate PointA by displacing B back towards A
+                PointA = PointB - disp;
+            }
+        }
+    }
+    else {
+        hout<<"Error in Find_point_b_for_face_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 4"<<endl;
+        return 0;
+    }
+    
+    
+    return 1;
+}
+//This function finds the vertices that are contained on a face
+int Hoshen_Kopelman::Get_vertices_inside_face(const vector<int> &simplexA, const vector<Edge> &edgesB, const vector<int> &normalsB, const GNP &GNP_A, const GNP &GNP_B, vector<int> &verticesA_inside)
+{
+    
+    //Iterate over the vertices in simplexA
+    for (int j = 0; j < (int)simplexA.size(); j++) {
+        
+        //Get current vertex of simplexA
+        int vA = simplexA[j];
+        
+        //Variable to count the negative dot products
+        int count = 0;
+        
+        //Iterate over the edges of simplexB and count the negative and zero dot products
+        for (int i = 0; i < (int)edgesB.size(); i++) {
+            
+            //Get the current normal of edge i on B
+            int Nb = normalsB[i];
+            
+            //Get vertex 1 of edge i on B
+            int v1B = edgesB[i].v1;
+            
+            //Check if the dot product is negative or zero
+            if ((GNP_A.vertices[vA] - GNP_B.vertices[v1B]).dot(GNP_B.faces[Nb].N) < Zero) {
+                
+                //Increase the count for vertex j in A
+                count++;
+            }
+        }
+        
+        //If vertex j is inside B, add it to the vector of vertices
+        if (count == 4) {
+            verticesA_inside.push_back(vA);
+        }
+    }
+    
+    //Make sure at least one vertex is inside or at the boundary
+    if (verticesA_inside.empty()) {
+        hout<<"Error in Get_vertices_inside_face, no vertices inside face. If two faces are in contact, at least one vertex of each face should be \"inside\" the other face"<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//In the case of a single vertex being inside the face of the other GNP, this function
+//finds two intersections with an edge and averages them with the vertex inside the face
+//Here, A is the face that contains vertex vB of B
+int Hoshen_Kopelman::Average_point_with_two_interserctions(const vector<Edge> &edgesA, const vector<int> &normalsA, const GNP &gnpA, const vector<Edge> &edgesB, const vector<int> &normalsB, const GNP &gnpB, const Point_3D &disp, const int &vB, Point_3D &PB)
+{
+    //Variable to store the vertices of B
+    int vrtB[] = {0,0};
+    int it = 0;
+    
+    //Go through all edges in B and find the edges that intersect an edge in face A
+    for (int i = 0; i < (int)edgesB.size(); i++) {
+        
+        //Check if edge i in B contains vertex vB
+        if (edgesB[i].v1 == vB) {
+            vrtB[it] = edgesB[i].v2;
+            it++;
+        }
+        else if (edgesB[i].v2 == vB) {
+            vrtB[it] = edgesB[i].v1;
+            it++;
+        }
+    }
+    
+    //Variable to store the intersected edge
+    int v1A = 0;
+    int v2A = -1;
+    
+    //Iterate over the edges in A to find the intersected edge
+    for (int i = 0; i < (int)edgesA.size(); i++) {
+        
+        //Get vertex 1 of current edge
+        v1A = edgesA[i].v1;
+        
+        //Get the current normal
+        int NA = normalsA[i];
+        
+        //Check the sign of the dot products
+        if ((gnpB.vertices[vrtB[0]] - gnpA.vertices[v1A]).dot(gnpA.faces[NA].N) > Zero &&
+            (gnpB.vertices[vrtB[1]] - gnpA.vertices[v1A]).dot(gnpA.faces[NA].N) > Zero) {
+            
+            //If both dot product are positive, then edge i on A
+            v2A = edgesA[i].v2;
+            
+            //Break the loop as it is not necessary to continue searching for the edge
+            break;
+        }
+    }
+    
+    //Just a check, make sure i_ed is not -1
+    if (v2A == -1) {
+        hout<<"Error in Average_point_with_two_interserctions: i_ed was not updated"<<endl;
+        return 0;
+    }
+    
+    //Find the two lambdas
+    //Move the vertices of A towards B
+    double lambda0 = Lambda_of_two_lines(PB, gnpB.vertices[vrtB[0]], gnpA.vertices[v1A] - disp, gnpA.vertices[v2A] - disp);
+    double lambda1 = Lambda_of_two_lines(PB, gnpB.vertices[vrtB[1]], gnpA.vertices[v1A] - disp, gnpA.vertices[v2A] - disp);
+    
+    //Add the two intersection points to PB
+    PB = PB + (gnpB.vertices[vrtB[0]] + (PB - gnpB.vertices[vrtB[0]])*lambda0);
+    PB = PB + (gnpB.vertices[vrtB[1]] + (PB - gnpB.vertices[vrtB[1]])*lambda1);
+    
+    //Take the average PB
+    PB = PB/3.0;
+    
+    return 1;
+}
+//This function merges CNT and GNP labels to make mixed clusters
+int Hoshen_Kopelman::Make_mixed_clusters(const int &n_labels, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, vector<int> &labels_cnt, vector<int> &labels_gnp, vector<Point_3D> &points_gnp, int &n_clusters)
+{
+    //Vector to store all GNP points in contact with CNTs before contact segments are compressed
+    vector<Point_3D> contact_points_gnp;
+    
+    //Variables needed to compress contac segments
+    map<long int, map<int, long int> > point_contacts;
+    map<long int, map<int, double> > point_contacts_dist;
+    vector<map<int, set<long int> > > gnp_cnt_point_contacts(gnps.size());
+    
+    //Adjacency matrix used to meger CNT and GNP clusters
+    vector<set<int> > adj_labels(n_labels);
+    
+    //Fill the adjacency matrix and the variables needed to compress contact segments
+    if (!Find_adjacent_labels(labels_cnt, labels_gnp, cutoffs, points_in, radii, sectioned_domain_cnt, gnps, sectioned_domain_gnp, contact_points_gnp, point_contacts, point_contacts_dist, gnp_cnt_point_contacts, adj_labels)) {
+        hout<<"Error in Make_mixed_clusters when calling Find_adjacent_labels"<<endl;
+        return 0;
+    }
+    
+    //Compress contacts
+    if (!Compress_mixed_contacts(cutoffs, point_contacts, point_contacts_dist, gnp_cnt_point_contacts, contact_points_gnp, points_gnp)) {
+        hout<<"Error in Make_mixed_clusters when calling Compress_mixed_contacts"<<endl;
+        return 0;
+    }
+    
+    //Merge labels
+    if (!Merge_cnt_and_gnp_labels(n_labels, labels_cnt, labels_gnp, adj_labels, n_clusters)) {
+        hout<<"Error in Make_mixed_clusters when calling Merge_labels"<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//This function finds the CNTs in contact with GNPs, then an adjacency matrix is filled to
+//merge the CNT and GNP clusters
+int Hoshen_Kopelman::Find_adjacent_labels(const vector<int> &labels_cnt, const vector<int> &labels_gnp, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, vector<Point_3D> &contact_points_gnp, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &gnp_cnt_point_contacts, vector<set<int> > &adj_labels)
+{
+    //Create a vector of visited contacts
+    vector<set<long int> > visited(gnps.size());
+    
+    //Use a Generate_Network object to calcualte the distance between a CNT point and a GNP
+    Generate_Network GN;
+    
+    //Iterate over the subregions
+    for (int i = 0; i < (int)sectioned_domain_gnp.size(); i++) {
+        
+        //Iterate over the GNPs in the given subregion
+        for (int j = 0; j < (int)sectioned_domain_gnp[i].size(); j++) {
+            
+            //Get the current GNP
+            int GNP = sectioned_domain_gnp[i][j];
+            
+            //Itereate over the points in the given subregion
+            for (int k = 0; k < (int)sectioned_domain_cnt[i].size(); k++) {
+                
+                //Get current point
+                long int P = sectioned_domain_cnt[i][k];
+                
+                //Get current CNT
+                int CNT = points_in[P].flag;
+                
+                //Check if the GNP-CNT contact at point P has already been visited
+                if (visited[GNP].find(P) != visited[GNP].end()) {
+                    
+                    //The GNP-CNT contact has not been visited, so calculate the distance
+                    //between CNT point and GNP
+                    double dist_junc;
+                    Point_3D P_gnp = GN.Get_gnp_point_closest_to_point(gnps[GNP], points_in[P], dist_junc);
+                    
+                    //Check if there is tunneling
+                    if (dist_junc <= radii[CNT] + cutoffs.tunneling_dist) {
+                        
+                        //Get the GNP point number
+                        long int P_gnp_num = (long int)contact_points_gnp.size();
+                        
+                        //Save the correspoding point contacts
+                        point_contacts[P][GNP] = P_gnp_num;
+                        
+                        //Save the junction distance
+                        point_contacts_dist[P][GNP] = dist_junc;
+                        
+                        //Add the point to the vector of GNP points
+                        contact_points_gnp.push_back(P_gnp);
+                        
+                        //Add the CNT point to the GNP-CNT contact
+                        gnp_cnt_point_contacts[GNP][CNT].insert(P);
+                        
+                        //Get the CNT and GNP labels
+                        int l_cnt = labels_cnt[CNT];
+                        int l_gnp = labels_gnp[GNP];
+                        
+                        //Fill the adjacency matrix for the labels
+                        adj_labels[l_cnt].insert(l_gnp);
+                        adj_labels[l_gnp].insert(l_cnt);
+                        
+                        //Add the contact to the vector of visited contacts
+                        visited[GNP].insert(P);
+                    }
+                }
+            }
+        }
+    }
+    
+    return 1;
+}
+//This function compresses the "contact segments" for CNT-CNT contacts
+int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &gnp_cnt_point_contacts, const vector<Point_3D> &contact_points_gnp, vector<Point_3D> &points_gnp)
+{
+    //Iterate over all GNPs
+    for (int i = 0; i < (int)gnp_cnt_point_contacts.size(); i++) {
+        
+        //Just for clarity in the following, create a variable for the current GNP
+        int GNPi = i;
+        
+        //Check if GNPi has contacts with any CNT
+        if (!gnp_cnt_point_contacts[GNPi].empty()) {
+            
+            //Iterate over all CNTs in contact with GNPi
+            for (map<int, set<long int> >::const_iterator i_map = gnp_cnt_point_contacts[GNPi].begin(); i_map != gnp_cnt_point_contacts[GNPi].end(); i_map++) {
+                
+                //Get the CNT number in contact with GNPi
+                int CNTj = i_map->first;
+                
+                //Start the iterator at the beginning of the set
+                set<long int>::const_iterator i_set = i_map->second.begin();
+                
+                //Get the initial point on the CNT in contact with the GNP
+                long int Pj0 = *i_set;
+                
+                //Get the intial point on the GNP in contact with the CNT
+                long int Pi0 = point_contacts.at(Pj0).at(GNPi);
+                
+                //Get the initial junction distance
+                long int d_junction = point_contacts_dist.at(Pj0).at(GNPi);
+                
+                //Variables to store the "compress" contact segment
+                long int Pi_junc = Pi0, Pj_junc = Pj0;
+                double d_junc_min = d_junction;
+                
+                //Iterate over the points in CNTj in contact with GNPi and compress segements
+                for (i_set++; i_set != i_map->second.end(); i_set++) {
+                    
+                    //Get the point in CNTj
+                    long int Pj1 = *i_set;
+                    
+                    //Get the point in GNPi
+                    long int Pi1 = point_contacts.at(Pj1).at(GNPi);
+                    
+                    //Get the junction distance
+                    d_junction = point_contacts_dist.at(Pj1).at(GNPi);
+                    
+                    //Check if the points are close enough to be in the same segment
+                    if (Pj1 - Pj0 >= cutoffs.min_points) {
+                        
+                        //A new segment needs to be started
+                        //But first, "compress" the previous segment
+                        
+                        //Get the actual GNP point number
+                        long int P_gnp_num = (long int)points_gnp.size();
+                        
+                        //Add the GNP point from the vector of GNP contact points
+                        points_gnp.push_back(contact_points_gnp[Pi_junc]);
+                        
+                        //Set the flag of the point
+                        points_gnp.back().flag = GNPi;
+                        
+                        //Add the shortest junction found to the vector of junctions
+                        Junction j(Pj_junc, "CNT", P_gnp_num, "GNP", d_junc_min);
+                        junctions.push_back(j);
+                        
+                        //Add the junction point on the CNT to the vectors of elements
+                        elements_cnt[CNTj].insert(Pj_junc);
+                        
+                        //Start the new segment by resetting the variables to the values
+                        //of the junction that starts the new segment
+                        d_junc_min = d_junction;
+                        Pi_junc = Pi1;
+                        Pj_junc = Pj1;
+                    }
+                    else {
+                        
+                        //Current contact is part of the same segment
+                        //Check if junction distance and points in contact need updating
+                        //Keep the points with the shortest junction distance since this
+                        //is the path of lowest electrical resistance
+                        if (d_junction < d_junc_min) {
+                            
+                            //A shorter distance was found, so update the variables for
+                            //the junction for the compressed contact segment
+                            d_junc_min = d_junction;
+                            Pi_junc = Pi1;
+                            Pj_junc = Pj1;
+                        }
+                    }
+                }
+                
+                //"Compress" the last (or only) segment
+                
+                //Get the actual GNP point number
+                long int P_gnp_num = (long int)points_gnp.size();
+                
+                //Add the GNP point from the vector of GNP contact points
+                points_gnp.push_back(contact_points_gnp[Pi_junc]);
+                
+                //Set the flag of the point
+                points_gnp.back().flag = GNPi;
+                
+                //Add the shortest junction found in the last (or only) segment
+                //to the vector of junctions
+                Junction j(Pj_junc, "CNT", P_gnp_num, "GNP", d_junc_min);
+                junctions.push_back(j);
+                
+                //Add the junction point on the CNT to the vectors of elements
+                elements_cnt[CNTj].insert(Pj_junc);
+            }
+        }
+    }
+    
+    return 1;
+}
+//This function merges the labels using DFS and then renumbers the CNT and GNP labels with
+//the merged label numbers
+int Hoshen_Kopelman::Merge_cnt_and_gnp_labels(const int &n_labels, vector<int> &labels_cnt, vector<int> &labels_gnp, const vector<set<int> > &adj_labels, int &n_clusters)
+{
+    //Label map for merging CNT and GNP labels
+    vector<int> label_map(n_labels);
+    
+    //Perform a DFS on the adjacency matrix of the labels
+    vector<vector<int> > mixed_clusters;
+    if (!DFS_on_labels(n_labels, adj_labels, mixed_clusters)) {
+        hout<<"Error in Merge_labels when calling DFS_on_labels"<<endl;
+        return 0;
+    }
+    
+    //The number of clusters is equal to the size of mixed_clusters
+    n_clusters = (int)mixed_clusters.size();
+    
+    //Fill the map for the merged labels
+    for (int i = 0; i < (int)mixed_clusters.size(); i++) {
+        
+        //Iterate over all labels in mixed cluster i
+        for (int j = 0; j < (int)mixed_clusters[i].size(); j++) {
+            
+            //Get the current label of cluster i
+            int label = mixed_clusters[i][j];
+            
+            //Set the label map as label->i
+            label_map[label] = i;
+        }
+    }
+    
+    //Renumber the CNT labels with the merged labels using label_map
+    if (!Map_labels(label_map, labels_cnt)) {
+        hout<<"Error in Merge_labels when calling Map_labels (CNTs)"<<endl;
+        return 0;
+    }
+    
+    //Renumber the GNP labels with the merged labels using label_map
+    if (!Map_labels(label_map, labels_gnp)) {
+        hout<<"Error in Merge_labels when calling Map_labels (GNPs)"<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//This function performs DFS on the adjacency matrix of labels to group the CNT and GNP labels
+//that are part of the same cluster of mixed particles
+int Hoshen_Kopelman::DFS_on_labels(const int &n_labels, const vector<set<int> > &adj_labels, vector<vector<int> > &mixed_clusters)
+{
+    //Set up the vector of visited labels fo the DFS
+    vector<int> visited_labels(n_labels, 0);
+    
+    //Iterate over the labels
+    for (int i = 0; i < n_labels; i++) {
+        
+        //Check if label i has already been visited
+        if (!visited_labels[i]) {
+            
+            //Set label i as visited
+            visited_labels[i] = 1;
+            
+            //Increase the size of the vector of mixed clusters to start a new cluster
+            mixed_clusters.push_back(vector<int>());
+            
+            //Add label i to the new cluster
+            mixed_clusters.back().push_back(i);
+            
+            //Explore all labels connected to label i
+            if (!Explore_labels(i, adj_labels, mixed_clusters, visited_labels)) {
+                hout<<"Error in Explore_labels when calling Explore_labels recursively"<<endl;
+                return 0;
+            }
+        }
+    }
+    
+    return 1;
+}
+int Hoshen_Kopelman::Explore_labels(const int &label, const vector<set<int> > &adj_labels, vector<vector<int> > &mixed_clusters, vector<int> &visited_labels)
+{
+    //Go through the labels connected to "label"
+    for (set<int>::const_iterator it = adj_labels[label].begin(); it != adj_labels[label].end(); it++) {
+        
+        //Get current label
+        int new_label = *it;
+        
+        //Check if the connected label has been visited
+        if (!visited_labels[new_label]) {
+            
+            //The label has not been visited, so set it as visited
+            visited_labels[new_label] = 1;
+            
+            //new_label is part of the current mixed cluster, so add it to the last mixed cluster
+            mixed_clusters.back().push_back(new_label);
+            
+            //Explore the labels connected to new_label
+            if (!Explore_labels(new_label, adj_labels, mixed_clusters, visited_labels)) {
+                hout<<"Error in Explore_labels when calling Explore_labels recursively"<<endl;
+                return 0;
+            }
+        }
+    }
+    
+    return 1;
+}
+int Hoshen_Kopelman::Map_labels(const vector<int> label_map, vector<int> &labels)
+{
+    //Renumber the labels with the merged labels using label_map
+    for (int i = 0; i < (int)labels.size(); i++) {
+        
+        //Check if CNT i has a label assigned
+        if (labels[i] != -1) {
+            
+            //For clarity, get the old label of CNT i
+            int old_label = labels[i];
+            
+            //Get the new label number using label_map
+            int new_label = label_map[old_label];
+            
+            //Assign the new label to the CNT
+            labels[i] = new_label;
+        }
+    }
+    
+    return 1;
+}
+//In this function the clusters are made using the labels assugned by HK76
+int Hoshen_Kopelman::Make_particle_clusters(const int &n_clusters, const vector<int> &particles_inside, vector<int> &labels, vector<vector<int> > &isolated, vector<vector<int> > &clusters_particles)
+{
+    //Assing the correct size to the vector of clusters and the vector of isolated particles:
+    //the number of clusters is the same as the number of proper labels
+    clusters_particles.assign(n_clusters, vector<int>());
+    isolated.push_back(vector<int>());
+    
+    //Now scan the vector of particles_inside. Check the label of each particle to make the clusters.
+    for (int i = 0; i < (int)particles_inside.size(); i++) {
+        
+        //Get the current particle
+        int particle = particles_inside[i];
+        
+        //Get the label of the current particle
+        int L = labels[particle];
+        
+        //If a label L is -1, it means that particle is isolated
+        //At this point "isolated" means that the particle is not part of any cluster
+        //Only when L is diffenrent form -1, particle_i belongs to a cluster
+        if (L != -1){
+            
+            //At this point, labels are consecutive and starting from 0
+            //and thus the label indicates the cluster number
+            clusters_particles[L].push_back(particle);
+        } else {
+            
+            //Add isolated CNTs to the last elment in the vector of isolated particles
+            isolated.back().push_back(particle);
+        }
+    }
+    
+    return 1;
 }
 //Function for the Hoshen-Kopelman (HK76) algorithm only
 //It is assumed that this function is used only when a contact is found. Otherwise the results will be wrong and probably one cluster with all CNTs will be generated
@@ -362,132 +1673,135 @@ int Hoshen_Kopelman::Merge_labels(const int &root1, const int &root2, vector<int
     
     return 1;
 }
-//This function scans all the subregions to look for points close enough for tunneling to happen, i.e. points that are in contact.
-//When points are in contact use the Hoshen-Kopelman algorithm
-int Hoshen_Kopelman::Scan_sub_regions_gnp(const vector<Point_3D> &points_gnp, const vector<GCH> &hybrid_particles, const double &tunnel, const vector<vector<long int> > &sectioned_domain_gnp)
+//============================================================================================
+//============================================================================================
+//============================================================================================
+//This function finds all the contacts between a CNT and a GNP, however it keeps only those contacts
+//close enough to each other that form a "contact segment"
+//Also, GNP points for the junctions are calculated and added to the vector of GNP points
+int Hoshen_Kopelman::Find_contact_points_between_cnt_and_gnp(const Generate_Network &GN, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_in, const double &radius, const vector<long int> &cnt, const GNP &gnp, vector<Point_3D> &points_gnp)
 {
-    //These ints are just to store the global point number and the CNTs they belong to.
-    //They are just intermediate variables and I only use them to make the code more readable
-    long int P1, P2;
-    int GNP1, GNP2;
-    //Temporary vector of int's to store the contact pair
-    vector<long int> empty;
-    vector<int> empty_int;
+    //Point on GNP in contact with CNT
+    Point_3D P_gnp;
     
-    //Initialize the matrices that save the contacts between GNPs
-    vector<vector<long int> > point_matrix;
-    vector<vector<double> > distance_matrix;
+    //Variable to store the junction distance that will be kept for the compressed contact
+    double dist_junc = 0;
     
-    if (!Initialize_contact_matrices((int)hybrid_particles.size(), point_matrix, distance_matrix)) {
-        hout << "Error in Scan_sub_regions_gnp when calling Initialize_contact_matrices" << endl;
-        return 0;
-    }
+    //Point for the compressed contact on the GNP
+    Point_3D P_junc_gnp(0,0,0);
     
-    //Initialize the variables for the labels. The size of the vector labels has to be equal to the number of CNTs
-    //It is initialized to -1 so if there is a bug in the code, there is going to be an error when using the -1 as an index
-    labels_gnp.assign(hybrid_particles.size(), -1);
+    //Point number for the compressed contact on the GNP
+    long int P_junct_cnt = 0;
     
-    //new_label will take the value of the newest cluster
-    int new_label = 0;
+    //Last tunneling point
+    long int last_tun = -1;
     
-    //Scan every overlapping sub-region
-    for (long int i = 0; i < (long int)sectioned_domain_gnp.size(); i++) {
-        long int inner = (long int)sectioned_domain_gnp[i].size();
-        for (long int j = 0; j < inner-1; j++) {
-            P1 = sectioned_domain_gnp[i][j];
-            GNP1 = points_gnp[P1].flag;
-            for (long int k = j+1; k<inner; k++) {
-                P2 = sectioned_domain_gnp[i][k];
-                GNP2 = points_gnp[P2].flag;
-                //If distance below the cutoff and points belong to different CNT
+    //Variable to save the start of a "contact segment"
+    long int segment_start = -1;
+    
+    //Iterate over all points of the CNT
+    for (long int P = cnt[0]; P <= cnt.back(); P++) {
+        
+        //Variable to store the new distance
+        double new_dist;
+        
+        //Calculate distance and projection on GNP
+        P_gnp = GN.Get_gnp_point_closest_to_point(gnp, points_in[P], new_dist);
+        
+        //Check if there is tunneling
+        if (new_dist <= radius + cutoffs.tunneling_dist) {
+            
+            //There is tunneling, check if the current tunneling point is part of the
+            //previous "contact segment" or a new one is started
+            if (last_tun == -1 || P - last_tun > cutoffs.min_points) {
                 
-                //Check if the GNPs are different
-                //Only when the GNPs are different it is worth to do the rest of computations
-                if (GNP1 != GNP2) {
+                //This contact point starts a new "contact segment" because it is
+                //either the first tunneling point or the previous tunneling
+                //point is too far
+                
+                //Check if there is a previous "contact segment"
+                if (segment_start != -1) {
                     
-                    //Map P2 to the local coordinates of GNP1
-                    Point_3D demapped = Demap_gnp_point(hybrid_particles[GNP1], points_gnp[P2]);
+                    //"Compress" the segment
                     
-                    //Check if the point is inside the GNP bounding box that determines contact
-                    if ( Judge_point_inside_bounding_box(hybrid_particles[GNP1].gnp, demapped, tunnel) ) {
+                    //Check if the junction distance needs one last updating
+                    //If so, also the junction points on the GNP and CNT need to be updated
+                    if (new_dist < dist_junc) {
                         
-                        //If the point of GNP2 is inside the GNP1 bounding box, then the GNPs are in contact
-                        
-                        //Identify the GNP with the largest number, this will be the row
-                        //The GNP with the lowest number will be the column
-                        int row, column;
-                        if (GNP1 < GNP2) {
-                            row = GNP2;
-                            column = GNP1;
-                        } else {
-                            row = GNP1;
-                            column = GNP2;
-                        }
-                        
-                        //Calculate the distance between the points in contact
-                        double distance = points_gnp[P1].squared_distance_to(points_gnp[P2]);
-                        
-                        //hout <<"P1="<<P1<<" GNP1="<<GNP1<<" P2="<<P2<<" GNP2="<<GNP2;
-                        //hout <<" row="<<row<<" col="<<column<<endl;
-                        //hout <<"point_matrix.s="<<point_matrix.size()<<endl;
-                        //hout <<"point_matrix[GNP1].s="<<point_matrix[GNP1].size()<<endl;
-                        //hout <<"point_matrix[GNP2].s="<<point_matrix[GNP2].size()<<endl;
-                        
-                        //Check if the distance between points is smaller than the one in the distance_matrix
-                        if (distance < distance_matrix[row][column]) {
-                            
-                            //If the distance is smaller than the one in the distance matrix, take this pair of points as the contact
-                            point_matrix[GNP1][GNP2] = P1; //Point on GNP1 in contact with GNP2
-                            point_matrix[GNP2][GNP1] = P2; //Point on GNP2 in contact with GNP1
-                            
-                            //Update the squared distance
-                            distance_matrix[row][column] = distance;
-                        }
-                        
-                        //Here is where the actual HK76 algorithm takes place
-                        if (!HK76(GNP1, GNP2, new_label, labels_gnp, labels_labels_gnp)) {
-                            hout << "Error in Scan_sub_regions_gnp when calling HK76" << endl;
-                            return 0;
-                        }
+                        //Update distance and points
+                        dist_junc = new_dist;
+                        P_junc_gnp = P_gnp;
+                        P_junct_cnt = P;
                     }
+                    
+                    //Update the flag of the GNP junction point and add it to the vector of GNP points
+                    P_junc_gnp.flag = gnp.flag;
+                    points_gnp.push_back(P_junc_gnp);
+                    
+                    //Create a CNT-GNP junction
+                    Junction j(P_junct_cnt, "CNT", (long int)points_gnp.size()-1, "GNP", dist_junc);
+                    
+                    //Add the junction to the vector of junctions
+                    junctions.push_back(j);
+                    
+                    //Add the CNT point to the vector of elements
+                    elements_cnt[points_in[P_junct_cnt].flag].insert(P_junct_cnt);
+                }
+                
+                //Set the segment_start to the current point
+                segment_start = P;
+                
+                //Set the current distance as the junction distance
+                dist_junc = new_dist;
+                
+                //Set the current GNP point as the GNP point for the junction
+                P_junc_gnp = P_gnp;
+                
+                //Set the current CNT point as the CNT point for the junction
+                P_junct_cnt = P;
+            }
+            else {
+                
+                //This contact point is merged with the previous one (if any),
+                
+                //Check if the junction distance needs updating
+                //If so, also the junction points on the GNP and CNT need to be updated
+                if (new_dist < dist_junc) {
+                    
+                    //Update distance and points
+                    dist_junc = new_dist;
+                    P_junc_gnp = P_gnp;
+                    P_junct_cnt = P;
                 }
             }
+            
+            //Update the last tunneling point
+            last_tun = P;
         }
     }
     
-    //Create the vector of GNP contacts
-    if (!Create_vector_of_gnp_contacts(point_matrix)) {
-        hout << "Error in Scan_sub_regions_gnp when calling Create_vector_of_gnp_contacts" << endl;
-        return 0;
-    }
-    
-    //Clean up the labels to find the proper labels, i.e. merged and consecutive labels starting at 0
-    if (!Cleanup_labels(labels_gnp, labels_labels_gnp)) {
-        hout << "Error in Scan_sub_regions_gnp when calling Cleanup_labels" << endl;
-        return 0;
-    }
-    return 1;
-}
-//This function initializes two contact matrices, one will keep the point numbers of the contacts adn the other the distances
-//The point_matrix needs to be squared to keep the points of contact on each GNP
-//The distance matrix can be lower triangular because distance from P1 to P2 is the same as the ditance from P2 to P1
-int Hoshen_Kopelman::Initialize_contact_matrices(const int &n_GNPs, vector<vector<long int> > &point_matrix, vector<vector<double> > &distance_matrix)
-{
-    //vectors to increase the size of the matrices
-    vector<long int> tmp_int(n_GNPs,-1);
-    vector<double> tmp_double;
-    
-    for (int i = 0; i < n_GNPs; i++) {
-        //Add the row for GNP i
-        point_matrix.push_back(tmp_int);
-        distance_matrix.push_back(tmp_double);
+    //Check if there is a segment that needs to be compressed
+    if (segment_start != -1) {
         
-        //Add one column to the distance_matrix
-        tmp_double.push_back(1.0);
+        //"Compress" the last (or only) segment of the CNT
+        
+        //Update the flag of the GNP junction point and add it to the vector of GNP points
+        P_junc_gnp.flag = gnp.flag;
+        points_gnp.push_back(P_junc_gnp);
+        
+        //Create a CNT-GNP junction
+        Junction j(P_junct_cnt, "CNT", (long int)points_gnp.size()-1, "GNP", dist_junc);
+        
+        //Add the junction to the vector of junctions
+        junctions.push_back(j);
+        
+        //Add the CNT point to the vector of elements
+        elements_cnt[points_in[P_junct_cnt].flag].insert(P_junct_cnt);
     }
     
     return 1;
 }
+//Deprecated:
 //This function maps a point to the local coordinates of a GNP
 //It is asummed the center of coordinates is located at the GNP center
 Point_3D Hoshen_Kopelman::Demap_gnp_point(const GCH &hybrid, const Point_3D &point_gnp2)
@@ -508,671 +1822,3 @@ Point_3D Hoshen_Kopelman::Demap_gnp_point(const GCH &hybrid, const Point_3D &poi
 
     return demapped_point;
 }
-//This function judges if a point is inside a GNP bounding box
-int Hoshen_Kopelman::Judge_point_inside_bounding_box(const struct cuboid &gnp, const Point_3D &point, const double &extension)
-{
-    //If the point is outside the function returns 0: any of the operations will return 1; thus the OR wil return 1; then the NOT returns 0
-    return !(point.x<-(gnp.len_x/2+extension)||point.x>(gnp.len_x/2+extension)||
-            point.y<-(gnp.wid_y/2+extension)||point.y>(gnp.wid_y/2+extension)||
-            point.z<-(gnp.hei_z/2+extension)||point.z>(gnp.hei_z/2+extension) );
-}
-//
-int Hoshen_Kopelman::Create_vector_of_gnp_contacts(const vector<vector<long int> > &point_matrix)
-{
-    //Scan the distance matrix, this will be enough to include all contacts
-    //The outer loop iterated over the row numbers
-    for (int GNP1 = 0; GNP1 < (int)point_matrix.size(); GNP1++) {
-        //The inner loop iterates over column numbers
-        for (int GNP2 = 0; GNP2 < GNP1; GNP2++) {
-            //Check if there is a contact bewteen GNP1 and GNP2
-            if (point_matrix[GNP1][GNP2] != -1) {
-                //create a new contact_pair
-                struct contact_pair new_contact;
-                new_contact.point1 = point_matrix[GNP1][GNP2];
-                new_contact.particle1 = GNP1;
-                new_contact.type1 = "GNP";
-                new_contact.point2 = point_matrix[GNP2][GNP1];
-                new_contact.particle2 = GNP2;
-                new_contact.type2 = "GNP";
-                //Add the contact pair to the vector of contacts
-                gnp_contacts.push_back(new_contact);
-            }
-        }
-    }
-    return 1;
-}
-//In this function the clusters are made using the labels from the HK76
-int Hoshen_Kopelman::Make_particle_clusters(const int &n_clusters, const vector<int> &particles_inside, vector<int> &labels, vector<vector<int> > &isolated, vector<vector<int> > &clusters_particles)
-{
-    //Assing the correct size to the vector of clusters: the number of clusters is the same as the number of proper labels, which is the same as the size of the vector labels_labels after clean up
-    vector<int> empty;
-    clusters_particles.assign(n_clusters, empty);
-    
-    //Now scan the vector of particles_inside. Check the label of each particle to make the clusters.
-    for (int i = 0; i < (int)particles_inside.size(); i++) {
-        //Current particle
-        int particle = particles_inside[i];
-        //Store the label in the variable
-        int L = labels[particle];
-        //If a label[i] is -1, it means particle_i is an isolated particle. At this point "isolated" means that the particle is not part of any cluster
-        //Only when label[i] is diffenrent form -1, particle_i belongs to a cluster
-        if (L != -1){
-            //Since now the labels are consecutive and starting in 0, the label indicates the cluster number
-            clusters_particles[L].push_back(particle);
-        } else {
-            isolated.push_back(empty);
-            isolated.back().push_back(particle);
-        }
-    }
-    
-    return 1;
-}
-int Hoshen_Kopelman::Cleanup_labels(vector<int> &labels, vector<int> &labels_labels)
-{
-    //This vector has a map of labels in order to know which ones are root labels and renumbers them to a proper label
-    vector<int> label_map(labels_labels.size(),-1);
-    //This variable will be used to count the number of cluster
-    int counter = 0;
-    
-    //Temporary vector of labels of labels initialized to be equal to the original vector
-    vector<int> labels_labels_tmp(labels_labels);
-    //Clear the original vector of labels
-    labels_labels.clear();
-    
-    //First scan all the labels of labels to find the root labels
-    //Create a map from root label to proper label
-    //Proper labels are consecutive labels from 0 to N-1, where N is the number of clusters
-    //i.e., these are merged and renumbered labels
-    for (int i = 0; i < (int)labels_labels_tmp.size(); i++) {
-        //if labels_labels_tmp[i] > 0, then i is a proper label
-        if (labels_labels_tmp[i] > 0) {
-            label_map[i] = counter;
-            //Now the vector of labels of labels has only positive integers
-            labels_labels.push_back(labels_labels_tmp[i]);
-            counter++;
-        }
-    }
-    
-    //Scan all labels and change labels to keep only the proper labels
-    for (int i = 0; i < (int)labels.size(); i++) {
-        //Check that labels[i] is a valid label
-        if (labels[i] != -1) {
-            //Find the root label of labels[i]
-            int root = Find_root(labels[i], labels_labels_tmp);
-            //Find the proper label
-            int proper = label_map[root];
-            if (proper == -1) {
-                hout << "Invalid proper label " << proper << ". Valid labels are positive integers or 0"<<endl;
-                return 0;
-            }
-            //Change the current label by the proper label
-            labels[i] = proper;
-        }
-    }
-    
-    return 1;
-}
-//This function scans all the subregions to look for points close enough for tunneling to happen, i.e. points that are in contact.
-//When points are in contact use the Hoshen-Kopelman algorithm
-int Hoshen_Kopelman::Scan_sub_regions_cnt_and_gnp(const struct Simu_para &simu_para, const double &tunnel, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain, const vector<vector<long int> > &structure, const vector<Point_3D> &points_gnp, const vector<GCH> &hybrid_particles, const vector<int> &gnps_inside, const vector<vector<long int> > &sectioned_domain_gnp, const vector<vector<int> > &sectioned_domain_hyb, vector<int> &labels_mixed, vector<int> &labels_labels_mixed)
-{
-    //These ints are just to store the global point number and the CNTs they belong to.
-    //They are just intermediate variables and I only use them to make the code more readable
-    long int P1;
-    int CNT1, GNP2;
-    
-    //Temporary vector of int's to store the contact pair
-    vector<long int> empty;
-    vector<int> empty_int;
-    //Contact matrix that assigns the contact number to a given GNP
-    vector<vector<int> > gnp_contact_matrix( hybrid_particles.size(), empty_int);
-    
-    //Number of CNTs, used to calculate the particle number of GNPs
-    int n_cnts = (int)labels.size();
-    
-    //Initialize mixed labels with the values of CNT and GNP labels
-    if (!Initialize_mixed_labels(labels_mixed, labels_labels_mixed)) {
-        hout << "Error in Scan_sub_regions_cnt_and_gnp when calling Initialize_mixed_labels" << endl;
-        return 0;
-    }
-    
-    //Vector to determine the GNP number of a CNT
-    vector<int> cnt_gnp_numbers(radii.size(), -1);
-    if (!Fill_cnt_gnp_numbers(hybrid_particles, cnt_gnp_numbers)) {
-        hout << "Error in Scan_sub_regions_cnt_and_gnp when calling Fill_cnt_gnp_numbers" << endl;
-        return 0;
-    }
-    
-    //new_label will take the value of the newest cluster
-    //when having mixed particles, there is a non-zero number of clusters, thus new_label is initialized with the size of labels_labels_mixed,
-    //which is the number of CNT clusters plus GNP clusters
-    int new_label = (int)labels_labels_mixed.size();
-    
-    //If hybrid particles are used, cluster together GNPs with their CNTs
-    if (simu_para.particle_type == "Hybrid_particles") {
-        if (!Cluster_gnps_and_cnts(hybrid_particles, gnps_inside, labels_mixed, labels_labels_mixed, new_label)) {
-            hout << "Error in Scan_sub_regions_cnt_and_gnp when calling Cluster_gnps_and_cnts" << endl;
-            return 0;
-        }
-    }
-    
-    //hout << "gnp_labels="<<gnp_labels<<" cnt_labels="<<cnt_labels<<endl;
-    //hout <<"L_cnt="<<labels.size()<<" LL_cnt="<<labels_labels.size()<<"L_gnp="<<labels_gnp.size()<<" LL_gnp="<<labels_labels_gnp.size()<<endl;
-    //Scan every overlapping sub-region and compare each point on CNT sub-regions with the GNP in the same sub-region
-    //This is possible because both vectors have the same size
-    for (long int i = 0; i < (long int)sectioned_domain.size(); i++) {
-        
-        //number of elements in sectioned_domain[i]
-        long int inner1 = (long int)sectioned_domain[i].size();
-        
-        //Scan CNT points in subregion[i]
-        for (long int j = 0; j < inner1; j++) {
-            
-            //Current point in the CNT sub-regions
-            P1 = sectioned_domain[i][j];
-            CNT1 = points_in[P1].flag;
-            
-            //Number of elements in sectioned_domain_hyb[i]
-            long int inner2 = (long int)sectioned_domain_hyb[i].size();
-            
-            for (long int k = 0; k < inner2; k++) {
-                
-                //Current GNP in the sub-regions
-                GNP2 = sectioned_domain_hyb[i][k];
-                
-                //First check if the CNT is not attached to the GNP. This eliminates adding resistors between a CNT seed, or close to a CNT seed, and a GNP point
-                if (cnt_gnp_numbers[CNT1] != GNP2) {
-                    
-                    //Map the CNT point P to the local coordinates of the GNP
-                    Point_3D demapped = Demap_gnp_point(hybrid_particles[GNP2], points_in[P1]);
-                    
-                    //Calculate the extension of the GNP bounding box, which is the same as the cutoff for tunneling
-                    double extension = tunnel + radii[CNT1];
-                    
-                    //Check if the CNT point is inside the GNP bounding box that determines contact
-                    if ( Judge_point_inside_bounding_box(hybrid_particles[GNP2].gnp, demapped, extension) ) {
-                        
-                        //If the CNT point is inside the boundaing box, then there us a contact
-                        //Check if the contact is repeated or it is equivalent to an existing one
-                        //if (!Check_repeated_or_equivalent(P1, P2, points_in, points_gnp, mixed_contacts, gnp_contact_matrix[GNP2])) {
-                        if (!Check_repeated_or_equivalent_mixed_contact(P1, mixed_contacts, gnp_contact_matrix[GNP2])) {
-                            
-                            //If not repeated or equivalent, create a new contact
-                            struct contact_pair tmp;
-                            tmp.point1 = P1;
-                            tmp.particle1 = CNT1;
-                            tmp.type1 = "CNT";
-                            //Temporaryly store the subregion where the contact was located in the variable point2
-                            tmp.point2 = i;
-                            tmp.particle2 = GNP2;
-                            tmp.type2 = "GNP";
-                            
-                            //Add contact to vector of mixed contacts
-                            mixed_contacts.push_back(tmp);
-                            //Add contact number to matrix of GNP contacts
-                            gnp_contact_matrix[GNP2].push_back((int)mixed_contacts.size()-1);
-                        }
-                        
-                        //Get the particle number of the GNP for the mixed labels
-                        int particle2 = GNP2+n_cnts;
-                        
-                        //Here is where the actual HK76 algorithm takes place
-                        if (!HK76(CNT1, particle2, new_label, labels_mixed, labels_labels_mixed)) {
-                            hout << "Error in Scan_sub_regions_cnt_and_gnp when calling HK76" << endl;
-                            return 0;
-                        }
-                    }
-                    
-                }
-            }
-        }
-    }
-    
-    //Delete repeated and equivalent mixed contacts
-    if (!Remove_equivalent_mixed_contacs(structure, mixed_contacts, gnp_contact_matrix)) {
-        hout << "Error in Scan_sub_regions_cnt_and_gnp when calling Remove_equivalent_mixed_contacs" << endl;
-        return 0;
-    }
-    
-    //Add the GNP point of the mixed contacts found
-    if (!Add_gnp_point_to_contact(sectioned_domain_gnp, points_in, points_gnp, mixed_contacts)) {
-        hout << "Error in Scan_sub_regions_cnt_and_gnp when calling Add_gnp_point_to_contact" << endl;
-        return 0;
-    }
-    
-    //Cleanup the mixed labels
-    if (!Cleanup_labels(labels_mixed, labels_labels_mixed)) {
-        hout << "Error in Scan_sub_regions_cnt_and_gnp when calling Cleanup_labels" << endl;
-        return 0;
-    }
-    
-    //Merge the two sets of labels
-    if (!Merge_interparticle_labels(labels_mixed)) {
-        hout << "Error in Scan_sub_regions_cnt_and_gnp when calling Merge_interparticle_labels" << endl;
-        return 0;
-    }
-    
-    return 1;
-}
-int Hoshen_Kopelman::Initialize_mixed_labels(vector<int> &labels_mixed, vector<int> &labels_labels_mixed)
-{
-    //labels_mixed will have a size equal to the number of CNTs plus GNPs
-    int n_cnts = (int)labels.size();
-    int n_gnps = (int)labels_gnp.size();
-    labels_mixed.assign((n_cnts+n_gnps), -1);
-    
-    //Assign the CNT labels
-    for (int i = 0; i < n_cnts; i++) {
-        labels_mixed[i] = labels[i];
-    }
-    
-    //Add the CNT labels of labels
-    for (int i = 0; i < (int)labels_labels.size(); i++) {
-        labels_labels_mixed.push_back(labels_labels[i]);
-    }
-    
-    //Calculate the number of CNT clusters
-    int cnt_clusters = (int)labels_labels.size();
-    //Renumber and assign the GNP labels
-    for (int j = 0; j < n_gnps; j++) {
-        //Since the GNP labes are adjusted, check if the GNP has a valid label
-        //If the GNP has the -1 label, then nothing needs to be done as the mixed label already has that value
-        if (labels_gnp[j] != -1) {
-            labels_gnp[j] = labels_gnp[j] + cnt_clusters;
-            labels_mixed[j+n_cnts] = labels_gnp[j];
-        }
-    }
-    
-    //Add the GNP labels of labels
-    for (int j = 0; j < (int)labels_labels_gnp.size(); j++) {
-        labels_labels_mixed.push_back(labels_labels_gnp[j]);
-    }
-    
-    return 1;
-}
-//Function that fills the GNP numbers for every CNT
-//-1 indicates the CNT is not attached to any GNP
-int Hoshen_Kopelman::Fill_cnt_gnp_numbers(const vector<GCH> &hybrid_particles, vector<int> &cnt_gnp_numbers) {
-    
-    //Scan all hybrid particles
-    for (int i = 0; i < (int)hybrid_particles.size(); i++) {
-        
-        //Scan all CNTs on the top surface of current hybrid
-        for (int j = 0; j < (int)hybrid_particles[i].cnts_top.size(); j++) {
-            
-            //Current CNT
-            int CNT = hybrid_particles[i].cnts_top[j];
-            
-            //Update GNP number in vector
-            cnt_gnp_numbers[CNT] = i;
-        }
-        
-        //Scan all CNTs on the top surface of current hybrid
-        for (int j = 0; j < (int)hybrid_particles[i].cnts_bottom.size(); j++) {
-            
-            //Current CNT
-            int CNT = hybrid_particles[i].cnts_bottom[j];
-            
-            //Update GNP number in vector
-            cnt_gnp_numbers[CNT] = i;
-        }
-    }
-    
-    return 1;
-}
-//function that assigns the same cluster to CNTs and their GNPs only for hybrid particles
-int Hoshen_Kopelman::Cluster_gnps_and_cnts(const vector<GCH> &hybrid_particles, const vector<int> &gnps_inside, vector<int> &labels_mixed, vector<int> &labels_labels_mixed, int &new_label)
-{
-    //Number of CNTs
-    int n_cnts = (int)labels.size();
-    
-    //
-    
-    //Scan vector of GNPs inside the sample
-    for (int i = 0; i < (int)gnps_inside.size(); i++) {
-        
-        //Current GNP
-        int GNP = gnps_inside[i];
-        
-        //Scan all CNTs on top surface
-        for (int j = 0; j < (int)hybrid_particles[GNP].cnts_top.size(); j++) {
-            
-            //Get CNTnumber
-            int CNT = hybrid_particles[GNP].cnts_top[j];
-            
-            //Get the particle number of the GNP for the mixed labels
-            int particle2 = GNP+n_cnts;
-            if (!HK76(CNT, particle2, new_label, labels_mixed, labels_labels_mixed)) {
-                hout << "Error in Scan_sub_regions_cnt_and_gnp when calling HK76" << endl;
-                return 0;
-            }
-        }
-        
-        //Scan all CNTs on bottom surface
-        for (int j = 0; j < (int)hybrid_particles[GNP].cnts_bottom.size(); j++) {
-            
-            //Get CNTnumber
-            int CNT = hybrid_particles[GNP].cnts_bottom[j];
-            
-            //Get the particle number of the GNP for the mixed labels
-            int particle2 = GNP+n_cnts;
-            
-            //Here is where the actual HK76 algorithm takes place
-            if (!HK76(CNT, particle2, new_label, labels_mixed, labels_labels_mixed)) {
-                hout << "Error in Scan_sub_regions_cnt_and_gnp when calling HK76" << endl;
-                return 0;
-            }
-        }
-    }
-    
-    return 1;
-}
-//This function checks if a contact has alraedy been created
-//It is assumed that the CNT is the first particle
-int Hoshen_Kopelman::Check_repeated_or_equivalent_mixed_contact(const long int &point_cnt, const vector<contact_pair> &contacts, const vector<int> &gnp_contact_vector)
-{
-    //Iterate over the contacts of the GNP and check if it the contact has already been created
-    for (int i = 0; i < (int)gnp_contact_vector.size(); i++) {
-        
-        //Current contact
-        int cont_pair = gnp_contact_vector[i];
-        
-        //Check if the CNT point is the same
-        if (point_cnt == contacts[cont_pair].point1) {
-            
-            //The CNt point is the same, thus the contact is repeated or equivalent and terminate the function with 1
-            //There is no neeed to check the GNP point, since another contact between this CNT point
-            //and another GNP point from the same GNP is possible
-            //If I also check that the GNP point is the same, then the contacts would be different i
-            return 1;
-        }
-    }
-    
-    //The contact was not found, so return 0
-    return 0;
-}
-int Hoshen_Kopelman::Remove_equivalent_mixed_contacs(const vector<vector<long int> > &structure, vector<contact_pair> &contacts, vector<vector<int> > &gnp_contact_matrix)
-{
-    //Vector that will store all contacts to be deleted
-    vector<int> to_delete;
-    
-    //Scan the contacts that each GNP has
-    for (int i = 0; i < (int)gnp_contact_matrix.size(); i++) {
-        
-        //i is the current GNP
-        
-        //Group the contacts of the current GNP by CNTs
-        vector<vector<int> > grouped_contacts;
-        if(!Group_mixed_contacts_by_cnt(structure, contacts, gnp_contact_matrix[i], grouped_contacts)) {
-            hout << "Error in Remove_equivalent_mixed_contacs when calling Group_mixed_contacts_by_cnt" <<endl;
-            return 0;
-        }
-        
-        //Group into CNT segments, select one contact per segment and delete the rest
-        if (!Group_and_merge_consecutive_contacts(gnp_contact_matrix[i], grouped_contacts, contacts, to_delete)) {
-            hout << "Error in Remove_equivalent_mixed_contacs when calling Group_and_merge_consecutive_contacts" <<endl;
-            return 0;
-        }
-        
-    }
-    
-    //Sort the vector to_delete
-    sort(to_delete.begin(), to_delete.end());
-    
-    //Delete all contacts indicated by the to_delete vector, starting on the last element (which is the largest index)
-    for (int i = (int)to_delete.size()-1; i >=0; i--) {
-        contacts.erase(contacts.begin()+to_delete[i]);
-    }
-    
-    return 1;
-}
-int Hoshen_Kopelman::Add_gnp_point_to_contact(const vector<vector<long int> > &sectioned_domain_gnp, const vector<Point_3D> &points_cnt, const vector<Point_3D> &points_gnp, vector<contact_pair> &contacts)
-{
-    
-    //Scan the mixed contacts found
-    for (int i = 0; i < (int)contacts.size(); i++) {
-        
-        //Get the sub-region number
-        long int subregion = contacts[i].point2;
-        
-        //Get the GNP number
-        int GNP = contacts[i].particle2;
-        
-        //Set the minimum distance equal to 1 micron, which is a lot larger than any contact
-        double dist_min = 1;
-        
-        //Scan the points in the subregion and find the closest to point 1
-        for (int j = 0; j < (int)sectioned_domain_gnp[subregion].size(); j++) {
-            
-            //Get the GNP point in the sectioned domain
-            long int P_GNP = sectioned_domain_gnp[subregion][j];
-            
-            //Check the point is in the GNP
-            if (points_gnp[P_GNP].flag == GNP) {
-                
-                //Get the CNT point
-                long int P_CNT = contacts[i].point1;
-                
-                //If the GNP point is in in the GNP, then check if it is the closes to point1
-                //Use squared distance to redue computations
-                double dist2 = points_cnt[P_CNT].squared_distance_to(points_gnp[P_GNP]);
-                if (dist2 < dist_min) {
-                    
-                    //Update GNP point in contact
-                    contacts[i].point2 = P_GNP;
-                    
-                    //Update distance
-                    dist_min = dist2;
-                }
-            }
-        }
-        
-    }
-    
-    
-    return 1;
-}
-//This function creates vectors with equal length as that of a CNT in the structure vector
-//but instead of point numbers it has contact numbers
-//Thus this vectors can be used to group several consecutive mixed contacts and then merge them into a single mixed contact
-int Hoshen_Kopelman::Group_mixed_contacts_by_cnt(const vector<vector<long int> > &structure, const vector<contact_pair> &contacts, const vector<int> &gnp_contact_vector, vector<vector<int> > &grouped_contacts)
-//int Hoshen_Kopelman::Group_mixed_contacts_by_cnt(const vector<Point_3D> &points_in, const vector<vector<long int> > &structure, const vector<contact_pair> &contacts, const vector<int> &gnp_contact_vector, vector<vector<int> > &grouped_contacts)
-{
-    //Mapping vector
-    vector<int> cnt_map(structure.size(), -1);
-    
-    //Counter to map the CNTs
-    int counter = 0;
-    
-    //Scan all the contacts in the current contact vector
-    for (int i = 0; i < (int)gnp_contact_vector.size(); i++) {
-        
-        //get the current contact number
-        int cont = gnp_contact_vector[i];
-        
-        //get the CNT number of contact i
-        int CNT = contacts[cont].particle1;
-        
-        //Check if the CNT has already been mapped
-        if (cnt_map[CNT] == -1) {
-            
-            //Map the CNT
-            cnt_map[CNT] = counter;
-            
-            //Create a vector of -1 with the same size as the CNT in the structure
-            //An extra -1 is added to the vector
-            //In case the last point has a valid contact, the -1 makes easier to find the end of
-            //a segment of consecutive contacts since this ensures all CNT will have a -1 at the end
-            vector <int> cnt_contacts(structure[CNT].size()+1,-1);
-            
-            //Add this vector to the vector of grouped contacts
-            grouped_contacts.push_back(cnt_contacts);
-            
-            //Increase the counter to map the next unmapped CNT
-            counter++;
-        }
-        
-        //get the mapped CNT number
-        int CNT_mapped = cnt_map[CNT];
-        
-        //get the CNT point number
-        long int P1 = contacts[cont].point1;
-        
-        //Get the positon on the structure[CNT] vector
-        long int pos = P1 - structure[CNT].front();
-        
-        //Add the contact to the corresponding position on the grouped_contacts vector
-        grouped_contacts[CNT_mapped][pos] = cont;
-        
-    }
-    
-    return 1;
-}
-//
-int Hoshen_Kopelman::Group_and_merge_consecutive_contacts(const vector<int> &gnp_contact_vector, vector<vector<int> > &grouped_contacts, vector<contact_pair> &contacts, vector<int> &to_delete)
-{
-    //Scan every CNT in contact with the GNP
-    for (int i = 0; i < (int)grouped_contacts.size(); i++) {
-        
-        //Flags that determine which point in the segment of consecutive contacts I am looking for
-        int initial_flag = 1; //I will start looking for the initial point of a segment of consecutive contacts
-        int final_flag = 0;
-        
-        //variables to store the initial and final contacts in a segment
-        int initial = 0, final = 0;
-        
-        //Scan every contact in the CNT
-        for (int j = 0; j < (int) grouped_contacts[i].size(); j++) {
-            
-            //If am looking fot the initial point check if the current contact is valid (!= -1)
-            if (initial_flag && grouped_contacts[i][j] != -1) {
-                
-                //When an initial valid contact is found save the current contact as the initial contact of the segment
-                initial = j;
-                
-                //Change the flag to zero as I will not be looking for an initial point
-                initial_flag = 0;
-                
-                //Make sure the flag for the final point is 1
-                final_flag = 1;
-            }
-            
-            //If am looking fot the initial point check if the current contact is valid (!= -1)
-            if (final_flag && grouped_contacts[i][j] == -1) {
-                
-                //When a final valid contact is found save the previous contact as the final contact of the segment
-                final = j-1;
-                
-                //Change the flag to zero as I will not be looking for a final point
-                final_flag = 0;
-                
-                //Make sure the flag for the initial point is 1
-                initial_flag = 1;
-                
-                //A segment has been found, if the difference between final and initial is 0
-                //thre is nothing to do as the contact will stay
-                //but if the difference is 1 or more, then some contacts will be deleted
-                int difference = final - initial;
-                if ( difference > 0) {
-                    
-                    //find the middle contact
-                    int middle = initial + (int)(difference/2);
-                    
-                    //Set the initial contact equal to the middle one
-                    int initial_contact = grouped_contacts[i][initial];
-                    int middle_contact = grouped_contacts[i][middle];
-                    contacts[initial_contact] = contacts[middle_contact];
-                    contacts[initial_contact] = contacts[middle_contact];
-                    
-                    
-                    //Now, add all other contacts to the vector to_delete
-                    for (int ii = initial+1; ii <= final; ii++) {
-                        
-                        to_delete.push_back(grouped_contacts[i][ii]);
-                    }
-                    
-                }
-                
-            }
-            
-        }
-        
-    }
-    
-    return 1;
-}
-//This function checks if a contact has alraedy been created
-//It is assumed that the CNT is the first particle
-int Hoshen_Kopelman::Check_repeated_or_equivalent(const long int &point_cnt, const long int &point_gnp, const vector<Point_3D> &points_in, const vector<Point_3D> &points_gnp, vector<contact_pair> &contacts, vector<int> &gnp_contact_vector)
-{
-    //Get the CNT number
-    int CNT = points_in[point_cnt].flag;
-    
-    //define the range of points to eliminate long tunnels
-    int range = 10;
-    
-    //Iterate over the contacts of the GNP and check if it the contact has already been created
-    for (int i = 0; i < (int)gnp_contact_vector.size(); i++) {
-        
-        //Current contact
-        int cont_pair = gnp_contact_vector[i];
-        
-        //First check if the points are the same
-        if (point_cnt == contacts[cont_pair].point1 && point_gnp == contacts[cont_pair].point2) {
-            
-            //The contact is repeated, thus terminate the function
-            return 1;
-        }
-        //Check if the CNT is the same as in the current contact pair (CNTs are always particle1)
-        //in case there is an equivalent contact
-        else if (CNT == contacts[cont_pair].particle1) {
-            
-            //If the contact was not the same, now we check if the contact is equivalent
-            
-            //Compute the point numbers in the range to determine if the contact already exists
-            long int start_range = contacts[cont_pair].point1-range, end_range = contacts[cont_pair].point1+range;
-            
-            //Check if point_cnt is inside the range
-            if (start_range <= point_cnt && point_cnt <= end_range) {
-                
-                //If the CNT point is inside the range, then the contact is equivalent
-                //Choose the pair of points whith the shortest squared distance (to reduce computations)
-                double new_distance = points_in[point_cnt].squared_distance_to(points_gnp[point_gnp]);
-                double previous_distance = points_in[contacts[cont_pair].point1].squared_distance_to(points_gnp[contacts[cont_pair].point2]);
-                
-                if ( new_distance < previous_distance) {
-                    
-                    //Update the points in contact
-                    contacts[cont_pair].point1 = point_cnt;
-                    contacts[cont_pair].point2 = point_gnp;
-                }
-                
-                //The contact is equivalent, so return 1
-                return 1;
-            }
-        }//*/
-    }
-    
-    //An equivalent contact was not found, so return 0
-    return 0;
-}
-//Renumber the two sets of labels to merge the clusters of CNTs and GNPs
-int Hoshen_Kopelman::Merge_interparticle_labels(vector<int> &labels_mixed)
-{
-    //Iterate over the CNT labels
-    for (int i = 0; i < (int)labels.size(); i++) {
-        //Assign mixed label i to CNT i
-        labels[i] = labels_mixed[i];
-    }
-    
-    //Iterate over the GNP labels, which start after the last CNT label
-    //i.e., at the mixed label index equal to the number of CNT labels
-    int n_cnts = (int)labels.size();
-    for (int i = n_cnts; i < (int)labels_mixed.size(); i++) {
-        //Assign mixed label i to GNP i-n_cnts
-        labels_gnp[i-n_cnts] = labels_mixed[i];
-    }
-    
-    return 1;
-}
-//-------------------------------------------------------------------------------------------------------------------------------------
