@@ -2251,8 +2251,12 @@ int Generate_Network::Find_direction_of_touching_gnps(Collision_detection &GJK_E
     //Lambda function to obtain the distance from V to the vector OQ
     //The '&' lets me use variables in scope
     auto dist2 = [&](const Point_3D &Q_) {
+        //Vector OQ = Q - 0 = Q
+        //Vector VO = 0 - V = -V
+        //Due to the dot product being squared in the return value,
+        //it does not matter to use -V or V in this dot product
         double dot_ = V.dot(Q_);
-        return (len_V2 + dot_*dot_/Q_.length2());
+        return (len_V2 - dot_*dot_/Q_.length2());
     };
     
     //Get the support vector in the direction from V to origin
