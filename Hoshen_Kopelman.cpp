@@ -14,7 +14,7 @@
  */
 
 //This function groups nanoparticles into clusters
-int Hoshen_Kopelman::Determine_clusters(const Simu_para &simu_para, const Cutoff_dist &cutoffs, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, vector<Point_3D> &points_gnp)
+int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_para, const Cutoff_dist &cutoffs, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<Point_3D> &points_gnp)
 {
     //Label vectors for CNTs and GNPs
     vector<int> labels_cnt, labels_gnp;
@@ -87,15 +87,18 @@ int Hoshen_Kopelman::Determine_clusters(const Simu_para &simu_para, const Cutoff
         }
     }
     
+    //Variables to store the clusters
+    vector<vector<int> > clusters_cnt_tmp, clusters_gnp_tmp;
+    
     //Generate cluster vectors
     if (labels_cnt.size()) {
-        if (!Make_particle_clusters(n_clusters, cnts_inside, labels_cnt, isolated_cnt, clusters_cnt)) {
+        if (!Make_particle_clusters(n_clusters, cnts_inside, labels_cnt, isolated_cnt, clusters_cnt_tmp)) {
             hout<<"Error in Determine_clusters when calling Make_particle_clusters (CNT)"<<endl;
             return 0;
         }
     }
     if (labels_gnp.size()) {
-        if (!Make_particle_clusters(n_clusters, gnps_inside, labels_gnp, isolated_gnp, clusters_gnp)) {
+        if (!Make_particle_clusters(n_clusters, gnps_inside, labels_gnp, isolated_gnp, clusters_gnp_tmp)) {
             hout<<"Error in Determine_clusters when calling Make_particle_clusters (GNP)"<<endl;
             return 0;
         }
@@ -1589,6 +1592,201 @@ int Hoshen_Kopelman::Make_particle_clusters(const int &n_clusters, const vector<
     
     return 1;
 }
+//This function determines percolation and, in case there is percolation,
+//assigns the family number to each cluster
+int Hoshen_Kopelman::Find_percolated_clusters(const int &n_clusters, const vector<vector<int> > &boundary_cnt, const vector<vector<int> > &boundary_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const vector<vector<int> > &clusters_cnt_tmp, const vector<vector<int> > &clusters_gnp_tmp)
+{
+    //Array of opposite boundaries
+    //{2,4}: x-boundaries
+    //{3,5}: y-boundaries
+    //{0,1}: z-boundaries
+    int boundary_pairs[][2] = {{2,4},{3,5},{0,1}};
+    
+    //Vector of percolated directions
+    vector<set<int> > percolated_dirs(n_clusters, set<int>());
+    
+    //Iterate over the three boundary pairs
+    for (int i = 0; i < 3; i++) {
+        
+        //Get one boundary
+        int b1 = boundary_pairs[i][0];
+        
+        //Set to store the cluster numbers (i.e., labels) that are connected
+        //to boundary b1
+        set<int> boundary1;
+        
+        //Add the CNT clusters connected to boundary b1 to the set boundary1
+        if (!Add_clusters_in_boundary(boundary_cnt[b1], labels_cnt, boundary1)) {
+            hout<<"Error in Find_percolated_clusters when calling Add_clusters_in_boundary (CNT)"<<endl;
+            return 0;
+        }
+        
+        //Add the GNP clusters connected to boundary b1 to the set boundary1
+        if (!Add_clusters_in_boundary(boundary_gnp[b1], labels_gnp, boundary1)) {
+            hout<<"Error in Find_percolated_clusters when calling Add_clusters_in_boundary (GNP)"<<endl;
+            return 0;
+        }
+        
+        //Check if there were any clusters connected to boundary b1
+        if (!boundary1.empty()) {
+            
+            //There are clusters connected to boundary1, so there might be percolation
+            
+            //Get the boundary opposite to b1
+            int b2 = boundary_pairs[i][1];
+            
+            //Find the CNT clusters connected to boundary b2 and add a percolated direction
+            //if percolation is determined
+            if (!Add_percolated_direction(i, boundary_cnt[b2], labels_cnt, boundary1, percolated_dirs)) {
+                hout<<"Error in Find_percolated_clusters when calling Add_percolated_direction (CNT)"<<endl;
+                return 0;
+            }
+            
+            //Find the GNP clusters connected to boundary b2 and add a percolated direction
+            //if percolation is determined
+            if (!Add_percolated_direction(i, boundary_gnp[b2], labels_gnp, boundary1, percolated_dirs)) {
+                hout<<"Error in Find_percolated_clusters when calling Add_percolated_direction (GNP)"<<endl;
+                return 0;
+            }
+        }
+    }
+    
+    //Go though the vector of percolated directions and determine the percolation of
+    //each cluster
+    for (int i = 0; i < n_clusters; i++) {
+        
+        //Check if cluster i percolates
+        if (percolated_dirs[i].empty()) {
+            
+            //Cluster i does not percolate, so add it to the vector of isolated particles
+            if (clusters_cnt_tmp.size()) {
+                isolated_cnt.push_back(clusters_cnt_tmp[i]);
+            }
+            if (clusters_gnp_tmp.size()) {
+                isolated_gnp.push_back(clusters_gnp_tmp[i]);
+            }
+        }
+        else {
+            
+            //Cluster i percolates, so calculate the sum of mapped directions
+            int sum = 0;
+            for (set<int>::iterator it = percolated_dirs[i].begin(); it != percolated_dirs[i].end(); it++) {
+                
+                //Add the set element to the sum
+                sum = sum + *it;
+            }
+            
+            //Variable to store the family number
+            int fam = 0;
+            
+            //Get the family number from the sum
+            if (!Family_map(sum, fam)) {
+                hout<<"Error in Find_percolated_clusters when calling Family_map"<<endl;
+                return 0;
+            }
+            
+            //Add the family to the vector of families
+            family.push_back(fam);
+            
+            //Add the cluster to the vectors of percolated clusters
+            if (clusters_cnt_tmp.size()) {
+                clusters_cnt.push_back(clusters_cnt_tmp[i]);
+            }
+            if (clusters_gnp_tmp.size()) {
+                clusters_gnp.push_back(clusters_gnp_tmp[i]);
+            }
+        }
+    }
+    
+    return 1;
+}
+//This function adds the clusters connected to a boundary (as given by the vector
+//boundary_particles) into the set boundary1
+int Add_clusters_in_boundary(const vector<int> &boundary_particles, const vector<int> &labels, set<int> &boundary1)
+{
+    //Iterate over the particles on the boundary vector (if any)
+    for (int j = 0; j < (int)boundary_particles.size(); j++) {
+        
+        //Get current particle on boundary vector
+        int part = boundary_particles[j];
+        
+        //Get the cluster number, i.e., label, of particle
+        int L = labels[part];
+        
+        //If the particle has a label assigned, then add it to the set of clusters
+        //connected to boundary b1
+        if (L != -1) {
+            boundary1.insert(L);
+        }
+    }
+    
+    return 1;
+}
+//This function finds the clusters connected to a boundary as given by the boundary
+//vector "boundary_particles"
+//These clusters are compared with the clusters connected to the opposite boundary,
+//as indicated by the set boundary1
+//When a cluster is connected to both boundaries, then it percolated along d and this is
+//added to the vector of percoalted directions (percolated_dirs)
+int Add_percolated_direction(const int &d, const vector<int> &boundary_particles, const vector<int> &labels, const set<int> &boundary1, vector<set<int> > &percolated_dirs)
+{
+    //Iterate over the particles on the boundary vector (if any)
+    for (int j = 0; j < (int)boundary_particles.size(); j++) {
+        
+        //Get current particle on boundary b
+        int part = boundary_particles[j];
+        
+        //Get the cluster number, i.e., label, of particle
+        int L = labels[part];
+        
+        //Check if cluster L is also in boundary b1
+        if (boundary1.find(L) != boundary1.end()) {
+            
+            //Cluster L percolates along direction d
+            
+            //Map direction d
+            int map = 10*d + 1;
+            
+            //Add the mapped value of the direction to the vector of percolated direction
+            percolated_dirs[L].insert(map);
+        }
+    }
+    return 1;
+}
+int Hoshen_Kopelman::Family_map(const int &perc_sum, int &family)
+{
+    //Return the family number according to the sum
+    switch (perc_sum) {
+        case 1:
+            family = 0;
+            break;
+        case 11:
+            family = 1;
+            break;
+        case 21:
+            family = 2;
+            break;
+        case 12:
+            family = 3;
+            break;
+        case 22:
+            family = 4;
+            break;
+        case 32:
+            family = 5;
+            break;
+        case 33:
+            family = 6;
+            break;
+            
+        default:
+            hout<<"Unknown sum of percolated directions: "<<perc_sum<<endl;
+            return 0;
+    }
+    return 1;
+}
+//-------------------------------------------------------
+//HK76
 //Function for the Hoshen-Kopelman (HK76) algorithm only
 //It is assumed that this function is used only when a contact is found. Otherwise the results will be wrong and probably one cluster with all CNTs will be generated
 int Hoshen_Kopelman::HK76(const int &CNT1, const int &CNT2, int &new_label, vector<int> &labels,  vector<int> &labels_labels) {
@@ -1670,134 +1868,6 @@ int Hoshen_Kopelman::Merge_labels(const int &root1, const int &root2, vector<int
         labels_labels[root1] = -root2;
     }
     //If root1 is equal to root2, the CNTs are already in the same cluster so there is nothing to do
-    
-    return 1;
-}
-//============================================================================================
-//============================================================================================
-//============================================================================================
-//This function finds all the contacts between a CNT and a GNP, however it keeps only those contacts
-//close enough to each other that form a "contact segment"
-//Also, GNP points for the junctions are calculated and added to the vector of GNP points
-int Hoshen_Kopelman::Find_contact_points_between_cnt_and_gnp(const Generate_Network &GN, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_in, const double &radius, const vector<long int> &cnt, const GNP &gnp, vector<Point_3D> &points_gnp)
-{
-    //Point on GNP in contact with CNT
-    Point_3D P_gnp;
-    
-    //Variable to store the junction distance that will be kept for the compressed contact
-    double dist_junc = 0;
-    
-    //Point for the compressed contact on the GNP
-    Point_3D P_junc_gnp(0,0,0);
-    
-    //Point number for the compressed contact on the GNP
-    long int P_junct_cnt = 0;
-    
-    //Last tunneling point
-    long int last_tun = -1;
-    
-    //Variable to save the start of a "contact segment"
-    long int segment_start = -1;
-    
-    //Iterate over all points of the CNT
-    for (long int P = cnt[0]; P <= cnt.back(); P++) {
-        
-        //Variable to store the new distance
-        double new_dist;
-        
-        //Calculate distance and projection on GNP
-        P_gnp = GN.Get_gnp_point_closest_to_point(gnp, points_in[P], new_dist);
-        
-        //Check if there is tunneling
-        if (new_dist <= radius + cutoffs.tunneling_dist) {
-            
-            //There is tunneling, check if the current tunneling point is part of the
-            //previous "contact segment" or a new one is started
-            if (last_tun == -1 || P - last_tun > cutoffs.min_points) {
-                
-                //This contact point starts a new "contact segment" because it is
-                //either the first tunneling point or the previous tunneling
-                //point is too far
-                
-                //Check if there is a previous "contact segment"
-                if (segment_start != -1) {
-                    
-                    //"Compress" the segment
-                    
-                    //Check if the junction distance needs one last updating
-                    //If so, also the junction points on the GNP and CNT need to be updated
-                    if (new_dist < dist_junc) {
-                        
-                        //Update distance and points
-                        dist_junc = new_dist;
-                        P_junc_gnp = P_gnp;
-                        P_junct_cnt = P;
-                    }
-                    
-                    //Update the flag of the GNP junction point and add it to the vector of GNP points
-                    P_junc_gnp.flag = gnp.flag;
-                    points_gnp.push_back(P_junc_gnp);
-                    
-                    //Create a CNT-GNP junction
-                    Junction j(P_junct_cnt, "CNT", (long int)points_gnp.size()-1, "GNP", dist_junc);
-                    
-                    //Add the junction to the vector of junctions
-                    junctions.push_back(j);
-                    
-                    //Add the CNT point to the vector of elements
-                    elements_cnt[points_in[P_junct_cnt].flag].insert(P_junct_cnt);
-                }
-                
-                //Set the segment_start to the current point
-                segment_start = P;
-                
-                //Set the current distance as the junction distance
-                dist_junc = new_dist;
-                
-                //Set the current GNP point as the GNP point for the junction
-                P_junc_gnp = P_gnp;
-                
-                //Set the current CNT point as the CNT point for the junction
-                P_junct_cnt = P;
-            }
-            else {
-                
-                //This contact point is merged with the previous one (if any),
-                
-                //Check if the junction distance needs updating
-                //If so, also the junction points on the GNP and CNT need to be updated
-                if (new_dist < dist_junc) {
-                    
-                    //Update distance and points
-                    dist_junc = new_dist;
-                    P_junc_gnp = P_gnp;
-                    P_junct_cnt = P;
-                }
-            }
-            
-            //Update the last tunneling point
-            last_tun = P;
-        }
-    }
-    
-    //Check if there is a segment that needs to be compressed
-    if (segment_start != -1) {
-        
-        //"Compress" the last (or only) segment of the CNT
-        
-        //Update the flag of the GNP junction point and add it to the vector of GNP points
-        P_junc_gnp.flag = gnp.flag;
-        points_gnp.push_back(P_junc_gnp);
-        
-        //Create a CNT-GNP junction
-        Junction j(P_junct_cnt, "CNT", (long int)points_gnp.size()-1, "GNP", dist_junc);
-        
-        //Add the junction to the vector of junctions
-        junctions.push_back(j);
-        
-        //Add the CNT point to the vector of elements
-        elements_cnt[points_in[P_junct_cnt].flag].insert(P_junct_cnt);
-    }
     
     return 1;
 }

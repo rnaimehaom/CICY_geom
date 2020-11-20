@@ -33,13 +33,22 @@ public:
     vector<set<long int> > elements_cnt;
     //Junctions
     vector<Junction> junctions;
+    //Vector with the family for each cluster
+    //0 for X
+    //1 for Y
+    //2 for Z
+    //3 for XY
+    //4 for XZ
+    //5 for YZ
+    //6 for XYZ
+    vector<int> family;
     
     
     //Constructor
     Hoshen_Kopelman(){};
     
     //
-    int Determine_clusters(const Simu_para &simu_para, const Cutoff_dist &cutoffs, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, vector<Point_3D> &points_gnp);
+    int Determine_clusters_and_percolation(const Simu_para &simu_para, const Cutoff_dist &cutoffs, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, const vector<Point_3D> &points_in, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<Point_3D> &points_gnp);
     int Make_cnt_clusters(const vector<Point_3D> &points_in, const vector<double> &radii, const Cutoff_dist &cutoffs, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, vector<int> &labels_cnt, int &n_labels_cnt);
     int Label_cnts_in_window(const vector<Point_3D> &points_in, const vector<double> &radii, const double &tunnel_cutoff, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &contact_elements, vector<int> &labels_cnt, vector<int> &labels_labels_cnt);
     int Cleanup_labels(vector<int> &labels_labels, vector<int> &labels, int &n_labels);
@@ -65,7 +74,10 @@ public:
     int Explore_labels(const int &label, const vector<set<int> > &adj_labels, vector<vector<int> > &mixed_clusters, vector<int> &visited_labels);
     int Map_labels(const vector<int> label_map, vector<int> &labels);
     int Make_particle_clusters(const int &n_clusters, const vector<int> &particles_inside, vector<int> &labels, vector<vector<int> > &isolated, vector<vector<int> > &clusters_particles);
-    int Find_contact_points_between_cnt_and_gnp(const Generate_Network &GN, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_in, const double &radius, const vector<long int> &cnt, const GNP &gnp, vector<Point_3D> &points_gnp);
+    int Find_percolated_clusters(const int &n_clusters, const vector<vector<int> > &boundary_cnt, const vector<vector<int> > &boundary_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const vector<vector<int> > &clusters_cnt_tmp, const vector<vector<int> > &clusters_gnp_tmp);
+    int Add_clusters_in_boundary(const vector<int> &boundary_particles, const vector<int> &labels, set<int> &boundary1);
+    int Add_percolated_direction(const int &d, const vector<int> &boundary_particles, const vector<int> &labels, const set<int> &boundary1, vector<set<int> > &percolated_dirs);
+    int Family_map(const int &perc_sum, int &family);
     //-------------------------------------------------------
     //HK76
     int HK76(const int &CNT1, const int &CNT2, int &new_label, vector<int> &labels, vector<int> &labels_labels);
