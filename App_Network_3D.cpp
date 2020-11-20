@@ -15,17 +15,17 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     
     //Variables for CNTs
     //CNTs points
-    vector<Point_3D> cnts_points;
+    vector<Point_3D> points_cnt;
     //CNTs radii
-    vector<double> cnts_radius;
+    vector<double> radii;
     //CNT structure, each cnts_structure[i] referes to the points in CNT_i
-    vector<vector<long int> > cnts_structure;
+    vector<vector<long int> > structure_cnt;
     
     //Variables for GNPs
     //GNPs
     vector<GNP> gnps;
     //GNP points (only those needed are stored)
-    vector<Point_3D> gnps_points;
+    vector<Point_3D> points_gnp;
     
     //Shell vectors (used to remove nanoparticles when reduding observation window size)
     vector<vector<int> > shells_cnts;
@@ -39,7 +39,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     hout << "Generating nanoparticle network......" << endl;
     ct0 = time(NULL);
     Generate_Network *Generator = new Generate_Network;
-    if (!Generator->Generate_nanoparticle_network(Init->simu_para, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, Init->cutoff_dist, Init->vis_flags, cnts_points, cnts_radius, cnts_structure, gnps)) {
+    if (!Generator->Generate_nanoparticle_network(Init->simu_para, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, Init->cutoff_dist, Init->vis_flags, points_cnt, radii, structure_cnt, gnps)) {
         hout<<"Error in Generate_nanoparticle_network."<<endl;
         return 0;
     }
@@ -55,7 +55,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     vector<Shell> shell_gnps(gnps.size());
     ct0 = time(NULL);
     Shells *Shell = new Shells;
-    if (!Shell->Generate_shells(Init->geom_sample, cnts_points, gnps, shells_cnts, shell_gnps)) {
+    if (!Shell->Generate_shells(Init->geom_sample, points_cnt, gnps, shells_cnts, shell_gnps)) {
         hout << "Error when generating shells" << endl;
         return 0;
     }
@@ -95,7 +95,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         Cutoff_Wins *Cutwins = new Cutoff_Wins;
         //From this function I get the internal variables cnts_inside and boundary_cnt
         ct0 = time(NULL);
-        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, gnps, cnts_structure, cnts_radius, cnts_points, shells_cnts, shell_gnps)) {
+        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, gnps, structure_cnt, radii, points_cnt, shells_cnts, shell_gnps)) {
             hout << "Error when extracting observation window "<< i+1 << endl;
             return 0;
         }
@@ -106,7 +106,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Determine the local networks inside the cutoff windows
         Contact_grid *Contacts = new Contact_grid;
         ct0 = time(NULL);
-        if (!Contacts->Generate_contact_grid(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Cutwins->cnts_inside, cnts_points, cnts_structure, Cutwins->gnps_inside, gnps)) {
+        if (!Contacts->Generate_contact_grid(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Cutwins->cnts_inside, points_cnt, structure_cnt, Cutwins->gnps_inside, gnps)) {
             hout << "Error when generating contact grid" << endl;
             return 0;
         }
@@ -116,42 +116,16 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //----------------------------------------------------------------------
         //Hoshen-Kopelman algorithm
         Hoshen_Kopelman *HoKo = new Hoshen_Kopelman;
-        ct0 = time(NULL);/*
-        if (!HoKo->Determine_clusters(Init->simu_para, Init->cutoff_dist, Cutwins->cnts_inside, Contacts->sectioned_domain, cnts_structure, cnts_points, cnts_radius, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, Contacts->sectioned_domain_hyb, gnps_structure, gnps_points, hybrid_particles)) {
-            hout << "Error when determining clusters" << endl;
+        ct0 = time(NULL);
+        if (!HoKo->Determine_clusters_and_percolation(Init->simu_para, Init->cutoff_dist, Cutwins->cnts_inside, Contacts->sectioned_domain_cnts, structure_cnt, points_cnt, radii, Cutwins->boundary_cnt, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, gnps, Cutwins->boundary_gnp, points_gnp)) {
+            hout << "Error when finding clusters and determining percolation" << endl;
             return 0;
-        }*/
+        }
         ct1 = time(NULL);
-        hout << "Determine nanotube clusters time: "<<(int)(ct1-ct0)<<" secs."<<endl;
+        hout << "Find clusters and determine percolation: "<<(int)(ct1-ct0)<<" secs."<<endl;
         
         //Contacts are not needed anymore, so delete the object
         delete Contacts;
-        
-        //----------------------------------------------------------------------
-        //Check if visualization files were requested for clusters
-        
-        //----------------------------------------------------------------------
-        //Determine percolation
-        Percolation *Perc = new Percolation;
-        ct0 = time(NULL);
-        if (!Perc->Determine_percolated_clusters(i, Init->simu_para.particle_type, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, Cutwins->boundary_cnt, HoKo->labels, Cutwins->boundary_gnp, HoKo->labels_gnp, HoKo->clusters_cnt, HoKo->isolated, HoKo->clusters_gch, HoKo->isolated_gch)) {
-            hout << "Error when determining percoalted clusters" << endl;
-            return 0;
-        }
-        //Create vector to delete object and free memmory
-        vector<int> family(Perc->family);
-        delete Perc;
-        ct1 = time(NULL);
-        hout << "Determine percolating clusters time: "<<(int)(ct1-ct0)<<" secs."<<endl;
-        
-        //Labels form HK76 are not needed anymore
-        HoKo->labels.clear();
-        HoKo->labels_labels.clear();
-        HoKo->labels_gnp.clear();
-        HoKo->labels_labels_gnp.clear();
-        
-        //----------------------------------------------------------------------
-        //Check if visualization files were requested for percolated clusters
         
         //----------------------------------------------------------------------
         //These vectors are used to store the fractions of the different families in the current observation window
@@ -166,7 +140,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
             
             //Perform the electrical analysis to obtain the backbone and calculate the electrical resistance
             ct0 = time(NULL);
-            if (!Electric_A->Perform_analysis_on_clusters(Init->simu_para.avoid_resistance, family, HoKo, Cutwins, cnts_structure, cnts_points, cnts_radius, gnps_structure, gnps_points, window_geom, Init->electric_para, Init->cutoff_dist, hybrid_particles, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
+            if (!Electric_A->Perform_analysis_on_clusters(Init->simu_para.avoid_resistance, HoKo->family, HoKo, Cutwins, structure_cnt, points_cnt, radii, gnps_structure, points_gnp, window_geom, Init->electric_para, Init->cutoff_dist, hybrid_particles, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
                 hout << "Error when performing electrical analysis" << endl;
                 return 0;
             }
@@ -204,7 +178,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Calculate the fractions of CNTs that belong to each family and save them to a file
         Clusters_fractions *Fracs = new Clusters_fractions;
         ct0 = time(NULL);
-        if (!Fracs->Calculate_fractions(Init->geom_sample, Cutwins->cnts_inside, Cutwins->gnps_inside, cnts_structure, cnts_points, cnts_radius, HoKo->isolated, hybrid_particles, HoKo->isolated_gch, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
+        if (!Fracs->Calculate_fractions(Init->geom_sample, Cutwins->cnts_inside, Cutwins->gnps_inside, structure_cnt, points_cnt, radii, HoKo->isolated, hybrid_particles, HoKo->isolated_gch, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
             hout << "Error when calculating clusters fractions" << endl;
             return 0;
         }

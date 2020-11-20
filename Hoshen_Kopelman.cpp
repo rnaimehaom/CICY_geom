@@ -1702,7 +1702,7 @@ int Hoshen_Kopelman::Find_percolated_clusters(const int &n_clusters, const vecto
 }
 //This function adds the clusters connected to a boundary (as given by the vector
 //boundary_particles) into the set boundary1
-int Add_clusters_in_boundary(const vector<int> &boundary_particles, const vector<int> &labels, set<int> &boundary1)
+int Hoshen_Kopelman::Add_clusters_in_boundary(const vector<int> &boundary_particles, const vector<int> &labels, set<int> &boundary1)
 {
     //Iterate over the particles on the boundary vector (if any)
     for (int j = 0; j < (int)boundary_particles.size(); j++) {
@@ -1728,7 +1728,7 @@ int Add_clusters_in_boundary(const vector<int> &boundary_particles, const vector
 //as indicated by the set boundary1
 //When a cluster is connected to both boundaries, then it percolated along d and this is
 //added to the vector of percoalted directions (percolated_dirs)
-int Add_percolated_direction(const int &d, const vector<int> &boundary_particles, const vector<int> &labels, const set<int> &boundary1, vector<set<int> > &percolated_dirs)
+int Hoshen_Kopelman::Add_percolated_direction(const int &d, const vector<int> &boundary_particles, const vector<int> &labels, const set<int> &boundary1, vector<set<int> > &percolated_dirs)
 {
     //Iterate over the particles on the boundary vector (if any)
     for (int j = 0; j < (int)boundary_particles.size(); j++) {
