@@ -15,18 +15,18 @@
 //3) When adding the new_cnt vector to the global vector of CNTs, split it into segments. This operation is completely useless with a non-periodic sample and was causing some errors when using the penetrating model so I just deleted it.
 
 //Generate a network of nanoparticles
-int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const GNP_Geo &gnp_geo, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, vector<Point_3D> &cpoints, vector<double> &cnts_radius_out, vector<vector<long int> > &cstructures, vector<GNP> &gnps)const
+int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const GNP_Geo &gnp_geo, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, vector<Point_3D> &points_cnt, vector<double> &radii_out, vector<vector<long int> > &structure, vector<GNP> &gnps)const
 {
     //Vector of storing the CNT points
     vector<vector<Point_3D> > cnts_points;
     //Vector for radii, internal variable
-    vector<double> cnts_radius_in;
+    vector<double> radii_in;
     
     double gnp_vol_tot = 0, gnp_wt_tot = 0;
     if (simu_para.particle_type == "CNT_wires") {
         
         //Generate a network defined by points
-        if (!Generate_cnt_network_threads_mt(simu_para, geom_sample, nanotube_geo, cutoffs, cnts_points, cnts_radius_in)) {
+        if (!Generate_cnt_network_threads_mt(simu_para, geom_sample, nanotube_geo, cutoffs, cnts_points, radii_in)) {
             hout << "Error in generating a CNT network" << endl;
             return 0;
         }
@@ -50,7 +50,7 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         }
         
         //Generate a CNT network within a GNP network
-        if (!Generate_cnt_network_threads_among_gnps_mt(simu_para, gnp_geo, nanotube_geo, geom_sample, cutoffs, gnps, sectioned_domain_gnp, gnp_vol_tot, gnp_wt_tot, cnts_points, cnts_radius_in)) {
+        if (!Generate_cnt_network_threads_among_gnps_mt(simu_para, gnp_geo, nanotube_geo, geom_sample, cutoffs, gnps, sectioned_domain_gnp, gnp_vol_tot, gnp_wt_tot, cnts_points, radii_in)) {
             hout<<"Error in generating a CNT network for mixed particles"<<endl;
             return 0;
         }
@@ -82,10 +82,10 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     //If there are CNTS, transform the 2D cnts_points into 1D cpoints and 2D cstructures
     //Also, remove the CNTs in the boundary layer
     if (simu_para.particle_type != "GNP_cuboids") {
-        if(Transform_points_cnts(geom_sample, nanotube_geo, cnts_points, cpoints, cnts_radius_in, cnts_radius_out, cstructures)==0) {
+        if(Transform_points_cnts(geom_sample, nanotube_geo, cnts_points, points_cnt, radii_in, radii_out, structure)==0) {
             hout<<"Error in Transform_points for CNTs."<<endl; return 0;
         }
-        if (!Recalculate_vol_fraction_cnts(geom_sample, simu_para, nanotube_geo, cpoints, cnts_radius_out, cstructures)) {
+        if (!Recalculate_vol_fraction_cnts(geom_sample, simu_para, nanotube_geo, points_cnt, radii_out, structure)) {
             hout<<"Error in Recalculate_vol_fraction_cnts."<<endl; return 0;
         }
         hout<<endl;

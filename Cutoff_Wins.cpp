@@ -9,7 +9,7 @@
 
 //This function removes the points that are outside the observation window.
 //The vector cnts_inside is created so only the CNTs inside the obseration window are considered in other functions
-int Cutoff_Wins::Extract_observation_window(const int &window, const string &particle_type, const Geom_sample &sample_geo, const cuboid &window_geo, const Nanotube_Geo &cnts_geo, vector<GNP> &gnps, vector<vector<long int> > &structure, vector<double> &radii, vector<Point_3D> &points_in, vector<vector<int> > &shells_cnt, vector<Shell> &shells_gnp)
+int Cutoff_Wins::Extract_observation_window(const int &window, const string &particle_type, const Geom_sample &sample_geo, const cuboid &window_geo, const Nanotube_Geo &cnts_geo, vector<GNP> &gnps, vector<vector<long int> > &structure, vector<double> &radii, vector<Point_3D> &points_cnt, vector<vector<int> > &shells_cnt, vector<Shell> &shells_gnp)
 {
     
     //Vector to save initial seeds
@@ -28,7 +28,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
     //Check if the generated structure has CNTs, this happens when the particle type is not GNPs
     if (particle_type != "GNP_cuboids") {
         
-        if (!Trim_boundary_cnts(window, sample_geo, window_geo, cnts_geo, points_in, structure, shells_cnt, radii)) {
+        if (!Trim_boundary_cnts(window, sample_geo, window_geo, cnts_geo, points_cnt, structure, shells_cnt, radii)) {
             hout << "Error in Extract_observation_window when calling Trim_boundary_cnts" << endl;
             return 0;
         }
@@ -73,13 +73,13 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
     
     return 1;
 }
-int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample_geo, const cuboid &window_geo, const Nanotube_Geo &cnts, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii)
+int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample_geo, const cuboid &window_geo, const Nanotube_Geo &cnts, vector<Point_3D> &points_cnt, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii)
 {
     //String to save the location of a point (inside the window, outside the window, or at a boundary)
     string point_location;
     
     //Initialize the vector of boundary_flags with empty vectors
-    boundary_flags_cnt.assign(points_in.size(), vector<short int>());
+    boundary_flags_cnt.assign(points_cnt.size(), vector<short int>());
     
     //Initialize the vector of boundary_flags with empty vectors
     boundary_cnt.assign(6, vector<int>());
@@ -126,7 +126,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
         int cnt_points = (int)structure[CNT].size();
         
         //Check where is the first point of the CNT
-        string is_first_inside_sample = Where_is(points_in[0], window_geo);
+        string is_first_inside_sample = Where_is(points_cnt[0], window_geo);
         
         //Scan all remaning points in the current CNT
         for (int j = 1; j < cnt_points; j++) {
@@ -134,7 +134,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
             //Get the current point number
             long int P1 = structure[CNT][j];
             
-            point_location = Where_is(points_in[P1], window_geo);
+            point_location = Where_is(points_cnt[P1], window_geo);
             //hout<<"P1="<<P1<<" CNT="<<CNT<<" loc="<<point_location<<endl;
             
             //Check if the point is inside the window or at a boundary
@@ -166,7 +166,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
                 if (n_points >= cnts.min_points) {
                     
                     //Add the current segment to the structure
-                    if (!Add_cnt_segment_to_structure(sample_geo, window_geo, vars_shells, start, end, cnts.min_points, CNT, point_location, points_in, structure, shells_cnt, radii, segments, first_idx, last_idx)) {
+                    if (!Add_cnt_segment_to_structure(sample_geo, window_geo, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure, shells_cnt, radii, segments, first_idx, last_idx)) {
                         hout<<"Error when adding a CNT segment (Add_cnt_segment_to_structure 1)."<<endl;
                         return 0;
                     }
@@ -188,7 +188,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
             //This was not done becuase, in the for loop, a segement is added only when it finds a point
             //outside the sample
             //Add the current segment to the structure
-            if (!Add_cnt_segment_to_structure(sample_geo, window_geo, vars_shells, start, end, cnts.min_points, CNT, point_location, points_in, structure, shells_cnt, radii, segments, first_idx, last_idx)) {
+            if (!Add_cnt_segment_to_structure(sample_geo, window_geo, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure, shells_cnt, radii, segments, first_idx, last_idx)) {
                 hout<<"Error when adding a CNT segment (Add_cnt_segment_to_structure 2)."<<endl;
                 return 0;
             }
@@ -219,7 +219,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
     return 1;
 }
 //===========================================================================
-int Cutoff_Wins::Add_cnt_segment_to_structure(const Geom_sample &sample_geo, const cuboid &window_geo, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &end_point_loc, vector<Point_3D> &points_in, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx)
+int Cutoff_Wins::Add_cnt_segment_to_structure(const Geom_sample &sample_geo, const cuboid &window_geo, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &end_point_loc, vector<Point_3D> &points_cnt, vector<vector<long int> > &structure, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx)
 {
     //Variable used in case the start index needs to change
     int new_start = start;
@@ -231,33 +231,33 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const Geom_sample &sample_geo, con
     //Variables for the (possibly) outside and inside points for the start of the segment
     long int p_out_start = structure[CNT][new_start];
     long int p_ins_start = structure[CNT][new_start+1];
-    //hout<<"Start=("<<points_in[p_out_start].x<<", "<<points_in[p_out_start].y<<", "<<points_in[p_out_start].z<<") CNT="<<CNT<<endl;
+    //hout<<"Start=("<<points_cnt[p_out_start].x<<", "<<points_cnt[p_out_start].y<<", "<<points_cnt[p_out_start].z<<") CNT="<<CNT<<endl;
     
     //Double check where is the start point of the current segment, if the first point is:
     //inside: do not add it to the boundary vectors
     //boundary: add it to the boundary vectors
     //outside: calculate the boundary point, subtitute the outside point by the boundary point,
     //          then add it to the boundary vectors
-    string start_point_loc = Where_is(points_in[p_out_start], window_geo);
+    string start_point_loc = Where_is(points_cnt[p_out_start], window_geo);
     if (start_point_loc != "inside") {
         
         if (start_point_loc == "outside") {
             
             //Subtitute the point
-            if (!Substitute_boundary_point(window_geo, points_in[p_ins_start], points_in[p_out_start])) {
+            if (!Substitute_boundary_point(window_geo, points_cnt[p_ins_start], points_cnt[p_out_start])) {
                 hout<<"Error when substituting boundary point (start)"<<endl;
                 return 0;
             }
         }
         
         //Add to the boundary vectors, this happens when the first point is either outside or at a boundary
-        Add_to_boundary_vectors(window_geo, points_in[p_out_start], p_out_start, new_CNT);
+        Add_to_boundary_vectors(window_geo, points_cnt[p_out_start], p_out_start, new_CNT);
     }
     
     //Variables for the (possibly) outside and inside points for the end of the segment
     long int p_out_end = structure[CNT][end];
     long int p_ins_end = structure[CNT][end-1];
-    //hout<<"End=("<<points_in[p_out_end].x<<", "<<points_in[p_out_end].y<<", "<<points_in[p_out_end].z<<") CNT="<<CNT<<endl;
+    //hout<<"End=("<<points_cnt[p_out_end].x<<", "<<points_cnt[p_out_end].y<<", "<<points_cnt[p_out_end].z<<") CNT="<<CNT<<endl;
     
     //Double check where is the end point of the current segment, if the end point is:
     //inside: do not add it to the boundary vectors
@@ -269,14 +269,14 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const Geom_sample &sample_geo, con
         if (end_point_loc == "outside") {
             
             //Subtitute the point
-            if (!Substitute_boundary_point(window_geo, points_in[p_ins_end], points_in[p_out_end])) {
+            if (!Substitute_boundary_point(window_geo, points_cnt[p_ins_end], points_cnt[p_out_end])) {
                 hout<<"Error when substituting boundary point (end)"<<endl;
                 return 0;
             }
         }
         
         //Add to the boundary vectors, this happens when the last point is either outside or at a boundary
-        Add_to_boundary_vectors(window_geo, points_in[p_out_end], p_out_end, new_CNT);
+        Add_to_boundary_vectors(window_geo, points_cnt[p_out_end], p_out_end, new_CNT);
     }
     
     //At this point all points in the segment are inside the observation window (or its boundary)
@@ -306,13 +306,13 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const Geom_sample &sample_geo, con
             long int P = structure[CNT][j];
             
             //Change the flag of current point to be that of the new CNT number
-            points_in[P].flag = new_CNT;
+            points_cnt[P].flag = new_CNT;
             
             //Add the point number to the structure vector
             struct_temp.push_back(j);
             
             //Update the shell of the new CNT points
-            shells.Add_to_cnt_shells(var_shells[0], var_shells[1], var_shells[2], var_shells[3], points_in[P], (int)shells_cnt.size(), shells_cnt);
+            shells.Add_to_cnt_shells(var_shells[0], var_shells[1], var_shells[2], var_shells[3], points_cnt[P], (int)shells_cnt.size(), shells_cnt);
         }
         
         //Update the radii vector

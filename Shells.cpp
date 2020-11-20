@@ -18,7 +18,7 @@
  
  */
 
-int Shells::Generate_shells(const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<GNP> &gnps, vector<vector<int> > &shells_cnt, vector<Shell> &shells_gnps)
+int Shells::Generate_shells(const struct Geom_sample &sample, const vector<Point_3D> &points_cnt, const vector<GNP> &gnps, vector<vector<int> > &shells_cnt, vector<Shell> &shells_gnps)
 {
     //Calculate the number of shells
     //sample.cut_num is the number of increments from the smallest to the largest observation widows
@@ -51,8 +51,8 @@ int Shells::Generate_shells(const struct Geom_sample &sample, const vector<Point
     
     
     //Scan all CNT points to determine which shells each CNTs occupies
-    for (long int i = 0; i < (long int)points_in.size(); i++) {
-        if (!Add_to_cnt_shells(midpoints, boundary_layer, core, half_step, points_in[i], n_shells, shells_cnt)) {
+    for (long int i = 0; i < (long int)points_cnt.size(); i++) {
+        if (!Add_to_cnt_shells(midpoints, boundary_layer, core, half_step, points_cnt[i], n_shells, shells_cnt)) {
             hout << "Error in Generate_shells_and_structure when calling Add_to_cnt_shells."<< endl;
             return 0;
         }
