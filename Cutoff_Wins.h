@@ -24,11 +24,14 @@ public:
     //CNTs located at a window boundary
     //boundary_cnt[i] contains CNTs in contact with boundary i
     vector<vector<int> > boundary_cnt;
+    //CNT points located at a window boundary
+    //boundary_cnt_pts[i] contains CNT points at boundary i
+    vector<vector<long int> > boundary_cnt_pts;
     //GNPs located at a window boundary
     //boundary_gnp[i] contains GNPs in contact with boundary i
     vector<vector<int> > boundary_gnp;
     //GNP points located at a window boundary
-    //boundary_gnp_pts[i] contains GNP pointss at boundary i
+    //boundary_gnp_pts[i] contains GNP points at boundary i
     vector<vector<int> > boundary_gnp_pts;
     //GNP points that are located at the boundary
     vector<Point_3D> gnp_boundary_pts;
@@ -51,8 +54,7 @@ public:
     int Substitute_boundary_point(const cuboid &window_geo, const Point_3D &p_inside, Point_3D &p_outside);
     string Where_is(const Point_3D &point, const cuboid &window_geo);
     string Where_is_with_boundary(const Point_3D &point, const cuboid &window_geo, int &boundary);
-    void Add_to_boundary_vectors(const cuboid &window_geo, const Point_3D &point3d, const long int &point, const int &new_CNT);
-    void Add_CNT_to_boundary(vector<int> &boundary, const int &CNT, const long int &point, const short int &flag1, const short int &flag2);
+    int Add_cnt_point_to_boundary_vectors(const cuboid &window_geo, const Point_3D &P, const long int &P_num);
     int Fill_cnts_inside(const vector<vector<long int> > &structure);
     int Fill_gnps_inside(const int &window, const cuboid &window_geo, const vector<GNP> &gnps, const vector<Shell> &shells_gnp);
     int Find_gnp_boundary_points(const cuboid &window_geo, const GNP &gnp);

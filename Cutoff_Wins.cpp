@@ -251,7 +251,10 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const Geom_sample &sample_geo, con
         }
         
         //Add to the boundary vectors, this happens when the first point is either outside or at a boundary
-        Add_to_boundary_vectors(window_geo, points_cnt[p_out_start], p_out_start, new_CNT);
+        if (!Add_cnt_point_to_boundary_vectors(window_geo, points_cnt[p_out_start], p_out_start)) {
+            hout<<"Error in Add_cnt_segment_to_structure when caling Add_cnt_point_to_boundary_vectors (1)"<<endl;
+            return 0;
+        }
     }
     
     //Variables for the (possibly) outside and inside points for the end of the segment
@@ -276,7 +279,10 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const Geom_sample &sample_geo, con
         }
         
         //Add to the boundary vectors, this happens when the last point is either outside or at a boundary
-        Add_to_boundary_vectors(window_geo, points_cnt[p_out_end], p_out_end, new_CNT);
+        if (!Add_cnt_point_to_boundary_vectors(window_geo, points_cnt[p_out_end], p_out_end)) {
+            hout<<"Error in Add_cnt_segment_to_structure when caling Add_cnt_point_to_boundary_vectors (2)"<<endl;
+            return 0;
+        }
     }
     
     //At this point all points in the segment are inside the observation window (or its boundary)
@@ -489,58 +495,24 @@ string Cutoff_Wins::Where_is_with_boundary(const Point_3D &point, const cuboid &
     else
         return "inside";
 }
-//Add a point to the corrsponding boundary vector.
-//The boundary vectors are used in the direct electrifying algorithm to find the nodes with known boundary conditions
-void Cutoff_Wins::Add_to_boundary_vectors(const cuboid &window_geo, const Point_3D &point3d, const long int &point, const int &new_CNT)
+//Add a point to the corrsponding boundary vector
+int Cutoff_Wins::Add_cnt_point_to_boundary_vectors(const cuboid &window_geo, const Point_3D &P, const long int &P_num)
 {
-    //Add point and CNT to the boundary vector
-    double x = point3d.x;
-    double y = point3d.y;
-    double z = point3d.z;
+    //Get the boundary of the point
+    int boundary = -1;
+    string location = Where_is_with_boundary(P, window_geo, boundary);
     
-    //hout<<"P=("<<point3d.x<<", "<<point3d.y<<", "<<point3d.z<<") ";
-    if ( abs(x - window_geo.poi_min.x) < Zero){
-        Add_CNT_to_boundary(boundary_cnt[4], new_CNT, point,0,0);
-    } else if ( abs(x - window_geo.max_x) < Zero ){
-        Add_CNT_to_boundary(boundary_cnt[2], new_CNT, point,0,1);
-    } else if ( abs(y - window_geo.poi_min.y) < Zero ){
-        Add_CNT_to_boundary(boundary_cnt[5], new_CNT, point,1,0);
-    } else if ( abs(y - window_geo.max_y) < Zero ){
-        Add_CNT_to_boundary(boundary_cnt[3], new_CNT, point,1,1);
-    } else if ( abs(z - window_geo.poi_min.z) < Zero ) {
-        Add_CNT_to_boundary(boundary_cnt[1], new_CNT, point,2,0);
-    } else if ( abs(z - window_geo.max_z) < Zero ) {
-        Add_CNT_to_boundary(boundary_cnt[0], new_CNT, point,2,1);
+    //Check for error
+    if (boundary == -1) {
+        hout<<"Error: point should be at boundary but it is not. Point location is: "<<location<<endl;
+        hout<<"\tP="<<P.str()<<", P_num="<<P_num<<endl;
+        return 0;
     }
-}
-
-//This function adds a CNT to the corresponding boundary vector.
-//The flags are used in the direct electrifying algorithm:
-//flag1: indicates the direction 0 is x, 1 is y, 2 is z
-//flag2: indicates which boundary 0 is for x0, y0 or z0; 1 is for x1, y1 or z1
-void Cutoff_Wins::Add_CNT_to_boundary(vector<int> &boundary, const int &CNT, const long int &point, const short int &flag1, const short int &flag2)
-{
-    if (!boundary.size()) {
-        //If the boundary vector is empty, then just add the CNT
-        boundary.push_back(CNT);
-    } else if(boundary.back() != CNT){
-        //If the boundary vector is not empty, add the CNT only if it has not been added
-        boundary.push_back(CNT);
-    }
-    //If only one point of the CNT is outside, but this point is not one of the end points,
-    //then we have two CNTs that will share a boundary point
-    //This will cause the vector boundary_flags[point] to have 4 elements, which causes problems
-    //when assigning node numbers in the LM matrix
-    //So if the flags are only added when vector boundary_flags[point] is empty
-    //The repetition of the point can be safely ignored since the two CNTs will be at the same boundary
-    //Thus element boundary_flags[point][0] will be the same as boundary_flags[point][2]
-    //and boundary_flags[point][1] will be the same as boundary_flags[point][3]
-    if (!boundary_flags_cnt[point].size()) {
-        boundary_flags_cnt[point].push_back(flag1);
-        boundary_flags_cnt[point].push_back(flag2);
-
-    }
-    //hout<<"CNT "<<CNT<<" boundary ("<<flag1<<", "<<flag2<<")"<<endl;
+    
+    //Add the point number to the corresponding boundary
+    boundary_cnt_pts[boundary].push_back(P_num);
+    
+    return 1;
 }
 //Fill the vector cnts_inside
 int Cutoff_Wins::Fill_cnts_inside(const vector<vector<long int> > &structure)
