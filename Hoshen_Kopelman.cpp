@@ -14,7 +14,7 @@
  */
 
 //This function groups nanoparticles into clusters
-int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_para, const Cutoff_dist &cutoffs, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<Point_3D> &points_gnp)
+int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_para, const Cutoff_dist &cutoffs, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
 {
     //Label vectors for CNTs and GNPs
     vector<int> labels_cnt, labels_gnp;
@@ -41,10 +41,10 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
         
         //The size of the vector labels has to be equal to the number of CNTs
         //-1 is the unassigned value for a label
-        labels_cnt.assign(structure.size(), -1);
+        labels_cnt.assign(structure_cnt.size(), -1);
         
         //There are CNTs, make clusters
-        if (!Make_cnt_clusters(points_cnt, radii, cutoffs, sectioned_domain_cnt, structure, labels_cnt, n_labels_cnt)) {
+        if (!Make_cnt_clusters(points_cnt, radii, cutoffs, sectioned_domain_cnt, structure_cnt, labels_cnt, n_labels_cnt)) {
             hout<<"Error in Determine_clusters when calling Make_cnt_clusters"<<endl;
             return 0;
         }
@@ -67,7 +67,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
         labels_gnp.assign(gnps.size(), -1);
         
         //Make GNP clusters
-        if (!Make_gnp_clusters(gnps_inside, sectioned_domain_gnp, gnps, cutoffs.tunneling_dist, n_labels_cnt, n_total_labels, points_gnp, labels_gnp)) {
+        if (!Make_gnp_clusters(gnps_inside, sectioned_domain_gnp, gnps, cutoffs.tunneling_dist, n_labels_cnt, n_total_labels, structure_gnp, points_gnp, labels_gnp)) {
             hout<<"Error in Determine_clusters when calling Make_gnp_clusters"<<endl;
             return 0;
         }
@@ -81,7 +81,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     if (simu_para.particle_type == "GNP_CNT_mix" || simu_para.particle_type == "Hybrid_particles") {
         
         //Make mixed clusters
-        if (!Make_mixed_clusters(n_total_labels, cutoffs, points_cnt, radii, sectioned_domain_cnt, gnps, sectioned_domain_gnp, labels_cnt, labels_gnp, points_gnp, n_clusters)) {
+        if (!Make_mixed_clusters(n_total_labels, cutoffs, points_cnt, radii, sectioned_domain_cnt, gnps, sectioned_domain_gnp, labels_cnt, labels_gnp, structure_gnp, points_gnp, n_clusters)) {
             hout<<"Error in Determine_clusters when calling Make_mixed_clusters"<<endl;
             return 0;
         }
@@ -109,7 +109,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     return 1;
 }
 //This functions makes CNT clusters
-int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_cnt, const vector<double> &radii, const Cutoff_dist &cutoffs, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, vector<int> &labels_cnt, int &n_labels_cnt)
+int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_cnt, const vector<double> &radii, const Cutoff_dist &cutoffs, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, vector<int> &labels_cnt, int &n_labels_cnt)
 {
     //Vector of labels of labels
     vector<int> labels_labels_cnt;
@@ -120,7 +120,7 @@ int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_cnt, const
     map<long int, map<int, double> > point_contacts_dist;
     
     //Label the CNTs
-    if (!Label_cnts_in_window(points_cnt, radii, cutoffs.tunneling_dist, sectioned_domain_cnt, structure, point_contacts, point_contacts_dist, contact_elements, labels_cnt, labels_labels_cnt)) {
+    if (!Label_cnts_in_window(points_cnt, radii, cutoffs.tunneling_dist, sectioned_domain_cnt, point_contacts, point_contacts_dist, contact_elements, labels_cnt, labels_labels_cnt)) {
         hout<<"Error in Make_cnt_clusters when calling Label_cnts_in_window"<<endl;
         return 0;
     }
@@ -141,7 +141,7 @@ int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_cnt, const
 }
 //This function labels the CNTs in a window
 //These labels are used to make clusters
-int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, const vector<double> &radii, const double &tunnel_cutoff, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &contact_elements, vector<int> &labels_cnt, vector<int> &labels_labels_cnt)
+int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, const vector<double> &radii, const double &tunnel_cutoff, const vector<vector<long int> > &sectioned_domain_cnt, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &contact_elements, vector<int> &labels_cnt, vector<int> &labels_labels_cnt)
 {
     //new_label will take the value of the newest cluster
     int new_label = 0;
@@ -357,7 +357,7 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
                         //That is, just add the shortest junction found to the
                         //vector of junctions
                         Junction j(Pi_junc, "CNT", Pj_junc, "CNT", d_junc_min);
-                        junctions.push_back(j);
+                        junctions_cnt.push_back(j);
                         
                         //Add the junction points to the vectors of elements
                         elements_cnt[i].insert(Pi_junc);
@@ -390,7 +390,7 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
                 //That is, just add the shortest junction found in the last (or only) segment
                 //to the vector of junctions
                 Junction j(Pi_junc, "CNT", Pj_junc, "CNT", d_junc_min);
-                junctions.push_back(j);
+                junctions_cnt.push_back(j);
             }
         }
     }
@@ -398,13 +398,13 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
     return 1;
 }
 //This function makes the GNP clusters
-int Hoshen_Kopelman::Make_gnp_clusters(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, int &n_total_labels, vector<Point_3D> &points_gnp, vector<int> &labels_gnp)
+int Hoshen_Kopelman::Make_gnp_clusters(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, int &n_total_labels, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp)
 {
     //Vector of labels of labels
     vector<int> labels_labels_gnp;
     
     //Label the GNPs
-    if (!Label_gnps_in_window(gnps_inside, sectioned_domain_gnp, gnps, tunnel_cutoff, n_labels_cnt, points_gnp, labels_gnp, labels_labels_gnp)) {
+    if (!Label_gnps_in_window(gnps_inside, sectioned_domain_gnp, gnps, tunnel_cutoff, n_labels_cnt, structure_gnp, points_gnp, labels_gnp, labels_labels_gnp)) {
         hout<<"Error in Make_gnp_clusters when calling Label_gnps_in_window"<<endl;
         return 0;
     }
@@ -418,7 +418,7 @@ int Hoshen_Kopelman::Make_gnp_clusters(const vector<int> &gnps_inside, const vec
     return 1;
 }
 //This function labels the GNPs so that they can be grouped into clusters
-int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp)
+int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp)
 {
     //new_label will take the value of the newest cluster
     //Since GNP clusters are made after CNT clusters, the first label for GNPs is equal
@@ -493,11 +493,19 @@ int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const 
                             return 0;
                         }
                         
+                        //Get the point numbers
+                        long int Pa = (long int)points_gnp.size()-1;
+                        long int Pb = (long int)points_gnp.size()-2;
+                        
                         //Create a junction with the GNPs in contact
-                        Junction j((long int)points_gnp.size()-1, "GNP", (long int)points_gnp.size()-2, "GNP", dist);
+                        Junction j(Pa, "GNP", Pb, "GNP", dist);
+                        
+                        //Add point numbers to structure
+                        structure_gnp[points_gnp[Pa].flag].push_back(Pa);
+                        structure_gnp[points_gnp[Pb].flag].push_back(Pb);
                         
                         //Add the junction to the vector of junctions
-                        junctions.push_back(j);
+                        junctions_gnp.push_back(j);
                     }
                     
                     //Mark the contact as visited
@@ -1213,7 +1221,7 @@ int Hoshen_Kopelman::Average_point_with_two_interserctions(const vector<Edge> &e
     return 1;
 }
 //This function merges CNT and GNP labels to make mixed clusters
-int Hoshen_Kopelman::Make_mixed_clusters(const int &n_labels, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, vector<int> &labels_cnt, vector<int> &labels_gnp, vector<Point_3D> &points_gnp, int &n_clusters)
+int Hoshen_Kopelman::Make_mixed_clusters(const int &n_labels, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, vector<int> &labels_cnt, vector<int> &labels_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, int &n_clusters)
 {
     //Vector to store all GNP points in contact with CNTs before contact segments are compressed
     vector<Point_3D> contact_points_gnp;
@@ -1233,7 +1241,7 @@ int Hoshen_Kopelman::Make_mixed_clusters(const int &n_labels, const Cutoff_dist 
     }
     
     //Compress contacts
-    if (!Compress_mixed_contacts(cutoffs, point_contacts, point_contacts_dist, gnp_cnt_point_contacts, contact_points_gnp, points_gnp)) {
+    if (!Compress_mixed_contacts(cutoffs, point_contacts, point_contacts_dist, gnp_cnt_point_contacts, contact_points_gnp, structure_gnp, points_gnp)) {
         hout<<"Error in Make_mixed_clusters when calling Compress_mixed_contacts"<<endl;
         return 0;
     }
@@ -1319,7 +1327,7 @@ int Hoshen_Kopelman::Find_adjacent_labels(const vector<int> &labels_cnt, const v
     return 1;
 }
 //This function compresses the "contact segments" for CNT-CNT contacts
-int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &gnp_cnt_point_contacts, const vector<Point_3D> &contact_points_gnp, vector<Point_3D> &points_gnp)
+int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &gnp_cnt_point_contacts, const vector<Point_3D> &contact_points_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
 {
     //Iterate over all GNPs
     for (int i = 0; i < (int)gnp_cnt_point_contacts.size(); i++) {
@@ -1379,9 +1387,12 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                         //Set the flag of the point
                         points_gnp.back().flag = GNPi;
                         
+                        //Add the GNP point number to the structure
+                        structure_gnp[GNPi].push_back(P_gnp_num);
+                        
                         //Add the shortest junction found to the vector of junctions
                         Junction j(Pj_junc, "CNT", P_gnp_num, "GNP", d_junc_min);
-                        junctions.push_back(j);
+                        junctions_mixed.push_back(j);
                         
                         //Add the junction point on the CNT to the vectors of elements
                         elements_cnt[CNTj].insert(Pj_junc);
@@ -1423,7 +1434,7 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                 //Add the shortest junction found in the last (or only) segment
                 //to the vector of junctions
                 Junction j(Pj_junc, "CNT", P_gnp_num, "GNP", d_junc_min);
-                junctions.push_back(j);
+                junctions_mixed.push_back(j);
                 
                 //Add the junction point on the CNT to the vectors of elements
                 elements_cnt[CNTj].insert(Pj_junc);

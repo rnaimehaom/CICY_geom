@@ -32,7 +32,9 @@ public:
     //CNT elements
     vector<set<long int> > elements_cnt;
     //Junctions
-    vector<Junction> junctions;
+    vector<Junction> junctions_cnt;
+    vector<Junction> junctions_gnp;
+    vector<Junction> junctions_mixed;
     //Vector with the family for each cluster
     //0 for X
     //1 for Y
@@ -48,13 +50,13 @@ public:
     Hoshen_Kopelman(){};
     
     //
-    int Determine_clusters_and_percolation(const Simu_para &simu_para, const Cutoff_dist &cutoffs, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<Point_3D> &points_gnp);
-    int Make_cnt_clusters(const vector<Point_3D> &points_cnt, const vector<double> &radii, const Cutoff_dist &cutoffs, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, vector<int> &labels_cnt, int &n_labels_cnt);
-    int Label_cnts_in_window(const vector<Point_3D> &points_cnt, const vector<double> &radii, const double &tunnel_cutoff, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &contact_elements, vector<int> &labels_cnt, vector<int> &labels_labels_cnt);
+    int Determine_clusters_and_percolation(const Simu_para &simu_para, const Cutoff_dist &cutoffs, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp);
+    int Make_cnt_clusters(const vector<Point_3D> &points_cnt, const vector<double> &radii, const Cutoff_dist &cutoffs, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, vector<int> &labels_cnt, int &n_labels_cnt);
+    int Label_cnts_in_window(const vector<Point_3D> &points_cnt, const vector<double> &radii, const double &tunnel_cutoff, const vector<vector<long int> > &sectioned_domain_cnt, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &contact_elements, vector<int> &labels_cnt, vector<int> &labels_labels_cnt);
     int Cleanup_labels(vector<int> &labels_labels, vector<int> &labels, int &n_labels);
     int Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoffs, const map<long int, map<int, long int> > &point_contacts, const map<long int, map<int, double> > &point_contacts_dist, const vector<map<int, set<long int> > > &contact_elements);
-    int Make_gnp_clusters(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, int &n_total_labels, vector<Point_3D> &points_gnp, vector<int> &labels_gnp);
-    int Label_gnps_in_window(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp);
+    int Make_gnp_clusters(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, int &n_total_labels, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp);
+    int Label_gnps_in_window(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp);
     int Add_junction_points_for_gnps(const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<Point_3D> &points_gnp);
     int Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<int> &simplexA, vector<int> &simplexB, int &v_sumA, int &v_sumB);
     int Find_junction_points_in_gnps(const vector<int> &simplexA, const vector<int> &simplexB, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, const int &face_sumA, const int &face_sumB, Point_3D &PointA, Point_3D &PointB);
@@ -66,9 +68,9 @@ public:
     int Find_point_b_for_face_in_simplex_a(const vector<int> &simplexA, const vector<int> &simplexB, const int &face_sumA, const int &face_sumB, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, Point_3D &PointA, Point_3D &PointB);
     int Get_vertices_inside_face(const vector<int> &simplexA, const vector<Edge> &edgesB, const vector<int> &normalsB, const GNP &GNP_A, const GNP &GNP_B, vector<int> &verticesA_inside);
     int Average_point_with_two_interserctions(const vector<Edge> &edgesA, const vector<int> &normalsA, const GNP &gnpA, const vector<Edge> &edgesB, const vector<int> &normalsB, const GNP &gnpB, const Point_3D &disp, const int &vB, Point_3D &PB);
-    int Make_mixed_clusters(const int &n_labels, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, vector<int> &labels_cnt, vector<int> &labels_gnp, vector<Point_3D> &points_gnp, int &n_clusters);
+    int Make_mixed_clusters(const int &n_labels, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, vector<int> &labels_cnt, vector<int> &labels_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, int &n_clusters);
     int Find_adjacent_labels(const vector<int> &labels_cnt, const vector<int> &labels_gnp, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, vector<Point_3D> &contact_points_gnp, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &gnp_cnt_point_contacts, vector<set<int> > &adj_labels);
-    int Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &gnp_cnt_point_contacts, const vector<Point_3D> &contact_points_gnp, vector<Point_3D> &points_gnp);
+    int Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &gnp_cnt_point_contacts, const vector<Point_3D> &contact_points_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp);
     int Merge_cnt_and_gnp_labels(const int &n_labels, vector<int> &labels_cnt, vector<int> &labels_gnp, const vector<set<int> > &adj_labels, int &n_clusters);
     int DFS_on_labels(const int &n_labels, const vector<set<int> > &adj_labels, vector<vector<int> > &mixed_clusters);
     int Explore_labels(const int &label, const vector<set<int> > &adj_labels, vector<vector<int> > &mixed_clusters, vector<int> &visited_labels);

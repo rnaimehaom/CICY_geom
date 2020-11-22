@@ -9,7 +9,7 @@
 
 //This function removes the points that are outside the observation window.
 //The vector cnts_inside is created so only the CNTs inside the obseration window are considered in other functions
-int Cutoff_Wins::Extract_observation_window(const int &window, const string &particle_type, const Geom_sample &sample_geo, const cuboid &window_geo, const Nanotube_Geo &cnts_geo, vector<GNP> &gnps, vector<vector<long int> > &structure_cnt, vector<double> &radii, vector<Point_3D> &points_cnt, vector<vector<int> > &shells_cnt, vector<Shell> &shells_gnp, vector<vector<int> > &structure_gnp, vector<Point_3D> &points_gnp)
+int Cutoff_Wins::Extract_observation_window(const int &window, const string &particle_type, const Geom_sample &sample_geo, const cuboid &window_geo, const Nanotube_Geo &cnts_geo, vector<GNP> &gnps, vector<vector<long int> > &structure_cnt, vector<double> &radii, vector<Point_3D> &points_cnt, vector<vector<int> > &shells_cnt, vector<Shell> &shells_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
 {
     
     //Vector to save initial seeds
@@ -538,11 +538,11 @@ int Cutoff_Wins::Fill_cnts_inside(const vector<vector<long int> > &structure)
         return 1;
 }
 //Function that fills the vector gnps_inside
-int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, const vector<GNP> &gnps, const vector<Shell> &shells_gnp, vector<vector<int> > &structure_gnp, vector<Point_3D> &points_gnp)
+int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, const vector<GNP> &gnps, const vector<Shell> &shells_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
 {
     //Initialize boundary vectors
     boundary_gnp.assign(6, vector<int>());
-    boundary_gnp_pts.assign(6, vector<int>());
+    boundary_gnp_pts.assign(6, vector<long int>());
     
     //Itertate over all GNPs
     for (int i = 0; i < (int)gnps.size(); i++) {
@@ -569,7 +569,7 @@ int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, c
 }
 //This function determines if a GNP is partially inside an observation window or inside of it
 //If it is partially inside, the boundary points are calculated
-int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, const GNP &gnp, vector<vector<int> > &structure_gnp, vector<Point_3D> &points_gnp)
+int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, const GNP &gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
 {
     //Vector to accumulate all boundary points vertices
     vector<vector<Point_3D> > points_acc(6);
@@ -642,7 +642,7 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, const GNP &g
                 boundary_gnp[i].push_back(gnp.flag);
                 
                 //Get GNP point number
-                int P_gnp_num = (int)points_gnp.size();
+                long int P_gnp_num = (int)points_gnp.size();
                 
                 //Add the GNP point number for boundary points
                 boundary_gnp_pts[i].push_back(P_gnp_num);

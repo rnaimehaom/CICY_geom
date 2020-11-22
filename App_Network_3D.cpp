@@ -27,7 +27,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     //GNP points (only those needed are stored)
     vector<Point_3D> points_gnp;
     //GNP structure, each structure_gnp[i] referes to the points in GNP_i
-    vector<vector<int> > structure_gnp;
+    vector<vector<long int> > structure_gnp;
     
     //Shell vectors (used to remove nanoparticles when reduding observation window size)
     vector<vector<int> > shells_cnts;
@@ -119,7 +119,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Hoshen-Kopelman algorithm
         Hoshen_Kopelman *HoKo = new Hoshen_Kopelman;
         ct0 = time(NULL);
-        if (!HoKo->Determine_clusters_and_percolation(Init->simu_para, Init->cutoff_dist, Cutwins->cnts_inside, Contacts->sectioned_domain_cnts, structure_cnt, points_cnt, radii, Cutwins->boundary_cnt, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, gnps, Cutwins->boundary_gnp, points_gnp)) {
+        if (!HoKo->Determine_clusters_and_percolation(Init->simu_para, Init->cutoff_dist, Cutwins->cnts_inside, Contacts->sectioned_domain_cnts, structure_cnt, points_cnt, radii, Cutwins->boundary_cnt, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, gnps, Cutwins->boundary_gnp, structure_gnp, points_gnp)) {
             hout << "Error when finding clusters and determining percolation" << endl;
             return 0;
         }
