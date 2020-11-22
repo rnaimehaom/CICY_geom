@@ -26,6 +26,8 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     vector<GNP> gnps;
     //GNP points (only those needed are stored)
     vector<Point_3D> points_gnp;
+    //GNP structure, each structure_gnp[i] referes to the points in GNP_i
+    vector<vector<int> > structure_gnp;
     
     //Shell vectors (used to remove nanoparticles when reduding observation window size)
     vector<vector<int> > shells_cnts;
@@ -95,7 +97,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         Cutoff_Wins *Cutwins = new Cutoff_Wins;
         //From this function I get the internal variables cnts_inside and boundary_cnt
         ct0 = time(NULL);
-        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, gnps, structure_cnt, radii, points_cnt, shells_cnts, shell_gnps)) {
+        if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, gnps, structure_cnt, radii, points_cnt, shells_cnts, shell_gnps, structure_gnp, points_gnp)) {
             hout << "Error when extracting observation window "<< i+1 << endl;
             return 0;
         }
