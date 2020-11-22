@@ -135,7 +135,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         vector<double> branches_lengths(7,0);
         
         //Loop over the different clusters so that the direct electrifying algorithm is aplied on each cluster
-        Electrical_analysis *Electric_A = new Electrical_analysis;
+        Electrical_analysis *Electric_A = new Electrical_analysis;/*
         if (HoKo->clusters_cnt.size() || HoKo->clusters_gch.size()) {
             
             //Perform the electrical analysis to obtain the backbone and calculate the electrical resistance
@@ -172,7 +172,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
             delete P;
             
             hout << "There are no percolated clusters" << endl;
-        }
+        }*/
         delete Electric_A;
         
         //Calculate the fractions of CNTs that belong to each family and save them to a file

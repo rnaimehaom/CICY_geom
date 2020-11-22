@@ -7,6 +7,102 @@
 
 #include "Electrical_analysis.h"
 
+int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistance_flag, const cuboid &window, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<int> &family, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &all_dead_indices, vector<vector<long int> > &all_indices, vector<vector<int> > &gnp_dead_indices, vector<vector<int> > &gnp_indices)
+{
+    //Time variables
+    time_t ct0, ct1;
+    
+    //Vector of parallel resistors
+    //Each cluster will contribute with a resistor to each direction in which it percolates
+    //So each cluster adds a parallel resistor on each percolated direction
+    vector<vector<double> > paralel_resistors(3, vector<double>());
+    
+    //Get the number of clusters
+    int n_clusters = 0;
+    //hout<<"clusters_cnt.size()="<<clusters_cnt.size()<<endl;
+    //hout<<"clusters_gnp()="<<clusters_gnp.size()<<endl;
+    if (HoKo->clusters_cnt.size()) {
+        n_clusters = (int)HoKo->clusters_cnt.size();
+        
+    } else if (HoKo->clusters_gnp.size()) {
+        n_clusters = (int)HoKo->clusters_gnp.size();
+    }
+    
+    //Scan every percolated cluster
+    for (int j = 0; j < n_clusters; j++) {
+        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //Current iteration
+        hout << "=============================" <<endl;
+        hout << "\tCluster " << j+1 << " of " << n_clusters <<", family " << family[j] << endl;
+        
+        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //Direct Electrifying algorithm
+        Direct_Electrifying *DEA = new Direct_Electrifying;
+        
+        //Resitor flag, set to 0 to use unit resistors
+        int R_flag = 0;
+        
+        ct0 = time(NULL);
+        //
+        //DEA with unit resistors
+        //
+        ct1 = time(NULL);
+        hout << "Calculate voltage field time: "<<(int)(ct1-ct0)<<" secs."<<endl;
+        
+        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //Determine the backbone and dead branches
+        Backbone_Network *Backbonet = new Backbone_Network;
+        ct0 = time(NULL);
+        //
+        //Extract backbone
+        //
+        ct1 = time(NULL);
+        hout << "Determine backbone network time: "<<(int)(ct1-ct0)<<" secs."<<endl;
+        
+        //Delete objects to free memory
+        delete DEA;
+        
+        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //Check if it is requested to avoid calculating the resistor network
+        if (!avoid_resistance_flag) {
+            
+            //Set now the R_flag to 1 to indicate that actual resistances will be used
+            R_flag = 1;
+            
+            //
+            //DEA with actual resistors
+            //(Calculate the electrical resistances along each direction for current clusters)
+            //
+            
+        }
+        
+        //Delete objects to free memory
+        delete Backbonet;
+    }
+    
+    //Check if it is requested to avoid calculating the resistor network
+    if (!avoid_resistance_flag) {
+        
+        //Calculate the matrix resistances on each direction
+        vector<double> matrix_resistances;
+        //
+        //
+        
+        //Calculate the resistances and resistivities along each direction
+        vector<double> resistivities;
+        //
+        //
+        
+        //Append resistors to a file
+        Printer *P = new Printer;
+        P->Append_1d_vec(resistors, "resistors.txt");
+        P->Append_1d_vec(resistivities, "resistivities.txt");
+        delete P;
+    
+    }
+    
+    return 1;
+}
 int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistance_flag, const vector<int> &family, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure, const vector<Point_3D> &point_list, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &point_list_gnp, const struct Geom_sample &window, const struct Electric_para &electric_param, const struct Cutoff_dist &cutoffs, vector<GCH> &hybrid_particles, vector<vector<long int> > &all_dead_indices, vector<vector<long int> > &all_indices, vector<vector<int> > &gnp_dead_indices, vector<vector<int> > &gnp_indices)
 {
     //Time variables
