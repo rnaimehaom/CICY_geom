@@ -105,6 +105,26 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     }
     
     //Determine percolation
+    if (!Find_percolated_clusters(n_clusters, boundary_cnt, boundary_gnp, labels_cnt, labels_gnp, clusters_cnt_tmp, clusters_gnp_tmp)) {
+        hout<<"Error in Determine_clusters when calling Find_percolated_clusters"<<endl;
+        return 0;
+    }
+    
+    //Group junctions if there is percolation
+    if ( clusters_cnt.size() + clusters_gnp.size() ) {
+        
+        //There is at least one percoalted cluster
+        //Group the junctions into the clusters they belong to
+        if (!Group_junctions(points_cnt, points_gnp, labels_cnt, labels_gnp)) {
+            hout<<"Error in Find_percolated_clusters when calling Group_junctions"<<endl;
+            return 0;
+        }
+    }
+    else {
+        
+        //There is no percolation, so output a message
+        hout<<"There are no percolated clusters"<<endl;
+    }
     
     return 1;
 }
@@ -1616,6 +1636,27 @@ int Hoshen_Kopelman::Find_percolated_clusters(const int &n_clusters, const vecto
     //Vector of percolated directions
     vector<set<int> > percolated_dirs(n_clusters, set<int>());
     
+    //Find the clusters that are connected to boundaries and if they connect
+    //opposite boundaries, i.e., clusters that percolate
+    if (!Find_clusters_connected_to_boundaries(boundary_cnt, boundary_gnp, labels_cnt, labels_gnp, boundary_pairs, percolated_dirs)) {
+        hout<<"Error in Find_percolated_clusters when calling Find_clusters_connected_to_boundaries"<<endl;
+        return 0;
+    }
+    
+    //Add the percolated clusters to the vectors of percolated clusters, and the non-percoalted
+    //clusters to the vectors of isolated particles
+    //Also, determine the family of each percoalted cluster
+    if (!Determine_family_of_percolated_clusters(n_clusters, clusters_cnt_tmp, clusters_gnp_tmp, percolated_dirs)) {
+        hout<<"Error in Find_percolated_clusters when calling Determine_family_of_percolated_clusters"<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//This function finds the clusters that are connected to a boundary
+//It is also determined if a cluster connects two opposite boundaries
+int Hoshen_Kopelman::Find_clusters_connected_to_boundaries(const vector<vector<int> > &boundary_cnt, const vector<vector<int> > &boundary_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const int boundary_pairs[][2], vector<set<int> > &percolated_dirs)
+{
     //Iterate over the three boundary pairs
     for (int i = 0; i < 3; i++) {
         
@@ -1628,13 +1669,13 @@ int Hoshen_Kopelman::Find_percolated_clusters(const int &n_clusters, const vecto
         
         //Add the CNT clusters connected to boundary b1 to the set boundary1
         if (!Add_clusters_in_boundary(boundary_cnt[b1], labels_cnt, boundary1)) {
-            hout<<"Error in Find_percolated_clusters when calling Add_clusters_in_boundary (CNT)"<<endl;
+            hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_clusters_in_boundary (CNT)"<<endl;
             return 0;
         }
         
         //Add the GNP clusters connected to boundary b1 to the set boundary1
         if (!Add_clusters_in_boundary(boundary_gnp[b1], labels_gnp, boundary1)) {
-            hout<<"Error in Find_percolated_clusters when calling Add_clusters_in_boundary (GNP)"<<endl;
+            hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_clusters_in_boundary (GNP)"<<endl;
             return 0;
         }
         
@@ -1649,66 +1690,18 @@ int Hoshen_Kopelman::Find_percolated_clusters(const int &n_clusters, const vecto
             //Find the CNT clusters connected to boundary b2 and add a percolated direction
             //if percolation is determined
             if (!Add_percolated_direction(i, boundary_cnt[b2], labels_cnt, boundary1, percolated_dirs)) {
-                hout<<"Error in Find_percolated_clusters when calling Add_percolated_direction (CNT)"<<endl;
+                hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_percolated_direction (CNT)"<<endl;
                 return 0;
             }
             
             //Find the GNP clusters connected to boundary b2 and add a percolated direction
             //if percolation is determined
             if (!Add_percolated_direction(i, boundary_gnp[b2], labels_gnp, boundary1, percolated_dirs)) {
-                hout<<"Error in Find_percolated_clusters when calling Add_percolated_direction (GNP)"<<endl;
+                hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_percolated_direction (GNP)"<<endl;
                 return 0;
             }
         }
     }
-    
-    //Go though the vector of percolated directions and determine the percolation of
-    //each cluster
-    for (int i = 0; i < n_clusters; i++) {
-        
-        //Check if cluster i percolates
-        if (percolated_dirs[i].empty()) {
-            
-            //Cluster i does not percolate, so add it to the vector of isolated particles
-            if (clusters_cnt_tmp.size()) {
-                isolated_cnt.push_back(clusters_cnt_tmp[i]);
-            }
-            if (clusters_gnp_tmp.size()) {
-                isolated_gnp.push_back(clusters_gnp_tmp[i]);
-            }
-        }
-        else {
-            
-            //Cluster i percolates, so calculate the sum of mapped directions
-            int sum = 0;
-            for (set<int>::iterator it = percolated_dirs[i].begin(); it != percolated_dirs[i].end(); it++) {
-                
-                //Add the set element to the sum
-                sum = sum + *it;
-            }
-            
-            //Variable to store the family number
-            int fam = 0;
-            
-            //Get the family number from the sum
-            if (!Family_map(sum, fam)) {
-                hout<<"Error in Find_percolated_clusters when calling Family_map"<<endl;
-                return 0;
-            }
-            
-            //Add the family to the vector of families
-            family.push_back(fam);
-            
-            //Add the cluster to the vectors of percolated clusters
-            if (clusters_cnt_tmp.size()) {
-                clusters_cnt.push_back(clusters_cnt_tmp[i]);
-            }
-            if (clusters_gnp_tmp.size()) {
-                clusters_gnp.push_back(clusters_gnp_tmp[i]);
-            }
-        }
-    }
-    
     return 1;
 }
 //This function adds the clusters connected to a boundary (as given by the vector
@@ -1764,6 +1757,58 @@ int Hoshen_Kopelman::Add_percolated_direction(const int &d, const vector<int> &b
     }
     return 1;
 }
+//This function determines the family of a percoalted cluster
+int Hoshen_Kopelman::Determine_family_of_percolated_clusters(const int &n_clusters, const vector<vector<int> > &clusters_cnt_tmp, const vector<vector<int> > &clusters_gnp_tmp, const vector<set<int> > &percolated_dirs)
+{
+    //Go though the vector of percolated directions and determine the family of each cluster
+    for (int i = 0; i < n_clusters; i++) {
+        
+        //Check if cluster i percolates
+        if (percolated_dirs[i].empty()) {
+            
+            //Cluster i does not percolate, so add it to the vector of isolated particles
+            if (clusters_cnt_tmp.size()) {
+                isolated_cnt.push_back(clusters_cnt_tmp[i]);
+            }
+            if (clusters_gnp_tmp.size()) {
+                isolated_gnp.push_back(clusters_gnp_tmp[i]);
+            }
+        }
+        else {
+            
+            //Cluster i percolates, so calculate the sum of mapped directions
+            int sum = 0;
+            for (set<int>::iterator it = percolated_dirs[i].begin(); it != percolated_dirs[i].end(); it++) {
+                
+                //Add the set element to the sum
+                sum = sum + *it;
+            }
+            
+            //Variable to store the family number
+            int fam = 0;
+            
+            //Get the family number from the sum
+            if (!Family_map(sum, fam)) {
+                hout<<"Error in Find_percolated_clusters when calling Family_map"<<endl;
+                return 0;
+            }
+            
+            //Add the family to the vector of families
+            family.push_back(fam);
+            
+            //Add the cluster to the vectors of percolated clusters
+            if (clusters_cnt_tmp.size()) {
+                clusters_cnt.push_back(clusters_cnt_tmp[i]);
+            }
+            if (clusters_gnp_tmp.size()) {
+                clusters_gnp.push_back(clusters_gnp_tmp[i]);
+            }
+        }
+    }
+    
+    return 1;
+}
+//This function maps the sum of directions to the integer that represents the percolated family
 int Hoshen_Kopelman::Family_map(const int &perc_sum, int &family)
 {
     //Return the family number according to the sum
@@ -1794,6 +1839,108 @@ int Hoshen_Kopelman::Family_map(const int &perc_sum, int &family)
             hout<<"Unknown sum of percolated directions: "<<perc_sum<<endl;
             return 0;
     }
+    return 1;
+}
+//This function groups the junctions into the clusters they belong to
+int Hoshen_Kopelman::Group_junctions(const vector<Point_3D> &points_cnt, const vector<Point_3D> &points_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp)
+{
+    //CNT-CNT junction
+    if (junctions_cnt.size()) {
+        
+        //Set the vector of clusters for junctions to the correct size
+        cluster_cnt_junctions.assign(clusters_cnt.size(), vector<int>());
+        
+        //Add junctions to cluster
+        if (!Group_junctions_same_particle(points_cnt, labels_cnt, junctions_cnt, cluster_cnt_junctions)) {
+            hout<<"Error in Group_junctions when calling Group_junctions_same_particle (CNTs)"<<endl;
+            return 0;
+        }
+    }
+    
+    //GNP-GNP junctions
+    if (junctions_gnp.size()) {
+        
+        //Set the vector of clusters for junctions to the correct size
+        cluster_gnp_junctions.assign(clusters_gnp.size(), vector<int>());
+        
+        //Add junctions to cluster
+        if (!Group_junctions_same_particle(points_gnp, labels_gnp, junctions_gnp, cluster_gnp_junctions)) {
+            hout<<"Error in Group_junctions when calling Group_junctions_same_particle (GNPs)"<<endl;
+            return 0;
+        }
+    }
+    
+    //CNT-GNP junctions
+    if (junctions_mixed.size()) {
+        
+        //Set the vector of clusters for junctions to the correct size
+        cluster_mix_junctions.assign(clusters_cnt.size(), vector<int>());
+        
+        //Add junctions to cluster
+        if (!Group_junctions_mix_particle(points_cnt, points_gnp, labels_cnt, labels_gnp)) {
+            hout<<"Error in Group_junctions when calling Group_junctions_mix_particle"<<endl;
+            return 0;
+        }
+    }
+    
+    return 1;
+}
+//This function groups the junctions into the clusters they belong to when the junction is
+//between two particles of the same type, i.e., CNT-CNT and GNP-GNP junctions
+int Hoshen_Kopelman::Group_junctions_same_particle(const vector<Point_3D> &points, const vector<int> &labels, const vector<Junction> &junctions, vector<vector<int> > &cluster_junction)
+{
+    //Iterate over all junctions
+    for (int i = 0; i < (int)junctions.size(); i++) {
+        
+        //Get the Particle number of the two particles
+        int Pa1 = points[junctions[i].point1].flag;
+        int Pa2 = points[junctions[i].point2].flag;
+        
+        //Get the cluster numbers of the two particles
+        int L1 = labels[Pa1];
+        int L2 = labels[Pa2];
+        
+        //Check that the two particles belong to the same cluster
+        if (L1 != L2) {
+            hout<<"Error in Group_junctions_same_particle: a junction between particles in different clusters was found. This cannot happen as two particles that have a junction belong to the same cluster"<<endl;
+            hout<<"Particle 1:"<<junctions[i].particle1<<" number:"<<Pa1<<" point:"<<junctions[i].point1<<" coordinates:"<<points[junctions[i].point1].str()<<endl;
+            hout<<"Particle 2:"<<junctions[i].particle2<<" number:"<<Pa2<<" point:"<<junctions[i].point2<<" coordinates:"<<points[junctions[i].point2].str()<<endl;
+            return 0;
+        }
+        
+        //Add junction number to corresponding cluster
+        cluster_junction[L1].push_back(i);
+    }
+    
+    return 1;
+}
+//This function groups the junctions into the clusters they belong to when the junction is
+//between two particles of different type, i.e., CNT-GNP junctions
+int Hoshen_Kopelman::Group_junctions_mix_particle(const vector<Point_3D> &points_cnt, const vector<Point_3D> &points_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp)
+{
+    //Iterate over all mixed junctions
+    for (int i = 0; i < (int)junctions_mixed.size(); i++) {
+        
+        //Get the Particle number of the two particles
+        int Pa1 = points_cnt[junctions_mixed[i].point1].flag;
+        int Pa2 = points_gnp[junctions_mixed[i].point2].flag;
+        
+        //Get the cluster numbers of the two particles
+        int L1 = labels_cnt[Pa1];
+        int L2 = labels_gnp[Pa2];
+        
+        //Check that the two particles belong to the same cluster
+        if (L1 != L2) {
+            hout<<"Error in Group_junctions_mix_particle: a junction between particles in different clusters was found. This cannot happen as two particles that have a junction belong to the same cluster"<<endl;
+            hout<<"CNT:"<<Pa1<<" point:"<<junctions_mixed[i].point1<<" coordinates:"<<points_cnt[junctions_mixed[i].point1].str()<<endl;
+            hout<<"GNP:"<<Pa2<<" number:"<<Pa2<<" point:"<<junctions_mixed[i].point2<<" coordinates:"<<points_gnp[junctions_mixed[i].point2].str()<<endl;
+            return 0;
+        }
+        
+        //Add junction number to corresponding cluster
+        cluster_mix_junctions[L1].push_back(i);
+    }
+    
     return 1;
 }
 //-------------------------------------------------------
@@ -1882,6 +2029,9 @@ int Hoshen_Kopelman::Merge_labels(const int &root1, const int &root2, vector<int
     
     return 1;
 }
+//===========================================================================
+//===========================================================================
+//===========================================================================
 //Deprecated:
 //This function maps a point to the local coordinates of a GNP
 //It is asummed the center of coordinates is located at the GNP center
