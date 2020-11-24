@@ -8,6 +8,506 @@
 #include "Direct_Electrifying.h"
 
 //Calculate the voltage values at contact points and endpoints
+int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &R_flag, const Electric_para &electric_param, const Cutoff_dist &cutoffs, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &point_list, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps)
+{
+    //First we need to prepare the matrices that the direct electrifying needs.
+    //The number of reserved nodes is calculated.
+    //These is the number of boundaries with prescribed voltage.
+    int reserved_nodes = Get_global_nodes(HoKo->family[n_cluster]);
+    if (reserved_nodes == -1) {
+        hout<<"Error in Compute_voltage_field, invalid family: "<<HoKo->family[n_cluster]<<endl;
+        return 0;
+    }
+    
+    //This variable is used to assing node numbers and after assigning all node numbers
+    //it will contain the number of nodes in the network
+    //It is initialized with the first available node, which is equal to reserved_nodes
+    long int global_nodes = (long int)reserved_nodes;
+    
+    //Initialize the vector of GNP points to triangulate
+    vector<vector<int> > gnp_triangulation_points(gnps.size(), vector<int>());
+    vector<vector<Edge> > gnp_triangulation_edges;
+    
+    //Construct the LM matrices depending on the particles available on each cluster
+    if (HoKo->clusters_cnt.size() && HoKo->clusters_cnt[n_cluster].size()) {
+        
+        //There are CNT clusters, so construct the LM matrix for CNTs
+        if (!LM_matrix_for_cnts(n_cluster, HoKo, Cutwins, structure_cnt, global_nodes)) {
+            hout<<"Error in Compute_voltage_field when calling LM_matrix_for_cnts"<<endl;
+            return 0;
+        }
+    }
+    if (HoKo->clusters_gnp.size() && HoKo->clusters_gnp[n_cluster].size()) {
+        
+        //There are GNP clusters, so construct the LM matrix for GNPs
+        if (!LM_matrix_for_gnps(n_cluster, HoKo, Cutwins, structure_gnp, global_nodes)) {
+            hout<<"Error in Compute_voltage_field when calling LM_matrix_for_gnps"<<endl;
+            return 0;
+        }
+    }
+
+    //hout << "global_nodes="<<global_nodes<<endl;
+    //Variables for using the SSS for the sparse matrix
+    vector<long int> col_ind, row_ptr;
+    vector<double> values, diagonal;
+    vector<vector<double> > KEFT;
+    //With the LM matrix, now fill the sparse stiffness matrix
+    //Fill_sparse_stiffness_matrix (use R_flag)
+    //
+    //
+    
+    //Clear vector to free memory
+    gnp_triangulation_points.clear();
+    
+    //hout << "Solve_DEA_equations_CG_SSS"<<endl;
+    //This is where the actual direct electrifying algorithm (DEA) takes place
+    //Solve_DEA_equations_CG_SSS
+    //
+    //
+    
+    return 1;
+}
+//This function gets the first available node depending on the percolated family
+int Direct_Electrifying::Get_global_nodes(const int &family)
+{
+    if (family == 6) {
+        //If family is 6, then a cluster percolates in the three directions.
+        //Hence we need 6 voltages: 0 to 5.
+        //6 is the first available node
+        return 6;
+    } else if ( 3 <= family && family <= 5 ){
+        //If family is 3, 4 or 5, then a cluster percolates in two directions.
+        //Hence we need 4 voltages: 0 to 3.
+        //4 is the first available node
+        return 4;
+    } else if ( 0 <= family && family <= 2 ) {
+        //If a family is 0, 1 or 2, then a cluster percolates in one direction.
+        //Hence we need 2 voltages: 0 to 1.
+        //2 is the first available node
+        return 2;
+    }
+    else {
+        //There was an error, this clause should not be reached
+        return -1;
+    }
+}
+//This function fills the LM matrix for CNTs
+int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure, long int &global_nodes)
+{
+    //Map all CNT points at a boundary with prescribed boundary conditions
+    //First use a temporary variable to save time when mappong the first and
+    //last points of a CNT
+    map<long int, long int> LMM_cnts_boundary;
+    if (!Map_points_at_boundaries(HoKo->family[n_cluster], Cutwins->boundary_cnt_pts, LMM_cnts_boundary)) {
+        hout<<"Error in LM_matrix_for_cnts when calling Map_points_at_boundaries (1)"<<endl;
+        return 0;
+    }
+    
+    //Iterate over all CNTs in the cluster
+    for (int i = 0; i < (int)HoKo->clusters_cnt[n_cluster].size(); i++) {
+        
+        //Get the current CNT
+        int CNT = HoKo->clusters_cnt[n_cluster][i];
+        
+        //Iterator to find an element in LMM_cnts_boundary
+        map<long int, long int>::iterator it;
+        
+        //Map the first point in the CNT if it is not in a boundary
+        it = LMM_cnts_boundary.find(structure[CNT][0]);
+        if (it == LMM_cnts_boundary.end()) {
+            
+            //Initial point of CNT is not at a boundary, so map it to a new node
+            LMM_cnts[structure[CNT][0]] = global_nodes;
+            
+            //Update the next available node
+            global_nodes++;
+        }
+        
+        //Map all points in the elements vector
+        for (set<long int>::iterator j = HoKo->elements_cnt[CNT].begin(); j != HoKo->elements_cnt[CNT].end(); j++) {
+            
+            //Get the current point number
+            long int P = *j;
+            
+            //Map the point to a new node
+            LMM_cnts[P] = global_nodes;
+            
+            //Update the next available node
+            global_nodes++;
+        }
+        
+        //Map the last point in the CNT if it is not in a boundary
+        it = LMM_cnts_boundary.find(structure[CNT].back());
+        if (it == LMM_cnts_boundary.end()) {
+            
+            //Last point of CNT is not at a boundary, so map it to a new node
+            LMM_cnts[structure[CNT].back()] = global_nodes;
+            
+            //Update the next available node
+            global_nodes++;
+        }
+    }
+    
+    //Add the mappings of all CNT points at a boundary with prescribed boundary conditions
+    //into the class variable
+    if (!Map_points_at_boundaries(HoKo->family[n_cluster], Cutwins->boundary_cnt_pts, LMM_cnts)) {
+        hout<<"Error in LM_matrix_for_cnts when calling Map_points_at_boundaries (2)"<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//
+int Direct_Electrifying::Map_points_at_boundaries(const int &family, const vector<vector<long int> > &boundary_pts, map<long int, long int> &LMM)
+{
+    //Get the vector of boundaries
+    vector<int> boundaries;
+    if (!Get_vector_of_boundaries(family, boundaries)) {
+        hout<<"Error in Map_cnt_points_at_boundaries when calling Get_vector_of_boundaries"<<endl;
+        return 0;
+    }
+    
+    //Iterate over the vector of boundaries to fill the map LMM_cnts
+    //The index of boundaries is the node number with presecribed boundary conditions
+    for (long int n = 0; n < (int)boundaries.size(); n++) {
+        
+        //Get the boundary number
+        int b = boundaries[n];
+        
+        //Iterate over the points at boundary b
+        for (int i = 0; i < (int)boundary_pts[b].size(); i++) {
+            
+            //Get the current point number
+            long int P = boundary_pts[b][i];
+            
+            //Add the mapping from P to node n
+            LMM[P] = n;
+        }
+    }
+    
+    return 1;
+}
+//This function generates a vector of boundaries to be scanned for the local mapping of
+//reserved nodes
+int Direct_Electrifying::Get_vector_of_boundaries(const int &family, vector<int> &boundaries)
+{
+    //Add boundary numbers to the vector boundaries based on the family
+    switch (family) {
+        //Family X
+        case 0:
+            boundaries.push_back(2);
+            boundaries.push_back(4);
+            break;
+        //Family Y
+        case 1:
+            boundaries.push_back(3);
+            boundaries.push_back(5);
+            break;
+        //Family Z
+        case 2:
+            boundaries.push_back(0);
+            boundaries.push_back(1);
+            break;
+        //Family XY
+        case 3:
+            boundaries.push_back(2);
+            boundaries.push_back(4);
+            boundaries.push_back(3);
+            boundaries.push_back(5);
+            break;
+        //Family XZ
+        case 4:
+            boundaries.push_back(2);
+            boundaries.push_back(4);
+            boundaries.push_back(0);
+            boundaries.push_back(1);
+            break;
+        //Family YZ
+        case 5:
+            boundaries.push_back(3);
+            boundaries.push_back(5);
+            boundaries.push_back(0);
+            boundaries.push_back(1);
+            break;
+        //Family XYZ
+        case 6:
+            boundaries.push_back(2);
+            boundaries.push_back(4);
+            boundaries.push_back(3);
+            boundaries.push_back(5);
+            boundaries.push_back(0);
+            boundaries.push_back(1);
+            break;
+            
+        default:
+            hout<<"Error in Get_vector_of_boundaries, invalid family: "<<family<<endl;
+            return 0;
+    }
+    
+    return 1;
+}
+//This function fills the LM matrix for GNPs
+int Direct_Electrifying::LM_matrix_for_gnps(const int &n_cluster, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_gnp, long int &global_nodes)
+{
+    
+    //Add the mappings of all GNP points at a boundary with prescribed boundary conditions
+    //into the class variable
+    if (!Map_points_at_boundaries(HoKo->family[n_cluster], Cutwins->boundary_gnp_pts, LMM_gnps)) {
+        hout<<"Error in LM_matrix_for_gnps when calling Map_points_at_boundaries"<<endl;
+        return 0;
+    }
+    
+    //Iterate over all GNPs in the cluster
+    for (int i = 0; i < (int)HoKo->clusters_cnt[n_cluster].size(); i++) {
+        
+        //Get current GNP
+        int GNP = HoKo->clusters_cnt[n_cluster][i];
+        
+        //Iterate over all points in GNP
+        for (int j = 0; j < (int)structure_gnp[GNP].size(); j++) {
+            
+            //Get current point number
+            long int P = structure_gnp[GNP][j];
+            
+            //Check it is not a boundary node
+            if (P >= Cutwins->n_gnp_pts_b) {
+                
+                //P is not a boundary point
+                
+                //Add the mapping of the current GNP point to a node number
+                LMM_gnps[P] = global_nodes;
+                
+                //Update the next available node
+                global_nodes++;
+            }
+        }
+    }
+    
+    return 1;
+}
+//This function creates the sparse stifness matrix that will be used to solve the sytem of equations
+//The sparse version is more efficient computationally speaking
+int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const int &nodes, const double &d_vdw, const int &n_cluster, const Electric_para &electric_param, Hoshen_Kopelman *HoKo, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<vector<double> > &KEFT, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal)
+{
+    //------------------------------------------------------------------------
+    //Start with the 2D vectors
+    
+    //Variables for the 2D matrices. Initialize them with the proper number of rows (or columns)
+    vector<vector<long int> > col_ind_2d(nodes, vector<long int>());
+    vector<vector<double> > values_2d(nodes, vector<double>());
+    
+    //Set the diagonal vector to the proper size and initialize it with zeros
+    diagonal.clear();
+    diagonal.assign(nodes, 0);
+    
+    //------------------------------------------------------------------------
+    //Add contributions from particles
+    
+    //hout << "Fill_2d_matrices_cnts"<<endl;
+    //Fill the 2D matrices with the contributions of the CNTs when there are CNT clusters
+    if (HoKo->clusters_cnt.size() && HoKo->clusters_cnt[n_cluster].size()) {
+        
+        //Add contributions from CNT resistors
+        if (!Fill_2d_matrices_cnts(R_flag, n_cluster, electric_param, HoKo, structure_cnt, points_cnt, radii, col_ind_2d, values_2d, diagonal)) {
+            hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_cnts" << endl;
+            return 0;
+        }
+        
+        //Add contributions from CNT-CNT junctions
+    }
+    
+    //hout << "Fill_2d_matrices_gnp"<<endl;
+    //Fill the 2D matrices with the contributions of the GNPs when there are GNP clusters
+    if (HoKo->clusters_gnp.size() && HoKo->clusters_gnp[n_cluster].size()) {
+        
+        //Add contributions from GNP resistors
+        /*
+        //hout << "GNP resistors" << endl;
+        if (!Fill_2d_matrices_gnp(R_flag, HoKo->clusters_gch[n_cluster], structure, point_list, radii, LM_matrix, point_list_gnp, gnp_triangulation_points, LM_matrix_gnp, electric_param, hybrid_particles, col_ind_2d, values_2d, diagonal)) {
+            hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_gnp" << endl;
+            return 0;
+        }*/
+        
+        //Add contributions from GNP-GNP junctions
+        
+        /*
+        //Fill the vector of flags for GNPs in the cluster
+        vector<short int> gnps_inside_flags(hybrid_particles.size(),0);
+        if (!Flags_gnps_inside(HoKo->clusters_gch[n_cluster], gnps_inside_flags)) {
+            hout << "Error in Fill_sparse_stiffness_matrix when calling Flags_gnps_inside" << endl;
+            return 0;
+        }*/
+        
+        /*if (R_flag == 0) {
+            Printer *P = new Printer;
+            P->Print_2d_vec(col_ind_2d, "col_ind_2d_unit_preGNPT.txt");
+            delete P;
+        } else {
+            Printer *P = new Printer;
+            P->Print_2d_vec(col_ind_2d, "col_ind_2d_R_preGNPT.txt");
+            delete P;
+        }
+        
+        hout << "GNP-GNP tunnels" << endl;//*/
+        
+        /*
+        //Fill the 2D matrices with the contributions of the GNP-GNP tunnels
+        if (!Fill_2d_matrices_gnp_gnp_tunnels(R_flag, HoKo->gnp_contacts, point_list_gnp, LM_matrix_gnp, HoKo->clusters_gch[n_cluster], gnps_inside_flags, electric_param, d_vdw, hybrid_particles, col_ind_2d, values_2d, diagonal)) {
+            hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_gnp_gnp_tunnels" << endl;
+            return 0;
+        }*/
+        
+        /*if (R_flag == 0) {
+            Printer *P = new Printer;
+            P->Print_2d_vec(col_ind_2d, "col_ind_2d_unit_preMixT.txt");
+            delete P;
+        } else {
+            Printer *P = new Printer;
+            P->Print_2d_vec(col_ind_2d, "col_ind_2d_R_preMixT.txt");
+            delete P;
+        }
+        
+        hout << "CNT-GNP tunnels" << endl;//*/
+        
+        
+        //Fill the 2D matrices with the contributions of the CNT-GNP tunnels
+        /*
+        if (!Fill_2d_matrices_cnt_gnp_tunnels(R_flag, HoKo->mixed_contacts, point_list, radii, LM_matrix, point_list_gnp, LM_matrix_gnp, gnps_inside_flags, electric_param, d_vdw, hybrid_particles, col_ind_2d, values_2d, diagonal)) {
+            hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_cnt_gnp_tunnels" << endl;
+            return 0;
+        }*/
+        
+    }
+    
+    //------------------------------------------------------------------------
+    //Add contribution from CNT-GNP junctions
+    
+    //------------------------------------------------------------------------
+    //------------------------------------------------------------------------
+    //Convert from 2D vectors to 1D vectors
+    
+    //Initialize vectors
+    values.clear();
+    col_ind.clear();
+    row_ptr.clear();
+    //The first element of row_ptr is zero
+    row_ptr.push_back(0);
+    //empty_double.push_back(0);
+    KEFT.clear();
+    vector<double> zeros(reserved_nodes,0);
+    KEFT.assign(nodes-reserved_nodes, zeros);
+    
+    hout << "From_2d_to_1d_vectors"<<endl;
+    From_2d_to_1d_vectors(col_ind_2d, values_2d, KEFT, col_ind, row_ptr, values, diagonal);
+    //hout << "From_2d_to_1d_vectors done"<<endl;
+    return 1;
+}
+//This function adds the contributions of the CNT and junction resistors to the stiffness matrix
+int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const int &n_cluster, const Electric_para &electric_param,  Hoshen_Kopelman *HoKo, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, vector<vector<long int> > &col_ind_2d, vector<vector<double> > &values_2d, vector<double> &diagonal)
+{
+    //Scan every CNT in the cluster
+    for (int i = 0; i < (long int)HoKo->clusters_cnt[n_cluster].size(); i++) {
+        
+        //Current CNT in cluster
+        int CNT = HoKo->clusters_cnt[n_cluster][i];
+        
+        //Get the first point of the element, i.e., the first point of the CNT
+        long int P1 = structure_cnt[CNT][0];
+        
+        //Variable to store the second point of the element
+        long int P2;
+        
+        //Iterate over the points in the elements vector of CNT
+        for (set<long int>::const_iterator it = HoKo->elements_cnt[CNT].begin(); it != HoKo->elements_cnt[CNT].end(); it++) {
+            
+            //Get the second point of the element
+            P2 = *it;
+            
+            //Calculate resistance depending of the R_flag
+            double Re;
+            if (!Calculate_resistance_cnt(R_flag, points_cnt, P1, P2, radii[CNT], electric_param.resistivity_CNT, Re)) {
+                hout<<"Error in Fill_2d_matrices_cnts when calling Calculate_resistance_cnt"<<endl;
+                return 0;
+            }
+            
+            //Get the nodes of the points
+            long int node1 = LMM_cnts[P1];
+            long int node2 = LMM_cnts[P2];
+            
+            //Add the resistance value to the corresponding 2D vectors
+            if(!Add_elements_to_2d_sparse_matrix(node1, node2, Re, col_ind_2d, values_2d, diagonal)) {
+                hout<<"Error in Fill_2d_matrices_cnts when calling Add_elements_to_2d_sparse_matrix"<<endl;
+                return 0;
+            }
+        }
+
+    }
+    
+    return 1;
+}
+//This function calculates the length of a CNT segment that corresponds to one element (resistor)
+//Using the resisitivity as input parameter the resistance of the CNT segment is calculated
+int Direct_Electrifying::Calculate_resistance_cnt(const int &R_flag, const vector<Point_3D> &points_cnt, const long int &P1, const long int &P2, const double &radius, const double &resistivity, double &Re)
+{
+    //Check the resistance flag
+    if (R_flag == 1) {
+        
+        //Calculate the actual resistance
+        
+        //Variable to store the CNT length
+        double length = 0;
+        //Calculate the length of each CNT segment
+        for (long int i = P1; i < P2; i++) {
+            //Calculate the distance from point i to i+1 and add it to the total length
+            length = length + points_cnt[i].distance_to(points_cnt[i+1]);
+        }
+        
+        //Calculate resistance as R = rho*l/A; A = PI*r*r
+        Re = resistivity*length/(PI*radius*radius);
+    }
+    else if (R_flag == 0) {
+        
+        //Use unit value
+        Re = 1.0;
+    }
+    else {
+        hout << "Error in Fill_2d_matrices_cnts. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//
+int Direct_Electrifying::Add_elements_to_2d_sparse_matrix(const long int &node1, const long int &node2, const double &Re, vector<vector<long int> > &col_ind_2d, vector<vector<double> > &values_2d, vector<double> &diagonal)
+{
+    double Re_inv = 1/Re;
+    //Add the diagonal elements of the stiffness matrix
+    diagonal[node1] += Re_inv;
+    diagonal[node2] += Re_inv;
+    
+    //Add the off diagonal elements of the stiffness matrix
+    if (node1 > node2) {
+        
+        //Add the column node
+        col_ind_2d[node1].push_back(node2);
+        
+        //This is the resistance between the two nodes
+        values_2d[node1].push_back(-Re_inv);
+    } else {
+        
+        //Add the column node
+        col_ind_2d[node2].push_back(node1);
+        
+        //This is the resistance between the two nodes
+        values_2d[node2].push_back(-Re_inv);
+    }
+    //hout << "Added ";
+    return 1;
+}
+//==============================================================================================
+//==============================================================================================
+//==============================================================================================
+//Calculate the voltage values at contact points and endpoints
 int Direct_Electrifying::Calculate_voltage_field(const int &family, const int &n_cluster, const int &R_flag, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure, const vector<Point_3D> &point_list, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &point_list_gnp, const struct Electric_para &electric_param, const struct Cutoff_dist &cutoffs, vector<GCH> &hybrid_particles)
 {
     //First we need to prepare the matrices that the direct electrifying needs
@@ -102,20 +602,6 @@ int Direct_Electrifying::Calculate_voltage_field(const int &family, const int &n
     }
     
     return 1;
-}
-//
-int Direct_Electrifying::Get_global_nodes(const int &family)
-{
-    if (family == 6) {
-        //If family is 6, then a cluster percolates in the three directions. Hence we need 6 voltages: 0 to 5. 6 is the first available node
-        return 6;
-    } else if ( (3 <= family) && (family <= 5) ){
-        //If family is 3, 4 or 5, then a cluster percolates in two directions. Hence we need 4 voltages: 0 to 3. 4 is the first available node
-        return 4;
-    } else {
-        //If a family is 0, 1 or 2, then a cluster percolates in one direction. Hence we need 2 voltages: 0 to 1. 2 is the first available node
-        return 2;
-    }
 }
 //This function initializes the vector boundary_node_map. This can be initialized in the h-file using Xcode.
 //Using the make file I get an error because it cannot be initialized in the h-file (for what I could understand)
