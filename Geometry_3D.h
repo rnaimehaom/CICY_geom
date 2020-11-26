@@ -206,6 +206,37 @@ struct TrFace {
     }
 };
 //---------------------------------------------------------------------------
+//Data structure for a triangular face based on the indices of a vector of Point_3D objects
+//This TrFace data structure uses long ints to store the vertex numbers
+struct TrFaceL {
+    
+    //Indices of the three vertices of the triangular face
+    long int v1, v2, v3;
+    
+    //Default contructor
+    TrFaceL () {
+        v1 = 0;
+        v2 = 0;
+        v3 = 0;
+    }
+    TrFaceL (const long int &v1_, const long int &v2_, const long int &v3_) {
+        v1=v1_;v2=v2_;v3=v3_;
+    }
+    
+    void set(const long int &v1_, const long int &v2_, const long int &v3_) {
+        v1=v1_;v2=v2_;v3=v3_;
+    }
+    void set(const TrFaceL &f) {
+        v1=f.v1;v2=f.v2;v3=f.v3;
+    }
+    string str(){
+        return ("("+to_string(v1)+", "+to_string(v2)+", "+to_string(v3)+")");
+    }
+    string str()const{
+        return ("("+to_string(v1)+", "+to_string(v2)+", "+to_string(v3)+")");
+    }
+};
+//---------------------------------------------------------------------------
 //Data structure for an edge based on the indices of a vector of Point_3D objects
 struct Edge {
     
@@ -235,6 +266,40 @@ struct Edge {
     }
     //Comparing two edges, here edges are not directed so AB and BA are the same edge
     bool operator==(const Edge &e) const {
+        return ( (e.v1 == v1 && e.v2 == v2) || (e.v2 == v1 && e.v1 == v2) );
+    }
+};
+//---------------------------------------------------------------------------
+//Data structure for an edge based on the indices of a vector of Point_3D objects
+//This Edge data structure uses long ints to store the vertex numbers
+struct EdgeL {
+    
+    //Vertices of the edge
+    long int v1, v2;
+    
+    //Default contructor
+    EdgeL () {
+        v1 = 0;
+        v2 = 0;
+    }
+    EdgeL (const long int &v1_, const long int &v2_) {
+        v1=v1_;v2=v2_;
+    }
+    
+    void set(const long int &v1_, const long int &v2_) {
+        v1=v1_;v2=v2_;
+    }
+    void set(const EdgeL &e) {
+        v1=e.v1;v2=e.v2;
+    }
+    string str(){
+        return ("("+to_string(v1)+", "+to_string(v2)+")");
+    }
+    string str()const{
+        return ("("+to_string(v1)+", "+to_string(v2)+")");
+    }
+    //Comparing two edges, here edges are not directed so AB and BA are the same edge
+    bool operator==(const EdgeL &e) const {
         return ( (e.v1 == v1 && e.v2 == v2) || (e.v2 == v1 && e.v1 == v2) );
     }
 };
@@ -290,7 +355,7 @@ struct GNP {
     //Volume
     double volume;
     //Tringulation edges
-    vector<Edge> triangulation;
+    vector<EdgeL> triangulation;
     //Flag for GNP number
     int flag;
     
