@@ -39,17 +39,34 @@ public:
     Direct_Electrifying(){};
     
     //Member Functions
-    int Compute_voltage_field(const int &n_cluster, const int &R_flag, const Electric_para &electric_param, const Cutoff_dist &cutoffs, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &point_list, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps);
+    int Compute_voltage_field(const int &n_cluster, const int &R_flag, const Electric_para &electric_param, const Cutoff_dist &cutoffs, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps);
     int Get_global_nodes(const int &family);
     int LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure, long int &global_nodes);
     int Map_points_at_boundaries(const int &family, const vector<vector<long int> > &boundary_pts, map<long int, long int> &LMM);
     int Get_vector_of_boundaries(const int &family, vector<int> &boundaries);
     int LM_matrix_for_gnps(const int &n_cluster, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_gnp, long int &global_nodes);
-    int Fill_sparse_stiffness_matrix(const int &R_flag, const int &nodes, const double &d_vdw, const int &n_cluster, const Electric_para &electric_param, Hoshen_Kopelman *HoKo, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<vector<double> > &KEFT, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal);
-    int Fill_2d_matrices_cnts(const int &R_flag, const int &n_cluster, const Electric_para &electric_param,  Hoshen_Kopelman *HoKo, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, vector<vector<long int> > &col_ind_2d, vector<vector<double> > &values_2d, vector<double> &diagonal);
+    int Fill_sparse_stiffness_matrix(const int &R_flag, const long int &nodes, const long int &reserved_nodes, const double &d_vdw, const int &n_cluster, const Electric_para &electric_param, Hoshen_Kopelman *HoKo, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal, vector<double> &P, vector<double> &R, vector<double> &VEF);
+    int Fill_2d_matrices_cnts(const int &R_flag, const int &n_cluster, const Electric_para &electric_param,  Hoshen_Kopelman *HoKo, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, vector<map<long int, double>> &col_values, vector<double> &diagonal);
     int Calculate_resistance_cnt(const int &R_flag, const vector<Point_3D> &points_cnt, const long int &P1, const long int &P2, const double &radius, const double &resistivity, double &Re);
-    int Add_elements_to_2d_sparse_matrix(const long int &node1, const long int &node2, const double &Re, vector<vector<long int> > &col_ind_2d, vector<vector<double> > &values_2d, vector<double> &diagonal);
-    
+    int Add_new_elements_to_2d_sparse_matrix(const long int &node1, const long int &node2, const double &Re, vector<map<long int, double> > &col_values, vector<double> &diagonal);
+    int Add_to_existing_elements_in_2d_sparse_matrix(const long int &node1, const long int &node2, const double &Re, vector<map<long int, double> > &col_values, vector<double> &diagonal);
+    int Fill_2d_matrices_cnt_junctions(const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_cnt_junctions_i, const vector<Junction> &junctions_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const map<long int, long int> &LMM_cnts, vector<map<long int, double> > &col_values, vector<double> &diagonal);
+    int Calculate_junction_resistance(const Junction &j, const double &d_vdw, const double &rad1, const Point_3D &P1, const double &rad2, const Point_3D &P2, const struct Electric_para &electric_param, double &Re);
+    int Fill_2d_matrices_mixed_junctions(const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_mix_junctions_i, const vector<Junction> &junctions_mixed, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal, map<long int, long int> &points_cnt_rad);
+    int Fill_2d_matrices_gnp(const int &R_flag, const Electric_para &electric_param, const vector<int> &cluster_gnp, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, const vector<Point_3D> &points_cnt, const vector<double> &radii, const map<long int, long int> &LMM_gnps, map<long int, long int> &points_cnt_rad, vector<map<long int, double> > &col_values, vector<double> &diagonal);
+    int Calculate_resistance_gnp(const Point_3D &P1, const Point_3D &P2, const double &rad1, const double &rad2, const struct Electric_para &electric_param, double &Re);
+    int Fill_2d_matrices_gnp_junctions(const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_gnp_junctions_i, const vector<Junction> &junctions_gnp, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal);
+    int From_2d_to_1d_vectors(const long int &reserved_nodes, const vector<map<long int, double> > &col_values, vector<vector<double> > &KEFT, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal);
+    int Set_up_residual_and_search_direction(const int &R_flag, const long int nodes, const long int &reserved_nodes, const Electric_para &electric_param, const vector<vector<double> > &KEFT, vector<double> &P, vector<double> &R, vector<double> &VEF);
+    int Get_voltage_vector(const double &volts, const long int &reserved_nodes, vector<double> &VEF);
+    int Solve_DEA_equations_CG_SSS(const long int &nodes, const long int &reserved_nodes, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &P, vector<double> &R, vector<double> &VEF);
+    void Jacobi_preconditioner(const vector<double> &diagonal, vector<double> &M_inv);
+    void Apply_preconditioner(const vector<double> &M_inv, const vector<double> &R, vector<double> &P, vector<double> &Y);
+    void spM_V_SSS(const vector<double> &V, const vector<long int> &rowptr, const vector<long int> &colind, const vector<double> &diagonal, const vector<double> &values, vector<double> &R);
+    int V_dot_v(const vector<double> &A, const vector<double> &B, double &dot_product);
+    void V_plus_aW(const vector<double> &W, const double &a, vector<double> &V);
+    void W_plus_aV(const vector<double> &W, const double &a, vector<double> &V);
+    void Componentwise_multiply(const vector<double> &vector_in1, const vector<double> &vector_in2, vector<double> &vector_out);
         
         
         
@@ -89,13 +106,7 @@ public:
     void From_2d_to_1d_vectors(vector<vector<long int> > &col_ind_2d, vector<vector<double> > &values_2d, vector<vector<double> > &KEFT, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal);int Solve_DEA_equations_CG_SSS(const int &R_flag, long int nodes, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, const struct Electric_para &electric_param, vector<vector<double> > &KEFT);
     void Get_voltage_vector(const double &nodes, vector<double> &voltages);
     void Conjugate_gradient(long int nodes, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &R, vector<double> &P);
-    void Jacobi_preconditioner(const vector<double> &diagonal, vector<double> &M_inv);
-    void Apply_preconditioner(const vector<double> &M_inv, const vector<double> &R, vector<double> &P, vector<double> &Y);
-    void spM_V_SSS(const vector<double> &V, const vector<long int> &rowptr, const vector<long int> &colind, const vector<double> &diagonal, const vector<double> &values, vector<double> &R);
     double V_dot_v(const vector<double> &A, const vector<double> &B);
-    void V_plus_aW(const vector<double> &W, const double &a, vector<double> &V);
-    void W_plus_aV(const vector<double> &W, const double &a, vector<double> &V);
-    void Componentwise_multiply(const vector<double> &vector_in1, const vector<double> &vector_in2, vector<double> &vector_out);
     
 private:
     
