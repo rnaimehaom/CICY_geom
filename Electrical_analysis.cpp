@@ -7,7 +7,7 @@
 
 #include "Electrical_analysis.h"
 
-int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistance_flag, const cuboid &window, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<int> &family, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &all_dead_indices, vector<vector<long int> > &all_indices, vector<vector<int> > &gnp_dead_indices, vector<vector<int> > &gnp_indices)
+int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistance_flag, const cuboid &window, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<int> &family, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, vector<vector<long int> > &all_dead_indices, vector<vector<long int> > &all_indices, vector<vector<int> > &gnp_dead_indices, vector<vector<int> > &gnp_indices)
 {
     //Time variables
     time_t ct0, ct1;
@@ -24,8 +24,13 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
     if (HoKo->clusters_cnt.size()) {
         n_clusters = (int)HoKo->clusters_cnt.size();
         
-    } else if (HoKo->clusters_gnp.size()) {
+    }
+    else if (HoKo->clusters_gnp.size()) {
         n_clusters = (int)HoKo->clusters_gnp.size();
+    }
+    else {
+        hout<<"Error in Perform_analysis_on_clusters. There are no percolated clusters. At this point there should be percolated clusters."<<endl;
+        return 0;
     }
     
     //Scan every percolated cluster
@@ -43,9 +48,11 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         int R_flag = 0;
         
         ct0 = time(NULL);
-        //
         //DEA with unit resistors
-        //
+        if (!DEA->Compute_voltage_field(j, R_flag, electric_param, cutoffs, HoKo, Cutwins, structure_cnt, points_gnp, radii, structure_gnp, points_gnp, gnps)) {
+            hout<<"Error in Perform_analysis_on_clusters when calling DEA->Compute_voltage_field"<<endl;
+            return 0;
+        }
         ct1 = time(NULL);
         hout << "Calculate voltage field time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         
