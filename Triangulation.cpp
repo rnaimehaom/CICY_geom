@@ -111,20 +111,19 @@ int Triangulation::Generate_supertetrahedron(const GNP &gnp_i, vector<Point_3D> 
     
     //Some quantities
     double tmp1 = a/sqrt(3);
+    double tmp2 = -a/(2*sqrt(6));
     
     //Calculate the vertices of the tetrahedron centered in the origin
     //Since vertices is initialized with all points as (0,0,0), just calculate and update
     //the non-zero coordinates
-    vertices[0].x = tmp1*a;
-    tmp1 = tmp1*0.5;
+    vertices[0].x = tmp1;
+    vertices[0].z = tmp2;
     //
-    vertices[1].x = -tmp1*a;
-    vertices[1].y = 0.5*a;
+    vertices[1].set(-0.5*tmp1, 0.5*a, tmp2);
     //
-    vertices[2].x = vertices[1].x;
-    vertices[2].y = -vertices[1].y;
+    vertices[2].set(vertices[1].x, -vertices[1].y, vertices[2].z);
     //
-    vertices[3].z = -vertices[1].x;
+    vertices[3].z = a*sqrt(6)/4;
     
     //Iterate over all vertices to apply the GNP's translation and rotation
     for (long int i = 0; i < (long int)vertices.size(); i++) {
