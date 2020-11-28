@@ -107,7 +107,7 @@ int Triangulation::Generate_supertetrahedron(const GNP &gnp_i, vector<Point_3D> 
 {
     //Calculate the edge length of the regular tetrahedron
     //This edge lenth is such that the GNP is completely contained in the tetrahedron's insphere
-    double a = 2.5*sqrt(gnp_i.l*gnp_i.l + gnp_i.t*gnp_i.t/2);
+    double a = 2.5*sqrt(2*gnp_i.l*gnp_i.l + gnp_i.t*gnp_i.t);
     
     //Some quantities
     double tmp1 = a/sqrt(3);
