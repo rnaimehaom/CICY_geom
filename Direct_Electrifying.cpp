@@ -8,7 +8,7 @@
 #include "Direct_Electrifying.h"
 
 //Calculate the voltage values at contact points and endpoints
-int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &R_flag, const Electric_para &electric_param, const Cutoff_dist &cutoffs, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps)
+int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &R_flag, const Electric_para &electric_param, const Cutoff_dist &cutoffs, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps)
 {
     //First we need to prepare the matrices that the direct electrifying needs.
     //The number of reserved nodes is calculated.
@@ -28,7 +28,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     if (HoKo->clusters_cnt.size() && HoKo->clusters_cnt[n_cluster].size()) {
         
         //There are CNT clusters, so construct the LM matrix for CNTs
-        if (!LM_matrix_for_cnts(n_cluster, HoKo, Cutwins, structure_cnt, global_nodes)) {
+        if (!LM_matrix_for_cnts(n_cluster, HoKo, Cutwins, global_nodes)) {
             hout<<"Error in Compute_voltage_field when calling LM_matrix_for_cnts"<<endl;
             return 0;
         }
@@ -54,7 +54,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     
     //With the LM matrix, now fill the sparse stiffness matrix
     //Fill_sparse_stiffness_matrix (use R_flag)
-    if (!Fill_sparse_stiffness_matrix(R_flag, global_nodes, reserved_nodes, cutoffs.van_der_Waals_dist, n_cluster, electric_param, HoKo, structure_cnt, points_cnt, radii, structure_gnp, points_gnp, gnps, col_ind, row_ptr, values, diagonal, P, R, VEF)) {
+    if (!Fill_sparse_stiffness_matrix(R_flag, global_nodes, reserved_nodes, cutoffs.van_der_Waals_dist, n_cluster, electric_param, HoKo, points_cnt, radii, structure_gnp, points_gnp, gnps, col_ind, row_ptr, values, diagonal, P, R, VEF)) {
         hout<<"Error in Compute_voltage_field when calling Fill_sparse_stiffness_matrix"<<endl;
         return 0;
     }
@@ -93,7 +93,7 @@ int Direct_Electrifying::Get_global_nodes(const int &family)
     }
 }
 //This function fills the LM matrix for CNTs
-int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure, long int &global_nodes)
+int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, long int &global_nodes)
 {
     //Map all CNT points at a boundary with prescribed boundary conditions
     //First use a temporary variable to save time when mappong the first and
@@ -110,22 +110,30 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
         //Get the current CNT
         int CNT = HoKo->clusters_cnt[n_cluster][i];
         
+        //Iterator for the elements in set
+        set<long int>::iterator j = HoKo->elements_cnt[CNT].begin();
+        
         //Iterator to find an element in LMM_cnts_boundary
         map<long int, long int>::iterator it;
         
-        //Map the first point in the CNT if it is not in a boundary
-        it = LMM_cnts_boundary.find(structure[CNT][0]);
-        if (it == LMM_cnts_boundary.end()) {
+        //Chek if the first point in the CNT element is at a boundary
+        if (LMM_cnts_boundary.find(*j) == LMM_cnts_boundary.end()) {
             
             //Initial point of CNT is not at a boundary, so map it to a new node
-            LMM_cnts[structure[CNT][0]] = global_nodes;
+            LMM_cnts[*j] = global_nodes;
             
             //Update the next available node
             global_nodes++;
         }
         
+        //Iterator at the last element of the set
+        set<long int>::iterator j_end =HoKo->elements_cnt[CNT].end();
+        //end() points after the last element, so decrease the iterator to point after
+        //the penultimate element and thus to the last element
+        j_end--;
+        
         //Map all points in the elements vector
-        for (set<long int>::iterator j = HoKo->elements_cnt[CNT].begin(); j != HoKo->elements_cnt[CNT].end(); j++) {
+        for (j++; j != j_end; j++) {
             
             //Get the current point number
             long int P = *j;
@@ -137,12 +145,11 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
             global_nodes++;
         }
         
-        //Map the last point in the CNT if it is not in a boundary
-        it = LMM_cnts_boundary.find(structure[CNT].back());
-        if (it == LMM_cnts_boundary.end()) {
+        //Chek if the last point in the CNT element is at a boundary
+        if (LMM_cnts_boundary.find(*j_end) == LMM_cnts_boundary.end()) {
             
             //Last point of CNT is not at a boundary, so map it to a new node
-            LMM_cnts[structure[CNT].back()] = global_nodes;
+            LMM_cnts[*j_end] = global_nodes;
             
             //Update the next available node
             global_nodes++;
@@ -288,7 +295,7 @@ int Direct_Electrifying::LM_matrix_for_gnps(const int &n_cluster, Hoshen_Kopelma
 }
 //This function creates the sparse stifness matrix that will be used to solve the sytem of equations
 //The sparse version is more efficient computationally speaking
-int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const long int &nodes, const long int &reserved_nodes, const double &d_vdw, const int &n_cluster, const Electric_para &electric_param, Hoshen_Kopelman *HoKo, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal, vector<double> &P, vector<double> &R, vector<double> &VEF)
+int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const long int &nodes, const long int &reserved_nodes, const double &d_vdw, const int &n_cluster, const Electric_para &electric_param, Hoshen_Kopelman *HoKo, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal, vector<double> &P, vector<double> &R, vector<double> &VEF)
 {
     //------------------------------------------------------------------------
     //Initially, generate a 2D vector that will be used to generate the 1D vectors for SSS
@@ -303,7 +310,7 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     if (HoKo->clusters_cnt.size() && HoKo->clusters_cnt[n_cluster].size()) {
         
         //Add contributions from CNT resistors
-        if (!Fill_2d_matrices_cnts(R_flag, n_cluster, electric_param, HoKo, structure_cnt, points_cnt, radii, col_values, diagonal)) {
+        if (!Fill_2d_matrices_cnts(R_flag, n_cluster, electric_param, HoKo, points_cnt, radii, col_values, diagonal)) {
             hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_cnts" << endl;
             return 0;
         }
@@ -377,7 +384,7 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     return 1;
 }
 //This function adds the contributions of the CNT and junction resistors to the stiffness matrix
-int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const int &n_cluster, const Electric_para &electric_param,  Hoshen_Kopelman *HoKo, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, vector<map<long int, double>> &col_values, vector<double> &diagonal)
+int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const int &n_cluster, const Electric_para &electric_param,  Hoshen_Kopelman *HoKo, const vector<Point_3D> &points_cnt, const vector<double> &radii, vector<map<long int, double>> &col_values, vector<double> &diagonal)
 {
     //Scan every CNT in the cluster
     for (int i = 0; i < (long int)HoKo->clusters_cnt[n_cluster].size(); i++) {
@@ -385,11 +392,14 @@ int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const int &n_c
         //Current CNT in cluster
         int CNT = HoKo->clusters_cnt[n_cluster][i];
         
+        //Iterator for looping over the elements in set
+        set<long int>::const_iterator it = HoKo->elements_cnt[CNT].begin();
+        
         //Get the first point of the element, i.e., the first point of the CNT
-        long int P1 = structure_cnt[CNT][0];
+        long int P1 = *it;
         
         //Iterate over the points in the elements vector of CNT
-        for (set<long int>::const_iterator it = HoKo->elements_cnt[CNT].begin(); it != HoKo->elements_cnt[CNT].end(); it++) {
+        for (it++; it != HoKo->elements_cnt[CNT].end(); it++) {
             
             //Get the second point of the element
             long int P2 = *it;
@@ -410,6 +420,9 @@ int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const int &n_c
                 hout<<"Error in Fill_2d_matrices_cnts when calling Add_elements_to_2d_sparse_matrix"<<endl;
                 return 0;
             }
+            
+            //Set the second point as the first point for the next iteration
+            P1 = P2;
         }
     }
     

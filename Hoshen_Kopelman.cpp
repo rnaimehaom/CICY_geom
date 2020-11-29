@@ -157,6 +157,8 @@ int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_cnt, const
         return 0;
     }
     
+    //Add first and last points to the elements
+    
     return 1;
 }
 //This function labels the CNTs in a window
@@ -412,6 +414,24 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
                 Junction j(Pi_junc, "CNT", Pj_junc, "CNT", d_junc_min);
                 junctions_cnt.push_back(j);
             }
+        }
+    }
+    
+    return 1;
+}
+//This functions adds the first and last points of a CNT to the vector of elements
+//These points were never added unless there is a junction on these points
+int Hoshen_Kopelman::Complete_cnt_elements(const vector<vector<long int> > &structure_cnt)
+{
+    //Scan the vector of elements
+    for (int i = 0; i < (int)elements_cnt.size(); i++) {
+        
+        //Check if element i is empty
+        if (!elements_cnt[i].empty()) {
+            
+            //If the element is non-empty, then insert the first and last points
+            elements_cnt[i].insert(elements_cnt[i].begin(), structure_cnt[i][0]);
+            elements_cnt[i].insert(elements_cnt[i].end(), structure_cnt[i].back());
         }
     }
     

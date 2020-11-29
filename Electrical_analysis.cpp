@@ -49,7 +49,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         
         ct0 = time(NULL);
         //DEA with unit resistors
-        if (!DEA->Compute_voltage_field(j, R_flag, electric_param, cutoffs, HoKo, Cutwins, structure_cnt, points_gnp, radii, structure_gnp, points_gnp, gnps)) {
+        if (!DEA->Compute_voltage_field(j, R_flag, electric_param, cutoffs, HoKo, Cutwins, points_gnp, radii, structure_gnp, points_gnp, gnps)) {
             hout<<"Error in Perform_analysis_on_clusters when calling DEA->Compute_voltage_field"<<endl;
             return 0;
         }
