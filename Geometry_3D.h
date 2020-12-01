@@ -153,10 +153,14 @@ struct Junction
     long int point1;
     //Type of particle 1, "CNT" or "GNP"
     string particle1;
+    //Particle number
+    int flag1;
     //Point number on particle 2
     long int point2;
     //Type of particle 1, "CNT" or "GNP"
     string particle2;
+    //Particle number
+    int flag2;
     //Junction distance
     double junction_dist;
     
