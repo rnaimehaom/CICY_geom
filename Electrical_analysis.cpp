@@ -7,7 +7,7 @@
 
 #include "Electrical_analysis.h"
 
-int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistance_flag, const cuboid &window, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<int> &family, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, vector<vector<long int> > &all_dead_indices, vector<vector<long int> > &all_indices, vector<vector<int> > &gnp_dead_indices, vector<vector<int> > &gnp_indices)
+int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistance_flag, const int &vtk_flag, const cuboid &window, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<int> &family, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, vector<vector<long int> > &all_dead_indices, vector<vector<long int> > &all_indices, vector<vector<int> > &gnp_dead_indices, vector<vector<int> > &gnp_indices)
 {
     //Time variables
     time_t ct0, ct1;
@@ -33,6 +33,10 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         return 0;
     }
     
+    //Create a Backbone_Network object so that the vectors for nanoparticle volumes
+    //and dead branches and gnps are intialized
+    Backbone_Network *Backbonet = new Backbone_Network;
+    
     //Scan every percolated cluster
     for (int j = 0; j < n_clusters; j++) {
         //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -47,8 +51,8 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         //Resitor flag, set to 0 to use unit resistors
         int R_flag = 0;
         
-        ct0 = time(NULL);
         //DEA with unit resistors
+        ct0 = time(NULL);
         if (!DEA->Compute_voltage_field(j, R_flag, electric_param, cutoffs, HoKo, Cutwins, points_gnp, radii, structure_gnp, points_gnp, gnps)) {
             hout<<"Error in Perform_analysis_on_clusters when calling DEA->Compute_voltage_field"<<endl;
             return 0;
@@ -58,15 +62,15 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         
         //-----------------------------------------------------------------------------------------------------------------------------------------
         //Determine the backbone and dead branches
-        Backbone_Network *Backbonet = new Backbone_Network;
         ct0 = time(NULL);
-        //
-        //Extract backbone
-        //
+        if (!Backbonet->Determine_backbone_network(family[j], j, R_flag, avoid_resistance_flag, vtk_flag, DEA->voltages, DEA->LMM_cnts, DEA->LMM_gnps, electric_param, cutoffs, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps, HoKo)) {
+            hout<<"Error in Perform_analysis_on_clusters when calling Backbonet->Determine_backbone_network"<<endl;
+            return 0;
+        }
         ct1 = time(NULL);
         hout << "Determine backbone network time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         
-        //Delete objects to free memory
+        //Delete object to free memory
         delete DEA;
         
         //-----------------------------------------------------------------------------------------------------------------------------------------
@@ -76,16 +80,23 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
             //Set now the R_flag to 1 to indicate that actual resistances will be used
             R_flag = 1;
             
-            //
             //DEA with actual resistors
             //(Calculate the electrical resistances along each direction for current clusters)
+            ct0 = time(NULL);
             //
-            
+            //DEA with actual resistors along each percoalted direction
+            //
+            ct1 = time(NULL);
+            hout << "Calculate voltage field time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         }
-        
-        //Delete objects to free memory
-        delete Backbonet;
     }
+    
+    //
+    //Calculate clusters fractions
+    //
+    
+    //Delete object to free memory
+    delete Backbonet;
     
     //Check if it is requested to avoid calculating the resistor network
     if (!avoid_resistance_flag) {
