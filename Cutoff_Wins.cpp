@@ -65,7 +65,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
     if (particle_type != "CNT_wires") {
     
         //Fill the vector gnps_inside
-        if (!Fill_gnps_inside(window, window_geo, gnps, shells_gnp, structure_gnp, points_gnp)) {
+        if (!Fill_gnps_inside(window, window_geo, shells_gnp, gnps, structure_gnp, points_gnp)) {
             hout << "Error in Extract_observation_window when calling Fill_gnps_inside" << endl;
             return 0;
         }
@@ -538,7 +538,7 @@ int Cutoff_Wins::Fill_cnts_inside(const vector<vector<long int> > &structure)
         return 1;
 }
 //Function that fills the vector gnps_inside
-int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, const vector<GNP> &gnps, const vector<Shell> &shells_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
+int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, const vector<Shell> &shells_gnp, vector<GNP> &gnps, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
 {
     //Initialize boundary vectors
     boundary_gnp.assign(6, vector<int>());
@@ -572,7 +572,7 @@ int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, c
 }
 //This function determines if a GNP is partially inside an observation window or inside of it
 //If it is partially inside, the boundary points are calculated
-int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, const GNP &gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
+int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
 {
     //Vector to accumulate all boundary points vertices
     vector<vector<Point_3D> > points_acc(6);
@@ -657,6 +657,16 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, const GNP &g
                 points_gnp.push_back(P_avg/((double)points_acc[i].size()));
             }
         }
+        
+        //Update the GNP volume
+        Generate_Network GN;
+        bool tmp;
+        double gnp_vol = 0;
+        if (!GN.Approximate_gnp_volume_inside_sample(window_geo, gnp, gnp_vol, tmp)) {
+            hout<<"Error in Find_gnp_boundary_points when calling GN.Approximate_gnp_volume_inside_sample"<<endl;
+            return 0;
+        }
+        gnp.volume = gnp_vol;
         
     }
     //If there were no vertices inside the window, even if there are vertices at the boundary,
