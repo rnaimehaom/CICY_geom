@@ -378,7 +378,7 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
                         //But first, "compress" the previous segment
                         //That is, just add the shortest junction found to the
                         //vector of junctions
-                        Junction j(Pi_junc, "CNT", Pj_junc, "CNT", d_junc_min);
+                        Junction j(Pi_junc, i, "CNT", Pj_junc, CNTj, "CNT", d_junc_min);
                         junctions_cnt.push_back(j);
                         
                         //Add the junction points to the vectors of elements
@@ -411,7 +411,7 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
                 //"Compress" the last (or only) segment
                 //That is, just add the shortest junction found in the last (or only) segment
                 //to the vector of junctions
-                Junction j(Pi_junc, "CNT", Pj_junc, "CNT", d_junc_min);
+                Junction j(Pi_junc, i, "CNT", Pj_junc, CNTj, "CNT", d_junc_min);
                 junctions_cnt.push_back(j);
             }
         }
@@ -538,7 +538,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const 
                         long int Pb = (long int)points_gnp.size()-2;
                         
                         //Create a junction with the GNPs in contact
-                        Junction j(Pa, "GNP", Pb, "GNP", dist);
+                        Junction j(Pa, GNPa, "GNP", Pb, GNPb, "GNP", dist);
                         
                         //Add point numbers to structure
                         structure_gnp[points_gnp[Pa].flag].push_back(Pa);
@@ -1431,7 +1431,7 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                         structure_gnp[GNPi].push_back(P_gnp_num);
                         
                         //Add the shortest junction found to the vector of junctions
-                        Junction j(Pj_junc, "CNT", P_gnp_num, "GNP", d_junc_min);
+                        Junction j(Pj_junc, CNTj, "CNT", P_gnp_num, GNPi, "GNP", d_junc_min);
                         junctions_mixed.push_back(j);
                         
                         //Add the junction point on the CNT to the vectors of elements
@@ -1473,7 +1473,7 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                 
                 //Add the shortest junction found in the last (or only) segment
                 //to the vector of junctions
-                Junction j(Pj_junc, "CNT", P_gnp_num, "GNP", d_junc_min);
+                Junction j(Pj_junc, CNTj, "CNT", P_gnp_num, GNPi, "GNP", d_junc_min);
                 junctions_mixed.push_back(j);
                 
                 //Add the junction point on the CNT to the vectors of elements
@@ -1913,8 +1913,8 @@ int Hoshen_Kopelman::Group_junctions_same_particle(const vector<Point_3D> &point
     for (int i = 0; i < (int)junctions.size(); i++) {
         
         //Get the Particle number of the two particles
-        int Pa1 = points[junctions[i].point1].flag;
-        int Pa2 = points[junctions[i].point2].flag;
+        int Pa1 = junctions[i].N1;
+        int Pa2 = junctions[i].N2;
         
         //Get the cluster numbers of the two particles
         int L1 = labels[Pa1];
@@ -1923,8 +1923,8 @@ int Hoshen_Kopelman::Group_junctions_same_particle(const vector<Point_3D> &point
         //Check that the two particles belong to the same cluster
         if (L1 != L2) {
             hout<<"Error in Group_junctions_same_particle: a junction between particles in different clusters was found. This cannot happen as two particles that have a junction belong to the same cluster"<<endl;
-            hout<<"Particle 1:"<<junctions[i].particle1<<" number:"<<Pa1<<" point:"<<junctions[i].point1<<" coordinates:"<<points[junctions[i].point1].str()<<endl;
-            hout<<"Particle 2:"<<junctions[i].particle2<<" number:"<<Pa2<<" point:"<<junctions[i].point2<<" coordinates:"<<points[junctions[i].point2].str()<<endl;
+            hout<<"Particle 1:"<<junctions[i].type1<<" number:"<<Pa1<<" point:"<<junctions[i].P1<<" coordinates:"<<points[junctions[i].P1].str()<<endl;
+            hout<<"Particle 2:"<<junctions[i].type2<<" number:"<<Pa2<<" point:"<<junctions[i].P2<<" coordinates:"<<points[junctions[i].P2].str()<<endl;
             return 0;
         }
         
@@ -1942,8 +1942,8 @@ int Hoshen_Kopelman::Group_junctions_mix_particle(const vector<Point_3D> &points
     for (int i = 0; i < (int)junctions_mixed.size(); i++) {
         
         //Get the Particle number of the two particles
-        int Pa1 = points_cnt[junctions_mixed[i].point1].flag;
-        int Pa2 = points_gnp[junctions_mixed[i].point2].flag;
+        int Pa1 = junctions_mixed[i].N1;
+        int Pa2 = junctions_mixed[i].N2;
         
         //Get the cluster numbers of the two particles
         int L1 = labels_cnt[Pa1];
@@ -1952,8 +1952,8 @@ int Hoshen_Kopelman::Group_junctions_mix_particle(const vector<Point_3D> &points
         //Check that the two particles belong to the same cluster
         if (L1 != L2) {
             hout<<"Error in Group_junctions_mix_particle: a junction between particles in different clusters was found. This cannot happen as two particles that have a junction belong to the same cluster"<<endl;
-            hout<<"CNT:"<<Pa1<<" point:"<<junctions_mixed[i].point1<<" coordinates:"<<points_cnt[junctions_mixed[i].point1].str()<<endl;
-            hout<<"GNP:"<<Pa2<<" number:"<<Pa2<<" point:"<<junctions_mixed[i].point2<<" coordinates:"<<points_gnp[junctions_mixed[i].point2].str()<<endl;
+            hout<<"CNT:"<<Pa1<<" point:"<<junctions_mixed[i].P1<<" coordinates:"<<points_cnt[junctions_mixed[i].P1].str()<<endl;
+            hout<<"GNP:"<<Pa2<<" number:"<<Pa2<<" point:"<<junctions_mixed[i].P2<<" coordinates:"<<points_gnp[junctions_mixed[i].P2].str()<<endl;
             return 0;
         }
         

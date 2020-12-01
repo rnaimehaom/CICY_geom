@@ -194,8 +194,8 @@ int Backbone_Network::Find_zero_current(const int &n_cluster, const int &R_flag,
             int junc = HoKo->cluster_mix_junctions[n_cluster][i];
             
             //Get the points in the junction
-            long int P1 = HoKo->junctions_mixed[junc].point1;
-            long int P2 = HoKo->junctions_mixed[junc].point2;
+            long int P1 = HoKo->junctions_mixed[junc].P1;
+            long int P2 = HoKo->junctions_mixed[junc].P2;
             
             //Get the node numbers
             long int node1 = LMM_cnts.at(P1);
@@ -245,8 +245,8 @@ int Backbone_Network::Zero_current_in_same_particle_junctions_unit_resistor(cons
         int junc = junction_cluster[i];
         
         //Get the points in the junction
-        long int P1 = junctions[junc].point1;
-        long int P2 = junctions[junc].point2;
+        long int P1 = junctions[junc].P1;
+        long int P2 = junctions[junc].P2;
         
         //Get the node numbers
         long int node1 = LMM.at(P1);
@@ -588,8 +588,8 @@ int Backbone_Network::Remove_junctions_with_dead_particles_cnts(const int &n_clu
             int junc = HoKo->cluster_cnt_junctions[n_cluster][i];
             
             //Get the CNT numbers
-            int CNT1 = HoKo->junctions_cnt[junc].flag1;
-            int CNT2 = HoKo->junctions_cnt[junc].flag2;
+            int CNT1 = HoKo->junctions_cnt[junc].N1;
+            int CNT2 = HoKo->junctions_cnt[junc].N2;
             
             //Check if CNTs are dead
             if (HoKo->elements_cnt[CNT1].empty() || HoKo->elements_cnt[CNT2].empty()) {
@@ -601,8 +601,8 @@ int Backbone_Network::Remove_junctions_with_dead_particles_cnts(const int &n_clu
                 
                 //Both CNTs are in the backbone
                 //Get the points of the junction
-                long int P1 = HoKo->junctions_cnt[junc].point1;
-                long int P2 = HoKo->junctions_cnt[junc].point2;
+                long int P1 = HoKo->junctions_cnt[junc].P1;
+                long int P2 = HoKo->junctions_cnt[junc].P2;
                 
                 //Check if both points are in the elements vector
                 if (HoKo->elements_cnt[CNT1].find(P1) == HoKo->elements_cnt[CNT1].end() ||
@@ -632,8 +632,8 @@ int Backbone_Network::Remove_junctions_with_dead_particles_gnps(const int &n_clu
             int junc = HoKo->cluster_gnp_junctions[n_cluster][i];
             
             //Get the GNP numbers
-            int GNP1 = HoKo->junctions_gnp[junc].flag1;
-            int GNP2 = HoKo->junctions_gnp[junc].flag2;
+            int GNP1 = HoKo->junctions_gnp[junc].N1;
+            int GNP2 = HoKo->junctions_gnp[junc].N2;
             
             //Check if there are points in the structure vector
             if (structure_gnp[GNP1].empty() || structure_gnp[GNP2].empty()) {
@@ -645,7 +645,7 @@ int Backbone_Network::Remove_junctions_with_dead_particles_gnps(const int &n_clu
                 if (!structure_gnp[GNP1].empty()) {
                     
                     //Get the point in GNP1
-                    long int P1 = HoKo->junctions_gnp[junc].point1;
+                    long int P1 = HoKo->junctions_gnp[junc].P1;
                     if (!Remove_point_from_vector(P1, structure_gnp[GNP1])) {
                         hout<<"Error in Remove_junctions_with_dead_particles_gnps when calling Remove_point_from_vector (1)"<<endl;
                         return 0;
@@ -656,7 +656,7 @@ int Backbone_Network::Remove_junctions_with_dead_particles_gnps(const int &n_clu
                 if (!structure_gnp[GNP2].empty()) {
                     
                     //Get the point in GNP2
-                    long int P2 = HoKo->junctions_gnp[junc].point2;
+                    long int P2 = HoKo->junctions_gnp[junc].P2;
                     if (!Remove_point_from_vector(P2, structure_gnp[GNP2])) {
                         hout<<"Error in Remove_junctions_with_dead_particles_gnps when calling Remove_point_from_vector (2)"<<endl;
                         return 0;
@@ -694,8 +694,8 @@ int Backbone_Network::Remove_junctions_with_dead_particles_mixed(const int &n_cl
             int junc = HoKo->cluster_mix_junctions[n_cluster][i];
             
             //Get the particle numbers
-            int CNT1 = HoKo->junctions_cnt[junc].flag1;
-            int GNP2 = HoKo->junctions_cnt[junc].flag2;
+            int CNT1 = HoKo->junctions_cnt[junc].N1;
+            int GNP2 = HoKo->junctions_cnt[junc].N2;
             
             //Check if CNT or GNP is dead
             if (HoKo->elements_cnt[CNT1].empty() || structure_gnp[GNP2].empty()) {
@@ -707,7 +707,7 @@ int Backbone_Network::Remove_junctions_with_dead_particles_mixed(const int &n_cl
                 if (!structure_gnp[GNP2].empty()) {
                     
                     //Get the point in GNP2 and remove it from the structure
-                    long int P2 = HoKo->junctions_mixed[junc].point2;
+                    long int P2 = HoKo->junctions_mixed[junc].P2;
                     if (!Remove_point_from_vector(P2, structure_gnp[GNP2])) {
                         hout<<"Error in Remove_junctions_with_dead_particles_gnps when calling Remove_point_from_vector (2)"<<endl;
                         return 0;
@@ -718,7 +718,7 @@ int Backbone_Network::Remove_junctions_with_dead_particles_mixed(const int &n_cl
                 
                 //Both particles are in the backbone
                 //Get the CNT point of the junction
-                long int P1 = HoKo->junctions_mixed[junc].point1;
+                long int P1 = HoKo->junctions_mixed[junc].P1;
                 
                 //Check if P1 is in the elements vector
                 if (HoKo->elements_cnt[CNT1].find(P1) == HoKo->elements_cnt[CNT1].end()) {
@@ -728,7 +728,7 @@ int Backbone_Network::Remove_junctions_with_dead_particles_mixed(const int &n_cl
                     HoKo->cluster_mix_junctions[n_cluster].erase(HoKo->cluster_mix_junctions[n_cluster].begin()+i);
                     
                     //Get the point in GNP2 and remove it from the structure
-                    long int P2 = HoKo->junctions_mixed[junc].point2;
+                    long int P2 = HoKo->junctions_mixed[junc].P2;
                     if (!Remove_point_from_vector(P2, structure_gnp[GNP2])) {
                         hout<<"Error in Remove_junctions_with_dead_particles_gnps when calling Remove_point_from_vector (2)"<<endl;
                         return 0;

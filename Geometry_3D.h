@@ -150,26 +150,28 @@ struct contact_pair
 struct Junction
 {
     //Point number on particle 1
-    long int point1;
+    long int P1;
     //Type of particle 1, "CNT" or "GNP"
-    string particle1;
+    string type1;
     //Particle number
-    int flag1;
+    int N1;
     //Point number on particle 2
-    long int point2;
+    long int P2;
     //Type of particle 1, "CNT" or "GNP"
-    string particle2;
+    string type2;
     //Particle number
-    int flag2;
+    int N2;
     //Junction distance
     double junction_dist;
     
     Junction(){}
-    Junction(const long int &p1, const string &str1, const long int &p2, const string &str2, const double &jd){
-        point1 = p1;
-        point2 = p2;
-        particle1 = str1;
-        particle2 = str2;
+    Junction(const long int &p1, const int &n1, const string &str1, const long int &p2, const int &n2, const string &str2, const double &jd){
+        P1 = p1;
+        P2 = p2;
+        N1 = n1;
+        N2 = n2;
+        type1 = str1;
+        type2 = str2;
         junction_dist = jd;
     }
 };

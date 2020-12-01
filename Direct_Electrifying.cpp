@@ -535,8 +535,8 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const double &d_vdw, con
         int idx = cluster_cnt_junctions_i[i];
         
         //Get the point numbers of the mixed juntion
-        long int P1 = junctions_cnt[idx].point1;
-        long int P2 = junctions_cnt[idx].point2;
+        long int P1 = junctions_cnt[idx].P1;
+        long int P2 = junctions_cnt[idx].P2;
         
         //Get the particle numbers
         int CNT1 = points_cnt[P1].flag;
@@ -577,12 +577,12 @@ int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const 
         double separation = P1.distance_to(P2);
         
         //If the first particle of the junction is a CNT, susbtract the radius
-        if (j.particle1 == "CNT") {
+        if (j.type1 == "CNT") {
             separation = separation - rad1;
         }
         
         //If the second particle of the junction is a CNT, susbtract the radius
-        if (j.particle2 == "CNT") {
+        if (j.type2 == "CNT") {
             separation = separation - rad2;
         }
         
@@ -628,8 +628,8 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const double &d_vdw, c
         int idx = cluster_mix_junctions_i[i];
         
         //Get the point numbers of the mixed juntion
-        long int Pcnt = junctions_mixed[idx].point1;
-        long int Pgnp = junctions_mixed[idx].point2;
+        long int Pcnt = junctions_mixed[idx].P1;
+        long int Pgnp = junctions_mixed[idx].P2;
         
         //Get the particle numbers
         int cnt_n = points_cnt[Pcnt].flag;
@@ -843,8 +843,8 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const double &d_vdw, con
         int idx = cluster_gnp_junctions_i[i];
         
         //Get the point numbers of the mixed juntion
-        long int P1 = junctions_gnp[idx].point1;
-        long int P2 = junctions_gnp[idx].point2;
+        long int P1 = junctions_gnp[idx].P1;
+        long int P2 = junctions_gnp[idx].P2;
         
         //Get the particle numbers
         int GNP1 = points_gnp[P1].flag;
