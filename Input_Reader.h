@@ -205,6 +205,9 @@ struct Visualization_flags{
     int backbone;
     //Flag to export triangulations
     int triangulations;
+    //Flag to export separate files with fractions of CNTs and GNPs
+    //(only when using mixed or hybrid particles)
+    int cnt_gnp_flag;
 };
 //---------------------------------------------------------------------------
 class Input

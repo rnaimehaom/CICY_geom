@@ -7,7 +7,7 @@
 
 #include "Electrical_analysis.h"
 
-int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistance_flag, const int &vtk_flag, const cuboid &window, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<int> &family, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, vector<vector<long int> > &all_dead_indices, vector<vector<long int> > &all_indices, vector<vector<int> > &gnp_dead_indices, vector<vector<int> > &gnp_indices)
+int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistance_flag, const int &vtk_flag, const cuboid &window, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const vector<int> &family, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, vector<vector<long int> > &all_dead_indices, vector<vector<long int> > &all_indices, vector<vector<int> > &gnp_dead_indices, vector<vector<int> > &gnp_indices)
 {
     //Time variables
     time_t ct0, ct1;
@@ -29,8 +29,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         n_clusters = (int)HoKo->clusters_gnp.size();
     }
     else {
-        hout<<"Error in Perform_analysis_on_clusters. There are no percolated clusters. At this point there should be percolated clusters."<<endl;
-        return 0;
+        hout<<"There are no percolated clusters."<<endl;
     }
     
     //Create a Backbone_Network object so that the vectors for nanoparticle volumes
@@ -91,9 +90,11 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         }
     }
     
-    //
     //Calculate clusters fractions
-    //
+    if (!Calculate_percolated_families_fractions(vis_flags.cnt_gnp_flag, structure_cnt, points_cnt, radii, gnps, HoKo, Backbonet)) {
+        hout<<"Error in Perform_analysis_on_clusters when calling Calculate_percolated_families_fractions"<<endl;
+        return 0;
+    }
     
     //Delete object to free memory
     delete Backbonet;
@@ -477,6 +478,136 @@ int Electrical_analysis::Currents_through_boundary_gnps(const int &node, const E
                     I = I + V/Re;
                 }
             }
+        }
+    }
+    
+    return 1;
+}
+//This function calculates the fractions for each percoalted family,
+//which is used to calculat the effiency
+int Electrical_analysis::Calculate_percolated_families_fractions(const int &cnt_gnp_flag, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<GNP> &gnps, Hoshen_Kopelman *HoKo, Backbone_Network *BN)
+{
+    //Total volume of dead CNTs
+    double total_dead_branches = 0;
+    
+    //Total volume od dead GNPs
+    double total_dead_gnps = 0;
+    
+    //Add the volumes of dead branches and GNPs from percoalted clusters
+    for (int i = 0; i < (int)BN->dead_branches.size(); i++) {
+        total_dead_branches = total_dead_branches + BN->dead_branches[i];
+        total_dead_gnps = total_dead_gnps + BN->dead_gnps[i];
+    }
+    
+    //Calculate the volumes of isolated CNTs and non-percoalted clusters
+    double np_cnts = 0;
+    if (!Calculate_volume_of_non_percolated_cnts(structure_cnt, points_cnt, radii, HoKo->isolated_cnt, BN, np_cnts)) {
+        hout<<"Error in Calculate_percolated_families_fractions while calling Calculate_volume_of_non_percolated_cnts"<<endl;
+        return 0;
+    }
+    
+    //Add all the volumes of dead particles to the last element of CNT volumes
+    BN->volumes_cnt.back() = total_dead_branches + np_cnts;
+    
+    //Calculate the volumes of isolated GNPs and non-percoalted clusters
+    double np_gnps = 0;
+    if (!Calculate_volume_of_non_percolated_gnps(gnps, HoKo->isolated_gnp, np_gnps)) {
+        hout<<"Error in Calculate_percolated_families_fractions while calling Calculate_volume_of_non_percolated_gnps"<<endl;
+        return 0;
+    }
+    
+    //Add all the volumes of dead particles to the last element of CNT volumes
+    BN->volumes_gnp.back() = total_dead_gnps + np_gnps;
+    
+    //Vector with volumes of percoalted particles
+    vector<double> total_volumes(8,0);
+    
+    //Total volume of particles
+    double total_volume = 0;
+    double total_cnts = 0, total_gnps = 0;
+    
+    //Add the volumes of percolated particles
+    for (int i = 0; i < (int)BN->volumes_cnt.size(); i++) {
+        total_volumes[i] = total_volumes[i] + BN->volumes_cnt[i] + BN->volumes_gnp[i];
+        total_volume = total_volume + BN->volumes_cnt[i] + BN->volumes_gnp[i];
+        total_cnts = total_cnts + BN->volumes_cnt[i];
+        total_gnps = total_gnps + BN->volumes_gnp[i];
+    }
+    
+    //Calculate fractions
+    vector<double> fractions(8,0);
+    vector<double> fractions_cnts(8,0), fractions_gnps(8,0);
+    for (int i = 0; i < (int)fractions.size(); i++) {
+        fractions[i] = total_volumes[i]/total_volume;
+        fractions_cnts[i] = BN->volumes_cnt[i]/total_cnts;
+        fractions_gnps[i] = BN->volumes_gnp[i]/total_gnps;
+    }
+    
+    //Printer object to write to files
+    Printer P;
+    
+    //Output the volumes of percolated families if they are requested (through cnt_gnp_flag)
+    if (cnt_gnp_flag && HoKo->clusters_cnt.size() && HoKo->clusters_gnp.size()) {
+        
+        //Print CNT and GNP volumes
+        P.Append_1d_vec(BN->volumes_cnt, "volumes_cnt.txt");
+        P.Append_1d_vec(BN->volumes_gnp, "volumes_gnp.txt");
+        
+        //Print CNT and GNP fractions
+        P.Append_1d_vec(fractions_cnts, "fractions_cnt.txt");
+        P.Append_1d_vec(fractions_gnps, "fractions_gnp.txt");
+    }
+    
+    //Print volumes and fractions
+    P.Append_1d_vec(total_volumes, "volumes.txt");
+    P.Append_1d_vec(fractions, "fractions.txt");
+    
+    return 1;
+}
+//This function calcualtes the volumes of the CNTs that are isolated or in non-percolated clusters
+int Electrical_analysis::Calculate_volume_of_non_percolated_cnts(const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &isolated_cnts, Backbone_Network *BN, double &np_cnts)
+{
+    //Iterate over the clusters of non-percolated CNTs
+    for (int i = 0; i < (int)isolated_cnts.size(); i++) {
+        
+        //Iterate over the CNTs in cluster i
+        for (int j = 0; j < (int)isolated_cnts[i].size(); j++) {
+            
+            //Get the current CNT
+            int CNTj = isolated_cnts[i][j];
+            
+            //Get the two endpoints of the CNT
+            long int P1 = structure_cnt[CNTj].front();
+            long int P2 = structure_cnt[CNTj].back();
+            
+            //Calculate the volume of the CNT
+            double cnt_vol = 0;
+            if (!BN->CNT_volume_between_two_points(P1, P2, radii[CNTj], points_cnt, cnt_vol)) {
+                hout<<"Error in Calculate_volume_of_non_percolated_cnts while calling BN->CNT_volume_between_two_points"<<endl;
+                return 0;
+            }
+            
+            //Add the calculated volume to the total volume
+            np_cnts = np_cnts + cnt_vol;
+        }
+    }
+    
+    return 1;
+}
+//This function calcualtes the volumes of the GNPs that are isolated or in non-percolated clusters
+int Electrical_analysis::Calculate_volume_of_non_percolated_gnps(const vector<GNP> &gnps, const vector<vector<int> > &isolated_gnps, double &np_gnps)
+{
+    //Iterate over the clusters of non-percolated CNTs
+    for (int i = 0; i < (int)isolated_gnps.size(); i++) {
+        
+        //Iterate over the GNPs in cluster i
+        for (int j = 0; j < (int)isolated_gnps[i].size(); j++) {
+            
+            //Get current GNP
+            int GNPj = isolated_gnps[i][j];
+            
+            //Add the volume of the GNP to the total volume
+            np_gnps = np_gnps + gnps[GNPj].volume;
         }
     }
     
