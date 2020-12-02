@@ -15,7 +15,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
     //Vector of parallel resistors
     //Each cluster will contribute with a resistor to each direction in which it percolates
     //So each cluster adds a parallel resistor on each percolated direction
-    vector<vector<double> > paralel_resistors(3, vector<double>());
+    vector<vector<double> > parallel_resistors(3, vector<double>());
     
     //Get the number of clusters
     int n_clusters = 0;
@@ -80,12 +80,12 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
             //Set now the R_flag to 1 to indicate that actual resistances will be used
             R_flag = 1;
             
-            //DEA with actual resistors
-            //(Calculate the electrical resistances along each direction for current clusters)
+            //DEA with actual resistors along each percolated direction for current cluster
             ct0 = time(NULL);
-            //
-            //DEA with actual resistors along each percoalted direction
-            //
+            if (!Electrical_resistance_along_each_percolated_direction(R_flag, j, family[j], HoKo, Cutwins, electric_param, cutoffs, structure_cnt, points_cnt, radii, structure_gnp, points_gnp, gnps, parallel_resistors)) {
+                hout<<"Error in Perform_analysis_on_clusters when calling Electrical_resistance_along_each_percolated_direction"<<endl;
+                return 0;
+            }
             ct1 = time(NULL);
             hout << "Calculate voltage field time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         }
@@ -121,6 +121,368 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
     
     return 1;
 }
+//This function calculates the electrical resistance along each percolated direction of a cluster
+int Electrical_analysis::Electrical_resistance_along_each_percolated_direction (const int &R_flag, const int &n_cluster, const int &family, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<vector<double> > &paralel_resistors)
+{
+    //Time variables
+    time_t ct0, ct1;
+    
+    //-----------------------------------------------------------------------------------------------------------------------------------------
+    //Get the vector of directions
+    vector<int> directions;
+    if (!Vector_of_directions(family, directions)) {
+        hout << "Error in Perform_analysis_on_cluster when calling Vector_of_directions" << endl;
+        return 0;
+    }
+    
+    //Calculate the electrical resistance per direction
+    for (int k = 0; k < (int)directions.size(); k++) {
+        //-----------------------------------------------------------------------------------------------------------------------------------------
+        //Direct Electrifying algorithm to calculate electrical resistance
+        Direct_Electrifying *DEA_Re = new Direct_Electrifying;
+        
+        //Run a new DEA to obtain the new voltage field in the backbone using the actual resistances
+        //As the variable for family use the percolated direction k
+        ct0 = time(NULL);
+        if (!DEA_Re->Compute_voltage_field(directions[k], R_flag, electric_param, cutoffs, HoKo, Cutwins, points_gnp, radii, structure_gnp, points_gnp, gnps)) {
+            hout<<"Error in Perform_analysis_on_clusters when calling DEA->Compute_voltage_field"<<endl;
+            return 0;
+        }
+        ct1 = time(NULL);
+        hout << "Calculate voltage field on backbone network time: "<<(int)(ct1-ct0)<<" secs."<<endl;
+        
+        //With the new voltage field calculate the current going through a face and calculate the resistance along that direction
+        if (!Calculate_parallel_resistor(k, n_cluster, electric_param, DEA_Re, points_cnt, radii, HoKo->elements_cnt, HoKo->clusters_cnt, Cutwins->boundary_cnt, points_gnp, gnps, HoKo->clusters_gnp, Cutwins->boundary_gnp, paralel_resistors)) {
+            hout<<"Error in Perform_analysis_on_clusters when calling DEA->Calculate_parallel_resistor"<<endl;
+            return 0;
+        }
+        hout << "Calculate_parallel_resistor" << endl;
+        
+        //Delete objects to free memory
+        delete DEA_Re;
+        
+    }//*/
+    
+    return 1;
+}
+//This function generates a vector with the different directions in which the electrical resistance needs to be calculated
+//e.g. if the family is 3 (i.e. XY), a vector with elements {0,1} is generated
+int Electrical_analysis::Vector_of_directions(const int &family, vector<int> &directions)
+{
+    if (family == 6) {
+        //If the family is 6 (XYZ); then the resistance needs to be calculated in the three directions
+        directions.assign(3, 0);
+        directions[1] = 1;
+        directions[2] = 2;
+    } else if (family == 5) {
+        //If the family is 5 (YZ); then the resistance needs to be calculated in two directions: 1 and 2
+        directions.push_back(1);
+        directions.push_back(2);
+    } else if (family == 4) {
+        //If the family is 4 (XZ); then the resistance needs to be calculated in two directions: 0 and 2
+        directions.push_back(0);
+        directions.push_back(2);
+    } else if (family == 3) {
+        //If the family is 5 (XY); then the resistance needs to be calculated in two directions: 0 and 1
+        directions.push_back(0);
+        directions.push_back(1);
+    } else if (family <= 2) {
+        //If the family is 0, 1 or 2; then the family is the same as the only direction
+        //in which resistance needs to be calculated
+        directions.push_back(family);
+    } else {
+        hout << "Invalid family: " << family << endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//Calculate the resistance along a direction
+//Note: direction has values 0, 1 or 2 only to represent directions X, Y and Z, respectively
+//The indices of boundary_cnt are as follows:
+//0,1 for X boundaries
+//2,3 for Y boundaries
+//4,5 for Z boundaries
+//Thus 2*direction will be 0, 2 or 4, i.e. the first boundary on each direction
+//Then, 2*direction+1 will be 1, 3 or 5, i.e. the second boundary on each direction
+int Electrical_analysis::Calculate_parallel_resistor(const int &direction, const int &n_cluster, const Electric_para &electric_param, Direct_Electrifying *DEA, const vector<Point_3D> &points_cnt, const vector<double> &radii, vector<set<long int> > &elements, const vector<vector<int> > &clusters_cnt, const vector<vector<int> > &boundary_cnt, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const vector<vector<int> > &clusters_gnp, const vector<vector<int> > &boundary_gnp, vector<vector<double> > &paralel_resistors)
+{
+    //Currents from CNTs
+    double I_total_cnt = 0;
+    double I_total_cnt_check = 0;
+    
+    //Currents from GNPS
+    double I_total_gnp = 0;
+    double I_total_gnp_check = 0;
+    
+    //Get boundaries
+    int b1, b2;
+    if (!Get_boundaries_from_direction(direction, b1, b2)) {
+        hout<<"Error in Calculate_parallel_resistor when calling Get_boundaries_from_direction"<<endl;
+        return 0;
+    }
+    
+    //---------------- Currents through CNTs
+    //Check if there are CNTs in the cluster
+    if (clusters_cnt.size() && clusters_cnt[n_cluster].size()) {
+        
+        //When there are no GNPs, if any of the two boundary vectors has no CNTs there is an error as there cannot be percolation in this direction
+        if (clusters_gnp.empty() && ( boundary_cnt[b1].empty() || boundary_cnt[b2].empty() ) ) {
+            hout << "One boundary vector along direction " << direction << " is empty, so there cannot be percolation along that direction."<< endl;
+            hout << "\t boundary_cnt[" << b1 << "].size() = " << boundary_cnt[b1].size() << endl;
+            hout << "\t boundary_cnt[" << b2 << "].size() = " << boundary_cnt[b2].size() << endl;
+            return 0;
+        }
+        
+        //Calculate the current passing through boundary b1
+        if (!Currents_through_boundary_cnts(electric_param, DEA, points_cnt, radii, elements, boundary_cnt[b1], I_total_cnt)) {
+            hout<<"Error in Calculate_parallel_resistor when calling Currents_through_boundary_cnts (b1)"<<endl;
+            return 0;
+        }
+        
+        //=========================== CURRENT Check
+        //hout <<"//=========================== CURRENT Check"<<endl;
+        //Calculate the current passing through boundary b2
+        if (!Currents_through_boundary_cnts(electric_param, DEA, points_cnt, radii, elements, boundary_cnt[b2], I_total_cnt)) {
+            hout<<"Error in Calculate_parallel_resistor when calling Currents_through_boundary_cnts (b2)"<<endl;
+            return 0;
+        }
+        
+        hout << "I_total_cnt="<<I_total_cnt<<" direction="<<direction<<endl;
+        hout << "I_total_cnt_check="<<I_total_cnt_check<<" direction="<<direction<<endl;
+    }
+    
+    //---------------- Currents through GNPs
+    //Check if there are GNPs in the cluster
+    if (clusters_gnp.size() && clusters_gnp[n_cluster].size()) {
+        
+        //When there are no CNTs, if any of the two boundary vectors has no GNPs there is an error as there cannot be percolation in this direction
+        if ( clusters_cnt.empty() && ( boundary_gnp[b1].empty() || boundary_gnp[b2].empty() )) {
+            hout << "One boundary vector along direction " << direction << " is empty, so there cannot be percolation along that direction."<< endl;
+            hout << "\t boundary_gnp[" << b1 << "].size() = " << boundary_gnp[b1].size() << endl;
+            hout << "\t boundary_gnp[" << b2 << "].size() = " << boundary_gnp[b2].size() << endl;
+            return 0;
+        }
+        
+        //hout << "Current GNP" << endl;
+        //Calculate the current passing through boundary b1, which is node 0
+        if (!Currents_through_boundary_gnps(0, electric_param, DEA, points_gnp, gnps, boundary_gnp[b1], I_total_gnp)) {
+            hout<<"Error in Calculate_parallel_resistor when calling Currents_through_boundary_gnps (b1)"<<endl;
+            return 0;
+        }
+        
+        //=========================== CURRENT Check GNP
+        //hout <<"//=========================== CURRENT Check GNP"<<endl;
+        //Calculate the current passing through boundary b2, which is node 1
+        if (!Currents_through_boundary_gnps(1, electric_param, DEA, points_gnp, gnps, boundary_gnp[b2], I_total_gnp)) {
+            hout<<"Error in Calculate_parallel_resistor when calling Currents_through_boundary_gnps (b2)"<<endl;
+            return 0;
+        }
+        
+        hout << "I_total_gnp="<<I_total_gnp<<" direction="<<direction<<endl;
+        hout << "I_total_gnp_check="<<I_total_gnp_check<<" direction="<<direction<<endl;
+    }
+    
+
+    //Calculate total currents
+    double I_total = I_total_cnt + I_total_gnp;
+    double I_total_check = I_total_cnt_check + I_total_gnp_check;
+    hout << "I_total="<<I_total<<" direction="<<direction<<endl;
+    hout << "I_total_check="<<I_total_check<<" direction="<<direction<<endl;
+    
+    //Calculate total resistance
+    //To calculate the resistance in a single direction,
+    //the DEA was also run using a single direction
+    //thus, there are only two boundary conditions and
+    //the voltage difference is equal to the input voltage
+    double R_total = electric_param.applied_voltage/I_total;
+    
+    //Add resistor to vector of parallel resistors
+    paralel_resistors[direction].push_back(R_total);
+    
+    return 1;
+}
+//For a given direction (0 for X, 1 for Y, 2 for Z), get the two boundaries (b1 and b2)
+//that need to be connected for percolation to happen along that direction
+int Electrical_analysis::Get_boundaries_from_direction(const int &direction, int &b1, int &b2)
+{
+    //Check the direction
+    if (direction == 0) {
+        b1 = 2;
+        b2 = 4;
+    }
+    else if (direction == 1) {
+        b1 = 3;
+        b2 = 5;
+    }
+    else if (direction == 2) {
+        b1 = 0;
+        b2 = 1;
+    }
+    else {
+        hout<<"Error in Get_boundaries_from_direction: Invalid direction. Direction can only be 0, 1 or 2. Input was:" << direction<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//This function calculates the current though CNTs at a given boundary
+int Electrical_analysis::Currents_through_boundary_cnts(const Electric_para &electric_param, Direct_Electrifying *DEA, const vector<Point_3D> &points_cnt, const vector<double> &radii, vector<set<long int> > &elements, const vector<int> &boundary_cnt, double &I)
+{
+    //Scan all CNTs at boundary
+    for (int i = 0; i < (int)boundary_cnt.size(); i++) {
+        
+        //Current CNT
+        int CNT = boundary_cnt[i];
+        
+        //Some CNTs on the boundary might not be part of the backbone or the geometric cluster
+        //First check if there are any elements on the CNT,
+        //if there are no elements there, skip the CNT
+        if (!elements[CNT].empty()) {
+            
+            //Check if the front and/or back of the CNT are in contact with the boundary
+            
+            //Get the points of the element at the front of the CNT
+            set<long int>::iterator it = elements[CNT].begin();
+            long int P1 = *it;
+            long int P2 = *(it++);
+            
+            //If P1 is at a boundary with presecribed conditions, then
+            //add the current of the element at the front of the CNT
+            if (!Current_of_element_in_boundary(P1, P2, radii[CNT], DEA, electric_param, points_cnt, I)) {
+                hout<<"Error in Currents_through_boundary_cnts when calling Current_of_element_in_boundary (front)"<<endl;
+                return 0;
+            }
+            
+            //Get the points of the element at the back of the CNT
+            set<long int>::reverse_iterator rit = elements[CNT].rbegin();
+            P1 = *rit;
+            P2 = *(rit++);
+            
+            //Add the current of the element at the front of the CNT
+            if (!Current_of_element_in_boundary(P1, P2, radii[CNT], DEA, electric_param, points_cnt, I)) {
+                hout<<"Error in Currents_through_boundary_cnts when calling Current_of_element_in_boundary (front)"<<endl;
+                return 0;
+            }
+        }
+    }
+    
+    return 1;
+}
+//This function checks if an element is at a boundary, and if so it calculates the current
+//It is assumed that P1 is the point that is at either the front or the back of the CNT, only these points can be in contact with the boundary
+int Electrical_analysis::Current_of_element_in_boundary(const long int &P1, const long int &P2, const double &radius, Direct_Electrifying *DEA, const Electric_para &electric_param, const vector<Point_3D> &points_cnt, double &I)
+{
+    //Get the node number of the first point
+    long int node1 = DEA->LMM_cnts.at(P1);
+    
+    //Check where is P1
+    //hout <<"P1="<<P1<<" node1="<<DEA->LM_matrix[P1]<<" ("<<point_list[P1].x<<", "<<point_list[P1].y<<", ";
+    //hout <<point_list[P1].z<<")"<<endl;
+    //If P1 is node 0 or 1, then the current is calculated
+    //This means it is on a valid boundary
+    if (node1 <= 1) {
+        
+        //Get the node number of the second point
+        long int node2 = DEA->LMM_cnts.at(P2);
+        
+        //hout <<"P1="<<P1<<" node1="<<DEA->LM_matrix[P1]<<" ("<<point_list[P1].x<<", "<<point_list[P1].y<<", "<<point_list[P1].z<<")"<<endl;//Get the node numbers
+        //hout << "P2="<<P2<<" node2="<<node2<<endl;
+        //Calculate voltage difference on the element,
+        //In the first calculation of current, node1 is at the boundary with voltage 0
+        //so the voltage drop is from node2 to node1
+        double V = DEA->voltages[node2] - DEA->voltages[node1];
+        
+        //hout << "V1="<<DEA->voltages[node1]<<" V2="<<DEA->voltages[node2]<<"\nDV=" << V;
+        //Calculate resistance of the element
+        double Re;
+        if (P1 > P2) {
+            //Check if the resistor is at the back of the CNT, since in that case the calculated resistance will be zero;
+            //this because if P1 > P2, the function that calculates the resistance does not find points after P1
+            //When the resistor is at the back of the element P1 > P2, so in that case invert the point numbers
+            if (DEA->Calculate_resistance_cnt(1, points_cnt, P2, P1, radius, electric_param.resistivity_CNT, Re)) {
+                hout<<"Error in Current_of_element_in_boundary when calling DEA->Calculate_resistance_cnt (1)"<<endl;
+                return 0;
+            }
+        }
+        else {
+            if (DEA->Calculate_resistance_cnt(1, points_cnt, P1, P2, radius, electric_param.resistivity_CNT, Re)) {
+                hout<<"Error in Current_of_element_in_boundary when calling DEA->Calculate_resistance_cnt (2)"<<endl;
+                return 0;
+            }
+        }
+        
+        //Calculate current and add it to the total current
+        //hout << " Re=" << Re << " I=" << V/Re << endl;
+        I = I + V/Re;
+    }
+    
+    return 1;
+}
+//This function calculates the current though GNPs at a given boundary
+int Electrical_analysis::Currents_through_boundary_gnps(const int &node, const Electric_para &electric_param, Direct_Electrifying *DEA, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const vector<int> &boundary_gnp, double &I)
+{
+    //Iterate over the GNPs at the boundary
+    for (int i = 0; i < (int)boundary_gnp.size(); i++) {
+        
+        //Current GNP
+        int GNPi = boundary_gnp[i];
+        
+        //Some GNPs on the boundary might not be part of the backbone or the geometric cluster
+        //First check if there are any triangulation edges on the GNP,
+        //if there are no edges there, skip the GNP
+        if (gnps[GNPi].triangulation.size()) {
+            
+            //Iterate over the triangulation edges
+            for (int j = 0; j < (int)gnps[GNPi].triangulation.size(); j++) {
+                
+                //Get the vertices of the triangulation
+                long int v1 = gnps[GNPi].triangulation[j].v1;
+                long int v2 = gnps[GNPi].triangulation[j].v2;
+                
+                //Get the nodes of the vertices of the triangulation
+                long int nodeA = DEA->LMM_gnps.at(v1);
+                long int nodeB = DEA->LMM_gnps.at(v2);
+                
+                //Check if any node is at a boundary
+                if (nodeA <= 1 || nodeB <= 1) {
+                    
+                    //Check that the nodes are not in the same boundary
+                    if (nodeA == nodeB) {
+                        hout<<"Error in Currents_through_boundary_gnps, nodes are at the same boundary: node1="<<nodeA<<", node2="<<nodeB<<endl;
+                        return 0;
+                    }
+                    
+                    //Set node1 to be the node at boundary b
+                    long int node1 = (nodeA == (long int)node)? nodeA: nodeB;
+                    long int node2 = (nodeA == (long int)node)? nodeB: nodeA;
+                    
+                    //Get the radii for calculating the resistance of the triangulation edge
+                    double rad1 = (DEA->points_cnt_rad.find(v1) == DEA->points_cnt_rad.end())? gnps[GNPi].t/2: DEA->points_cnt_rad.at(v1);
+                    double rad2 = (DEA->points_cnt_rad.find(v2) == DEA->points_cnt_rad.end())? gnps[GNPi].t/2: DEA->points_cnt_rad.at(v2);
+                    
+                    //Calculate the drop in voltage
+                    //In the first calculation of current, node1 is at the boundary with voltage 0
+                    //so the voltage drop is from node2 to node1
+                    double V = DEA->voltages[node2] - DEA->voltages[node1];
+                    
+                    //Calculate resistance of triangulation edge
+                    double Re;
+                    if (!DEA->Calculate_resistance_gnp(points_gnp[v1], points_gnp[v2], rad1, rad2, electric_param, Re)) {
+                        hout<<"Error in Currents_through_boundary_gnps when calling DEA->Calculate_resistance_gnp"<<endl;
+                        return 0;
+                    }
+                    
+                    //Add calcualted current
+                    I = I + V/Re;
+                }
+            }
+        }
+    }
+    
+    return 1;
+}
+//Deprecated:
 int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistance_flag, const vector<int> &family, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure, const vector<Point_3D> &point_list, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &point_list_gnp, const struct Geom_sample &window, const struct Electric_para &electric_param, const struct Cutoff_dist &cutoffs, vector<GCH> &hybrid_particles, vector<vector<long int> > &all_dead_indices, vector<vector<long int> > &all_indices, vector<vector<int> > &gnp_dead_indices, vector<vector<int> > &gnp_indices)
 {
     //Time variables
@@ -304,37 +666,6 @@ int Electrical_analysis::Electrical_analysis_along_each_percolated_direction (co
         delete Cutwins_Re;
         
     }//*/
-    
-    return 1;
-}
-//This function generates a vector with the different directions in which the electrical resistance needs to be calculated
-//e.g. if the family is 3 (i.e. XY), a vector with elements {0,1} is generated
-int Electrical_analysis::Vector_of_directions(const int &family, vector<int> &directions)
-{
-    if (family == 6) {
-        //If the family is 6 (XYZ); then the resistance needs to be calculated in the three directions
-        directions.assign(3, 0);
-        directions[1] = 1;
-        directions[2] = 2;
-    } else if (family == 5) {
-        //If the family is 5 (YZ); then the resistance needs to be calculated in two directions: 1 and 2
-        directions.push_back(1);
-        directions.push_back(2);
-    } else if (family == 4) {
-        //If the family is 4 (XZ); then the resistance needs to be calculated in two directions: 0 and 2
-        directions.push_back(0);
-        directions.push_back(2);
-    } else if (family == 3) {
-        //If the family is 5 (XY); then the resistance needs to be calculated in two directions: 0 and 1
-        directions.push_back(0);
-        directions.push_back(1);
-    } else if (family <= 2) {
-        //If the family is 0, 1 or 2; then this is the only direction in which resistance needs to be calculated
-        directions.push_back(family);
-    } else {
-        hout << "Invalid family: " << family << endl;
-        return 0;
-    }
     
     return 1;
 }
@@ -683,10 +1014,11 @@ double Electrical_analysis::Current_of_element_in_boundary(const long int &P1, c
         if (P1 > P2)
             //Check if the resistor is at the back of the CNT, since in that case the calculated resistance will be zero;
             //this because if P1 > P2, the function that calculates the resistance does not find points after P1
-            //When the resistor is at the back of the elemnt P1 > P2, so in that case invert the point numbers
+            //When the resistor is at the back of the element P1 > P2, so in that case invert the point numbers
             Re = DEA->Calculate_resistance_cnt(point_list, P2, P1, radius, electric_param.resistivity_CNT);
         else
             Re = DEA->Calculate_resistance_cnt(point_list, P1, P2, radius, electric_param.resistivity_CNT);
+        
         //Calculate current and add it to the total current
         //hout << " Re=" << Re << " I=" << V/Re << endl;
         return V/Re;

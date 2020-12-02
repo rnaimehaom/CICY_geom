@@ -325,7 +325,7 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     }
     
     //Set used to determine the nodes from CNT point in mixed junctions
-    map<long int, long int> points_cnt_rad;
+    //map<long int, long int> points_cnt_rad;
     
     //Check if there are mixed junctions for n_cluster
     if (HoKo->cluster_mix_junctions.size() && HoKo->cluster_mix_junctions[n_cluster].size()) {

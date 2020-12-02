@@ -25,6 +25,8 @@ public:
     //These matricew map from point number to node number in the stiffness matrix
     map<long int, long int> LMM_cnts;
     map<long int, long int> LMM_gnps;
+    //Set used to determine the nodes from CNT points in mixed junctions
+    map<long int, long int> points_cnt_rad;
     
     //vector<double> resistances;
     vector<vector<long int> > elements; //This vector will store the elements. It is needed to trim the CNTs
