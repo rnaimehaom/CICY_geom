@@ -26,7 +26,7 @@ public:
     map<long int, long int> LMM_cnts;
     map<long int, long int> LMM_gnps;
     //Set used to determine the nodes from CNT points in mixed junctions
-    map<long int, long int> points_cnt_rad;
+    map<long int, double> points_cnt_rad;
     
     //vector<double> resistances;
     vector<vector<long int> > elements; //This vector will store the elements. It is needed to trim the CNTs
@@ -54,8 +54,8 @@ public:
     int Add_to_existing_elements_in_2d_sparse_matrix(const long int &node1, const long int &node2, const double &Re, vector<map<long int, double> > &col_values, vector<double> &diagonal);
     int Fill_2d_matrices_cnt_junctions(const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_cnt_junctions_i, const vector<Junction> &junctions_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const map<long int, long int> &LMM_cnts, vector<map<long int, double> > &col_values, vector<double> &diagonal);
     int Calculate_junction_resistance(const Junction &j, const double &d_vdw, const double &rad1, const Point_3D &P1, const double &rad2, const Point_3D &P2, const struct Electric_para &electric_param, double &Re);
-    int Fill_2d_matrices_mixed_junctions(const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_mix_junctions_i, const vector<Junction> &junctions_mixed, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal, map<long int, long int> &points_cnt_rad);
-    int Fill_2d_matrices_gnp(const int &R_flag, const Electric_para &electric_param, const vector<int> &cluster_gnp, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, const vector<Point_3D> &points_cnt, const vector<double> &radii, const map<long int, long int> &LMM_gnps, map<long int, long int> &points_cnt_rad, vector<map<long int, double> > &col_values, vector<double> &diagonal);
+    int Fill_2d_matrices_mixed_junctions(const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_mix_junctions_i, const vector<Junction> &junctions_mixed, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal, map<long int, double> &points_cnt_rad);
+    int Fill_2d_matrices_gnp(const int &R_flag, const Electric_para &electric_param, const vector<int> &cluster_gnp, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, const map<long int, long int> &LMM_gnps, map<long int, double> &points_cnt_rad, vector<map<long int, double> > &col_values, vector<double> &diagonal);
     int Calculate_resistance_gnp(const Point_3D &P1, const Point_3D &P2, const double &rad1, const double &rad2, const struct Electric_para &electric_param, double &Re);
     int Fill_2d_matrices_gnp_junctions(const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_gnp_junctions_i, const vector<Junction> &junctions_gnp, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal);
     int From_2d_to_1d_vectors(const long int &reserved_nodes, const vector<map<long int, double> > &col_values, vector<vector<double> > &KEFT, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal);

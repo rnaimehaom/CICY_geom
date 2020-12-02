@@ -343,7 +343,7 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         
         //Add contributions from GNP resistors
         //hout << "GNP resistors" << endl;
-        if (!Fill_2d_matrices_gnp(R_flag, electric_param, HoKo->clusters_gnp[n_cluster], points_gnp, structure_gnp, gnps, points_cnt, radii, LMM_gnps, points_cnt_rad, col_values, diagonal)) {
+        if (!Fill_2d_matrices_gnp(R_flag, electric_param, HoKo->clusters_gnp[n_cluster], points_gnp, structure_gnp, gnps, LMM_gnps, points_cnt_rad, col_values, diagonal)) {
             hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_gnp" << endl;
             return 0;
         }
@@ -619,7 +619,7 @@ int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const 
     return 1;
 }
 //This function adds the contributions of the junctions between a CNT and a GNP
-int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_mix_junctions_i, const vector<Junction> &junctions_mixed, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal, map<long int, long int> &points_cnt_rad)
+int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_mix_junctions_i, const vector<Junction> &junctions_mixed, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal, map<long int, double> &points_cnt_rad)
 {
     //Iterate over all junctions in the cluster
     for (int i = 0; i < (int)cluster_mix_junctions_i.size(); i++) {
@@ -652,14 +652,14 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const double &d_vdw, c
             return 0;
         }
         
-        //Add the point P into the set of nodes with CNT radius
-        points_cnt_rad[Pgnp] = Pcnt;
+        //Add the radius of the CNT that has point P into the set of nodes with CNT radius
+        points_cnt_rad[Pgnp] = radii[cnt_n];
     }
     
     return 1;
 }
 //Add contributions from the resistors formed by the triangulation on the GNP
-int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_para &electric_param, const vector<int> &cluster_gnp, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, const vector<Point_3D> &points_cnt, const vector<double> &radii, const map<long int, long int> &LMM_gnps, map<long int, long int> &points_cnt_rad, vector<map<long int, double> > &col_values, vector<double> &diagonal)
+int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_para &electric_param, const vector<int> &cluster_gnp, const vector<Point_3D> &points_gnp, const vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, const map<long int, long int> &LMM_gnps, map<long int, double> &points_cnt_rad, vector<map<long int, double> > &col_values, vector<double> &diagonal)
 {
     //Triangulation object
     Triangulation dt;
@@ -670,12 +670,18 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
         //current hybrid particle
         int gnp_i = cluster_gnp[i];
         
-        //Perform triangulation
-        if (!dt.Generate_3d_trangulation(points_gnp, structure_gnp[gnp_i], gnps[gnp_i])) {
-            hout << "Error in Fill_2d_matrices_gnp when calling delaunay->Generate_3d_trangulation" << endl;
-            return 0;
+        //Check if the triangulation needs to be performed
+        //Triangulation is performed when calculating the backbone (R_flag == 0)
+        //or when calculating the electrical resistance and there is already a triangulation
+        if (!R_flag || gnps[gnp_i].triangulation.empty()) {
+            
+            //Perform triangulation
+            if (!dt.Generate_3d_trangulation(points_gnp, structure_gnp[gnp_i], gnps[gnp_i])) {
+                hout << "Error in Fill_2d_matrices_gnp when calling delaunay->Generate_3d_trangulation" << endl;
+                return 0;
+            }
+            //hout << "Triangulation " << i << ", " << structure_gnp[GNP].size() << " points in GNP " << GNP<<", " << gnps[GNP].triangulation.size() << " edges"<< endl;
         }
-        //hout << "Triangulation " << i << ", " << structure_gnp[GNP].size() << " points in GNP " << GNP<<", " << gnps[GNP].triangulation.size() << " edges"<< endl;
         
         //Add elements from the triangulation
         //Scan triangulation edges in reverse order since some edges might need to be deleted
@@ -705,10 +711,8 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
                 }
                 else {
                     //v1 comes from a CNT-GNP junction or it is a CNT seed, so use CNT radius
-                    //Get CNT number
-                    int cnt_n = points_cnt[points_cnt_rad[v1]].flag;
                     //Get radius
-                    rad1 = radii[cnt_n];
+                    rad1 = points_cnt_rad[v1];
                 }
                 
                 //Check if v2 has a junction with a CNT or is a CNT seed
@@ -718,10 +722,8 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
                 }
                 else {
                     //v1 comes from a CNT-GNP junction or it is a CNT seed, so use CNT radius
-                    //Get CNT number
-                    int cnt_n = points_cnt[points_cnt_rad[v2]].flag;
                     //Get radius
-                    rad2 = radii[cnt_n];
+                    rad2 = points_cnt_rad[v2];
                 }
                 
                 //Calculate the triangulation resistor, i.e., the resistance of
