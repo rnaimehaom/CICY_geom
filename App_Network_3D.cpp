@@ -137,45 +137,12 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         vector<double> branches_lengths(7,0);
         
         //Loop over the different clusters so that the direct electrifying algorithm is aplied on each cluster
-        Electrical_analysis *Electric_A = new Electrical_analysis;/*
-        if (HoKo->clusters_cnt.size() || HoKo->clusters_gch.size()) {
-            
-            //Perform the electrical analysis to obtain the backbone and calculate the electrical resistance
-            ct0 = time(NULL);
-            if (!Electric_A->Perform_analysis_on_clusters(Init->simu_para.avoid_resistance, HoKo->family, HoKo, Cutwins, structure_cnt, points_cnt, radii, gnps_structure, points_gnp, window_geom, Init->electric_para, Init->cutoff_dist, hybrid_particles, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
-                hout << "Error when performing electrical analysis" << endl;
-                return 0;
-            }
-            ct1 = time(NULL);
-            hout << "Perform electrical analysis time: "<<(int)(ct1-ct0)<<" secs."<<endl;
-            
-        } else {
-            
-            //Calculate the resistances and resistivities of the polymer matrix
-            vector<double> matrix_resistances;
-            if (!Electric_A->Calculate_matrix_resistances(Init->electric_para.resistivity_matrix, window_geom, matrix_resistances)) {
-                hout << "Error when calculating matrix resistances for a sample without percolated clusters" << endl;
-                return 0;
-            }
-            
-            //Calculate the resistances and resistivities along each direction
-            vector<double> resistivities;
-            //paralel_resistors is initialized with three empty vectors
-            vector<vector<double> > paralel_resistors(3,resistivities);
-            if (!Electric_A->Calculate_resistances_and_resistivities(window_geom, matrix_resistances, paralel_resistors, Electric_A->resistors, resistivities)) {
-                hout << "Error when calculating matrix resistivities for a sample without percolated clusters" << endl;
-                return 0;
-            }
-            
-            //Append resistors to a file
-            Printer *P = new Printer;
-            P->Append_1d_vec(Electric_A->resistors, "resistors.txt");
-            P->Append_1d_vec(resistivities, "resistivities.txt");
-            delete P;
-            
-            hout << "There are no percolated clusters" << endl;
-        }*/
-        delete Electric_A;
+        Electrical_analysis *EA = new Electrical_analysis;
+        if (!EA->Perform_analysis_on_clusters(Init->simu_para.avoid_resistance, window_geo, Init->electric_para, Init->cutoff_dist, Init->vis_flags, HoKo, Cutwins, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps)) {
+            hout << "Error when performing electrical analysis" << endl;
+            return 0;
+        }
+        delete EA;
         
         //Calculate the fractions of CNTs that belong to each family and save them to a file
         Clusters_fractions *Fracs = new Clusters_fractions;

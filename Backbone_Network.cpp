@@ -8,7 +8,7 @@
 #include "Backbone_Network.h"
 
 
-int Backbone_Network::Determine_backbone_network(const int &family, const int &n_cluster, const int &R_flag, const int &avoid_resistance_flag, const int &vtk_flag, const vector<double> &voltages, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, Hoshen_Kopelman *HoKo)
+int Backbone_Network::Determine_backbone_network(const int &n_cluster, const int &R_flag, const int &avoid_resistance_flag, const int &vtk_flag, const vector<double> &voltages, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, Hoshen_Kopelman *HoKo)
 {
     //Vectors to extract the backbone
     vector<vector<double> > currents_cnt, currents_gnp;
@@ -25,7 +25,7 @@ int Backbone_Network::Determine_backbone_network(const int &family, const int &n
     if (HoKo->clusters_cnt.size() && HoKo->clusters_cnt[n_cluster].size()) {
         
         //Find the CNTs in the backbone and dead branches
-        if (Find_backbone_and_fractions_cnts(family, n_cluster, avoid_resistance_flag, vtk_flag, zero_current, currents_cnt, points_cnt, radii, HoKo)) {
+        if (Find_backbone_and_fractions_cnts(n_cluster, avoid_resistance_flag, vtk_flag, zero_current, currents_cnt, points_cnt, radii, HoKo)) {
             hout<<"Error in Determine_backbone_network when calling Find_backbone_and_fractions_cnts"<<endl;
             return 0;
         }
@@ -36,7 +36,7 @@ int Backbone_Network::Determine_backbone_network(const int &family, const int &n
     if (HoKo->clusters_gnp.size() && HoKo->clusters_gnp[n_cluster].size()) {
         
         //Find the GNPs in the backbone and the dead ones
-        if (!Find_backbone_and_fractions_gnps(family, n_cluster, avoid_resistance_flag, vtk_flag, zero_current, currents_gnp, structure_gnp, gnps, HoKo)) {
+        if (!Find_backbone_and_fractions_gnps(n_cluster, avoid_resistance_flag, vtk_flag, zero_current, currents_gnp, structure_gnp, gnps, HoKo)) {
             hout<<"Error in Determine_backbone_network when calling Find_backbone_and_fractions_gnps"<<endl;
             return 0;
         }
@@ -266,7 +266,7 @@ int Backbone_Network::Zero_current_in_same_particle_junctions_unit_resistor(cons
 }
 //This function finds the backbone and calculates the fractions of percolated families
 //If needed, VTK files are generated and HoKo is updated for calculating electrical resistance
-int Backbone_Network::Find_backbone_and_fractions_cnts(const int &family, const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const double &zero_current, const vector<vector<double> > &currents_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, Hoshen_Kopelman *HoKo)
+int Backbone_Network::Find_backbone_and_fractions_cnts(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const double &zero_current, const vector<vector<double> > &currents_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, Hoshen_Kopelman *HoKo)
 {
     //Vectors to export vtk visualization files
     vector<vector<long int> > dead_branches_idx, backbone_idx;
@@ -320,7 +320,7 @@ int Backbone_Network::Find_backbone_and_fractions_cnts(const int &family, const 
         //add them to the class variables
         //If needed, add indices to the vectors needed to export VTK files and remove points
         //from the elements vector to calculate electrical resistance in a further step
-        if (!Calculate_cnt_volumes(family, n_cluster, avoid_resistance_flag, vtk_flag, CNTi, idx1, idx2, points_cnt, radii[CNTi], HoKo, dead_branches_idx[i], backbone_idx[i])) {
+        if (!Calculate_cnt_volumes(n_cluster, avoid_resistance_flag, vtk_flag, CNTi, idx1, idx2, points_cnt, radii[CNTi], HoKo, dead_branches_idx[i], backbone_idx[i])) {
             hout<<"Error in Find_backbone_and_fractions_cnts when calling Calculate_cnt_volumes"<<endl;
             return 0;
         }
@@ -341,7 +341,7 @@ int Backbone_Network::Find_backbone_and_fractions_cnts(const int &family, const 
 }
 //This function calcualtes the volumes of the segments of a CNT that belong to dead branches
 //and backbone
-int Backbone_Network::Calculate_cnt_volumes(const int &family, const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const int &CNTi, const int &idx1, const int &idx2, const vector<Point_3D> &points_cnt, const double &radius, Hoshen_Kopelman *HoKo, vector<long int> &dead_branches_i, vector<long int> &backbone_i)
+int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const int &CNTi, const int &idx1, const int &idx2, const vector<Point_3D> &points_cnt, const double &radius, Hoshen_Kopelman *HoKo, vector<long int> &dead_branches_i, vector<long int> &backbone_i)
 {
     //Get the two points at the beginning and end of the elements vector
     long int P_start = *(HoKo->elements_cnt[CNTi].begin());
@@ -349,6 +349,9 @@ int Backbone_Network::Calculate_cnt_volumes(const int &family, const int &n_clus
     
     //Variables to store the volumes for dead branches and backbone
     double volume_backbone = 0, volume_dead = 0;
+    
+    //Get the family number
+    int family = HoKo->family[n_cluster];
     
     //If idx1 is still -1, then all the CNT is dead
     //If idx1 is not -1, then
@@ -497,10 +500,13 @@ int Export_percolated_and_non_percoalted_clusters()
 }
 //This function finds the backbone and calculates the fractions of percolated families of GNPs
 //If needed, VTK files are generated and HoKo is updated for calculating electrical resistance
-int Backbone_Network::Find_backbone_and_fractions_gnps(const int &family, const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const double &zero_current, const vector<vector<double> > &currents_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, Hoshen_Kopelman *HoKo)
+int Backbone_Network::Find_backbone_and_fractions_gnps(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const double &zero_current, const vector<vector<double> > &currents_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, Hoshen_Kopelman *HoKo)
 {
     //Vectors to export vtk visualization files
     vector<int> dead_gnps_idx, backbone_gnps_idx;
+    
+    //Get the family
+    int family = HoKo->family[n_cluster];
     
     //Iterate over the GNPs in the cluster
     //Iterate from the last GNP to the first in order to be able to delete them
