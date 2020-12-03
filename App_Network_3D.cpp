@@ -32,10 +32,6 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     //Shell vectors (used to remove nanoparticles when reduding observation window size)
     vector<vector<int> > shells_cnts;
     
-    //Deprecated:
-    vector<GCH> hybrid_particles;
-    vector<vector<long int> > gnps_structure;
-    
     //----------------------------------------------------------------------
     //Network Generation with overlapping
     hout << "Generating nanoparticle network......" << endl;
@@ -56,17 +52,16 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     //Vector for GNP shells
     vector<Shell> shell_gnps(gnps.size());
     ct0 = time(NULL);
-    Shells *Shell = new Shells;
-    if (!Shell->Generate_shells(Init->geom_sample, points_cnt, gnps, shells_cnts, shell_gnps)) {
+    Shells *SH = new Shells;
+    if (!SH->Generate_shells(Init->geom_sample, points_cnt, gnps, shells_cnts, shell_gnps)) {
         hout << "Error when generating shells" << endl;
         return 0;
     }
-    delete Shell;
+    delete SH;
     ct1 = time(NULL);
     hout << "Generate shells and structure time: "<<(int)(ct1-ct0)<<" secs."<<endl;//*/
     
     //Variable to store the geometry of the observation window
-    struct Geom_sample window_geom;
     cuboid window_geo;
     
     for(int i=0; i<=Init->geom_sample.cut_num; i++)
@@ -82,15 +77,6 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
             hout<<"Error when updating the geometry for observation window "<<i<<endl;
             return 0;
         }
-        
-        //----------------------------------------------------------------------
-        //These vectors are used to export tecplot files
-        vector<long int> empty;
-        vector<vector<long int> > all_dead_indices(7,empty);
-        vector<vector<long int> > all_percolated_indices(7,empty);
-        vector<int> empty_int;
-        vector<vector<int> > all_percolated_gnp(7,empty_int);
-        vector<vector<int> > all_dead_gnps(7,empty_int);
         
         //----------------------------------------------------------------------
         //Determine the local networks in cutoff windows
@@ -129,50 +115,21 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Contacts are not needed anymore, so delete the object
         delete Contacts;
         
-        //----------------------------------------------------------------------
-        //These vectors are used to store the fractions of the different families in the current observation window
-        //families_lengths has 8 elements because of the 7 percolated families and the non-percoalted CNTs, the same is true for fractions
-        vector<double> families_lengths(8,0);
-        vector<double> fractions(8,0);
-        vector<double> branches_lengths(7,0);
-        
         //Loop over the different clusters so that the direct electrifying algorithm is aplied on each cluster
         Electrical_analysis *EA = new Electrical_analysis;
         if (!EA->Perform_analysis_on_clusters(Init->simu_para.avoid_resistance, window_geo, Init->electric_para, Init->cutoff_dist, Init->vis_flags, HoKo, Cutwins, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps)) {
             hout << "Error when performing electrical analysis" << endl;
             return 0;
         }
+        
+        //Delete objects to free memory
         delete EA;
-        
-        //Calculate the fractions of CNTs that belong to each family and save them to a file
-        Clusters_fractions *Fracs = new Clusters_fractions;
-        ct0 = time(NULL);
-        if (!Fracs->Calculate_fractions(Init->geom_sample, Cutwins->cnts_inside, Cutwins->gnps_inside, structure_cnt, points_cnt, radii, HoKo->isolated, hybrid_particles, HoKo->isolated_gch, all_dead_indices, all_percolated_indices, all_dead_gnps, all_percolated_gnp)) {
-            hout << "Error when calculating clusters fractions" << endl;
-            return 0;
-        }
-        ct1 = time(NULL);
-        hout << "Calculate fractions time: "<<(int)(ct1-ct0)<<" secs."<<endl;
-        
-        //Delete objects to free memory
-        delete Fracs;
         delete Cutwins;
-
-        //----------------------------------------------------------------------
-        //Check if visualization files were requested for the backbone
-        
-        //Delete objects to free memory
         delete HoKo;
-        
-        //----------------------------------------------------------------------
-        //Check if visualization files were requested for the triangulations
         
         it1 = time(NULL);
         hout << "Iteration "<<i+1<<" time: "<<(int)(it1-it0)<<" secs."<<endl;
-
-        
     }
-    
     
     return 1;
 }
