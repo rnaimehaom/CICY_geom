@@ -34,7 +34,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
     
     //Create a Backbone_Network object so that the vectors for nanoparticle volumes
     //and dead branches and gnps are intialized
-    Backbone_Network *Backbonet = new Backbone_Network;
+    Backbone_Network *BN = new Backbone_Network;
     
     //Scan every percolated cluster
     for (int j = 0; j < n_clusters; j++) {
@@ -62,7 +62,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         //-----------------------------------------------------------------------------------------------------------------------------------------
         //Determine the backbone and dead branches
         ct0 = time(NULL);
-        if (!Backbonet->Determine_backbone_network(family[j], j, R_flag, avoid_resistance_flag, vtk_flag, DEA->voltages, DEA->LMM_cnts, DEA->LMM_gnps, electric_param, cutoffs, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps, HoKo)) {
+        if (!BN->Determine_backbone_network(family[j], j, R_flag, avoid_resistance_flag, vtk_flag, DEA->voltages, DEA->LMM_cnts, DEA->LMM_gnps, electric_param, cutoffs, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps, HoKo)) {
             hout<<"Error in Perform_analysis_on_clusters when calling Backbonet->Determine_backbone_network"<<endl;
             return 0;
         }
@@ -91,33 +91,22 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
     }
     
     //Calculate clusters fractions
-    if (!Calculate_percolated_families_fractions(vis_flags.cnt_gnp_flag, structure_cnt, points_cnt, radii, gnps, HoKo, Backbonet)) {
+    if (!Calculate_percolated_families_fractions(vis_flags.cnt_gnp_flag, structure_cnt, points_cnt, radii, gnps, HoKo, BN)) {
         hout<<"Error in Perform_analysis_on_clusters when calling Calculate_percolated_families_fractions"<<endl;
         return 0;
     }
     
     //Delete object to free memory
-    delete Backbonet;
+    delete BN;
     
     //Check if it is requested to avoid calculating the resistor network
     if (!avoid_resistance_flag) {
         
         //Calculate the matrix resistances on each direction
-        vector<double> matrix_resistances;
-        //
-        //
-        
-        //Calculate the resistances and resistivities along each direction
-        vector<double> resistivities;
-        //
-        //
-        
-        //Append resistors to a file
-        Printer *P = new Printer;
-        P->Append_1d_vec(resistors, "resistors.txt");
-        P->Append_1d_vec(resistivities, "resistivities.txt");
-        delete P;
-    
+        if (!Calculate_resistances_and_resistivities(window, electric_param, parallel_resistors)) {
+            hout<<"Error in Perform_analysis_on_clusters when calling Calculate_resistances_and_resistivities"<<endl;
+            return 0;
+        }
     }
     
     return 1;
@@ -610,6 +599,117 @@ int Electrical_analysis::Calculate_volume_of_non_percolated_gnps(const vector<GN
             np_gnps = np_gnps + gnps[GNPj].volume;
         }
     }
+    
+    return 1;
+}
+//This function calculates the resistance on each direction from the vector of parallel resistors
+int Electrical_analysis::Calculate_resistances_and_resistivities(const cuboid &window, const Electric_para &electric_param, const vector<vector<double> > &paralel_resistors)
+{
+    //Variables to store the calculcated resistances and resistivities of the sample along
+    //each direction
+    vector<double> resistors(3,0);
+    vector<double> resistivities(3,0);
+    
+    //Scan each direction
+    //Note that matrix_resistances and paralel_resistors have the same size
+    for (int i = 0; i < (int)paralel_resistors.size(); i++) {
+        if (paralel_resistors[i].empty()) {
+            
+            //There are no resistors in direction i
+            //The resistivity is the same as the matrix
+            resistivities[i] = electric_param.resistivity_matrix;
+            
+            //Calculate resistance of the matrix along direction i
+            if (!Calculate_matrix_resistance(i, window, electric_param.resistivity_matrix, resistors[i])) {
+                hout<<"Error in Calculate_resistances_and_resistivities when calling Calculate_matrix_resistance"<<endl;
+                return 0;
+            }
+        } else if (paralel_resistors[i].size() == 1) {
+            
+            //If direction i has only one resistor, then that is the resistance in that direction
+            resistors[i] = paralel_resistors[i].front();
+            
+            //Calculate the resistivity
+            if (!Calculate_resistivity(i, window, resistors[i], resistivities[i])) {
+                hout<<"Error in Calculate_resistances_and_resistivities when calling Calculate_resistivity (1 resistor)"<<endl;
+                return 0;
+            }
+        } else {
+            //If there is more than one resistor, then calculate the
+            //equivalent resistance of parallel resistors
+            double R = 0;
+            for (int j = 0; j < (int)paralel_resistors[i].size(); j++) {
+                R = R + 1/paralel_resistors[i][j];
+            }
+            resistors[i] = 1/R;
+            
+            //Calculate the resistivity
+            if (!Calculate_resistivity(i, window, resistors[i], resistivities[i])) {
+                hout<<"Error in Calculate_resistances_and_resistivities when calling Calculate_resistivity (1 resistor)"<<endl;
+                return 0;
+            }
+        }
+    }
+    
+    //Print resistances and resistivities into a file
+    Printer P;
+    P.Append_1d_vec(resistors, "resistances.txt");
+    P.Append_1d_vec(resistivities, "resistivities.txt");
+    
+    return 1;
+}
+//This function calculates the matrix resistance on a given direction
+int Electrical_analysis::Calculate_matrix_resistance(const int &direction, const cuboid &window, const double &matrix_resistivity, double &R_M)
+{
+    //Lambda function to calculate the resistance of the matrix in a given direction
+    auto res_matrix = [](const double &length, const double &A, const double &rho_m){
+        return (rho_m*length/A);
+    };
+    
+    //------------------ Resistance along the x-direction
+    if (direction == 0) {
+        R_M = res_matrix(window.len_x, window.wid_y*window.hei_z, matrix_resistivity);
+    }
+    //------------------ Resistance along the y-direction
+    else if (direction == 1) {
+        R_M = res_matrix(window.wid_y, window.len_x*window.hei_z, matrix_resistivity);
+    }
+    //------------------ Resistance along the z-direction
+    else if (direction == 2) {
+        R_M = res_matrix(window.hei_z, window.len_x*window.wid_y, matrix_resistivity);
+    }
+    else {
+        hout<<"Error in Calculate_matrix_resistance: invalid direction. Direction can only be 0, 1, or 2. Input was"<<direction<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//This function calculates resistivity on a given direction
+int Electrical_analysis::Calculate_resistivity(const int &direction, const cuboid &window, const double &resistance, double &rho)
+{
+    //Lambda function to calculate the resistivity in a given direction
+    auto rho_dir = [](const double &length, const double &A, const double &R){
+        return (R*A/length);
+    };
+    
+    //------------------ Resistivity along the x-direction
+    if (direction == 0) {
+        rho = rho_dir(window.len_x, window.wid_y*window.hei_z, resistance);
+    }
+    //------------------ Resistivity along the y-direction
+    else if (direction == 1) {
+        rho = rho_dir(window.wid_y, window.len_x*window.hei_z, resistance);
+    }
+    //------------------ Resistivity along the z-direction
+    else if (direction == 2) {
+        rho = rho_dir(window.hei_z, window.len_x*window.wid_y, resistance);
+    }
+    else {
+        hout<<"Error in Calculate_resistivity: invalid direction. Direction can only be 0, 1, or 2. Input was"<<direction<<endl;
+        return 0;
+    }
+    
     
     return 1;
 }
