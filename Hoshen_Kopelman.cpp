@@ -1,5 +1,5 @@
 //===========================================================================
-//SOFTWARE:     3D geometric model for CNT and GS networks
+//SOFTWARE:     3D geometric model for CNT and GNP networks
 //OBJECTIVE:    Implementation of Hoshen-Kopelman Algorithm
 //AUTHOR:       Angel Mora
 //E-MAIL:       angel.mora@cicy.mx
@@ -2048,28 +2048,4 @@ int Hoshen_Kopelman::Merge_labels(const int &root1, const int &root2, vector<int
     //If root1 is equal to root2, the CNTs are already in the same cluster so there is nothing to do
     
     return 1;
-}
-//===========================================================================
-//===========================================================================
-//===========================================================================
-//Deprecated:
-//This function maps a point to the local coordinates of a GNP
-//It is asummed the center of coordinates is located at the GNP center
-Point_3D Hoshen_Kopelman::Demap_gnp_point(const GCH &hybrid, const Point_3D &point_gnp2)
-{
-    //Point to store the result
-    Point_3D demapped_point;
-    
-    //First subtract the displacement form the point in GNP2
-    Point_3D tmp = point_gnp2 - hybrid.center;
-    
-    //Multiply the transpose of the rotation matrix by the point obtained in the previous step
-    //The operation is done explicitly since a matrix-point multiplication is not defined
-    demapped_point.x = hybrid.rotation.element[0][0]*tmp.x + hybrid.rotation.element[1][0]*tmp.y + hybrid.rotation.element[2][0]*tmp.z;
-    
-    demapped_point.y = hybrid.rotation.element[0][1]*tmp.x + hybrid.rotation.element[1][1]*tmp.y + hybrid.rotation.element[2][1]*tmp.z;
-    
-    demapped_point.z = hybrid.rotation.element[0][2]*tmp.x + hybrid.rotation.element[1][2]*tmp.y + hybrid.rotation.element[2][2]*tmp.z;
-
-    return demapped_point;
 }

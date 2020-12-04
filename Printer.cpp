@@ -1,5 +1,5 @@
 //===========================================================================
-//SOFTWARE:     3D geometric model for CNT and GS networks
+//SOFTWARE:     3D geometric model for CNT and GNP networks
 //OBJECTIVE:    Functions to print (output into a file) different types of data structures
 //AUTHOR:       Angel Mora
 //E-MAIL:       angel.mora@cicy.mx
@@ -80,17 +80,6 @@ void Printer::Print_1d_vec(const vector<long int> &list, const string &filename)
     for (long int i=0; i < (long int)list.size(); i++) {
         //otec << i << "\t" << list[i] << "\n";
         otec << list[i] << "\n";
-    }
-    otec.close();
-}
-
-//Print a vector of long integers with the specified filename
-void Printer::Print_1d_vec(const vector<contact_pair> &list, const string &filename)
-{
-    ofstream otec(filename.c_str());
-    hout << "Saving file: " << filename << "\n";
-    for (long int i=0; i < (long int)list.size(); i++) {
-        otec << list[i].type1 << "1="<< list[i].particle1 << " P1=" << list[i].point1 << ", " << list[i].type2 << "2="<< list[i].particle2 << " P2=" << list[i].point2 << endl;
     }
     otec.close();
 }

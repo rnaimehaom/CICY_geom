@@ -1,5 +1,5 @@
 //===========================================================================
-//SOFTWARE:     3D geometric model for CNT and GS networks
+//SOFTWARE:     3D geometric model for CNT and GNP networks
 //OBJECTIVE:    Defeinition of geometry elements (point, line, plane) and operations with them
 //AUTHOR:       Angel Mora
 //E-MAIL:       angel.mora@cicy.mx
@@ -374,17 +374,5 @@ string Plane_3D::str() const
     }
     str += " = 0";
     return str;
-}
-//===========================================================================
-//Constructor that initializes the graphene nanoplatelet geometry
-GCH::GCH(double len_x, double wid_y, double thick_z)
-{
-    //Geometry of the GNP
-    gnp.len_x = len_x;
-    gnp.wid_y = wid_y;
-    gnp.hei_z = thick_z;
-    //Initialize rotation matrix
-    MathMatrix tmp(3,3);
-    rotation = tmp;
 }
 //===========================================================================

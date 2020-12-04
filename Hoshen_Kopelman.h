@@ -1,5 +1,5 @@
 //===========================================================================
-//SOFTWARE:     3D geometric model for CNT and GS networks
+//SOFTWARE:     3D geometric model for CNT and GNP networks
 //OBJECTIVE:    Implementation of Hoshen-Kopelman Algorithm
 //AUTHOR:       Angel Mora
 //E-MAIL:       angel.mora@cicy.mx
@@ -97,19 +97,6 @@ public:
     int Find_root(const int &L, vector<int> &labels_labels);
     int Merge_labels(const int &root1, const int &root2, vector<int> &labels_labels);
     
-    
-    
-    
-    //Deprecated:
-    //Contact vectors
-    vector<vector<long int> > contacts_point;
-    vector<contact_pair> gnp_contacts;
-    vector<contact_pair> mixed_contacts;
-    vector<vector<int> > isolated;
-    //Cluster vectors for hybrid particles
-    vector<vector<int> > clusters_gch;
-    vector<vector<int> > isolated_gch;
-    Point_3D Demap_gnp_point(const GCH &hybrid, const Point_3D &point_gnp2);
     
 private:
     

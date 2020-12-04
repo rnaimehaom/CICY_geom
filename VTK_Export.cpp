@@ -1,5 +1,5 @@
 //===========================================================================
-//SOFTWARE:     3D geometric model for CNT and GS networks
+//SOFTWARE:     3D geometric model for CNT and GNP networks
 //OBJECTIVE:    Export visualization files in ASCII VTK legacy file format
 //AUTHOR:       Angel Mora
 //E-MAIL:       angel.mora@cicy.mx

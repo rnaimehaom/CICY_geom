@@ -1,5 +1,5 @@
 //===========================================================================
-//SOFTWARE:     3D geometric model for CNT and GS networks
+//SOFTWARE:     3D geometric model for CNT and GNP networks
 //OBJECTIVE:    Generate a grid to facilitate findic contact points
 //AUTHOR:       Angel Mora
 //E-MAIL:       angel.mora@cicy.mx

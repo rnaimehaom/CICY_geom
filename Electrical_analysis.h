@@ -1,5 +1,5 @@
 //===========================================================================
-//SOFTWARE:     3D geometric model for CNT and GS networks
+//SOFTWARE:     3D geometric model for CNT and GNP networks
 //OBJECTIVE:    Find the backbone and calculate the electrical resistivity and resistance on each direction
 //AUTHOR:       Angel Mora
 //E-MAIL:       angel.mora@cicy.mx

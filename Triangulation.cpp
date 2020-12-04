@@ -1,5 +1,5 @@
 //===========================================================================
-//SOFTWARE:     3D geometric model for CNT and GS networks
+//SOFTWARE:     3D geometric model for CNT and GNP networks
 //OBJECTIVE:    Dlaunay triangulation for a given set of points
 //AUTHOR:       Angel Mora
 //E-MAIL:       angel.mora@cicy.mx
@@ -321,11 +321,6 @@ int Triangulation::Final_triangulation_edges(const vector<TrFaceL> &triangles, G
             gnp_i.triangulation.push_back(edges[i]);
         }
     }
-    
-    return 1;
-}
-int Triangulation::Generate_3d_trangulation(const long int &last_cnt_node, const vector<Point_3D> &point_list, const vector<vector<long int> > &structure, const vector<Point_3D> &point_list_gnp, const vector<long int> &gnp_junctions, GCH &hybrid)
-{
     
     return 1;
 }

@@ -1,5 +1,5 @@
 //===========================================================================
-//SOFTWARE:     3D geometric model for CNT and GS networks
+//SOFTWARE:     3D geometric model for CNT and GNP networks
 //OBJECTIVE:    Generate shells (background vectors) to map each CNT into an observation window and facilitate their trimming
 //AUTHOR:       Angel Mora
 //E-MAIL:       angel.mora@cicy.mx

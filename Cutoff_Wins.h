@@ -1,5 +1,5 @@
 //===========================================================================
-//SOFTWARE:     3D geometric model for CNT and GS networks
+//SOFTWARE:     3D geometric model for CNT and GNP networks
 //OBJECTIVE:    Cut out an observation window
 //AUTHOR:       Angel Mora
 //E-MAIL:       angel.mora@cicy.mx
@@ -35,12 +35,6 @@ public:
     vector<vector<long int> > boundary_gnp_pts;
     //Total GNP points at boundaries
     long int n_gnp_pts_b;
-    
-    //Deprecated:
-    //This vector will help find points on the boundary. This is used in the direct electrifying algorithm
-    vector<vector<short int> > boundary_flags_cnt;
-    //This vector will help find points on the boundary. This is used in the direct electrifying algorithm
-    vector<vector<short int> > boundary_flags_gnp;
     
 
     

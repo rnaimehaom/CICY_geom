@@ -1,5 +1,5 @@
 //===========================================================================
-//SOFTWARE:     3D geometric model for CNT and GS networks
+//SOFTWARE:     3D geometric model for CNT and GNP networks
 //OBJECTIVE:    Defeinition of geometry elements (point, line, plane) and operations with them
 //AUTHOR:       Angel Mora
 //E-MAIL:       angel.mora@cicy.mx
@@ -126,24 +126,6 @@ struct cuboid
     double len_x, wid_y, hei_z;
     //Cuboid's maximum corrdinates
     double max_x, max_y, max_z;
-};
-//---------------------------------------------------------------------------
-//Deprecated:
-//Data structure for a contact pair
-struct contact_pair
-{
-    //Number of first particle (in contact with second particle)
-    int particle1;
-    //Point number on particle 1
-    long int point1;
-    //Type of particle 1, "CNT" or "GNP"
-    string type1;
-    //Number of second particle (in contact with first particle)
-    int particle2;
-    //Point number on particle 2
-    long int point2;
-    //Type of particle 1, "CNT" or "GNP"
-    string type2;
 };
 //---------------------------------------------------------------------------
 //Data structure for a junction
@@ -308,39 +290,6 @@ struct EdgeL {
     bool operator==(const EdgeL &e) const {
         return ( (e.v1 == v1 && e.v2 == v2) || (e.v2 == v1 && e.v1 == v2) );
     }
-};
-//---------------------------------------------------------------------------
-//Deprecated:
-//Class structure for GNP-CNT hybrid particles
-class GCH
-{
-public:
-    
-    //GNP length, width and height specified within a cuboid object
-    cuboid gnp;
-    //GNP center
-    Point_3D center;
-    //Rotation matrix
-    MathMatrix rotation;
-    //vectors of CNT number for top and bottom surfaces
-    vector<int> cnts_top, cnts_bottom;
-    //Tringulation edges
-    vector<vector<long int> > triangulation;
-    //Triangulation flags, they determine if a triangulation node is a CNT point (1) or a GNP point (0)
-    vector<vector<short int> > triangulation_flags;
-    //Flag that keeps the sonsecutive numbering of the GNP
-    int flag;
-    //Type of particle: 1 for hybrid, 0 for GNP
-    int type;
-    
-    //Constructor
-    GCH(){
-        //Initialize rotation matrix
-        rotation = MathMatrix(3,3);
-    };
-    GCH(double len_x, double wid_y, double thick_z);
-    
-    
 };
 //---------------------------------------------------------------------------
 //Data structure for GNPs

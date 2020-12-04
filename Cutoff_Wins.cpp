@@ -1,5 +1,5 @@
 //===========================================================================
-//SOFTWARE:     3D geometric model for CNT and GS networks
+//SOFTWARE:     3D geometric model for CNT and GNP networks
 //OBJECTIVE:    Cut out an observation window
 //AUTHOR:       Angel Mora
 //E-MAIL:       angel.mora@cicy.mx
@@ -77,9 +77,6 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
 {
     //String to save the location of a point (inside the window, outside the window, or at a boundary)
     string point_location;
-    
-    //Initialize the vector of boundary_flags with empty vectors
-    boundary_flags_cnt.assign(points_cnt.size(), vector<short int>());
     
     //Initialize the vector of boundary_flags with empty vectors
     boundary_cnt.assign(6, vector<int>());
