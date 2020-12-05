@@ -44,6 +44,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
         labels_cnt.assign(structure_cnt.size(), -1);
         
         //There are CNTs, make clusters
+        hout<<"Make_cnt_clusters"<<endl;
         if (!Make_cnt_clusters(points_cnt, radii, cutoffs, sectioned_domain_cnt, structure_cnt, labels_cnt, n_labels_cnt)) {
             hout<<"Error in Determine_clusters when calling Make_cnt_clusters"<<endl;
             return 0;
@@ -67,6 +68,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
         labels_gnp.assign(gnps.size(), -1);
         
         //Make GNP clusters
+        hout<<"Make_gnp_clusters"<<endl;
         if (!Make_gnp_clusters(gnps_inside, sectioned_domain_gnp, gnps, cutoffs.tunneling_dist, n_labels_cnt, n_total_labels, structure_gnp, points_gnp, labels_gnp)) {
             hout<<"Error in Determine_clusters when calling Make_gnp_clusters"<<endl;
             return 0;
@@ -81,6 +83,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     if (simu_para.particle_type == "GNP_CNT_mix" || simu_para.particle_type == "Hybrid_particles") {
         
         //Make mixed clusters
+        hout<<"Make_mixed_clusters"<<endl;
         if (!Make_mixed_clusters(n_total_labels, cutoffs, points_cnt, radii, sectioned_domain_cnt, gnps, sectioned_domain_gnp, labels_cnt, labels_gnp, structure_gnp, points_gnp, n_clusters)) {
             hout<<"Error in Determine_clusters when calling Make_mixed_clusters"<<endl;
             return 0;
@@ -92,12 +95,14 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     
     //Generate cluster vectors
     if (labels_cnt.size()) {
+        hout<<"Make_particle_clusters CNTs"<<endl;
         if (!Make_particle_clusters(n_clusters, cnts_inside, labels_cnt, isolated_cnt, clusters_cnt_tmp)) {
             hout<<"Error in Determine_clusters when calling Make_particle_clusters (CNT)"<<endl;
             return 0;
         }
     }
     if (labels_gnp.size()) {
+        hout<<"Make_particle_clusters GNPs"<<endl;
         if (!Make_particle_clusters(n_clusters, gnps_inside, labels_gnp, isolated_gnp, clusters_gnp_tmp)) {
             hout<<"Error in Determine_clusters when calling Make_particle_clusters (GNP)"<<endl;
             return 0;
@@ -105,6 +110,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     }
     
     //Determine percolation
+    hout<<"Find_percolated_clusters"<<endl;
     if (!Find_percolated_clusters(n_clusters, boundary_cnt, boundary_gnp, labels_cnt, labels_gnp, clusters_cnt_tmp, clusters_gnp_tmp)) {
         hout<<"Error in Determine_clusters when calling Find_percolated_clusters"<<endl;
         return 0;
@@ -115,6 +121,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
         
         //There is at least one percoalted cluster
         //Group the junctions into the clusters they belong to
+        hout<<"Group_junctions"<<endl;
         if (!Group_junctions(points_cnt, points_gnp, labels_cnt, labels_gnp)) {
             hout<<"Error in Find_percolated_clusters when calling Group_junctions"<<endl;
             return 0;
@@ -140,24 +147,31 @@ int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_cnt, const
     map<long int, map<int, double> > point_contacts_dist;
     
     //Label the CNTs
+    hout<<"Label_cnts_in_window"<<endl;
     if (!Label_cnts_in_window(points_cnt, radii, cutoffs.tunneling_dist, sectioned_domain_cnt, point_contacts, point_contacts_dist, contact_elements, labels_cnt, labels_labels_cnt)) {
         hout<<"Error in Make_cnt_clusters when calling Label_cnts_in_window"<<endl;
         return 0;
     }
     
     //Clean up the labels to find the proper labels, i.e. merged and consecutive labels starting at 0
+    hout<<"Cleanup_labels"<<endl;
     if (!Cleanup_labels(labels_labels_cnt, labels_cnt, n_labels_cnt)) {
         hout << "Error in Make_cnt_clusters when calling Cleanup_labels" << endl;
         return 0;
     }
     
     //Compress CNT-CNT contact segments and add junctions
+    hout<<"Compress_cnt_cnt_contact_segments"<<endl;
     if (!Compress_cnt_cnt_contact_segments(cutoffs, point_contacts, point_contacts_dist, contact_elements)) {
         hout << "Error in Make_cnt_clusters when calling Compress_cnt_cnt_contact_segments" << endl;
         return 0;
     }
     
     //Add first and last points to the elements
+    if (!Complete_cnt_elements(structure_cnt)) {
+        hout << "Error in Make_cnt_clusters when calling Complete_cnt_elements" << endl;
+        return 0;
+    }
     
     return 1;
 }
@@ -180,6 +194,7 @@ int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, co
             //Get first point and its CNT number
             long int P1 = sectioned_domain_cnt[i][j];
             int CNT1 = points_cnt[P1].flag;
+            //hout<<"P1="<<points_cnt[P1].str()<<" sectioned_domain_cnt[i][j]="<<sectioned_domain_cnt[i][j]<<endl;
             
             //For each point P1=sectioned_domain[i][j] scan all remaning points in sectioned_domain[i]
             for (int k = j+1; k<inner; k++) {
@@ -187,6 +202,7 @@ int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, co
                 //Get second point and its CNT number
                 long int P2 = sectioned_domain_cnt[i][k];
                 int CNT2 = points_cnt[P2].flag;
+                //hout<<"P2="<<points_cnt[P2].str()<<" sectioned_domain_cnt[i][k]="<<sectioned_domain_cnt[i][k]<<endl;
                 //hout <<"P1="<<P1<<" CNT1="<<CNT1<<" P2="<<P2<<" CNT2="<<CNT2;
                 //hout<<" r1="<<radii[CNT1]<<" r2="<<radii[CNT2]<<endl;
                 
@@ -199,7 +215,7 @@ int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, co
                     
                     //Calculate the distance between points
                     double dist_junc = points_cnt[P1].distance_to(points_cnt[P2]);
-                    //hout <<" junction_dist="<<junction_dist<<endl;
+                    //hout <<" dist_junc="<<dist_junc<<endl;
                     
                     //Compare the distance between points against the junction distance
                     //to check whether there is tunneling
@@ -211,21 +227,12 @@ int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, co
                             return 0;
                         }
                         
-                        //Add points to the respective CNTs in the elements vector
-                        //elements_cnt[CNT1].insert(P1);
-                        //elements_cnt[CNT2].insert(P2);
-                        
-                        //Create a CNT-CNT junction
-                        //Junction j(P1, "CNT", P2, "CNT", dist_junc);
-                        
-                        //Add the junction to the vector of junctions
-                        //junctions.push_back(j);
-                        
                         //Sort the CNTs as maximum and minimum
                         int CNTa = min(CNT1, CNT2);
                         long int Pa = (CNT1 < CNT2)? P1: P2;
                         int CNTb = max(CNT1, CNT2);
                         long int Pb = (CNT2 < CNT1)? P1: P2;
+                        //hout<<"CNTa="<<CNTa<<" Pa="<<Pa<<" CNTb="<<CNTb<<" Pb="<<Pb<<endl;
                         
                         //Add points to the elements used for contacts
                         //Only add the points to the CNT with lowest number
@@ -267,6 +274,7 @@ int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, co
                             point_contacts[Pa][CNTb] = Pb;
                             //point_contacts[P2][CNT1] = P1;
                         }
+                        //hout<<"point_contacts added"<<endl;
                     }
                 }
             }

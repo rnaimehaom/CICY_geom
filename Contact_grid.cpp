@@ -188,7 +188,7 @@ int Contact_grid::Assign_point_to_regions_cnts(const int &a, const int &b, const
     int t = Calculate_t(a, b, c, n_regions[0], n_regions[1]);
     
     //Assign point to default region
-    hout<<"t="<<t<<endl;
+    //hout<<"t="<<t<<endl;
     sectioned_domain_cnts[t].push_back(P);
     
     //Check if P needs to be added to more regions due to their overlapping
@@ -197,7 +197,7 @@ int Contact_grid::Assign_point_to_regions_cnts(const int &a, const int &b, const
         
         //Calculate the region
         t = Calculate_t(a+f_regions[0], b, c, n_regions[0], n_regions[1]);
-        hout<<"\tt="<<t<<endl;
+        //hout<<"\tt="<<t<<endl;
         
         //Assign point to region
         sectioned_domain_cnts[t].push_back(P);
@@ -208,7 +208,7 @@ int Contact_grid::Assign_point_to_regions_cnts(const int &a, const int &b, const
         
         //Calculate the region
         t = Calculate_t(a, b+f_regions[1], c, n_regions[0], n_regions[1]);
-        hout<<"\tt="<<t<<endl;
+        //hout<<"\tt="<<t<<endl;
         
         //Assign point to region
         sectioned_domain_cnts[t].push_back(P);
@@ -219,7 +219,7 @@ int Contact_grid::Assign_point_to_regions_cnts(const int &a, const int &b, const
         
         //Calculate the region
         t = Calculate_t(a, b, c+f_regions[2], n_regions[0], n_regions[1]);
-        hout<<"\tt="<<t<<endl;
+        //hout<<"\tt="<<t<<endl;
         
         //Assign point to region
         sectioned_domain_cnts[t].push_back(P);

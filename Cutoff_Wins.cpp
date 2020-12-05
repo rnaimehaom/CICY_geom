@@ -201,7 +201,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
             //Move the points to the front of the CNT if the start index of the first segment is not zero
             if (first_idx != 0) {
                 for (int k = first_idx; k <= last_idx; k++) {
-                    structure_cnt[CNT][k-first_idx] = structure_cnt[CNT][first_idx];
+                    structure_cnt[CNT][k-first_idx] = structure_cnt[CNT][k];
                 }
                 
                 //Update the last idx
@@ -321,7 +321,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const do
             points_cnt[P].flag = new_CNT;
             
             //Add the point number to the structure vector
-            struct_temp.push_back(j);
+            struct_temp.push_back(P);
             
             //Update the shell of the new CNT points
             shells.Add_to_cnt_shells(var_shells[0], var_shells[1], var_shells[2], var_shells[3], points_cnt[P], (int)shells_cnt.size(), shells_cnt);
@@ -416,6 +416,9 @@ int Cutoff_Wins::Substitute_boundary_point(const cuboid &window_geo, const Point
     //Calculate the point at the boundary
     p_outside = p_outside + T*lambda;
     //hout<<"P_intersection = ("<<p_outside.x<<", "<<p_outside.y<<", "<<p_outside.z<<")"<<endl<<endl;
+    
+    //Copy the flag, i.e., the CNT number
+    p_outside.flag = p_inside.flag;
     
     return 1;
 }
