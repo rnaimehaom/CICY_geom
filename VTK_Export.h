@@ -23,6 +23,8 @@ public:
     //Constructor
     VTK_Export(){};
     
+    //---------------------------------------------------------------------------
+    //CNTs
     int Export_cnts_1D_vector(const vector<Point_3D> &points, const vector<vector<long int> > &structure, const string &filename)const;
     int Add_header(ofstream &otec)const;
     int Add_points_from_vector(const vector<Point_3D> &points, ofstream &otec)const;
@@ -33,11 +35,24 @@ public:
     int Add_points_from_2D_vector(const vector<vector<Point_3D> > &points, ofstream &otec)const;
     int Add_offsets_for_2D_vector(const vector<vector<Point_3D> > &points, ofstream &otec)const;
     int Add_connectivity_for_2D_vector(const vector<vector<Point_3D> > &structure, ofstream &otec)const;
+    //---------------------------------------------------------------------------
+    int Export_from_cnt_indices(const vector<Point_3D> &points, const vector<vector<long int> > &indices, const string &filename)const;
+    int Count_points_and_lines_from_indices(const vector<vector<long int> > &indices, long int &n_points, int &n_lines)const;
+    int Add_points_from_indices(const vector<Point_3D> &points, const vector<vector<long int> > &indices, ofstream &otec)const;
+    int Add_offsets_from_indices(const vector<vector<long int> > &indices, ofstream &otec)const;
+    int Add_connectivity_from_indices(const vector<vector<long int> > &indices, ofstream &otec)const;
+    //---------------------------------------------------------------------------
+    //GNPs
     int Export_gnps(const vector<GNP> &gnps, const string &filename)const;
     int Add_all_gnp_vertices(const vector<GNP> &gnps, ofstream &otec)const;
     int Add_points_from_array(const Point_3D points[], const int &arr_size, ofstream &otec)const;
-    int Add_ofsets_for_gnps(const vector<GNP> &gnps, ofstream &otec)const;
-    int Add_connectivity_for_gnps(const vector<GNP> &gnps, ofstream &otec, const long int &cnt_points_offset = 0)const;
+    int Add_ofsets_for_gnps(const int &n_gnps, ofstream &otec)const;
+    int Add_connectivity_for_gnps(const long int &n_gnps, ofstream &otec, const long int &cnt_points_offset = 0)const;
+    //---------------------------------------------------------------------------
+    int Export_gnps_in_cluster(const vector<GNP> &gnps, const vector<int> &cluster, const string &filename);
+    int Add_all_gnp_vertices_from_cluster(const vector<GNP> &gnps, const vector<int> &cluster, ofstream &otec)const;
+    //---------------------------------------------------------------------------
+    //Mixed
     int Export_hybrid_material(const vector<Point_3D> &points, const vector<vector<long int> > &structure, const vector<GNP> &gnps, const string &filename)const;
 };
 

@@ -52,7 +52,6 @@ public:
     int Find_backbone_and_fractions_cnts(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const double &zero_current, const vector<vector<double> > &currents_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, Hoshen_Kopelman *HoKo);
     int Calculate_cnt_volumes(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const int &CNTi, const int &idx1, const int &idx2, const vector<Point_3D> &points_cnt, const double &radius, Hoshen_Kopelman *HoKo, vector<long int> &dead_branches_i, vector<long int> &backbone_i);
     int CNT_volume_between_two_points(const long int &P1, const long int P2, const double &radius, const vector<Point_3D> &points_cnt, double &volume);
-    int Export_percolated_and_non_percoalted_clusters();
     int Find_backbone_and_fractions_gnps(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const double &zero_current, const vector<vector<double> > &currents_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, Hoshen_Kopelman *HoKo);
     int Remove_junctions_with_dead_particles_cnts(const int &n_cluster, Hoshen_Kopelman *HoKo);
     int Remove_junctions_with_dead_particles_gnps(const int &n_cluster, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, Hoshen_Kopelman *HoKo);

@@ -31,6 +31,7 @@ public:
     int Calculate_percolated_families_fractions(const int &cnt_gnp_flag, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<GNP> &gnps, Hoshen_Kopelman *HoKo, Backbone_Network *BN);
     int Calculate_volume_of_non_percolated_cnts(const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &isolated_cnts, Backbone_Network *BN, double &np_cnts);
     int Calculate_volume_of_non_percolated_gnps(const vector<GNP> &gnps, const vector<vector<int> > &isolated_gnps, double &np_gnps);
+    int Export_isolated_particles(const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &isolated_cnts, const vector<GNP> &gnps, const vector<vector<int> > &isolated_gnps);
     int Calculate_resistances_and_resistivities(const cuboid &window, const Electric_para &electric_param, const vector<vector<double> > &paralel_resistors);
     int Calculate_matrix_resistance(const int &direction, const cuboid &window, const double &matrix_resistivity, double &R_M);
     int Calculate_resistivity(const int &direction, const cuboid &window, const double &resistance, double &rho);

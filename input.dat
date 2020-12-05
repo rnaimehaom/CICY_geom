@@ -224,10 +224,11 @@ Visualization_flags
 % 3: wires (3D lines) & meshes
 0
 %Flag to export the backbone:
-% 0: do not export Tecplot files
-% 1: wires (3D lines)
-% 2: meshes
-% 3: wires (3D lines) & meshes
+% 0: do not export visualization files
+% 1: export visualization files
+%If set to 1, up to six files are generated:
+%   Three files if there are CNTs: backbone, dead branches and isolated
+%   Three files if there are GNPs: backbone, dead (attached to the percoalted cluster) and isolated
 0
 %Flag to export triangulations
 % 0: do not export Tecplot files

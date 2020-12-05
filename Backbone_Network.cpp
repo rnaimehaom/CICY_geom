@@ -334,7 +334,25 @@ int Backbone_Network::Find_backbone_and_fractions_cnts(const int &n_cluster, con
     
     //Export the visualization files if needed
     if (vtk_flag) {
-        //
+        
+        //VTK export object
+        VTK_Export VTK_E;
+        
+        //Generate filenames
+        string str_bb = "backbone_" + to_string(n_cluster) + "_fam_" + to_string(HoKo->family[n_cluster]) + "_cnts.vtk";
+        string str_db = "dead_branches_" + to_string(n_cluster) + "_fam_" + to_string(HoKo->family[n_cluster]) + "_cnts.vtk";
+        
+        //Export CNTs in the backbone
+        if (!VTK_E.Export_from_cnt_indices(points_cnt, backbone_idx, str_bb)) {
+            hout<<"Error in Export_vtk_files_for_backbone_cnts when calling VTK_E.Export_from_cnt_indices (backbone)"<<endl;
+            return 0;
+        }
+        
+        //Export dead branches
+        if (!VTK_E.Export_from_cnt_indices(points_cnt, dead_branches_idx, str_db)) {
+            hout<<"Error in Export_vtk_files_for_backbone_cnts when calling VTK_E.Export_from_cnt_indices (dead branches)"<<endl;
+            return 0;
+        }
     }
     
     return 1;
@@ -492,12 +510,6 @@ int Backbone_Network::CNT_volume_between_two_points(const long int &P1, const lo
     
     return 1;
 }
-//This function generates two VTK files for a cluster of CNTs: one for dead branches
-//and one for the backbone
-int Export_percolated_and_non_percoalted_clusters()
-{
-    return 1;
-}
 //This function finds the backbone and calculates the fractions of percolated families of GNPs
 //If needed, VTK files are generated and HoKo is updated for calculating electrical resistance
 int Backbone_Network::Find_backbone_and_fractions_gnps(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const double &zero_current, const vector<vector<double> > &currents_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, Hoshen_Kopelman *HoKo)
@@ -574,8 +586,24 @@ int Backbone_Network::Find_backbone_and_fractions_gnps(const int &n_cluster, con
     
     //Check if visualization files are needed
     if (vtk_flag) {
+        //VTK export object
+        VTK_Export VTK_E;
         
-        //Export all GNPs in the backbone and the dead ones
+        //Generate filenames for CNT files
+        string str_bb = "backbone_" + to_string(n_cluster) + "_fam_" + to_string(HoKo->family[n_cluster]) + "_gnps.vtk";
+        string str_dead = "dead_" + to_string(n_cluster) + "_fam_" + to_string(HoKo->family[n_cluster]) + "_gnps.vtk";
+        
+        //Export GNPs in the backbone
+        if (!VTK_E.Export_gnps_in_cluster(gnps, backbone_gnps_idx, str_bb)) {
+            hout<<"Error in Find_backbone_and_fractions_gnps when calling VTK_E.Export_gnps_in_cluster"<<endl;
+            return 0;
+        }
+        
+        //Export dead GNPs
+        if (!VTK_E.Export_gnps_in_cluster(gnps, dead_gnps_idx, str_dead)) {
+            hout<<"Error in Find_backbone_and_fractions_gnps when calling VTK_E.Export_gnps_in_cluster"<<endl;
+            return 0;
+        }
     }
     
     return 1;

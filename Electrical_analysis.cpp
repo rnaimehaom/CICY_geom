@@ -99,6 +99,14 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
     //Delete object to free memory
     delete BN;
     
+    //Export visualization files for isolated particles if needed
+    if (vis_flags.backbone) {
+        if (!Export_isolated_particles(structure_cnt, points_cnt, HoKo->isolated_cnt, gnps, HoKo->isolated_gnp)) {
+            hout<<"Error in Perform_analysis_on_clusters when calling Export_isolated_particles"<<endl;
+            return 0;
+        }
+    }
+    
     //Check if it is requested to avoid calculating the resistor network
     if (!avoid_resistance_flag) {
         
@@ -598,6 +606,54 @@ int Electrical_analysis::Calculate_volume_of_non_percolated_gnps(const vector<GN
             //Add the volume of the GNP to the total volume
             np_gnps = np_gnps + gnps[GNPj].volume;
         }
+    }
+    
+    return 1;
+}
+//This function prepares the vectors needed to export isolated particles
+int Electrical_analysis::Export_isolated_particles(const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &isolated_cnts, const vector<GNP> &gnps, const vector<vector<int> > &isolated_gnps)
+{
+    //VTK object to export visualization files
+    VTK_Export VTK_E;
+    
+    //Prepare filenames
+    string str_cnts = "isolated_cnts_from_backbone.vtk";
+    string str_gnps = "isolated_gnps_from_backbone.vtk";
+    
+    //Create a vector with indices of all isolated CNTs
+    vector<vector<long int> > all_isolated_cnts;
+    for (int i = 0; i < (int)isolated_cnts.size(); i++) {
+        for (int j = 0; j < (int)isolated_cnts[i].size(); i++) {
+            
+            //Get CNT
+            int CNTij = isolated_cnts[i][j];
+            
+            //Create a vector with the two endpoints of the CNT
+            vector<long int> tmp(2);
+            tmp[0] = structure_cnt[CNTij].front();
+            tmp[1] = structure_cnt[CNTij].back();
+            all_isolated_cnts.push_back(tmp);
+        }
+    }
+    
+    //Export the isolated CNTs using the indices
+    if (!VTK_E.Export_from_cnt_indices(points_cnt, all_isolated_cnts, str_cnts)) {
+        hout<<"Error in Export_isolated_particles when calling VTK_E.Export_from_cnt_indices"<<endl;
+        return 0;
+    }
+    
+    //Create a vector with indices of all isolated GNPs
+    vector<int> all_isolated_gnps;
+    for (int i = 0; i < (int)isolated_gnps.size(); i++) {
+        for (int j = 0; j < (int)isolated_gnps[i].size(); i++) {
+            all_isolated_gnps.push_back(isolated_gnps[i][j]);
+        }
+    }
+    
+    //Export the isolated GNPs as a cluster
+    if (!VTK_E.Export_gnps_in_cluster(gnps, all_isolated_gnps, str_gnps)) {
+        hout<<"Error in Export_isolated_particles when calling VTK_E.Export_gnps_in_cluster"<<endl;
+        return 0;
     }
     
     return 1;

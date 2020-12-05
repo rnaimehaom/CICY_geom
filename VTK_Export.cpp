@@ -7,6 +7,13 @@
 
 #include "VTK_Export.h"
 
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//CNTs
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
 //This function exports a VTK visualization file for CNTs when the points are in a 1D vector
 int VTK_Export::Export_cnts_1D_vector(const vector<Point_3D> &points, const vector<vector<long int> > &structure, const string &filename)const
 {
@@ -303,6 +310,207 @@ int VTK_Export::Add_connectivity_for_2D_vector(const vector<vector<Point_3D> > &
     
     return 1;
 }
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+int VTK_Export::Export_from_cnt_indices(const vector<Point_3D> &points, const vector<vector<long int> > &indices, const string &filename)const
+{
+    //Variable to store the number of points
+    long int n_points = 0;
+    //Variable to store the number of lines (CNTs)
+    int n_cnts = 0;
+    
+    //Count the number of points and lines (CNTs)
+    if (!Count_points_and_lines_from_indices(indices, n_points, n_cnts)) {
+        hout<<"Error in Export_from_cnt_indices when calling Count_points_and_lines_from_indices"<<endl;
+        return 0;
+    }
+    
+    //Check that the points vector has points
+    if (!n_points) {
+        hout<<"No points to export. NO visualization file was exported for CNTs."<<endl;
+        return 1;
+    }
+    
+    //Open the file
+    ofstream otec(filename.c_str());
+    
+    //Add header
+    if (!Add_header(otec)) {
+        hout<<"Error in Export_from_cnt_indices when calling Add_header"<<endl;
+        return 0;
+    }
+    
+    //Add the line with the number of points
+    otec<<"POINTS "<<n_points<<" float" <<endl;
+    
+    //Add all the points
+    if (!Add_points_from_indices(points, indices, otec)) {
+        hout<<"Error in Export_from_cnt_indices when calling Add_points_from_indices"<<endl;
+        return 0;
+    }
+    
+    //Add the line indicating the number of lines+1, and the number of points in those lines
+    otec<<"LINES "<<n_cnts+1<<' '<<n_cnts<<endl;
+    
+    //Add the offsets:
+    //The number of points used after adding each line, starting with a zero
+    if (!Add_offsets_from_indices(indices, otec)) {
+        hout<<"Error in Export_from_cnt_indices when calling Add_offsets_from_indices"<<endl;
+        return 0;
+    }
+    
+    //Add connectivity
+    if (!Add_connectivity_from_indices(indices, otec)) {
+        hout<<"Error in Export_from_cnt_indices when calling Add_connectivity_from_indices"<<endl;
+        return 0;
+    }
+    
+    //Close the file
+    otec.close();
+    
+    return 1;
+}
+int VTK_Export::Count_points_and_lines_from_indices(const vector<vector<long int> > &indices, long int &n_points, int &n_lines)const
+{
+    //Iterate over all the pairs of indices
+    for (int i = 0; i < (int)indices.size(); i++) {
+        for (int j = 0; j < (int)indices[i].size(); j=j+2) {
+            
+            //Add the difference of indices plus one
+            n_points = n_points + indices[i][j+1] - indices[i][j] + 1;
+            
+            //Each pair of indices is a line (CNT), so increase the number of lines
+            //each time j is increased by 2
+            n_lines++;
+        }
+    }
+    
+    return 1;
+}
+//This function adds the coordinates of a vector of points into a file as indicated
+//by a vector of indices
+//Four points are printed per line
+int VTK_Export::Add_points_from_indices(const vector<Point_3D> &points, const vector<vector<long int> > &indices, ofstream &otec)const
+{
+    //Add the point coordinates, separated by spaces and in groups of four points
+    //(12 coordinates) per line
+    
+    //Variable to count the points
+    long int n_points = 1;
+    
+    //Iterate over all the pairs of indices
+    for (int i = 0; i < (int)indices.size(); i++) {
+        for (int j = 0; j < (int)indices[i].size(); j= j+2) {
+            
+            //Check if a new line needs to be started
+            if (!(n_points%4)) {
+                otec<<endl;
+            }
+            
+            //Get initial and final points of the line (CNT)
+            long int P1 = indices[i][j];
+            long int P2 = indices[i][j+1];
+            
+            //Iterate over all the points of the line (CNT segment) indicated
+            //by the pair of indices j,j+1
+            for (long int k = P1; k <= P2; k++) {
+                
+                //Append point i to file
+                otec<<points[k].x<<' '<<points[k].y<<' '<<points[k].z<<' ';
+                
+                //Increase the count of points (for adding a new line only)
+                n_points++;
+            }
+        }
+    }
+    
+    //Start a new line
+    otec<<endl;
+    
+    return 1;
+}
+int VTK_Export::Add_offsets_from_indices(const vector<vector<long int> > &indices, ofstream &otec)const
+{
+    //Add the line with the OFFSETS command
+    otec<<"OFFSETS vtktypeint64"<<endl;
+    
+    //Output a zero, which is required
+    otec<<"0 ";
+    
+    //Accumulate the number of points
+    long int acc_points = 0;
+    
+    //Count the number of offsets
+    int n_offsets = 1;
+    
+    //Iterate over all the pairs of indices
+    for (int i = 0; i < (int)indices.size(); i++) {
+        for (int j = 0; j < (int)indices[i].size(); j=j+2) {
+            
+            //Check if a new line needs to be started
+            if (!(n_offsets%20)) {
+                otec<<endl;
+            }
+            
+            //Add the difference of indices plus one
+            acc_points = acc_points + indices[i][j+1] - indices[i][j] + 1;
+            
+            //Output the accumulated number of points
+            otec<<acc_points<<' ';
+            
+            //Each pair of indices is a line (CNT), so increase the number of lines
+            //each time j is increased by 2
+            n_offsets++;
+        }
+    }
+    
+    //Start a new line
+    otec<<endl;
+    
+    return 1;
+}
+int VTK_Export::Add_connectivity_from_indices(const vector<vector<long int> > &indices, ofstream &otec)const
+{
+    //Add the line with the CONNECTIVITY command
+    otec<<"CONNECTIVITY vtktypeint64"<<endl;
+    
+    //Variable to count the number of points
+    long int n_points = 0;
+    
+    //Add the connectivity, one connectivity per line
+    for (int i = 0; i < (int)indices.size(); i++) {
+        for (int j = 0; j < (int)indices[i].size(); j= j+2) {
+            
+            //Get initial and final points of the line (CNT)
+            long int P1 = indices[i][j];
+            long int P2 = indices[i][j+1];
+            
+            //Iterate over all the points of the line (CNT segment) indicated
+            //by the pair of indices j,j+1
+            for (long int k = P1; k <= P2; k++) {
+                
+                //Add the consecutive number of point k in a line
+                otec<<n_points<<' ';
+                
+                //Increase the number of points
+                n_points++;
+            }
+            
+            //For every pair of indices (i.e., for every iteration over j) start a new line
+            otec<<endl;
+        }
+    }
+    
+    return 1;
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//GNPs
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
 //This function exports a vector of GNPs
 int VTK_Export::Export_gnps(const vector<GNP> &gnps, const string &filename)const
 {
@@ -335,13 +543,13 @@ int VTK_Export::Export_gnps(const vector<GNP> &gnps, const string &filename)cons
     otec<<"POLYGONS "<<gnps.size()*6 + 1<<' '<<gnps.size()*24<<endl;
     
     //Add the offsets
-    if (!Add_ofsets_for_gnps(gnps, otec)) {
+    if (!Add_ofsets_for_gnps((int)gnps.size(), otec)) {
         hout<<"Error in Export_gnps when calling Add_ofsets_for_gnps"<<endl;
         return 0;
     }
     
     //Add the connectivity
-    if (!Add_connectivity_for_gnps(gnps, otec)) {
+    if (!Add_connectivity_for_gnps((long int)gnps.size(), otec)) {
         hout<<"Error in Export_gnps when calling Add_connectivity_for_gnps"<<endl;
         return 0;
     }
@@ -394,7 +602,7 @@ int VTK_Export::Add_points_from_array(const Point_3D points[], const int &arr_si
     
     return 1;
 }
-int VTK_Export::Add_ofsets_for_gnps(const vector<GNP> &gnps, ofstream &otec)const
+int VTK_Export::Add_ofsets_for_gnps(const int &n_gnps, ofstream &otec)const
 {
     //Add the line with the OFFSETS command
     otec<<"OFFSETS vtktypeint64"<<endl;
@@ -406,7 +614,7 @@ int VTK_Export::Add_ofsets_for_gnps(const vector<GNP> &gnps, ofstream &otec)cons
     int n_vertices = 0;
     
     //Write the offsets, one line per GNP
-    for (size_t i = 0; i < gnps.size(); i++) {
+    for (size_t i = 0; i < n_gnps; i++) {
         
         //Add the number of vertices per face in GNP i
         for (int j = 0; j < 6; j++) {
@@ -422,7 +630,7 @@ int VTK_Export::Add_ofsets_for_gnps(const vector<GNP> &gnps, ofstream &otec)cons
     
     return 1;
 }
-int VTK_Export::Add_connectivity_for_gnps(const vector<GNP> &gnps, ofstream &otec, const long int &cnt_points_offset)const
+int VTK_Export::Add_connectivity_for_gnps(const long int &n_gnps, ofstream &otec, const long int &cnt_points_offset)const
 {
     //Add the line with the CONNECTIVITY command
     otec<<"CONNECTIVITY vtktypeint64"<<endl;
@@ -437,7 +645,7 @@ int VTK_Export::Add_connectivity_for_gnps(const vector<GNP> &gnps, ofstream &ote
         {2,3,7,6},
     };
     
-    for (long int i = 0; i < (int)gnps.size(); i++) {
+    for (long int i = 0; i < n_gnps; i++) {
         
         //Add each face j of GNP i
         for (int j = 0; j < 6; j++) {
@@ -454,6 +662,83 @@ int VTK_Export::Add_connectivity_for_gnps(const vector<GNP> &gnps, ofstream &ote
     
     return 1;
 }
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+int VTK_Export::Export_gnps_in_cluster(const vector<GNP> &gnps, const vector<int> &cluster, const string &filename)
+{
+    //Check that the points vector has points
+    if (cluster.empty()) {
+        hout<<"Vector of GNPs is empty. NO visualization file was exported."<<endl;
+        return 1;
+    }
+    
+    //Open the file
+    ofstream otec(filename.c_str());
+    
+    //Add header
+    if (!Add_header(otec)) {
+        hout<<"Error in Export_gnps_in_cluster when calling Add_header"<<endl;
+        return 0;
+    }
+    
+    //Add the line with the number of points, which is the number of GNPs multiplied by 8
+    otec<<"POINTS "<<cluster.size()*8<<" float" <<endl;
+    
+    //Add all the points, i.e., all the vertices of the GNPs
+    if (Add_all_gnp_vertices_from_cluster(gnps, cluster, otec)) {
+        hout<<"Error in Export_gnps_in_cluster when calling Add_all_gnp_vertices_from_cluster"<<endl;
+        return 0;
+    }
+    
+    //Add the line with the polygons command, with the number of faces+1 and
+    //the number of points in those faces
+    otec<<"POLYGONS "<<cluster.size()*6 + 1<<' '<<cluster.size()*24<<endl;
+    
+    //Add the offsets
+    if (!Add_ofsets_for_gnps((int)cluster.size(), otec)) {
+        hout<<"Error in Export_gnps_in_cluster when calling Add_ofsets_for_gnps"<<endl;
+        return 0;
+    }
+    
+    //Add the connectivity
+    if (!Add_connectivity_for_gnps((long int)cluster.size(), otec)) {
+        hout<<"Error in Export_gnps_in_cluster when calling Add_connectivity_for_gnps"<<endl;
+        return 0;
+    }
+    
+    //Close the file
+    otec.close();
+    
+    return 1;
+}
+int VTK_Export::Add_all_gnp_vertices_from_cluster(const vector<GNP> &gnps, const vector<int> &cluster, ofstream &otec)const
+{
+    //Iterate over the GNPs in the cluster
+    for (size_t i = 0; i < cluster.size(); i++) {
+        
+        //Get the GNP number
+        int GNPi = cluster[i];
+        
+        //Add the vertices
+        if (!Add_points_from_array(gnps[GNPi].vertices, 8, otec)) {
+            hout<<"Error in Add_all_gnp_vertices_from_cluster when calling Add_points_from_array"<<endl;
+            return 0;
+        }
+        
+        //Add a new line
+        otec<<endl;
+    }
+    
+    return 1;
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//Mixed
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
 int VTK_Export::Export_hybrid_material(const vector<Point_3D> &points, const vector<vector<long int> > &structure, const vector<GNP> &gnps, const string &filename)const
 {
     //Check that at least one vector has elements
@@ -513,14 +798,14 @@ int VTK_Export::Export_hybrid_material(const vector<Point_3D> &points, const vec
     otec<<"POLYGONS "<<gnps.size()*6 + 1<<' '<<gnps.size()*24<<endl;
     
     //Add the offsets
-    if (!Add_ofsets_for_gnps(gnps, otec)) {
+    if (!Add_ofsets_for_gnps((int)gnps.size(), otec)) {
         hout<<"Error in Export_hybrid_material when calling Add_ofsets_for_gnps"<<endl;
         return 0;
     }
     
     //Add the connectivity
     //the first GNP point number is points.size(), i.e., the offset is points.size()
-    if (!Add_connectivity_for_gnps(gnps, otec, (long int)points.size())) {
+    if (!Add_connectivity_for_gnps((long int)gnps.size(), otec, (long int)points.size())) {
         hout<<"Error in Export_hybrid_material when calling Add_connectivity_for_gnps"<<endl;
         return 0;
     }
