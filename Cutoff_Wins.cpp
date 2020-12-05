@@ -166,7 +166,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
                 if (n_points >= cnts.min_points) {
                     
                     //Add the current segment to the structure
-                    if (!Add_cnt_segment_to_structure(sample_geo, window_geo, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
+                    if (!Add_cnt_segment_to_structure(window_geo, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
                         hout<<"Error when adding a CNT segment (Add_cnt_segment_to_structure 1)."<<endl;
                         return 0;
                     }
@@ -188,7 +188,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
             //This was not done becuase, in the for loop, a segement is added only when it finds a point
             //outside the sample
             //Add the current segment to the structure
-            if (!Add_cnt_segment_to_structure(sample_geo, window_geo, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
+            if (!Add_cnt_segment_to_structure(window_geo, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
                 hout<<"Error when adding a CNT segment (Add_cnt_segment_to_structure 2)."<<endl;
                 return 0;
             }
@@ -214,13 +214,18 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
                 structure_cnt[CNT].pop_back();
             }
         }
+        //If there are no segments clear the points in the structure so that the CNT is not included
+        //in the vector of CNTs inside
+        else if (!segments) {
+            structure_cnt[CNT].clear();
+        }
         
     }
     
     return 1;
 }
 //===========================================================================
-int Cutoff_Wins::Add_cnt_segment_to_structure(const Geom_sample &sample_geo, const cuboid &window_geo, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &end_point_loc, vector<Point_3D> &points_cnt, vector<vector<long int> > &structure_cnt, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx)
+int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &end_point_loc, vector<Point_3D> &points_cnt, vector<vector<long int> > &structure_cnt, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx)
 {
     //Variable used in case the start index needs to change
     int new_start = start;
