@@ -168,6 +168,7 @@ int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_cnt, const
     }
     
     //Add first and last points to the elements
+    hout<<"Complete_cnt_elements"<<endl;
     if (!Complete_cnt_elements(structure_cnt)) {
         hout << "Error in Make_cnt_clusters when calling Complete_cnt_elements" << endl;
         return 0;
@@ -232,6 +233,7 @@ int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, co
                         long int Pa = (CNT1 < CNT2)? P1: P2;
                         int CNTb = max(CNT1, CNT2);
                         long int Pb = (CNT2 < CNT1)? P1: P2;
+                        //hout <<"CNT1="<<CNT1<<" P1="<<P1<<" CNT2="<<CNT2<<" P2="<<P2<<endl;
                         //hout<<"CNTa="<<CNTa<<" Pa="<<Pa<<" CNTb="<<CNTb<<" Pb="<<Pb<<endl;
                         
                         //Add points to the elements used for contacts
@@ -265,10 +267,11 @@ int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, co
                         //Thus, it is only updated when a smaller junction is found
                         //
                         if (point_contacts.find(Pa) == point_contacts.end() || point_contacts[Pa].find(CNTb) == point_contacts[Pa].end() || point_contacts_dist[Pa][CNTb] > dist_junc) {
+                            //hout<<"A="<<to_string(point_contacts.find(Pa) == point_contacts.end())<<" B="<<to_string(point_contacts[Pa].find(CNTb) == point_contacts[Pa].end())<<" C="<<to_string(point_contacts_dist[Pa][CNTb] > dist_junc)<<endl;
                             
                             //Update the junction distance
                             point_contacts_dist[Pa][CNTb] = dist_junc;
-                            //point_contacts_dist[P2][CNT1] = dist_junc;
+                            //hout<<"point_contacts_dist[Pa="<<Pa<<"][CNTb="<<CNTb<<"]="<< point_contacts_dist[Pa][CNTb]<<" Pb="<<Pb<<endl;
                             
                             //Add the correspoding point contacts
                             point_contacts[Pa][CNTb] = Pb;
@@ -341,27 +344,34 @@ int Hoshen_Kopelman::Cleanup_labels(vector<int> &labels_labels, vector<int> &lab
 //This function compresses the "contact segments" for CNT-CNT contacts
 int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoffs, const map<long int, map<int, long int> > &point_contacts, const map<long int, map<int, double> > &point_contacts_dist, const vector<map<int, set<long int> > > &contact_elements)
 {
+    //Initialize the vector of elements
+    elements_cnt.assign(contact_elements.size(), set<long int>());
+    
     //Iterate over all CNTs
     for (int i = 0; i < (int)contact_elements.size(); i++) {
         
         //Check if CNT i has contacts with other CNTs
-        if (!contact_elements.empty()) {
+        if (!contact_elements[i].empty()) {
             
             //Iterate over the CNT in contact with CNT i
             for (map<int, set<long int> >::const_iterator i_map = contact_elements[i].begin(); i_map != contact_elements[i].end(); i_map++) {
                 
                 //Get the CNT number in contact with CNT i
                 int CNTj = i_map->first;
+                //hout<<"CNTi="<<i<<" CNTj="<<CNTj<<endl;
                 
                 //Start the iterator at the beginning of the set
                 set<long int>::const_iterator i_set = i_map->second.begin();
                 
                 //Get the initial points in contact
                 long int Pi0 = *i_set;
+                //hout<<"Pi0="<<Pi0;
                 long int Pj0 = point_contacts.at(Pi0).at(CNTj);
+                //hout<<" Pj0="<<Pj0<<endl;
                 
                 //Get the initial junction distance
-                long int d_junction = point_contacts_dist.at(Pi0).at(CNTj);
+                double d_junction = point_contacts_dist.at(Pi0).at(CNTj);
+                //hout<<"point_contacts_dist.at(Pi0="<<Pi0<<").at(CNTj="<<CNTj<<")="<<point_contacts_dist.at(Pi0).at(CNTj)<<" d_junction="<<d_junction<<endl;
                 
                 //Variables to store the "compress" contact segment
                 long int Pi_junc = Pi0, Pj_junc = Pj0;
@@ -374,10 +384,13 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
                     long int Pi1 = *i_set;
                     
                     //Get the point in CNTj
+                    //hout<<"Pi1="<<Pi1;
                     long int Pj1 = point_contacts.at(Pi1).at(CNTj);
+                    //hout<<" Pj1="<<Pj1<<endl;
                     
                     //Get the junction distance
                     d_junction = point_contacts_dist.at(Pi1).at(CNTj);
+                    //hout<<"d_junction="<<d_junction<<endl;
                     
                     //Check if the points are close enough to be in the same segment
                     if (Pi1 - Pi0 >= cutoffs.min_points || abs(Pj1 - Pj0) >= cutoffs.min_points) {
@@ -388,9 +401,12 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
                         //vector of junctions
                         Junction j(Pi_junc, i, "CNT", Pj_junc, CNTj, "CNT", d_junc_min);
                         junctions_cnt.push_back(j);
+                        //hout<<"compressed junction added in loop d_junc_min="<<d_junc_min<<endl;
                         
                         //Add the junction points to the vectors of elements
+                        //hout<<"elements_cnt[i].size="<<elements_cnt[i].size()<<endl;
                         elements_cnt[i].insert(Pi_junc);
+                        //hout<<"elements_cnt[CNTj].size="<<elements_cnt[CNTj].size()<<endl;
                         elements_cnt[CNTj].insert(Pj_junc);
                         
                         //Start the new segment by resetting the variables to the values
@@ -421,6 +437,7 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
                 //to the vector of junctions
                 Junction j(Pi_junc, i, "CNT", Pj_junc, CNTj, "CNT", d_junc_min);
                 junctions_cnt.push_back(j);
+                //hout<<"compressed junction added d_junc_min="<<d_junc_min<<endl;
             }
         }
     }
