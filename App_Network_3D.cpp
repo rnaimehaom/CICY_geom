@@ -73,6 +73,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         it0 = time(NULL);
         
         //Update observation window geometry
+        //hout<<"Update observation window geometry"<<endl;
         if (!Update_obseravtion_window_geometry(i, Init->geom_sample, window_geo)) {
             hout<<"Error when updating the geometry for observation window "<<i<<endl;
             return 0;
@@ -83,6 +84,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         Cutoff_Wins *Cutwins = new Cutoff_Wins;
         //From this function I get the internal variables cnts_inside and boundary_cnt
         ct0 = time(NULL);
+        //hout<<"Extract_observation_window"<<endl;
         if(!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, gnps, structure_cnt, radii, points_cnt, shells_cnts, shell_gnps, structure_gnp, points_gnp)) {
             hout << "Error when extracting observation window "<< i+1 << endl;
             return 0;

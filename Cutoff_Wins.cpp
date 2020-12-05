@@ -28,11 +28,13 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
     //Check if the generated structure has CNTs, this happens when the particle type is not GNPs
     if (particle_type != "GNP_cuboids") {
         
+        //hout<<"Trim_boundary_cnts"<<endl;
         if (!Trim_boundary_cnts(window, sample_geo, window_geo, cnts_geo, points_cnt, structure_cnt, shells_cnt, radii)) {
             hout << "Error in Extract_observation_window when calling Trim_boundary_cnts" << endl;
             return 0;
         }
         
+        //hout<<"Fill_cnts_inside"<<endl;
         //Fill the vector cnts_inside
         if (!Fill_cnts_inside(structure_cnt)) {
             hout << "Error in Extract_observation_window when calling Fill_cnts_inside" << endl;
@@ -78,8 +80,9 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
     //String to save the location of a point (inside the window, outside the window, or at a boundary)
     string point_location;
     
-    //Initialize the vector of boundary_flags with empty vectors
+    //Initialize the vectors of CNTs and CNT points at boundaries
     boundary_cnt.assign(6, vector<int>());
+    boundary_cnt_pts.assign(6, vector<long int>());
     
     //Variable to reduce computations when adding CNTs to a shell
     //vars_shells[0] = midpoints
@@ -192,6 +195,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
         }
         
         //Check if there is at least one segment
+        //hout<<"Check if there is at least one segment"<<endl;
         if (segments > 0) {
             
             //Move the points to the front of the CNT if the start index of the first segment is not zero
@@ -327,6 +331,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const Geom_sample &sample_geo, con
     }
     
     //Update the number of segments
+    //hout<<"segments++"<<endl;
     segments++;
     
     return 1;
