@@ -230,10 +230,6 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const do
     //Variable used in case the start index needs to change
     int new_start = start;
     
-    //Get the new CNT number
-    int new_CNT = (int)structure_cnt.size();
-    //hout<<"New segment added CNT="<<CNT<<" new CNT="<<new_CNT<<endl;
-    
     //Variables for the (possibly) outside and inside points for the start of the segment
     long int p_out_start = structure_cnt[CNT][new_start];
     long int p_ins_start = structure_cnt[CNT][new_start+1];
@@ -256,8 +252,11 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const do
             }
         }
         
+        //Choose the CNT to be added
+        int CNT_num = (segments)? (int)structure_cnt.size(): CNT;
+        
         //Add to the boundary vectors, this happens when the first point is either outside or at a boundary
-        if (!Add_cnt_point_to_boundary_vectors(window_geo, points_cnt[p_out_start], p_out_start)) {
+        if (!Add_cnt_point_to_boundary_vectors(window_geo, points_cnt[p_out_start], p_out_start, CNT_num)) {
             hout<<"Error in Add_cnt_segment_to_structure when caling Add_cnt_point_to_boundary_vectors (1)"<<endl;
             return 0;
         }
@@ -284,8 +283,11 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const do
             }
         }
         
+        //Choose the CNT to be added
+        int CNT_num = (segments)? (int)structure_cnt.size(): CNT;
+        
         //Add to the boundary vectors, this happens when the last point is either outside or at a boundary
-        if (!Add_cnt_point_to_boundary_vectors(window_geo, points_cnt[p_out_end], p_out_end)) {
+        if (!Add_cnt_point_to_boundary_vectors(window_geo, points_cnt[p_out_end], p_out_end, CNT_num)) {
             hout<<"Error in Add_cnt_segment_to_structure when caling Add_cnt_point_to_boundary_vectors (2)"<<endl;
             return 0;
         }
@@ -300,6 +302,10 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const do
         last_idx = end;
     }
     else {
+        
+        //A new CNT is added, so get the new CNT number
+        int new_CNT = (int)structure_cnt.size();
+        //hout<<"New segment added CNT="<<CNT<<" new CNT="<<new_CNT<<endl;
         
         //If this is not the first segment, then a new CNT needs to be added to the structure
         
@@ -506,7 +512,7 @@ string Cutoff_Wins::Where_is_with_boundary(const Point_3D &point, const cuboid &
         return "inside";
 }
 //Add a point to the corrsponding boundary vector
-int Cutoff_Wins::Add_cnt_point_to_boundary_vectors(const cuboid &window_geo, const Point_3D &P, const long int &P_num)
+int Cutoff_Wins::Add_cnt_point_to_boundary_vectors(const cuboid &window_geo, const Point_3D &P, const long int &P_num, const int &CNT_num)
 {
     //Get the boundary of the point
     int boundary = -1;
@@ -519,7 +525,8 @@ int Cutoff_Wins::Add_cnt_point_to_boundary_vectors(const cuboid &window_geo, con
         return 0;
     }
     
-    //Add the point number to the corresponding boundary
+    //Add the point and CNT number to the corresponding boundary
+    boundary_cnt[boundary].push_back(CNT_num);
     boundary_cnt_pts[boundary].push_back(P_num);
     
     return 1;

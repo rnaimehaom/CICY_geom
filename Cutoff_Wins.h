@@ -48,7 +48,7 @@ public:
     int Substitute_boundary_point(const cuboid &window_geo, const Point_3D &p_inside, Point_3D &p_outside);
     string Where_is(const Point_3D &point, const cuboid &window_geo);
     string Where_is_with_boundary(const Point_3D &point, const cuboid &window_geo, int &boundary);
-    int Add_cnt_point_to_boundary_vectors(const cuboid &window_geo, const Point_3D &P, const long int &P_num);
+    int Add_cnt_point_to_boundary_vectors(const cuboid &window_geo, const Point_3D &P, const long int &P_num, const int &CNT_num);
     int Fill_cnts_inside(const vector<vector<long int> > &structure);
     int Fill_gnps_inside(const int &window, const cuboid &window_geo, const vector<Shell> &shells_gnp, vector<GNP> &gnps, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp);
     int Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp);

@@ -82,15 +82,15 @@ public:
     int Explore_labels(const int &label, const vector<set<int> > &adj_labels, vector<vector<int> > &mixed_clusters, vector<int> &visited_labels);
     int Map_labels(const vector<int> label_map, vector<int> &labels);
     int Make_particle_clusters(const int &n_clusters, const vector<int> &particles_inside, vector<int> &labels, vector<vector<int> > &isolated, vector<vector<int> > &clusters_particles);
-    int Find_percolated_clusters(const int &n_clusters, const vector<vector<int> > &boundary_cnt, const vector<vector<int> > &boundary_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const vector<vector<int> > &clusters_cnt_tmp, const vector<vector<int> > &clusters_gnp_tmp);
+    int Find_percolated_clusters(const int &n_clusters, const vector<vector<int> > &boundary_cnt, const vector<vector<int> > &boundary_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const vector<vector<int> > &clusters_cnt_tmp, const vector<vector<int> > &clusters_gnp_tmp, map<int,int> &percoalted_labels);
     int Find_clusters_connected_to_boundaries(const vector<vector<int> > &boundary_cnt, const vector<vector<int> > &boundary_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const int boundary_pairs[][2], vector<set<int> > &percolated_dirs);
     int Add_clusters_in_boundary(const vector<int> &boundary_particles, const vector<int> &labels, set<int> &boundary1);
     int Add_percolated_direction(const int &d, const vector<int> &boundary_particles, const vector<int> &labels, const set<int> &boundary1, vector<set<int> > &percolated_dirs);
-    int Determine_family_of_percolated_clusters(const int &n_clusters, const vector<vector<int> > &clusters_cnt_tmp, const vector<vector<int> > &clusters_gnp_tmp, const vector<set<int> > &percolated_dirs);
+    int Determine_family_of_percolated_clusters(const int &n_clusters, const vector<vector<int> > &clusters_cnt_tmp, const vector<vector<int> > &clusters_gnp_tmp, const vector<set<int> > &percolated_dirs, map<int,int> &percolated_labels);
     int Family_map(const int &perc_sum, int &family);
-    int Group_junctions(const vector<Point_3D> &points_cnt, const vector<Point_3D> &points_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp);
-    int Group_junctions_same_particle(const vector<Point_3D> &points, const vector<int> &labels, const vector<Junction> &junctions, vector<vector<int> > &cluster_junction);
-    int Group_junctions_mix_particle(const vector<Point_3D> &points_cnt, const vector<Point_3D> &points_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp);
+    int Group_junctions(const vector<Point_3D> &points_cnt, const vector<Point_3D> &points_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const map<int,int> &percolated_labels);
+    int Group_junctions_same_particle(const vector<Point_3D> &points, const vector<int> &labels, const vector<Junction> &junctions, const map<int,int> &percolated_labels, vector<vector<int> > &cluster_junction);
+    int Group_junctions_mix_particle(const vector<Point_3D> &points_cnt, const vector<Point_3D> &points_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const map<int,int> &percolated_labels);
     //-------------------------------------------------------
     //HK76
     int HK76(const int &CNT1, const int &CNT2, int &new_label, vector<int> &labels, vector<int> &labels_labels);
