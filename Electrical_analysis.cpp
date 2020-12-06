@@ -28,9 +28,6 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
     else if (HoKo->clusters_gnp.size()) {
         n_clusters = (int)HoKo->clusters_gnp.size();
     }
-    else {
-        hout<<"There are no percolated clusters."<<endl;
-    }
     
     //Create a Backbone_Network object so that the vectors for nanoparticle volumes
     //and dead branches and gnps are intialized

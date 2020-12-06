@@ -44,7 +44,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
         labels_cnt.assign(structure_cnt.size(), -1);
         
         //There are CNTs, make clusters
-        hout<<"Make_cnt_clusters"<<endl;
+        //hout<<"Make_cnt_clusters"<<endl;
         if (!Make_cnt_clusters(points_cnt, radii, cutoffs, sectioned_domain_cnt, structure_cnt, labels_cnt, n_labels_cnt)) {
             hout<<"Error in Determine_clusters when calling Make_cnt_clusters"<<endl;
             return 0;
@@ -68,7 +68,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
         labels_gnp.assign(gnps.size(), -1);
         
         //Make GNP clusters
-        hout<<"Make_gnp_clusters"<<endl;
+        //hout<<"Make_gnp_clusters"<<endl;
         if (!Make_gnp_clusters(gnps_inside, sectioned_domain_gnp, gnps, cutoffs.tunneling_dist, n_labels_cnt, n_total_labels, structure_gnp, points_gnp, labels_gnp)) {
             hout<<"Error in Determine_clusters when calling Make_gnp_clusters"<<endl;
             return 0;
@@ -83,7 +83,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     if (simu_para.particle_type == "GNP_CNT_mix" || simu_para.particle_type == "Hybrid_particles") {
         
         //Make mixed clusters
-        hout<<"Make_mixed_clusters"<<endl;
+        //hout<<"Make_mixed_clusters"<<endl;
         if (!Make_mixed_clusters(n_total_labels, cutoffs, points_cnt, radii, sectioned_domain_cnt, gnps, sectioned_domain_gnp, labels_cnt, labels_gnp, structure_gnp, points_gnp, n_clusters)) {
             hout<<"Error in Determine_clusters when calling Make_mixed_clusters"<<endl;
             return 0;
@@ -95,14 +95,14 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     
     //Generate cluster vectors
     if (labels_cnt.size()) {
-        hout<<"Make_particle_clusters CNTs"<<endl;
+        //hout<<"Make_particle_clusters CNTs"<<endl;
         if (!Make_particle_clusters(n_clusters, cnts_inside, labels_cnt, isolated_cnt, clusters_cnt_tmp)) {
             hout<<"Error in Determine_clusters when calling Make_particle_clusters (CNT)"<<endl;
             return 0;
         }
     }
     if (labels_gnp.size()) {
-        hout<<"Make_particle_clusters GNPs"<<endl;
+        //hout<<"Make_particle_clusters GNPs"<<endl;
         if (!Make_particle_clusters(n_clusters, gnps_inside, labels_gnp, isolated_gnp, clusters_gnp_tmp)) {
             hout<<"Error in Determine_clusters when calling Make_particle_clusters (GNP)"<<endl;
             return 0;
@@ -110,7 +110,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     }
     
     //Determine percolation
-    hout<<"Find_percolated_clusters"<<endl;
+    //hout<<"Find_percolated_clusters"<<endl;
     if (!Find_percolated_clusters(n_clusters, boundary_cnt, boundary_gnp, labels_cnt, labels_gnp, clusters_cnt_tmp, clusters_gnp_tmp)) {
         hout<<"Error in Determine_clusters when calling Find_percolated_clusters"<<endl;
         return 0;
@@ -121,7 +121,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
         
         //There is at least one percoalted cluster
         //Group the junctions into the clusters they belong to
-        hout<<"Group_junctions"<<endl;
+        //hout<<"Group_junctions"<<endl;
         if (!Group_junctions(points_cnt, points_gnp, labels_cnt, labels_gnp)) {
             hout<<"Error in Find_percolated_clusters when calling Group_junctions"<<endl;
             return 0;
@@ -147,28 +147,28 @@ int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_cnt, const
     map<long int, map<int, double> > point_contacts_dist;
     
     //Label the CNTs
-    hout<<"Label_cnts_in_window"<<endl;
+    //hout<<"Label_cnts_in_window"<<endl;
     if (!Label_cnts_in_window(points_cnt, radii, cutoffs.tunneling_dist, sectioned_domain_cnt, point_contacts, point_contacts_dist, contact_elements, labels_cnt, labels_labels_cnt)) {
         hout<<"Error in Make_cnt_clusters when calling Label_cnts_in_window"<<endl;
         return 0;
     }
     
     //Clean up the labels to find the proper labels, i.e. merged and consecutive labels starting at 0
-    hout<<"Cleanup_labels"<<endl;
+    //hout<<"Cleanup_labels"<<endl;
     if (!Cleanup_labels(labels_labels_cnt, labels_cnt, n_labels_cnt)) {
         hout << "Error in Make_cnt_clusters when calling Cleanup_labels" << endl;
         return 0;
     }
     
     //Compress CNT-CNT contact segments and add junctions
-    hout<<"Compress_cnt_cnt_contact_segments"<<endl;
+    //hout<<"Compress_cnt_cnt_contact_segments"<<endl;
     if (!Compress_cnt_cnt_contact_segments(cutoffs, point_contacts, point_contacts_dist, contact_elements)) {
         hout << "Error in Make_cnt_clusters when calling Compress_cnt_cnt_contact_segments" << endl;
         return 0;
     }
     
     //Add first and last points to the elements
-    hout<<"Complete_cnt_elements"<<endl;
+    //hout<<"Complete_cnt_elements"<<endl;
     if (!Complete_cnt_elements(structure_cnt)) {
         hout << "Error in Make_cnt_clusters when calling Complete_cnt_elements" << endl;
         return 0;
@@ -1683,6 +1683,7 @@ int Hoshen_Kopelman::Find_percolated_clusters(const int &n_clusters, const vecto
     
     //Find the clusters that are connected to boundaries and if they connect
     //opposite boundaries, i.e., clusters that percolate
+    //hout<<"Find_clusters_connected_to_boundaries"<<endl;
     if (!Find_clusters_connected_to_boundaries(boundary_cnt, boundary_gnp, labels_cnt, labels_gnp, boundary_pairs, percolated_dirs)) {
         hout<<"Error in Find_percolated_clusters when calling Find_clusters_connected_to_boundaries"<<endl;
         return 0;
@@ -1691,6 +1692,7 @@ int Hoshen_Kopelman::Find_percolated_clusters(const int &n_clusters, const vecto
     //Add the percolated clusters to the vectors of percolated clusters, and the non-percoalted
     //clusters to the vectors of isolated particles
     //Also, determine the family of each percoalted cluster
+    //hout<<"Determine_family_of_percolated_clusters"<<endl;
     if (!Determine_family_of_percolated_clusters(n_clusters, clusters_cnt_tmp, clusters_gnp_tmp, percolated_dirs)) {
         hout<<"Error in Find_percolated_clusters when calling Determine_family_of_percolated_clusters"<<endl;
         return 0;
@@ -1712,16 +1714,26 @@ int Hoshen_Kopelman::Find_clusters_connected_to_boundaries(const vector<vector<i
         //to boundary b1
         set<int> boundary1;
         
-        //Add the CNT clusters connected to boundary b1 to the set boundary1
-        if (!Add_clusters_in_boundary(boundary_cnt[b1], labels_cnt, boundary1)) {
-            hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_clusters_in_boundary (CNT)"<<endl;
-            return 0;
+        //Check if there are CNTs
+        if (boundary_cnt.size()) {
+            
+            //Add the CNT clusters connected to boundary b1 to the set boundary1
+            hout<<"Add_clusters_in_boundary CNT"<<endl;
+            if (!Add_clusters_in_boundary(boundary_cnt[b1], labels_cnt, boundary1)) {
+                hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_clusters_in_boundary (CNT)"<<endl;
+                return 0;
+            }
         }
         
-        //Add the GNP clusters connected to boundary b1 to the set boundary1
-        if (!Add_clusters_in_boundary(boundary_gnp[b1], labels_gnp, boundary1)) {
-            hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_clusters_in_boundary (GNP)"<<endl;
-            return 0;
+        //Check if there are GNPs
+        if (boundary_gnp.size()) {
+            
+            //Add the GNP clusters connected to boundary b1 to the set boundary1
+            hout<<"Add_clusters_in_boundary GNP"<<endl;
+            if (!Add_clusters_in_boundary(boundary_gnp[b1], labels_gnp, boundary1)) {
+                hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_clusters_in_boundary (GNP)"<<endl;
+                return 0;
+            }
         }
         
         //Check if there were any clusters connected to boundary b1
@@ -1732,21 +1744,32 @@ int Hoshen_Kopelman::Find_clusters_connected_to_boundaries(const vector<vector<i
             //Get the boundary opposite to b1
             int b2 = boundary_pairs[i][1];
             
-            //Find the CNT clusters connected to boundary b2 and add a percolated direction
-            //if percolation is determined
-            if (!Add_percolated_direction(i, boundary_cnt[b2], labels_cnt, boundary1, percolated_dirs)) {
-                hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_percolated_direction (CNT)"<<endl;
-                return 0;
+            //Check if there are CNTs
+            if (boundary_cnt.size()) {
+                
+                //Find the CNT clusters connected to boundary b2 and add a percolated direction
+                //if percolation is determined
+                hout<<"Add_percolated_direction CNT"<<endl;
+                if (!Add_percolated_direction(i, boundary_cnt[b2], labels_cnt, boundary1, percolated_dirs)) {
+                    hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_percolated_direction (CNT)"<<endl;
+                    return 0;
+                }
             }
             
-            //Find the GNP clusters connected to boundary b2 and add a percolated direction
-            //if percolation is determined
-            if (!Add_percolated_direction(i, boundary_gnp[b2], labels_gnp, boundary1, percolated_dirs)) {
-                hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_percolated_direction (GNP)"<<endl;
-                return 0;
+            //Check if there are GNPs
+            if (boundary_gnp.size()) {
+                
+                //Find the GNP clusters connected to boundary b2 and add a percolated direction
+                //if percolation is determined
+                hout<<"Add_percolated_direction GNP"<<endl;
+                if (!Add_percolated_direction(i, boundary_gnp[b2], labels_gnp, boundary1, percolated_dirs)) {
+                    hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_percolated_direction (GNP)"<<endl;
+                    return 0;
+                }
             }
         }
     }
+    
     return 1;
 }
 //This function adds the clusters connected to a boundary (as given by the vector
