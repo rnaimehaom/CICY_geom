@@ -13,6 +13,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     //First we need to prepare the matrices that the direct electrifying needs.
     //The number of reserved nodes is calculated.
     //These is the number of boundaries with prescribed voltage.
+    //hout<<"Get_global_nodes"<<endl;
     int reserved_nodes = Get_global_nodes(HoKo->family[n_cluster]);
     if (reserved_nodes == -1) {
         hout<<"Error in Compute_voltage_field, invalid family: "<<HoKo->family[n_cluster]<<endl;
@@ -28,6 +29,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     if (HoKo->clusters_cnt.size() && HoKo->clusters_cnt[n_cluster].size()) {
         
         //There are CNT clusters, so construct the LM matrix for CNTs
+        //hout<<"LM_matrix_for_cnts"<<endl;
         if (!LM_matrix_for_cnts(n_cluster, HoKo, Cutwins, global_nodes)) {
             hout<<"Error in Compute_voltage_field when calling LM_matrix_for_cnts"<<endl;
             return 0;
@@ -36,6 +38,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     if (HoKo->clusters_gnp.size() && HoKo->clusters_gnp[n_cluster].size()) {
         
         //There are GNP clusters, so construct the LM matrix for GNPs
+        //hout<<"LM_matrix_for_gnps"<<endl;
         if (!LM_matrix_for_gnps(n_cluster, HoKo, Cutwins, structure_gnp, global_nodes)) {
             hout<<"Error in Compute_voltage_field when calling LM_matrix_for_gnps"<<endl;
             return 0;
@@ -54,12 +57,13 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     
     //With the LM matrix, now fill the sparse stiffness matrix
     //Fill_sparse_stiffness_matrix (use R_flag)
+    hout<<"Fill_sparse_stiffness_matrix"<<endl;
     if (!Fill_sparse_stiffness_matrix(R_flag, global_nodes, reserved_nodes, cutoffs.van_der_Waals_dist, n_cluster, electric_param, HoKo, points_cnt, radii, structure_gnp, points_gnp, gnps, col_ind, row_ptr, values, diagonal, P, R, VEF)) {
         hout<<"Error in Compute_voltage_field when calling Fill_sparse_stiffness_matrix"<<endl;
         return 0;
     }
     
-    //hout << "Solve_DEA_equations_CG_SSS"<<endl;
+    hout << "Solve_DEA_equations_CG_SSS"<<endl;
     //This is where the actual direct electrifying algorithm (DEA) takes place
     if (!Solve_DEA_equations_CG_SSS(global_nodes, reserved_nodes, col_ind, row_ptr, values, diagonal, P, R, VEF)) {
         hout<<"Error in Compute_voltage_field when calling Solve_DEA_equations_CG_SSS"<<endl;
@@ -99,6 +103,7 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
     //First use a temporary variable to save time when mappong the first and
     //last points of a CNT
     map<long int, long int> LMM_cnts_boundary;
+    //hout<<"Map_points_at_boundaries"<<endl;
     if (!Map_points_at_boundaries(HoKo->family[n_cluster], Cutwins->boundary_cnt_pts, LMM_cnts_boundary)) {
         hout<<"Error in LM_matrix_for_cnts when calling Map_points_at_boundaries (1)"<<endl;
         return 0;
@@ -109,6 +114,7 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
         
         //Get the current CNT
         int CNT = HoKo->clusters_cnt[n_cluster][i];
+        //hout<<"HoKo->elements_cnt[CNT="<<CNT<<"].size="<<HoKo->elements_cnt[CNT].size()<<endl;
         
         //Iterator for the elements in set
         set<long int>::iterator j = HoKo->elements_cnt[CNT].begin();
@@ -117,6 +123,7 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
         map<long int, long int>::iterator it;
         
         //Chek if the first point in the CNT element is at a boundary
+        //hout<<"LMM_cnts_boundary.find("<<*j<<") == LMM_cnts_boundary.end()"<<endl;
         if (LMM_cnts_boundary.find(*j) == LMM_cnts_boundary.end()) {
             
             //Initial point of CNT is not at a boundary, so map it to a new node
@@ -127,16 +134,19 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
         }
         
         //Iterator at the last element of the set
-        set<long int>::iterator j_end =HoKo->elements_cnt[CNT].end();
+        set<long int>::iterator j_end = HoKo->elements_cnt[CNT].end();
         //end() points after the last element, so decrease the iterator to point after
         //the penultimate element and thus to the last element
         j_end--;
+        //hout<<"j_end="<<*j_end<<" rbegin="<<*(HoKo->elements_cnt[CNT].rbegin())<<endl;
         
         //Map all points in the elements vector
+        //hout<<"Map all points in the elements vector"<<endl;
         for (j++; j != j_end; j++) {
             
             //Get the current point number
             long int P = *j;
+            //hout<<"P="<<P<<" global_nodes="<<global_nodes<<endl;
             
             //Map the point to a new node
             LMM_cnts[P] = global_nodes;
@@ -146,6 +156,7 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
         }
         
         //Chek if the last point in the CNT element is at a boundary
+        //hout<<"LMM_cnts_boundary.find("<<*j_end<<") == LMM_cnts_boundary.end()"<<endl;
         if (LMM_cnts_boundary.find(*j_end) == LMM_cnts_boundary.end()) {
             
             //Last point of CNT is not at a boundary, so map it to a new node
@@ -158,6 +169,7 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
     
     //Add the mappings of all CNT points at a boundary with prescribed boundary conditions
     //into the class variable
+    //hout<<"Map_points_at_boundaries"<<endl;
     if (!Map_points_at_boundaries(HoKo->family[n_cluster], Cutwins->boundary_cnt_pts, LMM_cnts)) {
         hout<<"Error in LM_matrix_for_cnts when calling Map_points_at_boundaries (2)"<<endl;
         return 0;

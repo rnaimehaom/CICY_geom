@@ -49,6 +49,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         
         //DEA with unit resistors
         ct0 = time(NULL);
+        hout<<"DEA->Compute_voltage_field"<<endl;
         if (!DEA->Compute_voltage_field(j, R_flag, electric_param, cutoffs, HoKo, Cutwins, points_gnp, radii, structure_gnp, points_gnp, gnps)) {
             hout<<"Error in Perform_analysis_on_clusters when calling DEA->Compute_voltage_field"<<endl;
             return 0;
@@ -59,6 +60,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         //-----------------------------------------------------------------------------------------------------------------------------------------
         //Determine the backbone and dead branches
         ct0 = time(NULL);
+        hout<<"BN->Determine_backbone_network"<<endl;
         if (!BN->Determine_backbone_network(j, R_flag, avoid_resistance_flag, vis_flags.backbone, DEA->voltages, DEA->LMM_cnts, DEA->LMM_gnps, electric_param, cutoffs, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps, HoKo)) {
             hout<<"Error in Perform_analysis_on_clusters when calling Backbonet->Determine_backbone_network"<<endl;
             return 0;
@@ -78,6 +80,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
             
             //DEA with actual resistors along each percolated direction for current cluster
             ct0 = time(NULL);
+            hout<<"Electrical_resistance_along_each_percolated_direction"<<endl;
             if (!Electrical_resistance_along_each_percolated_direction(R_flag, j, HoKo, Cutwins, electric_param, cutoffs, structure_cnt, points_cnt, radii, structure_gnp, points_gnp, gnps, parallel_resistors)) {
                 hout<<"Error in Perform_analysis_on_clusters when calling Electrical_resistance_along_each_percolated_direction"<<endl;
                 return 0;
@@ -88,6 +91,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
     }
     
     //Calculate clusters fractions
+    hout<<"Calculate_percolated_families_fractions"<<endl;
     if (!Calculate_percolated_families_fractions(vis_flags.cnt_gnp_flag, structure_cnt, points_cnt, radii, gnps, HoKo, BN)) {
         hout<<"Error in Perform_analysis_on_clusters when calling Calculate_percolated_families_fractions"<<endl;
         return 0;
@@ -98,6 +102,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
     
     //Export visualization files for isolated particles if needed
     if (vis_flags.backbone) {
+        hout<<"Export_isolated_particles"<<endl;
         if (!Export_isolated_particles(structure_cnt, points_cnt, HoKo->isolated_cnt, gnps, HoKo->isolated_gnp)) {
             hout<<"Error in Perform_analysis_on_clusters when calling Export_isolated_particles"<<endl;
             return 0;
@@ -108,6 +113,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
     if (!avoid_resistance_flag) {
         
         //Calculate the matrix resistances on each direction
+        hout<<"Calculate_resistances_and_resistivities"<<endl;
         if (!Calculate_resistances_and_resistivities(window, electric_param, parallel_resistors)) {
             hout<<"Error in Perform_analysis_on_clusters when calling Calculate_resistances_and_resistivities"<<endl;
             return 0;

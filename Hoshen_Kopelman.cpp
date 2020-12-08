@@ -439,6 +439,12 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
                 Junction j(Pi_junc, i, "CNT", Pj_junc, CNTj, "CNT", d_junc_min);
                 junctions_cnt.push_back(j);
                 //hout<<"compressed junction added d_junc_min="<<d_junc_min<<endl;
+                
+                //Add the junction points to the vectors of elements
+                //hout<<"elements_cnt[i].size="<<elements_cnt[i].size()<<endl;
+                elements_cnt[i].insert(Pi_junc);
+                //hout<<"elements_cnt[CNTj].size="<<elements_cnt[CNTj].size()<<endl;
+                elements_cnt[CNTj].insert(Pj_junc);
             }
         }
     }
