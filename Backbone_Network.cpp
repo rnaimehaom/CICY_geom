@@ -25,7 +25,7 @@ int Backbone_Network::Determine_backbone_network(const int &n_cluster, const int
     if (HoKo->clusters_cnt.size() && HoKo->clusters_cnt[n_cluster].size()) {
         
         //Find the CNTs in the backbone and dead branches
-        if (Find_backbone_and_fractions_cnts(n_cluster, avoid_resistance_flag, vtk_flag, zero_current, currents_cnt, points_cnt, radii, HoKo)) {
+        if (!Find_backbone_and_fractions_cnts(n_cluster, avoid_resistance_flag, vtk_flag, zero_current, currents_cnt, points_cnt, radii, HoKo)) {
             hout<<"Error in Determine_backbone_network when calling Find_backbone_and_fractions_cnts"<<endl;
             return 0;
         }
