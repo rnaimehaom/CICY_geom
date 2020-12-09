@@ -52,6 +52,9 @@ public:
     int Export_gnps_in_cluster(const vector<GNP> &gnps, const vector<int> &cluster, const string &filename);
     int Add_all_gnp_vertices_from_cluster(const vector<GNP> &gnps, const vector<int> &cluster, ofstream &otec)const;
     //---------------------------------------------------------------------------
+    //Cuboid
+    int Export_cuboid(const cuboid &cub, const string &filename);
+    //---------------------------------------------------------------------------
     //Mixed
     int Export_hybrid_material(const vector<Point_3D> &points, const vector<vector<long int> > &structure, const vector<GNP> &gnps, const string &filename)const;
 };

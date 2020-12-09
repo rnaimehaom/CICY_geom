@@ -351,7 +351,7 @@ int VTK_Export::Export_from_cnt_indices(const vector<Point_3D> &points, const ve
     }
     
     //Add the line indicating the number of lines+1, and the number of points in those lines
-    otec<<"LINES "<<n_cnts+1<<' '<<n_cnts<<endl;
+    otec<<"LINES "<<n_cnts+1<<' '<<n_points<<endl;
     
     //Add the offsets:
     //The number of points used after adding each line, starting with a zero
@@ -729,6 +729,58 @@ int VTK_Export::Add_all_gnp_vertices_from_cluster(const vector<GNP> &gnps, const
         //Add a new line
         otec<<endl;
     }
+    
+    return 1;
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//Cuboid
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+int VTK_Export::Export_cuboid(const cuboid &cub, const string &filename)
+{
+    //Open the file
+    ofstream otec(filename.c_str());
+    
+    //Add header
+    if (!Add_header(otec)) {
+        hout<<"Error in Export_gnps when calling Add_header"<<endl;
+        return 0;
+    }
+    
+    //Add the line with the number of points in the cuboid
+    otec<<"POINTS 8 float" <<endl;
+    
+    //Add all the points, i.e., all the vertices of the cuboid
+    otec<<cub.poi_min.x<<' '<<cub.poi_min.y<<' '<<cub.poi_min.z<<' ';
+    otec<<cub.poi_min.x+cub.len_x<<' '<<cub.poi_min.y<<' '<<cub.poi_min.z<<' ';
+    otec<<cub.poi_min.x+cub.len_x<<' '<<cub.poi_min.y+cub.wid_y<<' '<<cub.poi_min.z<<' ';
+    otec<<cub.poi_min.x<<' '<<cub.poi_min.y+cub.wid_y<<' '<<cub.poi_min.z<<' ';
+    otec<<endl;
+    otec<<cub.poi_min.x<<' '<<cub.poi_min.y<<' '<<cub.poi_min.z+cub.hei_z<<' ';
+    otec<<cub.poi_min.x+cub.len_x<<' '<<cub.poi_min.y<<' '<<cub.poi_min.z+cub.hei_z<<' ';
+    otec<<cub.poi_min.x+cub.len_x<<' '<<cub.poi_min.y+cub.wid_y<<' '<<cub.poi_min.z+cub.hei_z<<' ';
+    otec<<cub.poi_min.x<<' '<<cub.poi_min.y+cub.wid_y<<' '<<cub.poi_min.z+cub.hei_z<<' ';
+    
+    //Add the line with the polygons command, with the number of faces+1 and
+    //the number of points in those faces
+    otec<<"POLYGONS 7 24"<<endl;
+    
+    //Add the offsets
+    otec<<"0 4 8 12 16 20 24"<<endl;
+    
+    //Add the connectivity
+    otec<<"0 1 2 3"<<endl;
+    otec<<"4 5 6 7"<<endl;
+    otec<<"3 0 4 7"<<endl;
+    otec<<"0 1 5 4"<<endl;
+    otec<<"1 2 6 5"<<endl;
+    otec<<"2 3 7 6"<<endl;
+    
+    //Close the file
+    otec.close();
     
     return 1;
 }

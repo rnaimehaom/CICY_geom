@@ -74,7 +74,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         
         //Update observation window geometry
         //hout<<"Update observation window geometry"<<endl;
-        if (!Update_obseravtion_window_geometry(i, Init->geom_sample, window_geo)) {
+        if (!Update_obseravtion_window_geometry(i, Init->vis_flags.window_domain, Init->geom_sample, window_geo)) {
             hout<<"Error when updating the geometry for observation window "<<i<<endl;
             return 0;
         }
@@ -136,7 +136,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     return 1;
 }
 //Update the geometry of the observation window
-int App_Network_3D::Update_obseravtion_window_geometry(const int &window, const Geom_sample &sample_geo, cuboid &window_geo)const
+int App_Network_3D::Update_obseravtion_window_geometry(const int &window, const int &window_domain, const Geom_sample &sample_geo, cuboid &window_geo)const
 {
     //Dimensions of the current observation window
     window_geo.len_x = sample_geo.win_max_x - ((double)window)*sample_geo.win_delt_x;
@@ -155,6 +155,13 @@ int App_Network_3D::Update_obseravtion_window_geometry(const int &window, const 
     window_geo.max_y = window_geo.poi_min.y + window_geo.wid_y;
     window_geo.max_z = window_geo.poi_min.z + window_geo.hei_z;
     //hout<<"window_geo.max_x="<<window_geo.max_x<<" window_geo.max_y="<<window_geo.max_y<<" window_geo.max_z="<<window_geo.max_z<<endl;
+    
+    //Export the window geometry if needed
+    if (window_domain) {
+        string str = "window_" + to_string(window) + ".vkt";
+        VTK_Export VTK_E;
+        VTK_E.Export_cuboid(window_geo, str);
+    }
     
     return 1;
 }

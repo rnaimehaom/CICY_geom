@@ -76,6 +76,9 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         if (gnps.size()) {
             vtk_exp.Export_gnps(gnps, "gnps_generated.vtk");
         }
+        
+        //Export the sample geometry
+        vtk_exp.Export_cuboid(geom_sample.sample, "sample.vtk");
     }
     
     //---------------------------------------------------------------------------
@@ -1039,14 +1042,6 @@ int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, con
     //Check where is the first point of the CNT
     bool is_first_inside_sample = Is_point_inside_cuboid(geom_sample.sample, cnt[0]);
     
-    /*
-    if (!is_first_inside_sample) {
-        vector<vector<Point_3D> > tmp(1,cnt);
-        Tecplot_Export tec;
-        string filename = "CNT_" + to_string(CNT_old) + ".dat";
-        tec.Export_network_threads(geom_sample.sample, tmp, filename);
-    }*/
-    
     //Scan all remaining points in the current CNT
     for (int i = 1; i < cnt_points; i++) {
         
@@ -1612,9 +1607,6 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
             hout << "Error in Generate_gnp_network_mt when calling Generate_gnp" << endl;
             return 0;
         }
-        //Tecplot_Export tec;
-        //string str =  "GNP_"+to_string(gnps.size())+".dat";
-        //tec.Export_singlegnp(gnp, str);
         
         //Flag to determine if new gnp was rejected
         bool rejected = false;
@@ -2133,11 +2125,6 @@ int Generate_Network::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vect
             for (int i = 0; i < 8; i++) {
                 hout<<gnp_new.vertices[i].x<<' '<<gnp_new.vertices[i].y<<' '<<gnp_new.vertices[i].z<<endl;
             }
-            Tecplot_Export tec;
-            string str =  "GNPA.dat";
-            tec.Export_singlegnp(gnps[GNP_i], str);
-            str = "GNPB.dat";
-            tec.Export_singlegnp(gnp_new, str);
         }//*/
         
         //Vector to stor the simplex that encloses the origin in case of interpenetration

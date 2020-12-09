@@ -208,6 +208,9 @@ struct Visualization_flags{
     //Flag to export separate files with fractions of CNTs and GNPs
     //(only when using mixed or hybrid particles)
     int cnt_gnp_flag;
+    //Flags to export the sample and observation window domain
+    int sample_domain;
+    int window_domain;
 };
 //---------------------------------------------------------------------------
 class Input

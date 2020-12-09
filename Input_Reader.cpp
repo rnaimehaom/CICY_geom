@@ -100,7 +100,7 @@ int Input::Read_Infile(ifstream &infile)
     }
     //If not found then the default values are used
     else {
-        Warning_message("Tecplot_flags");
+        Warning_message("Visualization_flags");
     }
 
 	hout << "Finished reading input file!" << endl;
@@ -208,7 +208,7 @@ int Input::Data_Initialization()
 	electric_para.applied_voltage = 1.0;
 	electric_para.resistivity_CNT = 0.001;
     
-    //Initialize tecplot flags (do not export anything)
+    //Initialize visualization flags (do not export anything)
     vis_flags.keywords = "Visualization_flags";
     vis_flags.mark = false;
     vis_flags.generated_nanoparticles = 0;
@@ -216,6 +216,9 @@ int Input::Data_Initialization()
     vis_flags.percolated_clusters = 0;
     vis_flags.backbone = 0;
     vis_flags.triangulations = 0;
+    vis_flags.cnt_gnp_flag = 0;
+    vis_flags.sample_domain = 0;
+    vis_flags.window_domain = 0;
 
 	hout << "    Data initialization files" <<endl<<endl;
 
@@ -1054,12 +1057,12 @@ int Input::Read_visualization_flags(Visualization_flags &vis_flags, ifstream &in
         hout<<"Error: Flag to export generated CNTs can only be an integer, 0 or 1. Input was: "<<vis_flags.generated_nanoparticles<<endl;
         return 0;
     }
+    //The flag for the sample domain has the same value as the flag for generated_nanoparticles
+    vis_flags.sample_domain = vis_flags.generated_nanoparticles;
     
     //Flag to export clusters as obtained from the Hoshen-Kopelman algorithm:
-    // 0: do not export Tecplot files
-    // 1: wires (3D lines)
-    // 2: meshes
-    // 3: wires (3D lines) & meshes
+    // 0: do not export visualization files
+    // 1: export visualization files
     istringstream istr2(Get_Line(infile));
     istr2 >> vis_flags.clusters;
     if (vis_flags.clusters<0||vis_flags.clusters>3) {
@@ -1068,10 +1071,8 @@ int Input::Read_visualization_flags(Visualization_flags &vis_flags, ifstream &in
     }
 
     //Flag to export percolated clusters:
-    // 0: do not export Tecplot files
-    // 1: wires (3D lines)
-    // 2: meshes
-    // 3: wires (3D lines) & meshes
+    // 0: do not export visualization files
+    // 1: export visualization files
     istringstream istr3(Get_Line(infile));
     istr3 >> vis_flags.percolated_clusters;
     if (vis_flags.percolated_clusters<0||vis_flags.percolated_clusters>3) {
@@ -1112,13 +1113,18 @@ int Input::Read_visualization_flags(Visualization_flags &vis_flags, ifstream &in
     }
     
     //Flag to export triangulations if set to 1
-    // 0: do not export Tecplot files
+    // 0: do not export triangulations files
     // 1: export triangulations
     istringstream istr5(Get_Line(infile));
     istr5 >> vis_flags.triangulations;
     if (vis_flags.triangulations<0||vis_flags.triangulations>1) {
         hout<<"Error: Flag to export triangulation can only be 0 or 1. Input was: "<<vis_flags.triangulations<<endl;
         return 0;
+    }
+    
+    //Update the flag for exporting the observation window if needed
+    if (vis_flags.clusters || vis_flags.percolated_clusters || vis_flags.backbone) {
+        vis_flags.window_domain = 1;
     }
     
 	return 1;
