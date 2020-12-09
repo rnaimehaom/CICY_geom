@@ -50,7 +50,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         //DEA with unit resistors
         ct0 = time(NULL);
         hout<<"DEA->Compute_voltage_field"<<endl;
-        if (!DEA->Compute_voltage_field(j, R_flag, electric_param, cutoffs, HoKo, Cutwins, points_gnp, radii, structure_gnp, points_gnp, gnps)) {
+        if (!DEA->Compute_voltage_field(j, R_flag, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
             hout<<"Error in Perform_analysis_on_clusters when calling DEA->Compute_voltage_field"<<endl;
             return 0;
         }
@@ -145,7 +145,7 @@ int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(c
         //Run a new DEA to obtain the new voltage field in the backbone using the actual resistances
         //As the variable for family use the percolated direction k
         ct0 = time(NULL);
-        if (!DEA_Re->Compute_voltage_field(directions[k], R_flag, electric_param, cutoffs, HoKo, Cutwins, points_gnp, radii, structure_gnp, points_gnp, gnps)) {
+        if (!DEA_Re->Compute_voltage_field(directions[k], R_flag, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
             hout<<"Error in Perform_analysis_on_clusters when calling DEA->Compute_voltage_field"<<endl;
             return 0;
         }
