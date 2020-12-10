@@ -762,14 +762,20 @@ int VTK_Export::Export_cuboid(const cuboid &cub, const string &filename)
     otec<<cub.poi_min.x<<' '<<cub.poi_min.y<<' '<<cub.poi_min.z+cub.hei_z<<' ';
     otec<<cub.poi_min.x+cub.len_x<<' '<<cub.poi_min.y<<' '<<cub.poi_min.z+cub.hei_z<<' ';
     otec<<cub.poi_min.x+cub.len_x<<' '<<cub.poi_min.y+cub.wid_y<<' '<<cub.poi_min.z+cub.hei_z<<' ';
-    otec<<cub.poi_min.x<<' '<<cub.poi_min.y+cub.wid_y<<' '<<cub.poi_min.z+cub.hei_z<<' ';
+    otec<<cub.poi_min.x<<' '<<cub.poi_min.y+cub.wid_y<<' '<<cub.poi_min.z+cub.hei_z<<endl;
     
     //Add the line with the polygons command, with the number of faces+1 and
     //the number of points in those faces
     otec<<"POLYGONS 7 24"<<endl;
     
+    //Add the line with the OFFSETS command
+    otec<<"OFFSETS vtktypeint64"<<endl;
+    
     //Add the offsets
     otec<<"0 4 8 12 16 20 24"<<endl;
+    
+    //Add the line with the CONNECTIVITY command
+    otec<<"CONNECTIVITY vtktypeint64"<<endl;
     
     //Add the connectivity
     otec<<"0 1 2 3"<<endl;

@@ -158,7 +158,7 @@ int App_Network_3D::Update_obseravtion_window_geometry(const int &window, const 
     
     //Export the window geometry if needed
     if (window_domain) {
-        string str = "window_" + to_string(window) + ".vkt";
+        string str = "window_" + to_string(window) + ".vtk";
         VTK_Export VTK_E;
         VTK_E.Export_cuboid(window_geo, str);
     }
