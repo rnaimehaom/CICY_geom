@@ -625,8 +625,9 @@ int Electrical_analysis::Export_isolated_particles(const vector<vector<long int>
     
     //Create a vector with indices of all isolated CNTs
     vector<vector<long int> > all_isolated_cnts;
+    //hout<<"all_isolated_cnts"<<endl;
     for (int i = 0; i < (int)isolated_cnts.size(); i++) {
-        for (int j = 0; j < (int)isolated_cnts[i].size(); i++) {
+        for (int j = 0; j < (int)isolated_cnts[i].size(); j++) {
             
             //Get CNT
             int CNTij = isolated_cnts[i][j];
@@ -640,6 +641,7 @@ int Electrical_analysis::Export_isolated_particles(const vector<vector<long int>
     }
     
     //Export the isolated CNTs using the indices
+    //hout<<"VTK_E.Export_from_cnt_indices"<<endl;
     if (!VTK_E.Export_from_cnt_indices(points_cnt, all_isolated_cnts, str_cnts)) {
         hout<<"Error in Export_isolated_particles when calling VTK_E.Export_from_cnt_indices"<<endl;
         return 0;
@@ -647,6 +649,7 @@ int Electrical_analysis::Export_isolated_particles(const vector<vector<long int>
     
     //Create a vector with indices of all isolated GNPs
     vector<int> all_isolated_gnps;
+    //hout<<"all_isolated_gnps"<<endl;
     for (int i = 0; i < (int)isolated_gnps.size(); i++) {
         for (int j = 0; j < (int)isolated_gnps[i].size(); i++) {
             all_isolated_gnps.push_back(isolated_gnps[i][j]);
@@ -654,6 +657,7 @@ int Electrical_analysis::Export_isolated_particles(const vector<vector<long int>
     }
     
     //Export the isolated GNPs as a cluster
+    //hout<<"VTK_E.Export_gnps_in_cluster"<<endl;
     if (!VTK_E.Export_gnps_in_cluster(gnps, all_isolated_gnps, str_gnps)) {
         hout<<"Error in Export_isolated_particles when calling VTK_E.Export_gnps_in_cluster"<<endl;
         return 0;
