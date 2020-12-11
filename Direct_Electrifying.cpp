@@ -395,6 +395,13 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         return 0;
     }
     
+    //Print some vectors
+    Printer Pr;
+    Pr.Print_1d_vec(diagonal, "diagonal.txt");
+    Pr.Print_1d_vec(row_ptr, "row_ptr.txt");
+    Pr.Print_1d_vec(col_ind, "col_ind.txt");
+    Pr.Print_1d_vec(values, "values.txt");
+    
     return 1;
 }
 //This function adds the contributions of the CNT and junction resistors to the stiffness matrix
@@ -918,6 +925,7 @@ int Direct_Electrifying::From_2d_to_1d_vectors(const long int &reserved_nodes, c
             
             //Get the value in row i, column col
             double Kij = it->second;
+            //hout<<"\tcol="<<col<<" Kij="<<Kij<<endl;
             
             //Check if the column corresponds to a reserved node
             if (col >= reserved_nodes) {
@@ -927,7 +935,7 @@ int Direct_Electrifying::From_2d_to_1d_vectors(const long int &reserved_nodes, c
                 values.push_back(Kij);
                 
                 //The column numbers that I need are the numbers in the full matrix-reserved_nodes
-                col_ind.push_back(col);
+                col_ind.push_back(col - reserved_nodes);
             }
             else {
                 
