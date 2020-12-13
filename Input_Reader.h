@@ -38,6 +38,7 @@ struct Simu_para{
     string create_read_network;
     int sample_num;
     int avoid_resistance;
+    int resistances[3];
     int penetration_model_flag;
     string particle_type;
     //Seeds (positive integers) for the random number generators to generate a CNT and GNP networks

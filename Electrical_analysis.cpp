@@ -7,7 +7,7 @@
 
 #include "Electrical_analysis.h"
 
-int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistance_flag, const cuboid &window, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps)
+int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, const Simu_para &simu_param, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps)
 {
     //Time variables
     time_t ct0, ct1;
@@ -61,7 +61,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         //Determine the backbone and dead branches
         ct0 = time(NULL);
         hout<<"BN->Determine_backbone_network"<<endl;
-        if (!BN->Determine_backbone_network(j, R_flag, avoid_resistance_flag, vis_flags.backbone, DEA->voltages, DEA->LMM_cnts, DEA->LMM_gnps, electric_param, cutoffs, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps, HoKo)) {
+        if (!BN->Determine_backbone_network(j, R_flag, simu_param.avoid_resistance, vis_flags.backbone, DEA->voltages, DEA->LMM_cnts, DEA->LMM_gnps, electric_param, cutoffs, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps, HoKo)) {
             hout<<"Error in Perform_analysis_on_clusters when calling Backbonet->Determine_backbone_network"<<endl;
             return 0;
         }
@@ -73,7 +73,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
         
         //-----------------------------------------------------------------------------------------------------------------------------------------
         //Check if it is requested to avoid calculating the resistor network
-        if (!avoid_resistance_flag) {
+        if (!simu_param.avoid_resistance) {
             
             //Set now the R_flag to 1 to indicate that actual resistances will be used
             R_flag = 1;
@@ -81,7 +81,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
             //DEA with actual resistors along each percolated direction for current cluster
             ct0 = time(NULL);
             hout<<"Electrical_resistance_along_each_percolated_direction"<<endl;
-            if (!Electrical_resistance_along_each_percolated_direction(R_flag, j, HoKo, Cutwins, electric_param, cutoffs, structure_cnt, points_cnt, radii, structure_gnp, points_gnp, gnps, parallel_resistors)) {
+            if (!Electrical_resistance_along_each_percolated_direction(R_flag, j, HoKo, Cutwins, simu_param, electric_param, cutoffs, structure_cnt, points_cnt, radii, structure_gnp, points_gnp, gnps, parallel_resistors)) {
                 hout<<"Error in Perform_analysis_on_clusters when calling Electrical_resistance_along_each_percolated_direction"<<endl;
                 return 0;
             }
@@ -110,7 +110,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
     }
     
     //Check if it is requested to avoid calculating the resistor network
-    if (!avoid_resistance_flag) {
+    if (!simu_param.avoid_resistance) {
         
         //Calculate the matrix resistances on each direction
         hout<<"Calculate_resistances_and_resistivities"<<endl;
@@ -123,7 +123,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &avoid_resistanc
     return 1;
 }
 //This function calculates the electrical resistance along each percolated direction of a cluster
-int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(const int &R_flag, const int &n_cluster, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<vector<double> > &paralel_resistors)
+int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(const int &R_flag, const int &n_cluster, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const Simu_para &simu_param, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<vector<double> > &paralel_resistors)
 {
     //Time variables
     time_t ct0, ct1;
@@ -131,7 +131,7 @@ int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(c
     //-----------------------------------------------------------------------------------------------------------------------------------------
     //Get the vector of directions
     vector<int> directions;
-    if (!Vector_of_directions(HoKo->family[n_cluster], directions)) {
+    if (!Vector_of_directions(HoKo->family[n_cluster], simu_param, directions)) {
         hout << "Error in Perform_analysis_on_cluster when calling Vector_of_directions" << endl;
         return 0;
     }
@@ -168,29 +168,54 @@ int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(c
 }
 //This function generates a vector with the different directions in which the electrical resistance needs to be calculated
 //e.g. if the family is 3 (i.e. XY), a vector with elements {0,1} is generated
-int Electrical_analysis::Vector_of_directions(const int &family, vector<int> &directions)
+int Electrical_analysis::Vector_of_directions(const int &family, const Simu_para &simu_param, vector<int> &directions)
 {
     if (family == 6) {
         //If the family is 6 (XYZ); then the resistance needs to be calculated in the three directions
-        directions.assign(3, 0);
-        directions[1] = 1;
-        directions[2] = 2;
+        //Check in which directions calculations were requested
+        if (simu_param.resistances[0]) {
+            directions.push_back(0);
+        }
+        if (simu_param.resistances[1]) {
+            directions.push_back(1);
+        }
+        if (simu_param.resistances[2]) {
+            directions.push_back(2);
+        }
     } else if (family == 5) {
         //If the family is 5 (YZ); then the resistance needs to be calculated in two directions: 1 and 2
-        directions.push_back(1);
-        directions.push_back(2);
+        //Check in which directions calculations were requested
+        if (simu_param.resistances[1]) {
+            directions.push_back(1);
+        }
+        if (simu_param.resistances[2]) {
+            directions.push_back(2);
+        }
     } else if (family == 4) {
         //If the family is 4 (XZ); then the resistance needs to be calculated in two directions: 0 and 2
-        directions.push_back(0);
-        directions.push_back(2);
+        //Check in which directions calculations were requested
+        if (simu_param.resistances[0]) {
+            directions.push_back(0);
+        }
+        if (simu_param.resistances[2]) {
+            directions.push_back(2);
+        }
     } else if (family == 3) {
         //If the family is 5 (XY); then the resistance needs to be calculated in two directions: 0 and 1
-        directions.push_back(0);
-        directions.push_back(1);
+        //Check in which directions calculations were requested
+        if (simu_param.resistances[0]) {
+            directions.push_back(0);
+        }
+        if (simu_param.resistances[1]) {
+            directions.push_back(1);
+        }
     } else if (family <= 2) {
         //If the family is 0, 1 or 2; then the family is the same as the only direction
         //in which resistance needs to be calculated
-        directions.push_back(family);
+        //Check if resistance was requested in the direction of the cluster
+        if (simu_param.resistances[family]) {
+            directions.push_back(family);
+        }
     } else {
         hout << "Invalid family: " << family << endl;
         return 0;

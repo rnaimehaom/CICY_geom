@@ -332,11 +332,6 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
             }
         }
     }
-    //If the network is created, then read the amount of nanoparticles inside the sample
-    else if (simu_para.create_read_network=="Create_Network") {
-        
-        
-    }
     
     //Read the nanoparticle content unless read from file
     if (simu_para.create_read_network!="Read_Network") {
@@ -438,6 +433,27 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
     if (simu_para.avoid_resistance < 0 || simu_para.avoid_resistance > 1) {
         hout << "Error: Invalid value for network resistance calculation. Valid options are 0 (avoid calculating network resistance) or 1 (calculate network resistance). Input was: " << simu_para.avoid_resistance << endl; return 0;
     }
+    //Check if the resistance is required
+    //When choosing 0, three more flags are needed to calculate the resistance on each direction (x, y, z)
+    //One flag per direction, 1 for calculating resistance in that direction or 0 for not calculating it
+    //Example: 0 1 0 1 means calculate resistance of the network (first 0) along directions x and z (first and
+    //second 1) and do not calculate the resistance along y (second 0)
+    //Example: 0 0 0 0 is equivalent to inputting only "1"
+    if (!simu_para.avoid_resistance) {
+        //Read the flags for each direction
+        istr3 >> simu_para.resistances[0];
+        istr3 >> simu_para.resistances[1];
+        istr3 >> simu_para.resistances[2];
+        
+        //Check the case in which the three flags are zero
+        if (!(simu_para.resistances[0] + simu_para.resistances[1] + simu_para.resistances[2])) {
+            
+            //This is the same case as setting the avoid_resistance flag to 1,
+            //Thus, the avoid_resistance is set to 1 since that case is simpler
+            simu_para.avoid_resistance = 1;
+        }
+    }
+    
     
 	return 1;
 }

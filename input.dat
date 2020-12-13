@@ -57,7 +57,12 @@ vol 0.001000
 %By avoiding calculating the resistance of the network results can be obtained much faster
 % 1: Avoid calculating the resistance of the network
 % 0: Calculate the resistance of the network
-0
+%    When choosing 0, three more flags are needed to calculate the resistance on each direction (x, y, z)
+%    One flag per direction, 1 for calculating resistance in that direction or 0 for not calculating it
+%    Example: 0 1 0 1 means calculate resistance of the network (first 0) along directions x and z (first and
+%    second 1) and do not calculate the resistance along y (second 0)
+%    Example: 0 0 0 0 is equivalent to inputting only "1"
+0 1 1 1
 %
 %--------------------------------End
 %
