@@ -53,7 +53,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     //R is the residual vector
     vector<double> P(global_nodes-reserved_nodes,0), R(global_nodes-reserved_nodes,0);
     //Prescribed voltages applied to the sample
-    vector<double> VEF;
+    vector<double> VEF(reserved_nodes, 0.0);
     
     //With the LM matrix, now fill the sparse stiffness matrix
     //Fill_sparse_stiffness_matrix (use R_flag)
@@ -378,20 +378,13 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     //Initialize row_ptr
     //The first element of row_ptr is zero
     row_ptr.push_back(0);
-    vector<vector<double> > KEFT(nodes-reserved_nodes, vector<double> (nodes,0));
     
     //hout<<"From_2d_to_1d_vectors"<<endl;
-    if (!From_2d_to_1d_vectors(reserved_nodes, col_values, KEFT, col_ind, row_ptr, values, diagonal)) {
-        hout<<"Error in Fill_sparse_stiffness_matrix when calling From_2d_to_1d_vectors"<<endl;
-        return 0;
-    }
-    
-    //=========================================
     //Set up variables for the Conjugate Gradient Algorithm:
+    //1D vectors for SSS format: col_ind, row_ptr, values
     //Search direction (P) and residual vector (R)
-    //hout<<"Set_up_residual_and_search_direction"<<endl;
-    if (!Set_up_residual_and_search_direction(R_flag, nodes, reserved_nodes, electric_param, KEFT, P, R, VEF)) {
-        hout<<"Error in Fill_sparse_stiffness_matrix when calling Set_up_residual_and_search_direction"<<endl;
+    if (!From_2d_to_1d_vectors(reserved_nodes, nodes, R_flag, electric_param, col_values, col_ind, row_ptr, values, diagonal, P, R, VEF)) {
+        hout<<"Error in Fill_sparse_stiffness_matrix when calling From_2d_to_1d_vectors"<<endl;
         return 0;
     }
     
@@ -917,18 +910,24 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
     
     return 1;
 }
-//This function transforms the 2D vectors that contain the stiffness matrix into 1D vectors
+//This function transforms the 2D vector (vector of maps) col_values into 1D vectors
 //so they can be in the SSS format and make the matrix-vector multiplications faster
 //For reference, the 2D stiffness matrix has this form:
 //
 //   | KE    KEF |
 //   | KEFT  KF  |
 //
-//For the CG algorithm we need to extract KEFT and KF.
-//We actually already have the lower left corner of the stiffness matrix
-//
-int Direct_Electrifying::From_2d_to_1d_vectors(const long int &reserved_nodes, const vector<map<long int, double> > &col_values, vector<vector<double> > &KEFT, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal)
+//For the CG algorithm, this function sets up the search direction (P) and
+//residual vector (R), and also the vector of prescribed voltages VEF
+int Direct_Electrifying::From_2d_to_1d_vectors(const long int &reserved_nodes, const long int &nodes, const int &R_flag, const Electric_para &electric_param, const vector<map<long int, double> > &col_values, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal, vector<double> &P, vector<double> &R, vector<double> &VEF)
 {
+    //Initialize the prescribed voltage boundary conditions
+    //hout<<"Get_voltage_vector"<<endl;
+    if (!Get_voltage_vector(reserved_nodes, nodes, R_flag, electric_param, VEF)) {
+        hout<<"Error in From_2d_to_1d_vectors when calling Get_voltage_vector"<<endl;
+        return 0;
+    }
+    
     //hout << "Fill 1D vectors" <<endl;
     //Iterate over the rows in the 2D vector of the stiffness matrix (col_values)
     //Skip the top rows of the matrix that correspond to the reserved nodes
@@ -957,15 +956,24 @@ int Direct_Electrifying::From_2d_to_1d_vectors(const long int &reserved_nodes, c
             }
             else {
                 
-                //When the column index is less than reserved_nodes,
-                //I need to save the value of the resistance on the vector KEFT
-                //so that it is used for the CG algorithm.
+                //When the column index is less than reserved_nodes, then the value of Kij
+                //actually corresponds to the matrix KEFT
                 //The column index is (of course) the column index of KEFT as
                 //in this else-statement we have that 0<=col<reserved_nodes
                 //The row is the index iterator i-reserved_nodes
-                KEFT[i-reserved_nodes][col] = Kij;
+                //Thus we have that for the KEFT matrix:
+                //KEFT[i-reserved_nodes][col] = Kij;
+                
+                //The residual vector is initialized with R = b - Ax0,
+                //where x0 is the initial guess. If we use x0 = 0 as initial guess then R = b
+                //From the matrix equations b = - KEFT*VEF
+                //Thus, the KEFT matrix is used to initialize the residual vector as follows:
+                R[i-reserved_nodes] = R[i-reserved_nodes] - (Kij*VEF[col]);
             }
         }
+        
+        //The search direction of the CG is initialized with the initial value of the residual
+        P[i-reserved_nodes] = R[i-reserved_nodes];
         
         //hout << "row_ptr" << endl;
         //Add the number of non-zero entries in the lower tirangle of the stiffness matrix
@@ -979,58 +987,32 @@ int Direct_Electrifying::From_2d_to_1d_vectors(const long int &reserved_nodes, c
     
     return 1;
 }
-//This functio sets up the search direction (P) and residual vector (R) for the CG, and also
-//the vector of prescribed voltages VEF
-int Direct_Electrifying::Set_up_residual_and_search_direction(const int &R_flag, const long int nodes, const long int &reserved_nodes, const Electric_para &electric_param, const vector<vector<double> > &KEFT, vector<double> &P, vector<double> &R, vector<double> &VEF)
+//This function creates a voltage vector depending on the number of prescribed boundary conditios
+int Direct_Electrifying::Get_voltage_vector(const long int &reserved_nodes, const long int &nodes, const int &R_flag, const Electric_para &electric_param, vector<double> &VEF)
 {
-    //Initialize the prescribed voltage boundary conditions
+    //Variable to store the magnitude of the voltage
+    double V;
+    
     //The magnitude of the voltage depends on the R_flag
     if (R_flag == 1) {
         
         //If R_flag is 1, then use real voltage (from the input parameters)
-        if (!Get_voltage_vector(electric_param.applied_voltage, reserved_nodes, VEF)) {
-            hout<<"Error in Set_up_residual_and_search_direction when calling Get_voltage_vector (R_falg="<<R_flag<<")"<< endl;
-            return 0;
-        }
+        V = electric_param.applied_voltage;
     }
     else if (!R_flag) {
         
         //If R_flag is 0, then use the number of nodes as the magnitude for the voltage
-        if (!Get_voltage_vector((double)nodes, reserved_nodes, VEF)) {
-            hout<<"Error in Set_up_residual_and_search_direction when calling Get_voltage_vector (R_falg="<<R_flag<<")"<< endl;
-            return 0;
-        }
+        V = (double)nodes;
     }
     else {
-        hout << "Error in Set_up_residual_and_search_direction. The R_flag has an invalid value: " << R_flag << endl;
+        hout << "Error in Get_voltage_vector. The R_flag has an invalid value: " << R_flag << endl;
         return 0;
     }
     hout << setwp(1,20) << "Maximum and minimum voltages = " << VEF.front() << ", " << VEF.back() << endl;
     
-    //The residual vector is initialized with R = b - Ax0.
-    //x0 is the initial guess. If we use x0 = 0 as initial guess then R = b
-    //From the matrix equations b = - KEFT*VEF
-    for (int i = 0; i < (int)KEFT.size(); i++) {
-        
-        for (int j = 1; j < (int)KEFT[i].size(); j++) {
-            
-            //The first element of VEF (i.e. VEF[0]) is zero,
-            //so it can be skipped to save computational time
-            R[i] = R[i] - (KEFT[i][j]*VEF[j]);
-        }
-        
-        //The search direction of the CG is initialized with the initial value of the residual
-        P[i] = R[i];
-    }
-    
-    return 1;
-}
-//This function creates a voltage vector depending on the number of prescribed boundary conditios
-int Direct_Electrifying::Get_voltage_vector(const double &volts, const long int &reserved_nodes, vector<double> &VEF)
-{
-    //Clear the vector of voltages
-    for (int i = 0; i < reserved_nodes; i++) {
-        VEF.push_back( volts*((double)i) );
+    //Fill the vector of prescribed voltages, ignore the first entry as it is already 0
+    for (int i = 1; i < reserved_nodes; i++) {
+        VEF[i] = VEF[i-1] + V;
     }
     
     return 1;
