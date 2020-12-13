@@ -330,7 +330,7 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         //Add contributions from CNT-CNT junctions if any
         if (HoKo->cluster_cnt_junctions.size() && HoKo->cluster_cnt_junctions[n_cluster].size()) {
             //hout << "Fill_2d_matrices_cnt_junctions"<<endl;
-            if (!Fill_2d_matrices_cnt_junctions(d_vdw, electric_param, HoKo->cluster_cnt_junctions[n_cluster], HoKo->junctions_cnt, points_cnt, radii, LMM_cnts, col_values, diagonal)) {
+            if (!Fill_2d_matrices_cnt_junctions(R_flag, d_vdw, electric_param, HoKo->cluster_cnt_junctions[n_cluster], HoKo->junctions_cnt, points_cnt, radii, LMM_cnts, col_values, diagonal)) {
                 hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_cnt_junctions" << endl;
                 return 0;
             }
@@ -345,7 +345,7 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         
         //Add contributions from mixed junctions
         //hout << "Fill_2d_matrices_mixed_junctions"<<endl;
-        if (!Fill_2d_matrices_mixed_junctions(d_vdw, electric_param, HoKo->cluster_mix_junctions[n_cluster], HoKo->junctions_mixed, points_cnt, radii, points_gnp, gnps, LMM_cnts, LMM_gnps, col_values, diagonal, points_cnt_rad)) {
+        if (!Fill_2d_matrices_mixed_junctions(R_flag, d_vdw, electric_param, HoKo->cluster_mix_junctions[n_cluster], HoKo->junctions_mixed, points_cnt, radii, points_gnp, gnps, LMM_cnts, LMM_gnps, col_values, diagonal, points_cnt_rad)) {
             hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_mixed_junctions" << endl;
             return 0;
         }
@@ -364,7 +364,7 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         //Add contributions from GNP-GNP junctions, if any
         //hout<<"Fill_2d_matrices_cnts"<<endl;
         if (HoKo->cluster_gnp_junctions.size() && HoKo->cluster_gnp_junctions[n_cluster].size()) {
-            if (!Fill_2d_matrices_gnp_junctions(d_vdw, electric_param, HoKo->cluster_gnp_junctions[n_cluster], HoKo->junctions_gnp, points_gnp, gnps, LMM_gnps, col_values, diagonal)) {
+            if (!Fill_2d_matrices_gnp_junctions(R_flag, d_vdw, electric_param, HoKo->cluster_gnp_junctions[n_cluster], HoKo->junctions_gnp, points_gnp, gnps, LMM_gnps, col_values, diagonal)) {
                 hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_gnp_junctions" << endl;
                 return 0;
             }
@@ -547,7 +547,7 @@ int Direct_Electrifying::Add_to_existing_elements_in_2d_sparse_matrix(const long
     //hout << "Added ";
     return 1;
 }
-int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_cnt_junctions_i, const vector<Junction> &junctions_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const map<long int, long int> &LMM_cnts, vector<map<long int, double> > &col_values, vector<double> &diagonal)
+int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_cnt_junctions_i, const vector<Junction> &junctions_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const map<long int, long int> &LMM_cnts, vector<map<long int, double> > &col_values, vector<double> &diagonal)
 {
     //Iterate over all junctions in the cluster
     //hout<<"cluster_cnt_junctions_i.size()="<<cluster_cnt_junctions_i.size()<<endl;
@@ -568,9 +568,15 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const double &d_vdw, con
         //hout<<"CNT2="<<CNT2<<endl;
         
         //Calculate the junction resistance
-        double Re;
-        if (!Calculate_junction_resistance(junctions_cnt[idx], d_vdw, radii[CNT1], points_cnt[P1], radii[CNT2], points_cnt[P2], electric_param, Re)) {
-            hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Calculate_junction_resistance"<<endl;
+        double Re = 1.0;
+        if (R_flag == 1) {
+            if (!Calculate_junction_resistance(junctions_cnt[idx], d_vdw, radii[CNT1], points_cnt[P1], radii[CNT2], points_cnt[P2], electric_param, Re)) {
+                hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Calculate_junction_resistance"<<endl;
+                return 0;
+            }
+        }
+        else if (R_flag != 0) {
+            hout << "Error in Fill_2d_matrices_cnt_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
             return 0;
         }
         
@@ -646,7 +652,7 @@ int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const 
     return 1;
 }
 //This function adds the contributions of the junctions between a CNT and a GNP
-int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_mix_junctions_i, const vector<Junction> &junctions_mixed, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal, map<long int, double> &points_cnt_rad)
+int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_mix_junctions_i, const vector<Junction> &junctions_mixed, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal, map<long int, double> &points_cnt_rad)
 {
     //Iterate over all junctions in the cluster
     for (int i = 0; i < (int)cluster_mix_junctions_i.size(); i++) {
@@ -663,9 +669,15 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const double &d_vdw, c
         int gnp_n = junctions_mixed[idx].N2;
         
         //Calculate the junction resistance
-        double Re;
-        if (!Calculate_junction_resistance(junctions_mixed[idx], d_vdw, radii[cnt_n], points_cnt[Pcnt], gnps[gnp_n].t/2, points_gnp[Pgnp], electric_param, Re)) {
-            hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Calculate_junction_resistance"<<endl;
+        double Re = 1.0;
+        if (R_flag == 1) {
+            if (!Calculate_junction_resistance(junctions_mixed[idx], d_vdw, radii[cnt_n], points_cnt[Pcnt], gnps[gnp_n].t/2, points_gnp[Pgnp], electric_param, Re)) {
+                hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Calculate_junction_resistance"<<endl;
+                return 0;
+            }
+        }
+        else if (R_flag != 0) {
+            hout << "Error in Fill_2d_matrices_mixed_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
             return 0;
         }
         
@@ -863,7 +875,7 @@ int Direct_Electrifying::Calculate_resistance_gnp(const Point_3D &P1, const Poin
     return 1;
 }
 //This function adds GNP-GNP junctions to the 2D sparse stiffness matrix
-int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_gnp_junctions_i, const vector<Junction> &junctions_gnp, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal)
+int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_gnp_junctions_i, const vector<Junction> &junctions_gnp, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal)
 {
     //Iterate over all junctions in the cluster
     for (int i = 0; i < (int)cluster_gnp_junctions_i.size(); i++) {
@@ -880,9 +892,15 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const double &d_vdw, con
         int GNP2 = junctions_gnp[idx].N2;
         
         //Calculate the junction resistance
-        double Re;
-        if (!Calculate_junction_resistance(junctions_gnp[idx], d_vdw, gnps[GNP1].t/2, points_gnp[P1], gnps[GNP2].t/2, points_gnp[P2], electric_param, Re)) {
-            hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Calculate_junction_resistance"<<endl;
+        double Re = 1.0;
+        if (R_flag == 1) {
+            if (!Calculate_junction_resistance(junctions_gnp[idx], d_vdw, gnps[GNP1].t/2, points_gnp[P1], gnps[GNP2].t/2, points_gnp[P2], electric_param, Re)) {
+                hout<<"Error in Fill_2d_matrices_gnp_junctions when calling Calculate_junction_resistance"<<endl;
+                return 0;
+            }
+        }
+        else if (R_flag != 0) {
+            hout << "Error in Fill_2d_matrices_gnp_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
             return 0;
         }
         
