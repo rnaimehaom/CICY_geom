@@ -42,6 +42,12 @@ public:
     int Add_offsets_from_indices(const vector<vector<long int> > &indices, ofstream &otec)const;
     int Add_connectivity_from_indices(const vector<vector<long int> > &indices, ofstream &otec)const;
     //---------------------------------------------------------------------------
+    int Export_cnts_in_cluster(const vector<Point_3D> &points, const vector<vector<long int> > &structure, const vector<int> &cluster, const string &filename)const;
+    int Count_points_in_cluster(const vector<int> &cluster, const vector<vector<long int> > &structure, long int &n_points)const;
+    int Add_points_in_cluster(const vector<Point_3D> &points, const vector<vector<long int> > &structure, const vector<int> &cluster, ofstream &otec)const;
+    int Add_offsets_from_cluster(const vector<vector<long int> > &structure, const vector<int> &cluster, ofstream &otec)const;
+    int Add_connectivity_from_cluster(const vector<vector<long int> > &structure, const vector<int> &cluster, ofstream &otec)const;
+    //---------------------------------------------------------------------------
     //GNPs
     int Export_gnps(const vector<GNP> &gnps, const string &filename)const;
     int Add_all_gnp_vertices(const vector<GNP> &gnps, ofstream &otec)const;

@@ -107,7 +107,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Hoshen-Kopelman algorithm
         Hoshen_Kopelman *HoKo = new Hoshen_Kopelman;
         ct0 = time(NULL);
-        if (!HoKo->Determine_clusters_and_percolation(Init->simu_para, Init->cutoff_dist, Cutwins->cnts_inside, Contacts->sectioned_domain_cnts, structure_cnt, points_cnt, radii, Cutwins->boundary_cnt, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, gnps, Cutwins->boundary_gnp, structure_gnp, points_gnp)) {
+        if (!HoKo->Determine_clusters_and_percolation(Init->simu_para, Init->cutoff_dist, Init->vis_flags, Cutwins->cnts_inside, Contacts->sectioned_domain_cnts, structure_cnt, points_cnt, radii, Cutwins->boundary_cnt, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, gnps, Cutwins->boundary_gnp, structure_gnp, points_gnp)) {
             hout << "Error when finding clusters and determining percolation" << endl;
             return 0;
         }

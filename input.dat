@@ -212,21 +212,15 @@ Visualization_flags
 % 1: export visualization files (if mixed or hybrid particles generated,
 %    then two files are generated, one for CNTs and one for GNPs)
 0
-%Flag to export generated GNPs
-% 0: do not export Tecplot files
-% 1: export GNPs as brick elements
-0
 %Flag to export clusters as obtained from the Hoshen-Kopelman algorithm:
-% 0: do not export Tecplot files
-% 1: wires (3D lines)
-% 2: meshes
-% 3: wires (3D lines) & meshes
+% 0: do not export visualization files
+% 1: export visualization files (if mixed or hybrid particles generated,
+%    then two files are generated, one for CNTs and one for GNPs)
 0
 %Flag to export percolated clusters:
-% 0: do not export Tecplot files
-% 1: wires (3D lines)
-% 2: meshes
-% 3: wires (3D lines) & meshes
+% 0: do not export visualization files
+% 1: export visualization files (if mixed or hybrid particles generated,
+%    then two files are generated, one for CNTs and one for GNPs)
 0
 %Flag to export the backbone:
 % 0: do not export visualization files

@@ -507,6 +507,194 @@ int VTK_Export::Add_connectivity_from_indices(const vector<vector<long int> > &i
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
+int VTK_Export::Export_cnts_in_cluster(const vector<Point_3D> &points, const vector<vector<long int> > &structure, const vector<int> &cluster, const string &filename)const
+{
+    //Check that there are CNTs to export
+    if (cluster.empty()) {
+        hout<<"No CNTs to export. NO visualization file was exported for CNTs."<<endl;
+        return 1;
+    }
+    
+    //Variable to store the number of points
+    long int n_points = 0;
+    
+    //Count the number of points
+    if (!Count_points_in_cluster(cluster, structure, n_points)) {
+        hout<<"Error in Export_cnts_in_cluster when calling Count_points_in_cluster"<<endl;
+        return 0;
+    }
+    
+    //Check that there are points
+    if (!n_points) {
+        hout<<"No points to export. NO visualization file was exported for CNTs."<<endl;
+        return 1;
+    }
+    
+    //Open the file
+    ofstream otec(filename.c_str());
+    
+    //Add header
+    if (!Add_header(otec)) {
+        hout<<"Error in Export_cnts_in_cluster when calling Add_header"<<endl;
+        return 0;
+    }
+    
+    //Add the line with the number of points
+    otec<<"POINTS "<<n_points<<" float" <<endl;
+    
+    //Add all the points
+    if (!Add_points_in_cluster(points, structure, cluster, otec)) {
+        hout<<"Error in Export_cnts_in_cluster when calling Add_points_in_cluster"<<endl;
+        return 0;
+    }
+    
+    //Add the line indicating the number of lines+1, and the number of points in those lines
+    otec<<"LINES "<<cluster.size()+1<<' '<<n_points<<endl;
+    
+    //Add the offsets:
+    //The number of points used after adding each line, starting with a zero
+    if (!Add_offsets_from_cluster(structure, cluster, otec)) {
+        hout<<"Error in Export_cnts_in_cluster when calling Add_offsets_from_cluster"<<endl;
+        return 0;
+    }
+    
+    //Add connectivity
+    if (!Add_connectivity_from_cluster(structure, cluster, otec)) {
+        hout<<"Error in Export_cnts_in_cluster when calling Add_connectivity_from_cluster"<<endl;
+        return 0;
+    }
+    
+    //Close the file
+    otec.close();
+    
+    return 1;
+}
+int VTK_Export::Count_points_in_cluster(const vector<int> &cluster, const vector<vector<long int> > &structure, long int &n_points)const
+{
+    //Iterate over all lines (CNTs in the cluster)
+    for (int i = 0; i < (int)cluster.size(); i++) {
+        
+        //Get the CNT number
+        int CNTi = cluster[i];
+        
+        //Add the number of points in the CNT
+        n_points = n_points + (long int)structure[CNTi].size();
+    }
+    
+    return 1;
+}
+int VTK_Export::Add_points_in_cluster(const vector<Point_3D> &points, const vector<vector<long int> > &structure, const vector<int> &cluster, ofstream &otec)const
+{
+    //Add the point coordinates, separated by spaces and in groups of four points
+    //(12 coordinates) per line
+    
+    //Variable to count the points
+    long int n_points = 1;
+    
+    //Iterate over all CNTs in the cluster
+    for (int i = 0; i < (int)cluster.size(); i++) {
+        
+        //Get current CNT number
+        int CNTi = cluster[i];
+        
+        //Iterate over all points in CNTi
+        for (int j = 0; j < (int)structure[CNTi].size(); j++) {
+            
+            //Check if a new line needs to be started
+            if (!(n_points%4)) {
+                otec<<endl;
+            }
+            
+            //Get point number
+            long int P = structure[CNTi][j];
+            
+            //Append point i to file
+            otec<<points[P].x<<' '<<points[P].y<<' '<<points[P].z<<' ';
+            
+            //Increase the count of points (for adding a new line only)
+            n_points++;
+        }
+    }
+    
+    //Start a new line
+    otec<<endl;
+    
+    return 1;
+}
+int VTK_Export::Add_offsets_from_cluster(const vector<vector<long int> > &structure, const vector<int> &cluster, ofstream &otec)const
+{
+    //Add the line with the OFFSETS command
+    otec<<"OFFSETS vtktypeint64"<<endl;
+    
+    //Output a zero, which is required
+    otec<<"0 ";
+    
+    //Accumulate the number of points
+    long int acc_points = 0;
+    
+    //Count the number of offsets
+    int n_offsets = 1;
+    
+    //Iterate over all CNTs in the cluster
+    for (int i = 0; i < (int)cluster.size(); i++) {
+        
+        //Check if a new line needs to be started
+        if (!(n_offsets%20)) {
+            otec<<endl;
+        }
+        
+        //Get current CNT number
+        int CNTi = cluster[i];
+        
+        //Accumulate the number of points
+        acc_points = acc_points + (long int)structure[CNTi].size();
+        
+        //Output the accumulated number of points
+        otec<<acc_points<<' ';
+        
+        //Each element in cluster is a line (CNT), so increase the number of lines
+        n_offsets++;
+    }
+    
+    //Start a new line
+    otec<<endl;
+    
+    return 1;
+}
+int VTK_Export::Add_connectivity_from_cluster(const vector<vector<long int> > &structure, const vector<int> &cluster, ofstream &otec)const
+{
+    //Add the line with the CONNECTIVITY command
+    otec<<"CONNECTIVITY vtktypeint64"<<endl;
+    
+    //Variable to count the number of points
+    long int n_points = 0;
+    
+    //Add the connectivity, one connectivity per line
+    //Iterate over all CNTs in the cluster
+    for (int i = 0; i < (int)cluster.size(); i++) {
+        
+        //Get current CNT number
+        int CNTi = cluster[i];
+        
+        //Iterate over all points in CNTi
+        for (int j = 0; j < (int)structure[CNTi].size(); j++) {
+            
+            //Add the consecutive number of point structure[CNTi][j] in a line
+            otec<<n_points<<' ';
+            
+            //Increase the number of points
+            n_points++;
+        }
+        
+        //For every line (CNT) start a new line in the file
+        otec<<endl;
+    }
+    
+    return 1;
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
 //GNPs
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
