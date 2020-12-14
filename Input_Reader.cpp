@@ -9,101 +9,80 @@
 
 //---------------------------------------------------------------------------
 //Read data
-int Input::Read_Infile(ifstream &infile)
+int Input::Read_input_file(ifstream &infile)
 {
 
 	hout << "Reading input file..." << endl;
     
-    //Go through each section of the input file in order
-    //int i = 0;
-    
-    //String to save the line read from the input file
-    string str;
-    
-    //Application type
-    str = Get_Line(infile);
-    if(str=="Application") {
-        if(Read_application(app_name, infile)==0) return 0;
-        //hout<<"i="<<i<<endl;i++;
-    }
-    //If not found then the default values are used
-    else {
-        Warning_message("Application");
-    }
-    
-    //Parameters to run the simulation
-    str = Get_Line(infile);
-    if(str=="Simulation_Parameters")    {
-        if(Read_simulation_parameters(simu_para, infile)==0) return 0;
-        //hout<<"i="<<i<<endl;i++;
-    }
-    //If not found then the default values are used
-    else {
-        Warning_message("Simulation_Parameters");
-    }
-    
-    
-    str = Get_Line(infile);
-    if(str=="Sample_Geometry")    {
-        if(Read_sample_geometry(geom_sample, infile)==0) return 0;
-        //hout<<"i="<<i<<endl;i++;
-    }
-    //If not found then the default values are used
-    else {
-        Warning_message("Sample_Geometry");
-    }
-    
-    str = Get_Line(infile);
-    if(str=="Cutoff_Distances")    {
-        if(Read_cutoff_distances(cutoff_dist, infile)==0) return 0;
-        //hout<<"i="<<i<<endl;i++;
-    }
-    //If not found then the default values are used
-    else {
-        Warning_message("Cutoff_Distances");
-    }
-    
-    str = Get_Line(infile);
-    if(str=="Nanotube_Geometry")    {
-        if(Read_nanotube_geo_parameters(nanotube_geo, infile)==0) return 0;
-        //hout<<"i="<<i<<endl;i++;
-    }
-    //If not found then the default values are used
-    else {
-        Warning_message("Nanotube_Geometry");
-    }
-    
-    str = Get_Line(infile);
-    if(str=="GNP_Geometry")    {
-        if(Read_gnp_geo_parameters(gnp_geo, infile)==0) return 0;
-        //hout<<"i="<<i<<endl;i++;
-    }
-    //If not found then the default values are used
-    else {
-        Warning_message("GNP_Geometry");
-    }
-    
-    str = Get_Line(infile);
-    if(str=="Electrical_Parameters")    {
-        if(Read_electrical_parameters(electric_para, infile)==0) return 0;
-        //hout<<"i="<<i<<endl;i++;
-    }
-    //If not found then the default values are used
-    else {
-        Warning_message("Electrical_Parameters");
-    }
-    
-    str = Get_Line(infile);
-    if(str=="Visualization_flags")    {
-        if(Read_visualization_flags(vis_flags, infile)==0) return 0;
-        //hout<<"i="<<i<<endl;i++;
-    }
-    //If not found then the default values are used
-    else {
-        Warning_message("Visualization_flags");
+    //Read line by line until reaching the end-of-file
+    while(!infile.eof())
+    {
+        istringstream istr(Get_Line(infile));
+        if(infile.eof()) break;
+        string str_temp;
+        istr >> str_temp;
+        
+        //Skip over empty lines
+        if(!str_temp.empty()) {
+            if(str_temp=="Application") {
+                if(!Read_application(app_name, infile)) return 0;
+            }
+            else if(str_temp=="Simulation_Parameters") {
+                if(Read_simulation_parameters(simu_para, infile)==0) return 0;
+            }
+            else if(str_temp=="Sample_Geometry") {
+                if(Read_sample_geometry(geom_sample, infile)==0) return 0;
+            }
+            else if(str_temp=="Cutoff_Distances") {
+                if(Read_cutoff_distances(cutoff_dist, infile)==0) return 0;
+            }
+            else if(str_temp=="CNT_Geometry") {
+                if(Read_nanotube_geo_parameters(nanotube_geo, infile)==0) return 0;
+            }
+            else if(str_temp=="GNP_Geometry") {
+                if(Read_gnp_geo_parameters(gnp_geo, infile)==0) return 0;
+            }
+            else if(str_temp=="Electrical_Parameters") {
+                if(Read_electrical_parameters(electric_para, infile)==0) return 0;
+            }
+            else if(str_temp=="Visualization_flags") {
+                if(Read_visualization_flags(vis_flags, infile)==0) return 0;
+            }
+            else
+            {
+                hout << "Error in Read_input_file: Keyword \"" << str_temp << "\" is not defined." << endl;
+                return 0;
+            }
+        }
     }
 
 	hout << "Finished reading input file!" << endl;
+    
+    //Check if warning messages are needed
+    if(!app_name.mark) {
+        Warning_message("Application");
+    }
+    if(!simu_para.mark) {
+        Warning_message("Simulation_Parameters");
+    }
+    if(!geom_sample.mark) {
+        Warning_message("Sample_Geometry");
+    }
+    if(!cutoff_dist.mark) {
+        Warning_message("Cutoff_Distances");
+    }
+    if(!nanotube_geo.mark && simu_para.particle_type != "GNP_cuboids") {
+        Warning_message("CNT_Geometry");
+    }
+    if(!gnp_geo.mark && simu_para.particle_type != "CNT_wires") {
+        Warning_message("GNP_Geometry");
+    }
+    if(!electric_para.mark) {
+        Warning_message("Electrical_Parameters");
+    }
+    if(!vis_flags.mark) {
+        Warning_message("Visualization_flags");
+    }
     
     /*
     if (simu_para.particle_type=="CNT_wires"||simu_para.particle_type=="GNP_cuboids") {
@@ -135,6 +114,9 @@ int Input::Data_Initialization()
 	simu_para.sample_num = 1;
 	simu_para.create_read_network = "Create_Network";
     simu_para.avoid_resistance = 0;
+    simu_para.resistances[0] = 1;
+    simu_para.resistances[1] = 1;
+    simu_para.resistances[2] = 1;
     
 
 	//Initialize the geometric parameters of the RVE

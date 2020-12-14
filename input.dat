@@ -108,7 +108,7 @@ Cutoff_Distances
 %
 %========================================================================================================
 %Define the geometric parameters of nanotubes
-Nanotube_Geometry
+CNT_Geometry
 %--------------------------------Start
 %Define the initial growth direction type (random or specific) of CNTs
 %random: the initial growth directions of nanotubes are random

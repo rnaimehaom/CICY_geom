@@ -234,7 +234,7 @@ public:
     int Data_Initialization();
     void Warning_message(const string &str);
     void Warning_message_already_input(const string &str);
-    int Read_Infile(ifstream &infile);
+    int Read_input_file(ifstream &infile);
     //Read the input data in a whole line (to skip over the comment line starting with a '%')
     string Get_Line(ifstream &infile)const;
 private:

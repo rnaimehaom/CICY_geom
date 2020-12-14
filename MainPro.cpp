@@ -69,7 +69,7 @@ int main(int argc, char** argv)
     Input *Init = new Input;
     if(Init->Data_Initialization())
     {
-        if(Init->Read_Infile(infile)==0) return 0;
+        if(Init->Read_input_file(infile)==0) return 0;
     }
     else return 0;
     it_end= time(NULL);
