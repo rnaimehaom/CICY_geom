@@ -1008,12 +1008,12 @@ int Direct_Electrifying::Get_voltage_vector(const long int &reserved_nodes, cons
         hout << "Error in Get_voltage_vector. The R_flag has an invalid value: " << R_flag << endl;
         return 0;
     }
-    hout << setwp(1,20) << "Maximum and minimum voltages = " << VEF.front() << ", " << VEF.back() << endl;
     
     //Fill the vector of prescribed voltages, ignore the first entry as it is already 0
     for (int i = 1; i < reserved_nodes; i++) {
         VEF[i] = VEF[i-1] + V;
     }
+    hout << setwp(1,20) << "Maximum and minimum voltages = " << VEF.front() << ", " << VEF.back() << endl;
     
     return 1;
 }
