@@ -357,7 +357,7 @@ int Backbone_Network::Find_backbone_and_fractions_cnts(const int &n_cluster, con
             }
         }
         
-        //Calcualte the volumes of the CNt segments for the ded branches and backbone, then
+        //Calcualte the volumes of the CNT segments for the dead branches and backbone, then
         //add them to the class variables
         //If needed, add indices to the vectors needed to export VTK files and remove points
         //from the elements vector to calculate electrical resistance in a further step
@@ -526,7 +526,7 @@ int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avo
         //Remove all points before P1 (idx1) from the elements vector, except when idx1 is zero
         if (!avoid_resistance_flag && idx1 > 0) {
             it1 = HoKo->elements_cnt[CNTi].begin();
-            advance(it1, idx1-1);
+            advance(it1, idx1);
             HoKo->elements_cnt[CNTi].erase(HoKo->elements_cnt[CNTi].begin(), it1);
         }
     }

@@ -57,18 +57,27 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     
     //With the LM matrix, now fill the sparse stiffness matrix
     //Fill_sparse_stiffness_matrix (use R_flag)
-    hout<<"Fill_sparse_stiffness_matrix"<<endl;
+    //hout<<"Fill_sparse_stiffness_matrix"<<endl;
     if (!Fill_sparse_stiffness_matrix(R_flag, global_nodes, reserved_nodes, cutoffs.van_der_Waals_dist, n_cluster, electric_param, HoKo, points_cnt, radii, structure_gnp, points_gnp, gnps, col_ind, row_ptr, values, diagonal, P, R, VEF)) {
         hout<<"Error in Compute_voltage_field when calling Fill_sparse_stiffness_matrix"<<endl;
         return 0;
     }
     
-    hout << "Solve_DEA_equations_CG_SSS"<<endl;
+    //hout << "Solve_DEA_equations_CG_SSS"<<endl;
     //This is where the actual direct electrifying algorithm (DEA) takes place
     if (!Solve_DEA_equations_CG_SSS(global_nodes, reserved_nodes, col_ind, row_ptr, values, diagonal, P, R, VEF)) {
         hout<<"Error in Compute_voltage_field when calling Solve_DEA_equations_CG_SSS"<<endl;
         return 0;
     }
+    
+    /*/Print the voltages
+    Printer *Pr = new Printer;
+    if (R_flag) {
+        Pr->Print_1d_vec(voltages, "voltages_R.txt");
+    } else {
+        Pr->Print_1d_vec(voltages, "voltages_unit.txt");
+    }
+    delete Pr;//*/
     
     return 1;
 }
@@ -100,11 +109,8 @@ int Direct_Electrifying::Get_global_nodes(const int &family)
 int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, long int &global_nodes)
 {
     //Map all CNT points at a boundary with prescribed boundary conditions
-    //First use a temporary variable to save time when mappong the first and
-    //last points of a CNT
-    map<long int, long int> LMM_cnts_boundary;
     //hout<<"Map_points_at_boundaries"<<endl;
-    if (!Map_points_at_boundaries(HoKo->family[n_cluster], Cutwins->boundary_cnt_pts, LMM_cnts_boundary)) {
+    if (!Map_points_at_boundaries(HoKo->family[n_cluster], Cutwins->boundary_cnt_pts, LMM_cnts)) {
         hout<<"Error in LM_matrix_for_cnts when calling Map_points_at_boundaries (1)"<<endl;
         return 0;
     }
@@ -114,7 +120,6 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
         
         //Get the current CNT
         int CNT = HoKo->clusters_cnt[n_cluster][i];
-        //hout<<"HoKo->elements_cnt[CNT="<<CNT<<"].size="<<HoKo->elements_cnt[CNT].size()<<endl;
         
         //Iterator for the elements in set
         set<long int>::iterator j = HoKo->elements_cnt[CNT].begin();
@@ -123,8 +128,7 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
         map<long int, long int>::iterator it;
         
         //Chek if the first point in the CNT element is at a boundary
-        //hout<<"LMM_cnts_boundary.find("<<*j<<") == LMM_cnts_boundary.end()"<<endl;
-        if (LMM_cnts_boundary.find(*j) == LMM_cnts_boundary.end()) {
+        if (LMM_cnts.find(*j) == LMM_cnts.end()) {
             
             //Initial point of CNT is not at a boundary, so map it to a new node
             LMM_cnts[*j] = global_nodes;
@@ -156,8 +160,7 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
         }
         
         //Chek if the last point in the CNT element is at a boundary
-        //hout<<"LMM_cnts_boundary.find("<<*j_end<<") == LMM_cnts_boundary.end()"<<endl;
-        if (LMM_cnts_boundary.find(*j_end) == LMM_cnts_boundary.end()) {
+        if (LMM_cnts.find(*j_end) == LMM_cnts.end()) {
             
             //Last point of CNT is not at a boundary, so map it to a new node
             LMM_cnts[*j_end] = global_nodes;
@@ -165,14 +168,6 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
             //Update the next available node
             global_nodes++;
         }
-    }
-    
-    //Add the mappings of all CNT points at a boundary with prescribed boundary conditions
-    //into the class variable
-    //hout<<"Map_points_at_boundaries"<<endl;
-    if (!Map_points_at_boundaries(HoKo->family[n_cluster], Cutwins->boundary_cnt_pts, LMM_cnts)) {
-        hout<<"Error in LM_matrix_for_cnts when calling Map_points_at_boundaries (2)"<<endl;
-        return 0;
     }
     
     return 1;
@@ -199,6 +194,7 @@ int Direct_Electrifying::Map_points_at_boundaries(const int &family, const vecto
             
             //Get the current point number
             long int P = boundary_pts[b][i];
+            //hout<<"P="<<P<<" node="<<n<<endl;
             
             //Add the mapping from P to node n
             LMM[P] = n;
@@ -329,8 +325,9 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         
         //Add contributions from CNT-CNT junctions if any
         if (HoKo->cluster_cnt_junctions.size() && HoKo->cluster_cnt_junctions[n_cluster].size()) {
+            
             //hout << "Fill_2d_matrices_cnt_junctions"<<endl;
-            if (!Fill_2d_matrices_cnt_junctions(R_flag, d_vdw, electric_param, HoKo->cluster_cnt_junctions[n_cluster], HoKo->junctions_cnt, points_cnt, radii, LMM_cnts, col_values, diagonal)) {
+            if (!Fill_2d_matrices_cnt_junctions(R_flag, reserved_nodes, d_vdw, electric_param, HoKo->cluster_cnt_junctions[n_cluster], HoKo->junctions_cnt, points_cnt, radii, LMM_cnts, col_values, diagonal)) {
                 hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_cnt_junctions" << endl;
                 return 0;
             }
@@ -388,12 +385,14 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         return 0;
     }
     
-    //Print some vectors
+    /*/Print some vectors
     Printer Pr;
     Pr.Print_1d_vec(diagonal, "diagonal.txt");
     Pr.Print_1d_vec(row_ptr, "row_ptr.txt");
     Pr.Print_1d_vec(col_ind, "col_ind.txt");
     Pr.Print_1d_vec(values, "values.txt");
+    Pr.Print_1d_vec(P, "P.txt");
+    Pr.Print_1d_vec(R, "R.txt");// */
     
     return 1;
 }
@@ -412,33 +411,103 @@ int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const int &n_c
         //Get the first point of the element, i.e., the first point of the CNT
         long int P1 = *it;
         
-        //Iterate over the points in the elements vector of CNT
-        for (it++; it != HoKo->elements_cnt[CNT].end(); it++) {
+        //Check for the case of three points in the element
+        if (HoKo->elements_cnt[CNT].size() == 3 &&
+            LMM_cnts[P1] == LMM_cnts[*(HoKo->elements_cnt[CNT].rbegin())]) {
             
-            //Get the second point of the element
-            long int P2 = *it;
-            
-            //Calculate resistance depending of the R_flag
-            double Re;
-            if (!Calculate_resistance_cnt(R_flag, points_cnt, P1, P2, radii[CNT], electric_param.resistivity_CNT, Re)) {
-                hout<<"Error in Fill_2d_matrices_cnts when calling Calculate_resistance_cnt"<<endl;
+            //Go to the case of three points with the endpoints in the same boundary
+            //hout<<"Three_points_in_element"<<endl;
+            if (!Three_points_in_element(R_flag, electric_param, HoKo->elements_cnt[CNT], points_cnt, radii[CNT], col_values, diagonal)) {
+                hout<<"Error in Fill_2d_matrices_cnts when calling Three_points_in_element"<<endl;
                 return 0;
             }
+        }
+        else {
             
-            //Get the nodes of the points
-            long int node1 = LMM_cnts[P1];
-            long int node2 = LMM_cnts[P2];
-            
-            //Add the resistance value to the corresponding 2D vectors
-            if(!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re, col_values, diagonal)) {
-                hout<<"Error in Fill_2d_matrices_cnts when calling Add_elements_to_2d_sparse_matrix"<<endl;
-                return 0;
+            //Iterate over the points in the elements vector of CNT
+            for (it++; it != HoKo->elements_cnt[CNT].end(); it++) {
+                
+                //Get the second point of the element
+                long int P2 = *it;
+                
+                //Calculate resistance depending of the R_flag
+                double Re;
+                if (!Calculate_resistance_cnt(R_flag, points_cnt, P1, P2, radii[CNT], electric_param.resistivity_CNT, Re)) {
+                    hout<<"Error in Fill_2d_matrices_cnts when calling Calculate_resistance_cnt"<<endl;
+                    return 0;
+                }
+                
+                //Get the nodes of the points
+                long int node1 = LMM_cnts[P1];
+                long int node2 = LMM_cnts[P2];
+                
+                //Add the resistance value to the corresponding 2D vectors
+                if(!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re, col_values, diagonal)) {
+                    hout<<"Error in Fill_2d_matrices_cnts when calling Add_elements_to_2d_sparse_matrix"<<endl;
+                    return 0;
+                }
+                
+                //Set the second point as the first point for the next iteration
+                P1 = P2;
             }
-            
-            //Set the second point as the first point for the next iteration
-            P1 = P2;
         }
     }
+    
+    return 1;
+}
+//This function adds resistors to the stiffness matrix for the case when there are three
+//points in the CNT element and the two endpoints are connected to the same boundary
+int Direct_Electrifying::Three_points_in_element(const int &R_flag, const Electric_para &electric_param, const set<long int> &cnt_element, const vector<Point_3D> &points_cnt, const double &radius, vector<map<long int, double>> &col_values, vector<double> &diagonal)
+{
+    //Get the three points
+    set<long int>::const_iterator it = cnt_element.begin();
+    long int P1 = *it; ++it;
+    long int P2 = *it; ++it;
+    long int P3 = *it;
+    
+    //Calculate resistance of segment 1
+    double Re1_inv = 1.0;
+    if (R_flag == 1) {
+        
+        //hout<<"Calculate_resistance_cnt 1"<<endl;
+        if (!Calculate_resistance_cnt(R_flag, points_cnt, P1, P2, radius, electric_param.resistivity_CNT, Re1_inv)) {
+            hout<<"Error in Three_points_in_element when calling Calculate_resistance_cnt Re1"<<endl;
+            return 0;
+        }
+        
+        //Calculate the inverse of the resistance, as this value is the one needed
+        //for the stiffness matrix
+        Re1_inv = 1/Re1_inv;
+    }
+    
+    //Calculate resistance of segment 2
+    double Re2_inv = 1.0;
+    if (R_flag == 1) {
+        
+        //hout<<"Calculate_resistance_cnt 2"<<endl;
+        if (!Calculate_resistance_cnt(R_flag, points_cnt, P2, P3, radius, electric_param.resistivity_CNT, Re2_inv)) {
+            hout<<"Error in Three_points_in_element when calling Calculate_resistance_cnt Re2"<<endl;
+            return 0;
+        }
+        
+        //Calculate the inverse of the resistance, as this value is the one needed
+        //for the stiffness matrix
+        Re2_inv = 1/Re2_inv;
+    }
+    
+    //Get the nodes of the first two points
+    //The third node is not needed as it is the same as the first node
+    long int node1 = LMM_cnts[P1];
+    long int node2 = LMM_cnts[P2];
+    //hout<<"P1="<<P1<<" P2="<<P2<<" P3="<<P3<<endl;
+    //hout<<"node1="<<node1<<" node2="<<node2<<" node3="<<LMM_cnts[P3]<<endl;
+    
+    //Add contributions to the diagonal of the stiffness matrix
+    diagonal[node1] += Re1_inv + Re2_inv;
+    diagonal[node2] += Re1_inv + Re2_inv;
+    
+    //Add contributions to the off diagonal entries of the stiffness matrix
+    col_values[node2][node1] = -(Re1_inv + Re2_inv);
     
     return 1;
 }
@@ -497,11 +566,35 @@ int Direct_Electrifying::Add_new_elements_to_2d_sparse_matrix(const long int &no
     //hout << "Added ";
     return 1;
 }
-//This function checks if an element was already added to the 2D sparse stiffness matrix
-//If already in the matrix, the contribution of the new element is added to the existing value
-int Direct_Electrifying::Add_to_existing_elements_in_2d_sparse_matrix(const long int &node1, const long int &node2, const double &Re, vector<map<long int, double> > &col_values, vector<double> &diagonal)
+//This function adds elements to the 2D sparse stiffness matrix when an element connecting the
+//same nodes has already been added
+int Direct_Electrifying::Add_to_existing_elements_in_2d_sparse_matrix(const long int &node1, const long int &node2, const double &Re_inv, vector<map<long int, double> > &col_values, vector<double> &diagonal)
 {
-    double Re_inv = 1/Re;
+    //Add the diagonal elements of the stiffness matrix
+    diagonal[node1] += Re_inv;
+    diagonal[node2] += Re_inv;
+    
+    //Add the off diagonal elements of the stiffness matrix
+    if (node1 > node2) {
+        
+        //node2 is the column index and node1 is the row index
+        //In row node1, add to the map node2-> -Re_inv
+        col_values[node1][node2] = col_values[node1][node2] -Re_inv;
+        
+    } else {
+        
+        //node1 is the column index and node2 is the row index
+        //In row node2, add to the map node1-> -Re_inv
+        col_values[node2][node1] = col_values[node2][node1] -Re_inv;
+    }
+    
+    return 1;
+}
+//This function checks if an element was already added to the 2D sparse stiffness matrix
+//If not already in the matrix, it is added
+//If already in the matrix, the contribution of the new element is added to the existing value
+int Direct_Electrifying::Add_new_or_to_existing_elements_in_2d_sparse_matrix(const long int &node1, const long int &node2, const double &Re_inv, vector<map<long int, double> > &col_values, vector<double> &diagonal)
+{
     //Add the diagonal elements of the stiffness matrix
     diagonal[node1] += Re_inv;
     diagonal[node2] += Re_inv;
@@ -538,9 +631,10 @@ int Direct_Electrifying::Add_to_existing_elements_in_2d_sparse_matrix(const long
         }
     }
     //hout << "Added ";
+    
     return 1;
 }
-int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_cnt_junctions_i, const vector<Junction> &junctions_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const map<long int, long int> &LMM_cnts, vector<map<long int, double> > &col_values, vector<double> &diagonal)
+int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const long int &reserved_nodes, const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_cnt_junctions_i, const vector<Junction> &junctions_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const map<long int, long int> &LMM_cnts, vector<map<long int, double> > &col_values, vector<double> &diagonal)
 {
     //Iterate over all junctions in the cluster
     //hout<<"cluster_cnt_junctions_i.size()="<<cluster_cnt_junctions_i.size()<<endl;
@@ -576,13 +670,23 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
         //Get node numbers
         long int node1 = LMM_cnts.at(P1);
         long int node2 = LMM_cnts.at(P2);
-        //hout<<"node1="<<node1<<" node2="<<node2<<endl;
         
-        //Add junction resistance to sparse stiffness matrix
-        //hout<<"Add_new_elements_to_2d_sparse_matrix i="<<i<<endl;
-        if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re, col_values, diagonal)) {
-            hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Add_elements_to_2d_sparse_matrix"<<endl;
-            return 0;
+        if (node1 >= reserved_nodes && node2 >= reserved_nodes) {
+            
+            //Add junction resistance to sparse stiffness matrix
+            //hout<<"Add_new_elements_to_2d_sparse_matrix i="<<i<<endl;
+            if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re, col_values, diagonal)) {
+                hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Add_elements_to_2d_sparse_matrix"<<endl;
+                return 0;
+            }
+        }
+        else {
+            double Re_inv = 1/Re;
+            //Add junction resistance to existing elements in sparse stiffness matrix
+            if (!Add_to_existing_elements_in_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
+                hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Add_to_existing_elements_in_2d_sparse_matrix"<<endl;
+                return 0;
+            }
         }
     }
     
@@ -1024,10 +1128,14 @@ int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const
     //Preconditioner
     vector<double> M_inv(diagonal.size(),0.0);
     Jacobi_preconditioner(diagonal, M_inv);
+    //Printer Pr;
+    //Pr.Print_1d_vec(M_inv, "M_inv.txt");
     
     //Apply preconditoner
     vector<double> Y(R.size(),0.0);
     Apply_preconditioner(M_inv, R, P, Y);
+    //Pr.Print_1d_vec(P, "P_prec.txt");
+    //Pr.Print_1d_vec(Y, "Y_prec.txt");
     
     //Variables of the algorithm
     vector<double> AP; //Variable for the multiplication A*P
@@ -1063,13 +1171,15 @@ int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const
             hout<<"Error in Solve_DEA_equations_CG_SSS when calling V_dot_v (1)"<<endl;
             return 0;
         }
+        //hout<<"k= "<<k<<"\trr0="<<rr0<<endl;
         
         //Step length
         double dot_ = 0;
-        if (!V_dot_v(Y, R, dot_)) {
+        if (!V_dot_v(P, AP, dot_)) {
             hout<<"Error in Solve_DEA_equations_CG_SSS when calling V_dot_v (2)"<<endl;
             return 0;
         }
+        //hout<<"\tdot_="<<dot_<<endl;
         alpha = rr0/dot_;
         
         //Approximate solution
@@ -1129,15 +1239,6 @@ int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const
     for (long int i = reserved_nodes; i < nodes; i++) {
         voltages[i] = voltages_sol[i-reserved_nodes];
     }
-    
-    /*/Print the voltages
-    Printer *Pr = new Printer;
-    if (R_flag) {
-        Pr->Print_1d_vec(voltages, "voltages_R.txt");
-    } else {
-        Pr->Print_1d_vec(voltages, "voltages_unit.txt");
-    }
-    delete Pr;//*/
     
     return 1;
 }

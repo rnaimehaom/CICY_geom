@@ -49,7 +49,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, cons
         
         //DEA with unit resistors
         ct0 = time(NULL);
-        hout<<"DEA->Compute_voltage_field"<<endl;
+        //hout<<"DEA->Compute_voltage_field"<<endl;
         if (!DEA->Compute_voltage_field(j, R_flag, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
             hout<<"Error in Perform_analysis_on_clusters when calling DEA->Compute_voltage_field"<<endl;
             return 0;
@@ -60,7 +60,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, cons
         //-----------------------------------------------------------------------------------------------------------------------------------------
         //Determine the backbone and dead branches
         ct0 = time(NULL);
-        hout<<"BN->Determine_backbone_network"<<endl;
+        //hout<<"BN->Determine_backbone_network"<<endl;
         if (!BN->Determine_backbone_network(j, R_flag, simu_param.avoid_resistance, vis_flags.backbone, DEA->voltages, DEA->LMM_cnts, DEA->LMM_gnps, electric_param, cutoffs, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps, HoKo)) {
             hout<<"Error in Perform_analysis_on_clusters when calling Backbonet->Determine_backbone_network"<<endl;
             return 0;
@@ -80,7 +80,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, cons
             
             //DEA with actual resistors along each percolated direction for current cluster
             ct0 = time(NULL);
-            hout<<"Electrical_resistance_along_each_percolated_direction"<<endl;
+            //hout<<"Electrical_resistance_along_each_percolated_direction"<<endl;
             if (!Electrical_resistance_along_each_percolated_direction(R_flag, j, HoKo, Cutwins, simu_param, electric_param, cutoffs, structure_cnt, points_cnt, radii, structure_gnp, points_gnp, gnps, parallel_resistors)) {
                 hout<<"Error in Perform_analysis_on_clusters when calling Electrical_resistance_along_each_percolated_direction"<<endl;
                 return 0;
@@ -91,7 +91,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, cons
     }
     
     //Calculate clusters fractions
-    hout<<"Calculate_percolated_families_fractions"<<endl;
+    //hout<<"Calculate_percolated_families_fractions"<<endl;
     if (!Calculate_percolated_families_fractions(vis_flags.cnt_gnp_flag, structure_cnt, points_cnt, radii, gnps, HoKo, BN)) {
         hout<<"Error in Perform_analysis_on_clusters when calling Calculate_percolated_families_fractions"<<endl;
         return 0;
@@ -102,7 +102,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, cons
     
     //Export visualization files for isolated particles if needed
     if (vis_flags.backbone) {
-        hout<<"Export_isolated_particles"<<endl;
+        //hout<<"Export_isolated_particles"<<endl;
         if (!Export_isolated_particles(structure_cnt, points_cnt, HoKo->isolated_cnt, gnps, HoKo->isolated_gnp)) {
             hout<<"Error in Perform_analysis_on_clusters when calling Export_isolated_particles"<<endl;
             return 0;
@@ -113,7 +113,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, cons
     if (!simu_param.avoid_resistance) {
         
         //Calculate the matrix resistances on each direction
-        hout<<"Calculate_resistances_and_resistivities"<<endl;
+        //hout<<"Calculate_resistances_and_resistivities"<<endl;
         if (!Calculate_resistances_and_resistivities(window, electric_param, parallel_resistors)) {
             hout<<"Error in Perform_analysis_on_clusters when calling Calculate_resistances_and_resistivities"<<endl;
             return 0;
@@ -136,33 +136,46 @@ int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(c
         return 0;
     }
     
+    //Save the family
+    //This is actually not strictly needed, but is added in case it is needed
+    //for future development that needs the original family number
+    int family = HoKo->family[n_cluster];
+    
     //Calculate the electrical resistance per direction
     for (int k = 0; k < (int)directions.size(); k++) {
-        //-----------------------------------------------------------------------------------------------------------------------------------------
+        
         //Direct Electrifying algorithm to calculate electrical resistance
         Direct_Electrifying *DEA_Re = new Direct_Electrifying;
+        
+        //Temporarily set the family to be equal to percoalted direction k
+        HoKo->family[n_cluster] = directions[k];
         
         //Run a new DEA to obtain the new voltage field in the backbone using the actual resistances
         //As the variable for family use the percolated direction k
         ct0 = time(NULL);
-        if (!DEA_Re->Compute_voltage_field(directions[k], R_flag, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
-            hout<<"Error in Perform_analysis_on_clusters when calling DEA->Compute_voltage_field"<<endl;
+        if (!DEA_Re->Compute_voltage_field(n_cluster, R_flag, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
+            hout<<"Error in Electrical_resistance_along_each_percolated_direction when calling DEA_Re->Compute_voltage_field"<<endl;
             return 0;
         }
         ct1 = time(NULL);
         hout << "Calculate voltage field on backbone network time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         
         //With the new voltage field calculate the current going through a face and calculate the resistance along that direction
-        if (!Calculate_parallel_resistor(k, n_cluster, electric_param, DEA_Re, points_cnt, radii, HoKo->elements_cnt, HoKo->clusters_cnt, Cutwins->boundary_cnt, points_gnp, gnps, HoKo->clusters_gnp, Cutwins->boundary_gnp, paralel_resistors)) {
+        if (!Calculate_parallel_resistor(directions[k], n_cluster, electric_param, DEA_Re, points_cnt, radii, HoKo->elements_cnt, HoKo->clusters_cnt, Cutwins->boundary_cnt, points_gnp, gnps, HoKo->clusters_gnp, Cutwins->boundary_gnp, paralel_resistors)) {
             hout<<"Error in Perform_analysis_on_clusters when calling DEA->Calculate_parallel_resistor"<<endl;
             return 0;
         }
-        hout << "Calculate_parallel_resistor" << endl;
+        //hout << "Calculate_parallel_resistor" << endl;
         
         //Delete objects to free memory
         delete DEA_Re;
         
-    }//*/
+    }
+    
+    //Set the family to its original value
+    //This is actually not strictly needed, but is added in case it is needed
+    //for future development that needs the original family number
+    HoKo->family[n_cluster] = family;
     
     return 1;
 }
@@ -248,6 +261,9 @@ int Electrical_analysis::Calculate_parallel_resistor(const int &direction, const
         return 0;
     }
     
+    //Flags for outputting I_total_cnt and I_total_cnt_check
+    bool flag1 = false, flag2 = false;
+    
     //---------------- Currents through CNTs
     //Check if there are CNTs in the cluster
     if (clusters_cnt.size() && clusters_cnt[n_cluster].size()) {
@@ -269,13 +285,16 @@ int Electrical_analysis::Calculate_parallel_resistor(const int &direction, const
         //=========================== CURRENT Check
         //hout <<"//=========================== CURRENT Check"<<endl;
         //Calculate the current passing through boundary b2
-        if (!Currents_through_boundary_cnts(electric_param, DEA, points_cnt, radii, elements, boundary_cnt[b2], I_total_cnt)) {
+        if (!Currents_through_boundary_cnts(electric_param, DEA, points_cnt, radii, elements, boundary_cnt[b2], I_total_cnt_check)) {
             hout<<"Error in Calculate_parallel_resistor when calling Currents_through_boundary_cnts (b2)"<<endl;
             return 0;
         }
         
-        hout << "I_total_cnt="<<I_total_cnt<<" direction="<<direction<<endl;
-        hout << "I_total_cnt_check="<<I_total_cnt_check<<" direction="<<direction<<endl;
+        hout << "I_cnts="<<I_total_cnt<<" direction="<<direction<<endl;
+        hout << "I_cnts_check="<<I_total_cnt_check<<" direction="<<direction<<endl;
+        
+        //Set flag1 to true
+        flag1 = true;
     }
     
     //---------------- Currents through GNPs
@@ -300,21 +319,28 @@ int Electrical_analysis::Calculate_parallel_resistor(const int &direction, const
         //=========================== CURRENT Check GNP
         //hout <<"//=========================== CURRENT Check GNP"<<endl;
         //Calculate the current passing through boundary b2, which is node 1
-        if (!Currents_through_boundary_gnps(1, electric_param, DEA, points_gnp, gnps, boundary_gnp[b2], I_total_gnp)) {
+        if (!Currents_through_boundary_gnps(1, electric_param, DEA, points_gnp, gnps, boundary_gnp[b2], I_total_gnp_check)) {
             hout<<"Error in Calculate_parallel_resistor when calling Currents_through_boundary_gnps (b2)"<<endl;
             return 0;
         }
         
-        hout << "I_total_gnp="<<I_total_gnp<<" direction="<<direction<<endl;
-        hout << "I_total_gnp_check="<<I_total_gnp_check<<" direction="<<direction<<endl;
+        hout << "I_gnps="<<I_total_gnp<<" direction="<<direction<<endl;
+        hout << "I_gnps_check="<<I_total_gnp_check<<" direction="<<direction<<endl;
+        
+        //Set flag2 to true
+        flag2 = true;
     }
     
 
     //Calculate total currents
     double I_total = I_total_cnt + I_total_gnp;
     double I_total_check = I_total_cnt_check + I_total_gnp_check;
-    hout << "I_total="<<I_total<<" direction="<<direction<<endl;
-    hout << "I_total_check="<<I_total_check<<" direction="<<direction<<endl;
+    
+    //Only output the total currents when both CNTs and GNP currenst are calculated
+    if (flag1 && flag2) {
+        hout << "I_total="<<I_total<<" direction="<<direction<<endl;
+        hout << "I_total_check="<<I_total_check<<" direction="<<direction<<endl;
+    }
     
     //Calculate total resistance
     //To calculate the resistance in a single direction,
@@ -360,6 +386,7 @@ int Electrical_analysis::Currents_through_boundary_cnts(const Electric_para &ele
         
         //Current CNT
         int CNT = boundary_cnt[i];
+        //hout<<"CNT="<<CNT<<" i="<<i<<endl;
         
         //Some CNTs on the boundary might not be part of the backbone or the geometric cluster
         //First check if there are any elements on the CNT,
@@ -369,9 +396,11 @@ int Electrical_analysis::Currents_through_boundary_cnts(const Electric_para &ele
             //Check if the front and/or back of the CNT are in contact with the boundary
             
             //Get the points of the element at the front of the CNT
+            //hout<<"elements[CNT="<<CNT<<"].size="<<elements[CNT].size()<<endl;
             set<long int>::iterator it = elements[CNT].begin();
             long int P1 = *it;
-            long int P2 = *(it++);
+            long int P2 = *(++it);
+            //hout <<"front: P1="<<P1<<" P2="<<P2<<endl;
             
             //If P1 is at a boundary with presecribed conditions, then
             //add the current of the element at the front of the CNT
@@ -383,9 +412,10 @@ int Electrical_analysis::Currents_through_boundary_cnts(const Electric_para &ele
             //Get the points of the element at the back of the CNT
             set<long int>::reverse_iterator rit = elements[CNT].rbegin();
             P1 = *rit;
-            P2 = *(rit++);
+            P2 = *(++rit);
+            //hout <<"back: P1="<<P1<<" P2="<<P2<<endl;
             
-            //Add the current of the element at the front of the CNT
+            //Add the current of the element at the back of the CNT
             if (!Current_of_element_in_boundary(P1, P2, radii[CNT], DEA, electric_param, points_cnt, I)) {
                 hout<<"Error in Currents_through_boundary_cnts when calling Current_of_element_in_boundary (front)"<<endl;
                 return 0;
@@ -399,21 +429,32 @@ int Electrical_analysis::Currents_through_boundary_cnts(const Electric_para &ele
 //It is assumed that P1 is the point that is at either the front or the back of the CNT, only these points can be in contact with the boundary
 int Electrical_analysis::Current_of_element_in_boundary(const long int &P1, const long int &P2, const double &radius, Direct_Electrifying *DEA, const Electric_para &electric_param, const vector<Point_3D> &points_cnt, double &I)
 {
-    //Get the node number of the first point
+    //Get the node number of the first point, if the point is in the LMM matrix
+    map<long int, long int>::const_iterator it = DEA->LMM_cnts.find(P1);
+    if (it == DEA->LMM_cnts.end()) {
+        //P1 is not in the LMM matrix, then terminate the function
+        return 1;
+    }
     long int node1 = DEA->LMM_cnts.at(P1);
+    //hout<<"node1="<<node1<<endl;
     
     //Check where is P1
-    //hout <<"P1="<<P1<<" node1="<<DEA->LM_matrix[P1]<<" ("<<point_list[P1].x<<", "<<point_list[P1].y<<", ";
-    //hout <<point_list[P1].z<<")"<<endl;
     //If P1 is node 0 or 1, then the current is calculated
     //This means it is on a valid boundary
     if (node1 <= 1) {
         
-        //Get the node number of the second point
+        //hout<<"P1="<<P1<<", "<<points_cnt[P1].str()<<" CNT1="<<points_cnt[P1].flag<<" node1="<<node1;
+        //Get the node number of the second point, if the point is in the LMM matrix
+        it = DEA->LMM_cnts.find(P2);
+        if (it == DEA->LMM_cnts.end()) {
+            //hout<<endl;
+            //P2 is not in the LMM matrix, then terminate the function
+            return 1;
+        }
         long int node2 = DEA->LMM_cnts.at(P2);
+        //hout<<" node2="<<node2<<endl;
+        //hout<<" P2="<<P2<<", "<<points_cnt[P2].str()<<" CNT2="<<points_cnt[P2].flag<<" node2="<<node2<<endl;
         
-        //hout <<"P1="<<P1<<" node1="<<DEA->LM_matrix[P1]<<" ("<<point_list[P1].x<<", "<<point_list[P1].y<<", "<<point_list[P1].z<<")"<<endl;//Get the node numbers
-        //hout << "P2="<<P2<<" node2="<<node2<<endl;
         //Calculate voltage difference on the element,
         //In the first calculation of current, node1 is at the boundary with voltage 0
         //so the voltage drop is from node2 to node1
@@ -439,7 +480,7 @@ int Electrical_analysis::Current_of_element_in_boundary(const long int &P1, cons
         }
         
         //Calculate current and add it to the total current
-        //hout << " Re=" << Re << " I=" << V/Re << endl;
+        //hout<<"Re="<<Re<<" I=("<<DEA->voltages[node2]<<"-"<<DEA->voltages[node1]<<")/Re=\t"<<V/Re<<endl;
         I = I + V/Re;
     }
     

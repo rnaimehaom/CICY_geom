@@ -526,7 +526,10 @@ int Cutoff_Wins::Add_cnt_point_to_boundary_vectors(const cuboid &window_geo, con
     }
     
     //Add the point and CNT number to the corresponding boundary
-    boundary_cnt[boundary].push_back(CNT_num);
+    //Only add the CNT if it has not been already added
+    if (boundary_cnt[boundary].empty() || boundary_cnt[boundary].back() != CNT_num) {
+        boundary_cnt[boundary].push_back(CNT_num);
+    }
     boundary_cnt_pts[boundary].push_back(P_num);
     
     return 1;
