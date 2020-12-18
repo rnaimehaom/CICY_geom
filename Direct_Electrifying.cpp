@@ -49,23 +49,22 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     //Variables for using the SSS for the sparse matrix
     vector<long int> col_ind, row_ptr;
     vector<double> values, diagonal(global_nodes, 0);
-    //P is the search direction
-    //R is the residual vector
-    vector<double> P(global_nodes-reserved_nodes,0), R(global_nodes-reserved_nodes,0);
+    //Initialize the residual vector R
+    vector<double> R(global_nodes-reserved_nodes,0);
     //Prescribed voltages applied to the sample
     vector<double> VEF(reserved_nodes, 0.0);
     
     //With the LM matrix, now fill the sparse stiffness matrix
     //Fill_sparse_stiffness_matrix (use R_flag)
     //hout<<"Fill_sparse_stiffness_matrix"<<endl;
-    if (!Fill_sparse_stiffness_matrix(R_flag, global_nodes, reserved_nodes, cutoffs.van_der_Waals_dist, n_cluster, electric_param, HoKo, points_cnt, radii, structure_gnp, points_gnp, gnps, col_ind, row_ptr, values, diagonal, P, R, VEF)) {
+    if (!Fill_sparse_stiffness_matrix(R_flag, global_nodes, reserved_nodes, cutoffs.van_der_Waals_dist, n_cluster, electric_param, HoKo, points_cnt, radii, structure_gnp, points_gnp, gnps, col_ind, row_ptr, values, diagonal, R, VEF)) {
         hout<<"Error in Compute_voltage_field when calling Fill_sparse_stiffness_matrix"<<endl;
         return 0;
     }
     
     //hout << "Solve_DEA_equations_CG_SSS"<<endl;
     //This is where the actual direct electrifying algorithm (DEA) takes place
-    if (!Solve_DEA_equations_CG_SSS(global_nodes, reserved_nodes, col_ind, row_ptr, values, diagonal, P, R, VEF)) {
+    if (!Solve_DEA_equations_CG_SSS(global_nodes, reserved_nodes, col_ind, row_ptr, values, diagonal, R, VEF)) {
         hout<<"Error in Compute_voltage_field when calling Solve_DEA_equations_CG_SSS"<<endl;
         return 0;
     }
@@ -303,7 +302,7 @@ int Direct_Electrifying::LM_matrix_for_gnps(const int &n_cluster, Hoshen_Kopelma
 }
 //This function creates the sparse stifness matrix that will be used to solve the sytem of equations
 //The sparse version is more efficient computationally speaking
-int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const long int &nodes, const long int &reserved_nodes, const double &d_vdw, const int &n_cluster, const Electric_para &electric_param, Hoshen_Kopelman *HoKo, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal, vector<double> &P, vector<double> &R, vector<double> &VEF)
+int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const long int &nodes, const long int &reserved_nodes, const double &d_vdw, const int &n_cluster, const Electric_para &electric_param, Hoshen_Kopelman *HoKo, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal, vector<double> &R, vector<double> &VEF)
 {
     //------------------------------------------------------------------------
     //Initially, generate a 2D vector that will be used to generate the 1D vectors for SSS
@@ -380,7 +379,7 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     //Set up variables for the Conjugate Gradient Algorithm:
     //1D vectors for SSS format: col_ind, row_ptr, values
     //Search direction (P) and residual vector (R)
-    if (!From_2d_to_1d_vectors(reserved_nodes, nodes, R_flag, electric_param, col_values, col_ind, row_ptr, values, diagonal, P, R, VEF)) {
+    if (!From_2d_to_1d_vectors(reserved_nodes, nodes, R_flag, electric_param, col_values, col_ind, row_ptr, values, diagonal, R, VEF)) {
         hout<<"Error in Fill_sparse_stiffness_matrix when calling From_2d_to_1d_vectors"<<endl;
         return 0;
     }
@@ -391,7 +390,6 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     Pr.Print_1d_vec(row_ptr, "row_ptr.txt");
     Pr.Print_1d_vec(col_ind, "col_ind.txt");
     Pr.Print_1d_vec(values, "values.txt");
-    Pr.Print_1d_vec(P, "P.txt");
     Pr.Print_1d_vec(R, "R.txt");// */
     
     return 1;
@@ -1037,7 +1035,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
 //
 //For the CG algorithm, this function sets up the search direction (P) and
 //residual vector (R), and also the vector of prescribed voltages VEF
-int Direct_Electrifying::From_2d_to_1d_vectors(const long int &reserved_nodes, const long int &nodes, const int &R_flag, const Electric_para &electric_param, const vector<map<long int, double> > &col_values, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal, vector<double> &P, vector<double> &R, vector<double> &VEF)
+int Direct_Electrifying::From_2d_to_1d_vectors(const long int &reserved_nodes, const long int &nodes, const int &R_flag, const Electric_para &electric_param, const vector<map<long int, double> > &col_values, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal, vector<double> &R, vector<double> &VEF)
 {
     //Initialize the prescribed voltage boundary conditions
     //hout<<"Get_voltage_vector"<<endl;
@@ -1090,9 +1088,6 @@ int Direct_Electrifying::From_2d_to_1d_vectors(const long int &reserved_nodes, c
             }
         }
         
-        //The search direction of the CG is initialized with the initial value of the residual
-        P[i-reserved_nodes] = R[i-reserved_nodes];
-        
         //hout << "row_ptr" << endl;
         //Add the number of non-zero entries in the lower tirangle of the stiffness matrix
         //that have been added to the vector values
@@ -1137,7 +1132,7 @@ int Direct_Electrifying::Get_voltage_vector(const long int &reserved_nodes, cons
 }
 //This function solves the equation of the electric circuit using the
 //Direct Electrifing Algorithm (DEA) and the Conjugate-Gradrient
-int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const long int &reserved_nodes, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &P, vector<double> &R, vector<double> &VEF)
+int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const long int &reserved_nodes, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &R, vector<double> &VEF)
 {
     //Preconditioner
     vector<double> M_inv(diagonal.size(),0.0);
@@ -1146,7 +1141,7 @@ int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const
     //Pr.Print_1d_vec(M_inv, "M_inv.txt");
     
     //Apply preconditoner
-    vector<double> Y(R.size(),0.0);
+    vector<double> Y(R.size(),0.0), P(R.size(),0.0);
     Apply_preconditioner(M_inv, R, P, Y);
     //Pr.Print_1d_vec(P, "P_prec.txt");
     //Pr.Print_1d_vec(Y, "Y_prec.txt");
