@@ -441,8 +441,11 @@ int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const int &n_c
                 long int node1 = LMM_cnts[P1];
                 long int node2 = LMM_cnts[P2];
                 
+                //Calculate inverse of resistance if needed
+                double Re_inv = (R_flag)? 1/Re : Re;
+                
                 //Add the resistance value to the corresponding 2D vectors
-                if(!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re, col_values, diagonal)) {
+                if(!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
                     hout<<"Error in Fill_2d_matrices_cnts when calling Add_elements_to_2d_sparse_matrix"<<endl;
                     return 0;
                 }
@@ -543,10 +546,9 @@ int Direct_Electrifying::Calculate_resistance_cnt(const int &R_flag, const vecto
     
     return 1;
 }
-//
-int Direct_Electrifying::Add_new_elements_to_2d_sparse_matrix(const long int &node1, const long int &node2, const double &Re, vector<map<long int, double> > &col_values, vector<double> &diagonal)
+//This function adds new elements to the 2D sparse stiffness matrix
+int Direct_Electrifying::Add_new_elements_to_2d_sparse_matrix(const long int &node1, const long int &node2, const double &Re_inv, vector<map<long int, double> > &col_values, vector<double> &diagonal)
 {
-    double Re_inv = 1/Re;
     //Add the diagonal elements of the stiffness matrix
     diagonal[node1] += Re_inv;
     diagonal[node2] += Re_inv;
@@ -655,12 +657,15 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
         //hout<<"CNT2="<<CNT2<<endl;
         
         //Calculate the junction resistance
-        double Re = 1.0;
+        double Re_inv = 1.0;
         if (R_flag == 1) {
-            if (!Calculate_junction_resistance(junctions_cnt[idx], d_vdw, radii[CNT1], points_cnt[P1], radii[CNT2], points_cnt[P2], electric_param, Re)) {
+            if (!Calculate_junction_resistance(junctions_cnt[idx], d_vdw, radii[CNT1], points_cnt[P1], radii[CNT2], points_cnt[P2], electric_param, Re_inv)) {
                 hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Calculate_junction_resistance"<<endl;
                 return 0;
             }
+            
+            //Calculate inverse of resistance
+            Re_inv = 1/Re_inv;
         }
         else if (R_flag != 0) {
             hout << "Error in Fill_2d_matrices_cnt_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
@@ -675,13 +680,13 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
             
             //Add junction resistance to sparse stiffness matrix
             //hout<<"Add_new_elements_to_2d_sparse_matrix i="<<i<<endl;
-            if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re, col_values, diagonal)) {
+            if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
                 hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Add_elements_to_2d_sparse_matrix"<<endl;
                 return 0;
             }
         }
         else {
-            double Re_inv = 1/Re;
+            
             //Add junction resistance to existing elements in sparse stiffness matrix
             if (!Add_to_existing_elements_in_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
                 hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Add_to_existing_elements_in_2d_sparse_matrix"<<endl;
@@ -766,12 +771,15 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, con
         int gnp_n = junctions_mixed[idx].N2;
         
         //Calculate the junction resistance
-        double Re = 1.0;
+        double Re_inv = 1.0;
         if (R_flag == 1) {
-            if (!Calculate_junction_resistance(junctions_mixed[idx], d_vdw, radii[cnt_n], points_cnt[Pcnt], gnps[gnp_n].t/2, points_gnp[Pgnp], electric_param, Re)) {
+            if (!Calculate_junction_resistance(junctions_mixed[idx], d_vdw, radii[cnt_n], points_cnt[Pcnt], gnps[gnp_n].t/2, points_gnp[Pgnp], electric_param, Re_inv)) {
                 hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Calculate_junction_resistance"<<endl;
                 return 0;
             }
+            
+            //Calculate inverse of resistance
+            Re_inv = 1/Re_inv;
         }
         else if (R_flag != 0) {
             hout << "Error in Fill_2d_matrices_mixed_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
@@ -783,7 +791,7 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, con
         long int node2 = LMM_gnps.at(Pgnp);
         
         //Add junction resistance to sparse stiffness matrix
-        if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re, col_values, diagonal)) {
+        if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
             hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Add_elements_to_2d_sparse_matrix"<<endl;
             return 0;
         }
@@ -832,7 +840,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
             long int node2 = LMM_gnps.at(v2);
             
             //Initialize resistor with unit resistance
-            double Re = 1.0;
+            double Re_inv = 1.0;
             
             //Check if the actual resistance needs to be calculated
             if (R_flag == 1) {
@@ -864,10 +872,13 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
                 
                 //Calculate the triangulation resistor, i.e., the resistance of
                 //the "conduction band" in the GNP
-                if (!Calculate_resistance_gnp(points_gnp[v1], points_gnp[v2], rad1, rad2, electric_param, Re)) {
+                if (!Calculate_resistance_gnp(points_gnp[v1], points_gnp[v2], rad1, rad2, electric_param, Re_inv)) {
                     hout << "Error in Fill_2d_matrices_gnp when calling Calculate_resistance_gnp" << endl;
                     return 0;
                 }
+                
+                //Calculate inverse of resistance
+                Re_inv = 1/Re_inv;
                 
             }
             else if (R_flag != 0) {
@@ -875,7 +886,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
                 return 0;
             }
             
-            if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re, col_values, diagonal)) {
+            if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
                 hout << "Error in Fill_2d_matrices_gnp when calling Add_elements_to_2d_sparse_matrix" << endl;
                 return 0;
             }
@@ -989,12 +1000,15 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
         int GNP2 = junctions_gnp[idx].N2;
         
         //Calculate the junction resistance
-        double Re = 1.0;
+        double Re_inv = 1.0;
         if (R_flag == 1) {
-            if (!Calculate_junction_resistance(junctions_gnp[idx], d_vdw, gnps[GNP1].t/2, points_gnp[P1], gnps[GNP2].t/2, points_gnp[P2], electric_param, Re)) {
+            if (!Calculate_junction_resistance(junctions_gnp[idx], d_vdw, gnps[GNP1].t/2, points_gnp[P1], gnps[GNP2].t/2, points_gnp[P2], electric_param, Re_inv)) {
                 hout<<"Error in Fill_2d_matrices_gnp_junctions when calling Calculate_junction_resistance"<<endl;
                 return 0;
             }
+            
+            //Calculate inverse of resistance
+            Re_inv = 1/Re_inv;
         }
         else if (R_flag != 0) {
             hout << "Error in Fill_2d_matrices_gnp_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
@@ -1006,7 +1020,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
         long int node2 = LMM_gnps.at(P2);
         
         //Add junction resistance to sparse stiffness matrix
-        if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re, col_values, diagonal)) {
+        if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
             hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Add_elements_to_2d_sparse_matrix"<<endl;
             return 0;
         }
