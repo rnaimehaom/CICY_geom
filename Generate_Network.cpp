@@ -1067,7 +1067,7 @@ int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, con
             if (n_points >= min_points) {
                 
                 //Check if there are are enough points and, if so, add the current CNT segment to the data structures
-                if (!Add_cnt_segment(geom_sample, is_first_inside_sample, start, end, min_points, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
+                if (!Add_cnt_segment(geom_sample, is_first_inside_sample, start, end, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
                     hout<<"Error when adding a CNT segment."<<endl;
                     return 0;
                 }
@@ -1080,7 +1080,9 @@ int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, con
     }
     
     //Check if the last point of the CNT was inside the sample
-    if (last_inside == cnt_points-1) {
+    //Also check that the segment has the minimum number of CNT points required
+    //for it to be consedered a CNT
+    if (last_inside == cnt_points-1 && (last_inside - start + 1) >= min_points) {
         
         //Set end index as one after the last valid index
         //In this way, when adding CNTs to the structure, the last CNT point is added
@@ -1090,7 +1092,7 @@ int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, con
         //This was not done becuase, in the for loop, a segement is added only when it finds a point
         //outside the sample
         //Then, check if there are are enough points and, if so, add the current CNT segment to the data structures
-        if (!Add_cnt_segment(geom_sample, is_first_inside_sample, start, end, min_points, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
+        if (!Add_cnt_segment(geom_sample, is_first_inside_sample, start, end, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
             hout<<"Error when adding a CNT segment."<<endl;
             return 0;
         }
@@ -1099,7 +1101,7 @@ int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, con
     return 1;
 }
 //---------------------------------------------------------------------------
-int Generate_Network::Add_cnt_segment(const Geom_sample &geom_sample, const bool &is_first_inside_sample, const int &start, const int &end, const int &min_points, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
+int Generate_Network::Add_cnt_segment(const Geom_sample &geom_sample, const bool &is_first_inside_sample, const int &start, const int &end, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
 {
     
     //Temporary vector to add the point numbers to the structure vector

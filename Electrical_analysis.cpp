@@ -86,7 +86,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, cons
                 return 0;
             }
             ct1 = time(NULL);
-            hout << "Calculate voltage field time: "<<(int)(ct1-ct0)<<" secs."<<endl;
+            hout << "Calculate resistance along each percolated direction time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         }
     }
     

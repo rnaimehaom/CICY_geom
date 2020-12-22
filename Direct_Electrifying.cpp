@@ -500,7 +500,7 @@ int Direct_Electrifying::Three_points_in_element(const int &R_flag, const Electr
     //The third node is not needed as it is the same as the first node
     long int node1 = LMM_cnts[P1];
     long int node2 = LMM_cnts[P2];
-    //hout<<"P1="<<P1<<" P2="<<P2<<" P3="<<P3<<endl;
+    //hout<<"P1="<<P1<<" P2="<<P2<<" P3="<<P3<<" CNT="<<points_cnt[P2].flag<<endl;
     //hout<<"node1="<<node1<<" node2="<<node2<<" node3="<<LMM_cnts[P3]<<endl;
     
     //Add contributions to the diagonal of the stiffness matrix
@@ -683,9 +683,13 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
                 return 0;
             }
         }
-        else {
+        //Add the resistors when calculating the voltage field and there are more than 2
+        //boundaries with prescribed voltage
+        //Otherwise, the tunnel is ignored
+        else if (reserved_nodes > 2) {
             
             //Add junction resistance to existing elements in sparse stiffness matrix
+            //hout<<"Add_new_elements_to_2d_sparse_matrix"<<endl;
             if (!Add_to_existing_elements_in_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
                 hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Add_to_existing_elements_in_2d_sparse_matrix"<<endl;
                 return 0;

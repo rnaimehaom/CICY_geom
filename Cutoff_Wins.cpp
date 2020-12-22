@@ -179,7 +179,9 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
         
         //Check if the last index of the vector structure[CNT] was inside the sample
         //hout<<"last_inside="<<last_inside<<" cnt_points="<<cnt_points<<endl;
-        if (last_inside == cnt_points-1) {
+        //Also check that the segment has the minimum number of CNT points required
+        //for it to be consedered a CNT
+        if (last_inside == cnt_points-1 && (last_inside - start + 1) >= cnts.min_points) {
             
             //Set end index as the last valid index
             end = cnt_points - 1;
@@ -541,21 +543,28 @@ int Cutoff_Wins::Fill_cnts_inside(const vector<vector<long int> > &structure)
     int flag = 0;
     //Scan all CNTs in the structure
     for (int i = 0; i < (int)structure.size(); i++) {
+        
         //A CNT needs at least two points
-        if (structure[i].size() > 1) {
+        //However, CNTs that only have two points might cause issues if they have a junction
+        //This junction will be at a boundary, and if it happens to be a boundary with
+        //prescribed boundary conditions, the junction might cause numerical issues
+        //For instance, it can result in having a voltage at a node that is larger than
+        //the presecribed one
+        //Thus, all CNTs with 2 points are ignored and only those with 3 points or more are
+        //considered in the simulation
+        if (structure[i].size() > 2) {
             cnts_inside.push_back(i);
-        } else if (structure[i].size() == 1) {
+        }
+        else if (structure[i].size() == 1) {
             hout<<"Error in Extract_observation_window. CNT "<<i<<" has only one point. A CNT must have at least 2 points."<<endl;
             flag = 1;
         }
     }
     
     //If the flag was set, then there were CNTs with one point
-    //The function is not terminated at the first CNTs with one point found so that all these CNTs can be displayed in the output file
-    if (flag)
-        return 0;
-    else
-        return 1;
+    //The function is not terminated at the first CNTs with one point found so that
+    //all these CNTs can be displayed in the output file
+    return !flag;
 }
 //Function that fills the vector gnps_inside
 int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, const vector<Shell> &shells_gnp, vector<GNP> &gnps, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
