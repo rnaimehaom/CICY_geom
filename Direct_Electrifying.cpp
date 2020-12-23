@@ -341,7 +341,7 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         
         //Add contributions from mixed junctions
         //hout << "Fill_2d_matrices_mixed_junctions"<<endl;
-        if (!Fill_2d_matrices_mixed_junctions(R_flag, d_vdw, electric_param, HoKo->cluster_mix_junctions[n_cluster], HoKo->junctions_mixed, points_cnt, radii, points_gnp, gnps, LMM_cnts, LMM_gnps, col_values, diagonal, points_cnt_rad)) {
+        if (!Fill_2d_matrices_mixed_junctions(R_flag, reserved_nodes, d_vdw, electric_param, HoKo->cluster_mix_junctions[n_cluster], HoKo->junctions_mixed, points_cnt, radii, points_gnp, gnps, LMM_cnts, LMM_gnps, col_values, diagonal, points_cnt_rad)) {
             hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_mixed_junctions" << endl;
             return 0;
         }
@@ -674,6 +674,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
         long int node1 = LMM_cnts.at(P1);
         long int node2 = LMM_cnts.at(P2);
         
+        //Check if any of the nodes is at a boundary with prescribed voltage
         if (node1 >= reserved_nodes && node2 >= reserved_nodes) {
             
             //Add junction resistance to sparse stiffness matrix
@@ -683,9 +684,9 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
                 return 0;
             }
         }
-        //Add the resistors when calculating the voltage field and there are more than 2
+        //Add the junction resistors when calculating the voltage field and there are more than 2
         //boundaries with prescribed voltage
-        //Otherwise, the tunnel is ignored
+        //Otherwise, the junction is ignored
         else if (reserved_nodes > 2) {
             
             //Add junction resistance to existing elements in sparse stiffness matrix
@@ -756,7 +757,7 @@ int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const 
     return 1;
 }
 //This function adds the contributions of the junctions between a CNT and a GNP
-int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_mix_junctions_i, const vector<Junction> &junctions_mixed, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal, map<long int, double> &points_cnt_rad)
+int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, const long int &reserved_nodes, const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_mix_junctions_i, const vector<Junction> &junctions_mixed, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal, map<long int, double> &points_cnt_rad)
 {
     //Iterate over all junctions in the cluster
     for (int i = 0; i < (int)cluster_mix_junctions_i.size(); i++) {
@@ -792,10 +793,27 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, con
         long int node1 = LMM_cnts.at(Pcnt);
         long int node2 = LMM_gnps.at(Pgnp);
         
-        //Add junction resistance to sparse stiffness matrix
-        if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
-            hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Add_elements_to_2d_sparse_matrix"<<endl;
-            return 0;
+        //Check if any of the nodes is at a boundary with prescribed voltage
+        if (node1 >= reserved_nodes && node2 >= reserved_nodes) {
+            
+            //Add junction resistance to sparse stiffness matrix
+            //hout<<"Add_new_elements_to_2d_sparse_matrix i="<<i<<endl;
+            if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
+                hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Add_elements_to_2d_sparse_matrix"<<endl;
+                return 0;
+            }
+        }
+        //Add the junction resistors when calculating the voltage field and there are more than 2
+        //boundaries with prescribed voltage
+        //Otherwise, the junction is ignored
+        else if (reserved_nodes > 2) {
+            
+            //Add junction resistance to existing elements in sparse stiffness matrix
+            //hout<<"Add_new_elements_to_2d_sparse_matrix"<<endl;
+            if (!Add_to_existing_elements_in_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
+                hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Add_to_existing_elements_in_2d_sparse_matrix"<<endl;
+                return 0;
+            }
         }
         
         //Add the radius of the CNT that has point P into the set of nodes with CNT radius
