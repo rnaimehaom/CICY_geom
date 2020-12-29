@@ -874,7 +874,7 @@ int VTK_Export::Export_gnps_in_cluster(const vector<GNP> &gnps, const vector<int
     otec<<"POINTS "<<cluster.size()*8<<" float" <<endl;
     
     //Add all the points, i.e., all the vertices of the GNPs
-    if (Add_all_gnp_vertices_from_cluster(gnps, cluster, otec)) {
+    if (!Add_all_gnp_vertices_from_cluster(gnps, cluster, otec)) {
         hout<<"Error in Export_gnps_in_cluster when calling Add_all_gnp_vertices_from_cluster"<<endl;
         return 0;
     }
