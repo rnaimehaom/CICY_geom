@@ -240,18 +240,15 @@ int Contact_grid::Fill_sectioned_domain_gnps(const cuboid &window_geom, const ve
     sectioned_domain_gnps.clear();
     sectioned_domain_gnps.assign(n_regions[0]*n_regions[1]*n_regions[2], vector<int>());
     
-    //Create a Generate_Network object to use its discretization function to fill the GNP subregions
-    Generate_Network gn;
-    
     //First loop over the hybrids inside the box, then loop over the points inside each GNP
     for (int i = 0; i < (int)gnps_inside.size(); i++) {
         
         //Get the GNP number
-        //hout<<"gnps_inside["<<i<<"]="<<gnps_inside[i]<<' ';
-        int GNP = gnps_inside[i];
+        //hout<<"gnps_inside[i="<<i<<"]="<<gnps_inside[i]<<endl;
+        int GNPi = gnps_inside[i];
         
         //Discretize the GNP and add it to all the corresponding subregions
-        if (!Fill_sectioned_domain_single_gnp(window_geom, gnps[GNP], overlapping, n_regions, l_regions)) {
+        if (!Fill_sectioned_domain_single_gnp(window_geom, gnps[GNPi], overlapping, n_regions, l_regions)) {
             hout<<"Error in Fill_sectioned_domain_gnps when calling Fill_sectioned_domain_single_gnp"<<endl;
             return 0;
         }
@@ -279,6 +276,7 @@ int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, co
     for (int k = 0; k < n_points_z; k++) {
         
         //Calculate the start and end points along the y-direction
+        //hout<<"k="<<k<<endl;
         
         //Their locations are proportional to index k and the number of points
         //in the discretization along z
@@ -298,6 +296,7 @@ int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, co
         for (int j = 0; j < n_points_y; j++) {
             
             //Calculate the start and end points along the x-direction
+            //hout<<"**j="<<j<<endl;
             
             //Their locations are proportional to index j and the number of points
             //in the discretization along y
@@ -312,6 +311,7 @@ int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, co
             for (int i = 0; i < n_points_x; i++) {
                 
                 //Calculate the position of new_point (the point in the discretization)
+                //hout<<"****i="<<i<<endl;
                 
                 //The location of new_point is proportional to index i and the number of points
                 //in the discretization along x
@@ -321,26 +321,30 @@ int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, co
                 Point_3D point = start_x + diff_x*lambda_x;
 
                 //Check if new_point is inside the sample
-                if(point.x>=window_geom.poi_min.x||point.x<=window_geom.max_x||
-                   point.y>=window_geom.poi_min.y||point.y<=window_geom.max_y||
-                   point.z>=window_geom.poi_min.z||point.z<=window_geom.max_z) {
+                if( !(point.x<=window_geom.poi_min.x||point.x>=window_geom.max_x||
+                      point.y<=window_geom.poi_min.y||point.y>=window_geom.max_y||
+                      point.z<=window_geom.poi_min.z||point.z>=window_geom.max_z) ) {
                     
                     //If the point is inside the window, then calcualte the region coordinates of the point
                     int a, b, c;
+                    //hout<<"Calculate_region_coordinates"<<endl;
                     if (!Calculate_region_coordinates(window_geom, point, l_regions, a, b, c)) {
                         hout<<"Error in Fill_sectioned_domain_single_gnp when calling Calculate_region_coordinates"<<endl;
                         return 0;
                     }
+                    //hout<<"a="<<a<<" b="<<b<<" c="<<c<<endl;
                     
                     //Initialize flags for overlaping regions
                     int f_regions[] = {0,0,0};
                     
+                    //hout<<"Calculate_overlapping_flags"<<endl;
                     if (!Calculate_overlapping_flags(window_geom, point, overlapping, a, b, c, n_regions, l_regions, f_regions)) {
                         hout<<"Error in Fill_sectioned_domain_single_gnp when calling Calculate_overlapping_flags"<<endl;
                         return 0;
                     }
                     
                     //Add to the subregion(s) the GNP point occupies
+                    //hout<<"Assign_point_to_regions_gnps point="<<point.str()<<endl;
                     if (!Assign_point_to_regions_gnps(a, b, c, f_regions, n_regions, gnp.flag)) {
                         hout<<"Error in Fill_sectioned_domain_single_gnp when calling Assign_point_to_regions_gnps"<<endl;
                         return 0;
@@ -353,13 +357,19 @@ int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, co
     return 1;
 }
 //
-int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const int &c, const int f_regions[], const int n_regions[], const int &GNP)
+int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const int &c, const int f_regions[], const int n_regions[], const int &gnp_i)
 {
     //Calculate default rregion
     int t = Calculate_t(a, b, c, n_regions[0], n_regions[1]);
+    /*if (t > (int)sectioned_domain_gnps.size()) {
+        hout<<"t larger than number of subregions default. t="<<t<<" sectioned_domain_gnps.size()="<<sectioned_domain_gnps.size()<<endl;
+        return 0;
+    }*/
     
-    //Assign point to default region
-    sectioned_domain_gnps[t].push_back(GNP);
+    //Assign GNP number of point to default region if not already added
+    if (sectioned_domain_gnps[t].empty() || sectioned_domain_gnps[t].back() != gnp_i) {
+        sectioned_domain_gnps[t].push_back(gnp_i);
+    }
     
     //Check if P needs to be added to more regions due to their overlapping
     //Check the flag for the subregion's a-coordinate
@@ -367,9 +377,15 @@ int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const
         
         //Calculate the region
         t = Calculate_t(a+f_regions[0], b, c, n_regions[0], n_regions[1]);
+        /*if (t > (int)sectioned_domain_gnps.size()) {
+            hout<<"t larger than number of subregions 0. t="<<t<<" sectioned_domain_gnps.size()="<<sectioned_domain_gnps.size()<<endl;
+            return 0;
+        }*/
         
-        //Assign point to region
-        sectioned_domain_gnps[t].push_back(GNP);
+        //Assign GNP number of point to region if not already added
+        if (sectioned_domain_gnps[t].empty() || sectioned_domain_gnps[t].back() != gnp_i) {
+            sectioned_domain_gnps[t].push_back(gnp_i);
+        }
         
     }
     //Check the flag for the subregion's b-coordinate
@@ -377,9 +393,15 @@ int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const
         
         //Calculate the region
         t = Calculate_t(a, b+f_regions[1], c, n_regions[0], n_regions[1]);
+         /*if (t > (int)sectioned_domain_gnps.size()) {
+            hout<<"t larger than number of subregions 1. t="<<t<<" sectioned_domain_gnps.size()="<<sectioned_domain_gnps.size()<<endl;
+            return 0;
+        }*/
         
-        //Assign point to region
-        sectioned_domain_gnps[t].push_back(GNP);
+        //Assign GNP number of point to region if not already added
+        if (sectioned_domain_gnps[t].empty() || sectioned_domain_gnps[t].back() != gnp_i) {
+            sectioned_domain_gnps[t].push_back(gnp_i);
+        }
         
     }
     //Check the flag for the subregion's c-coordinate
@@ -387,9 +409,15 @@ int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const
         
         //Calculate the region
         t = Calculate_t(a, b, c+f_regions[2], n_regions[0], n_regions[1]);
+         /*if (t > (int)sectioned_domain_gnps.size()) {
+            hout<<"t larger than number of subregions 2. t="<<t<<" sectioned_domain_gnps.size()="<<sectioned_domain_gnps.size()<<endl;
+            return 0;
+        }*/
         
-        //Assign point to region
-        sectioned_domain_gnps[t].push_back(GNP);
+        //Assign GNP number of point to region if not already added
+        if (sectioned_domain_gnps[t].empty() || sectioned_domain_gnps[t].back() != gnp_i) {
+            sectioned_domain_gnps[t].push_back(gnp_i);
+        }
         
     }
     

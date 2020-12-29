@@ -37,7 +37,7 @@ public:
     int Calculate_t(const int &a, const int &b, const int &c, const int &sx, const int &sy);
     int Fill_sectioned_domain_gnps(const cuboid &window_geom, const vector<GNP> &gnps, const vector<int> &gnps_inside, const double &overlapping, const int n_regions[], const double l_regions[]);
     int Fill_sectioned_domain_single_gnp(const cuboid &window_geom, const GNP &gnp, const double &overlapping, const int n_regions[], const double l_regions[]);
-    int Assign_point_to_regions_gnps(const int &a, const int &b, const int &c, const int f_regions[], const int n_regions[], const int &GNP);
+    int Assign_point_to_regions_gnps(const int &a, const int &b, const int &c, const int f_regions[], const int n_regions[], const int &gnp_i);
     
 private:
     

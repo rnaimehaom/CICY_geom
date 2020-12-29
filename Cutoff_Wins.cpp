@@ -65,8 +65,12 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
     //Remove GNPs that are outside the observation window
     //Check if the structure has GNPs, this happens when the particle type is not CNT
     if (particle_type != "CNT_wires") {
+        
+        //Assign the correct size to the GNP structure
+        structure_gnp.assign(gnps.size(), vector<long int>());
     
         //Fill the vector gnps_inside
+        //hout<<"Fill_gnps_inside"<<endl;
         if (!Fill_gnps_inside(window, window_geo, shells_gnp, gnps, structure_gnp, points_gnp)) {
             hout << "Error in Extract_observation_window when calling Fill_gnps_inside" << endl;
             return 0;
@@ -577,6 +581,7 @@ int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, c
     for (int i = 0; i < (int)gnps.size(); i++) {
         
         //Check if GNP i is inside the window
+        //hout<<"GNPi="<<i<<" GNP.flag="<<gnps[i].flag<<endl;
         if (window < shells_gnp[i].shell_min) {
             
             //The GNP is completely inside the observation window, so add it the the vector of gnps_inside
@@ -585,6 +590,7 @@ int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, c
         else if (window >= shells_gnp[i].shell_min && window <= shells_gnp[i].shell_max) {
             
             //The GNP might be partially outside, so check if boundary points need to be added
+            //hout<<"Find_gnp_boundary_points"<<endl;
             if (!Find_gnp_boundary_points(window_geo, gnps[i], structure_gnp, points_gnp)) {
                 hout<<"Error in Fill_gnps_inside when calling Find_gnp_boundary_points"<<endl;
                 return 0;
@@ -649,6 +655,7 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
         }
         
         //Accumulate all points at window boundaries
+        //hout<<"Accumulate_boundary_points_due_to_intersections"<<endl;
         if (!Accumulate_boundary_points_due_to_intersections(window_geo, gnp, locations, points_acc)) {
             hout<<"Error in Find_gnp_boundary_points when calling Accumulate_boundary_points_due_to_intersections"<<endl;
             return 0;
@@ -656,9 +663,11 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
         
         //Calculate the average point of the points accumulated at each boundary and add it
         //to the vector points_gnp
+        //hout<<"points_acc.size()="<<points_acc.size()<<endl;
         for (int i = 0; i < (int)points_acc.size(); i++) {
             
             //Check if any point was accumulated at boundary i
+            //hout<<"points_acc[i="<<i<<"].size()="<<points_acc[i].size()<<endl;
             if (points_acc[i].size()) {
                 
                 //Point to store the average
@@ -674,7 +683,7 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
                 boundary_gnp[i].push_back(gnp.flag);
                 
                 //Get GNP point number
-                long int P_gnp_num = (int)points_gnp.size();
+                long int P_gnp_num = (long int)points_gnp.size();
                 
                 //Add the GNP point number for boundary points
                 boundary_gnp_pts[i].push_back(P_gnp_num);
@@ -691,6 +700,7 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
         Generate_Network GN;
         bool tmp;
         double gnp_vol = 0;
+        //hout<<"GN.Approximate_gnp_volume_inside_sample"<<endl;
         if (!GN.Approximate_gnp_volume_inside_sample(window_geo, gnp, gnp_vol, tmp)) {
             hout<<"Error in Find_gnp_boundary_points when calling GN.Approximate_gnp_volume_inside_sample"<<endl;
             return 0;
