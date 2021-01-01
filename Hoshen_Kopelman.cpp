@@ -492,12 +492,14 @@ int Hoshen_Kopelman::Make_gnp_clusters(const vector<int> &gnps_inside, const vec
     vector<int> labels_labels_gnp;
     
     //Label the GNPs
+    //hout<<"Label_gnps_in_window"<<endl;
     if (!Label_gnps_in_window(gnps_inside, sectioned_domain_gnp, gnps, tunnel_cutoff, n_labels_cnt, structure_gnp, points_gnp, labels_gnp, labels_labels_gnp)) {
         hout<<"Error in Make_gnp_clusters when calling Label_gnps_in_window"<<endl;
         return 0;
     }
     
     //Clean up the labels to find the proper labels, i.e. merged and consecutive labels starting at 0
+    //hout<<"Cleanup_labels"<<endl;
     if (!Cleanup_labels(labels_labels_gnp, labels_gnp, n_total_labels)) {
         hout << "Error in Make_cnt_clusters when calling Cleanup_labels" << endl;
         return 0;
@@ -520,13 +522,15 @@ int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const 
     vector<set<int> > visited(gnps.size());
     
     //Scan every overlapping sub-region
+    //hout<<"sectioned_domain_gnp.size()="<<sectioned_domain_gnp.size()<<endl;
     for (int i = 0; i < (int)sectioned_domain_gnp.size(); i++) {
         
         //Size of subregion i
         int inner = (int)sectioned_domain_gnp[i].size();
+        //hout<<"sectioned_domain_gnp[i="<<i<<"].size()="<<sectioned_domain_gnp[i].size()<<endl;
         
         //Scan all GNPs in subregion i
-        for (int j = 0; i < inner-1; j++) {
+        for (int j = 0; j < inner-1; j++) {
             
             //Get GNP1
             int GNP1 = sectioned_domain_gnp[i][j];
@@ -540,6 +544,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const 
                 //Sort the GNP numbers
                 int GNPa = min(GNP1, GNP2);
                 int GNPb = max(GNP2, GNP2);
+                //hout<<"GNPa="<<GNPa<<" GNPb="<<GNPb<<" GNP1="<<GNP1<<" GNP2="<<GNP2<<endl;
                 
                 //Check if the contact has already been visited
                 if (visited[GNPa].find(GNPb) == visited[GNPa].end()) {
@@ -567,6 +572,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const 
                     }
                     
                     //Check if the separation between GNPs is below the cutoff for tunneling
+                    //hout<<"GNPa="<<GNPa<<" GNPb="<<GNPb<<" dist="<<dist<<endl;
                     if (dist <= tunnel_cutoff) {
                         
                         //Here is where the actual HK76 algorithm takes place
@@ -614,6 +620,7 @@ int Hoshen_Kopelman::Add_junction_points_for_gnps(const GNP &GNP_A, const GNP &G
         hout<<"Error in Add_junction_points_for_gnps when calling Find_closest_simplices_of_gnps_in_contact"<<endl;
         return 0;
     }
+    //hout<<"simplexA.size="<<simplexA.size()<<" simplexB.size="<<simplexB.size()<<" v_sumA="<<v_sumA<<" v_sumB="<<v_sumB<<endl;
     
     //Points to be added to the vector of GNP points
     Point_3D PointA, PointB;
@@ -649,6 +656,10 @@ int Hoshen_Kopelman::Add_junction_points_for_gnps(const GNP &GNP_A, const GNP &G
 //electrical contact
 int Hoshen_Kopelman::Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<int> &simplexA, vector<int> &simplexB, int &v_sumA, int &v_sumB)
 {
+    //Sets to store the vertices of the simplex in the Minkowski sum
+    //Sets are used to avoid repetition of vertices
+    set<int> setA, setB;
+    
     //Iterate over all vertices of the Minkowski sum
     //i iterates over the vertices of A
     for (int i = 0; i < 8; i++) {
@@ -665,14 +676,23 @@ int Hoshen_Kopelman::Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A,
                 //that is closest to the origin
                 //Thus, vertex i in GNP_A and vertex j in GNP_B are part of the simplices
                 //In those GNPs that are closest to each other
-                simplexA.push_back(i);
-                simplexB.push_back(j);
-                
-                //Add the vertex number into the corresponding sum variables
-                v_sumA = v_sumA + max(1,i);
-                v_sumB = v_sumB + max(1,j);
+                setA.insert(i);
+                setB.insert(j);
+                //hout<<" i="<<i<<"->simplexA j="<<j<<"->simplexB"<<endl;
             }
         }
+    }
+    
+    //Fill the vectors of the simplices using the sets
+    simplexA.assign(setA.begin(), setA.end());
+    simplexB.assign(setB.begin(), setB.end());
+    
+    //Calculate the vertices sums
+    for (size_t i = 0; i < simplexA.size(); i++) {
+        v_sumA = v_sumA + max(1,simplexA[i]);
+    }
+    for (size_t i = 0; i < simplexB.size(); i++) {
+        v_sumB = v_sumB + max(1,simplexB[i]);
     }
     
     return 1;
