@@ -2267,8 +2267,8 @@ int Generate_Network::Find_direction_of_touching_gnps(Collision_detection &GJK_E
     }
     
     
-    //Vectors to save the simplices in A and B that are touching
-    vector<int> simplexA, simplexB;
+    //Sets to save the simplices in A and B that are touching
+    set<int> simplexA, simplexB;
     
     //Iterate over all vertices of the Minkowski sum
     //i iterates over the vertices of A
@@ -2283,8 +2283,8 @@ int Generate_Network::Find_direction_of_touching_gnps(Collision_detection &GJK_E
             if (Q.length2() < Zero) {
                 
                 //Q is the origin, so i and j should be added to the simplices
-                simplexA.push_back(i);
-                simplexB.push_back(j);
+                simplexA.insert(i);
+                simplexB.insert(j);
             }
             
             //Q is not the origin, so check if the distance from V to line segment OQ
@@ -2293,8 +2293,8 @@ int Generate_Network::Find_direction_of_touching_gnps(Collision_detection &GJK_E
                 
                 //The vertices in gnpA and gnpB are in the edge or face of the Minkowski sum
                 //that crosses the origin, so add them to their corresponding simplices
-                simplexA.push_back(i);
-                simplexB.push_back(j);
+                simplexA.insert(i);
+                simplexB.insert(j);
             }
         }
     }
@@ -2305,13 +2305,25 @@ int Generate_Network::Find_direction_of_touching_gnps(Collision_detection &GJK_E
         //Find one face and the normal to that face
         if (simplexA.size() == 4) {
             
+            //Get the first three vertices of simplex A
+            set<int>::iterator it = simplexA.begin();
+            int A0 = *it; ++it;
+            int A1 = *it; ++it;
+            int A2 = *it;
+            
             //gnpA has a face as part of the touch, get the normal
-            N = (gnpA.vertices[simplexA[1]] - gnpA.vertices[simplexA[0]]).cross(gnpA.vertices[simplexA[2]] - gnpA.vertices[simplexA[0]]);
+            N = (gnpA.vertices[A1] - gnpA.vertices[A0]).cross(gnpA.vertices[A2] - gnpA.vertices[A0]);
         }
         else {
             
+            //Get the first three vertices of simplex B
+            set<int>::iterator it = simplexB.begin();
+            int B0 = *it; ++it;
+            int B1 = *it; ++it;
+            int B2 = *it;
+            
             //Only gnpB has a plane as part of the touch
-            N = (gnpB.vertices[simplexB[1]] - gnpB.vertices[simplexB[0]]).cross(gnpB.vertices[simplexB[2]] - gnpB.vertices[simplexB[0]]);
+            N = (gnpB.vertices[B1] - gnpB.vertices[B0]).cross(gnpB.vertices[B2] - gnpB.vertices[B0]);
         }
         
         //Make the normal a unit vector
@@ -2319,7 +2331,7 @@ int Generate_Network::Find_direction_of_touching_gnps(Collision_detection &GJK_E
         
         //Make sure N goes in the direction from gnpA to gnpB
         if (N.dot(gnpB.center - gnpA.center) < Zero) {
-            //Rever the direction
+            //Revert the direction
             N = N*(-1);
         }
     }
