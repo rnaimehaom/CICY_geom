@@ -19,8 +19,8 @@ int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, cons
     
     //Get the number of clusters
     int n_clusters = 0;
-    //hout<<"clusters_cnt.size()="<<clusters_cnt.size()<<endl;
-    //hout<<"clusters_gnp()="<<clusters_gnp.size()<<endl;
+    //hout<<"clusters_cnt.size()="<<HoKo->clusters_cnt.size()<<endl;
+    //hout<<"clusters_gnp()="<<HoKo->clusters_gnp.size()<<endl;
     if (HoKo->clusters_cnt.size()) {
         n_clusters = (int)HoKo->clusters_cnt.size();
         

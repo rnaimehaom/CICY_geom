@@ -595,6 +595,7 @@ int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, c
                 hout<<"Error in Fill_gnps_inside when calling Find_gnp_boundary_points"<<endl;
                 return 0;
             }
+            //hout<<endl<<endl;
         }
         //If window > shells_gnp[i].shell_max, then the GNP is outside the observation window
         //so it is ignored and not included in the vector of gnps_inside
@@ -625,7 +626,7 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
         int boundary_l;
         
         //Get the location of vertex i
-        //hout<<"Get the location of vertex i="<<i<<endl;
+        //hout<<"Get the location of vertex i="<<i<<" P="<<gnp.vertices[i].str()<<endl;
         locations[i] = Where_is_with_boundary(gnp.vertices[i], window_geo, boundary_l);
         
         //Increase a counter if needed
@@ -676,6 +677,7 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
                 
                 //Add all points in the boundary
                 for (int j = 0; j < (int)points_acc[i].size(); j++) {
+                    //hout<<"points_acc[i][j]="<<points_acc[i][j].str()<<" is inside GNP?="<<gnp.Is_point_inside_gnp(points_acc[i][j])<<endl;
                     P_avg = P_avg + points_acc[i][j];
                 }
                 
@@ -693,6 +695,7 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
                 
                 //Add the average to the boundary vector
                 points_gnp.push_back(P_avg/((double)points_acc[i].size()));
+                //hout<<"P_avg="<<points_gnp.back().str()<<" is inside GNP?="<<gnp.Is_point_inside_gnp(points_gnp.back())<<endl;
             }
         }
         
@@ -702,7 +705,7 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
         double gnp_vol = 0;
         //hout<<"GN.Approximate_gnp_volume_inside_sample"<<endl;
         if (!GN.Approximate_gnp_volume_inside_sample(window_geo, gnp, gnp_vol, tmp)) {
-            hout<<"Error in Find_gnp_boundary_points when calling GN.Approximate_gnp_volume_inside_sample"<<endl;
+            //hout<<"Error in Find_gnp_boundary_points when calling GN.Approximate_gnp_volume_inside_sample"<<endl;
             return 0;
         }
         gnp.volume = gnp_vol;
@@ -746,101 +749,75 @@ int Cutoff_Wins::Accumulate_boundary_points_due_to_intersections(const cuboid &w
 //This function finds the intersections of GNP edges with faces of the observation window
 int Cutoff_Wins::Find_intersections_of_gnp_edges_with_window_boundaries(const cuboid &window_geo, const GNP &gnp, const vector<string> &locations, vector<vector<Point_3D> > &points_acc)
 {
-    //Adjacency matrix of GNP vertices
-    int adj[][3] = {
-        {1,3,4},
-        {2,5,6},
-        {1,3,6},
-        {0,2,7},
-        {0,5,7},
-        {1,4,6},
-        {2,5,7},
-        {3,4,6}
+    //Array of GNP edges
+    Edge gnp_ed[] = {
+        Edge(0,1),Edge(0,3),Edge(0,4),
+        Edge(2,1),Edge(2,3),Edge(2,6),
+        Edge(5,1),Edge(5,4),Edge(5,6),
+        Edge(7,3),Edge(7,4),Edge(7,6)
     };
     
-    //Array of visited vertices
-    int visited[][3] = {
-        {0,0,0},
-        {0,0,0},
-        {0,0,0},
-        {0,0,0},
-        {0,0,0},
-        {0,0,0},
-        {0,0,0},
-        {0,0,0}
-    };
     
-    //Go throug all vertices and find those that have a vertex inside the window and
-    //one vertex outside the window
-    for (int i = 0; i < (int)locations.size(); i++) {
+    //Iterate over all edges
+    for (int i = 0; i < 12; i++) {
         
-        //Go through all adjacent vertices
-        for (int j = 0; j < 3; j++) {
+        //Get the vertices of the edge
+        int v1 = gnp_ed[i].v1;
+        int v2 = gnp_ed[i].v2;
+        
+        //Check if the GNP vertices go inside-outside
+        if ( (locations[v1] == "inside" && locations[v2] == "outside") ||
+             (locations[v2] == "inside" && locations[v1] == "outside") ) {
             
-            //Get adjacent vertex
-            int v = adj[i][j];
+            //A boundary point is needed, which is initialized at a GNP vertex
+            Point_3D P_out = (locations[v1] == "inside")? gnp.vertices[v2] : gnp.vertices[v1];
+            Point_3D P_in = (locations[v1] == "inside")? gnp.vertices[v1] : gnp.vertices[v2];
             
-            //Check if edge has been visited
-            if (!visited[i][v]) {
-                
-                //Check if the vertices go inside-outside
-                if (locations[i] == "inside" && locations[v] == "outside") {
-                    
-                    //A boundary point is needed
-                    Point_3D P = gnp.vertices[v];
-                    
-                    //Substitute P (which has the coordinates of the outside vertex)
-                    //by the intersection at the boundary
-                    if (!Substitute_boundary_point(window_geo, gnp.vertices[i], P)) {
-                        hout<<"Error in Find_boundary_points_partially_inside_case when calling Substitute_boundary_point"<<endl;
-                        return 0;
-                    }
-                    
-                    //Check in which boundary P is located
-                    int P_boundary;
-                    string P_loc = Where_is_with_boundary(P, window_geo, P_boundary);
-                    
-                    //Double check that P is actually at the boundary
-                    if (P_loc != "boundary") {
-                        hout<<"Error in Find_boundary_points_partially_inside_case calculating point at boundary."<<endl;
-                        hout<<"Point P is not at bundary but it should be since one vertex is inside the sample and the second vertex is outside."<<endl;
-                        hout<<"Location of P is: "<<P_loc<<", P="<<P.str()<<endl;
-                        hout<<"V1="<<gnp.vertices[i].str()<<". V2="<<gnp.vertices[v].str()<<endl;
-                        return 0;
-                    }
-                    
-                    //Accumulate P into the corresponding boundary
-                    points_acc[P_boundary].push_back(P);
-                    
-                    //Mark edge as visited (done twice because the adjacency matrix is symmetric)
-                    visited[i][j] = 1;
-                    visited[j][i] = 1;
-                }
-                
-                //Check if the vertices go outside-outside
-                else if (locations[i] == "outside" && locations[v] == "outside") {
-                    
-                    //Go to the case where two outside vertices intersect a sample boundary
-                    vector<Point_3D> Pts;
-                    if (!Find_two_intersections_of_gnp_edges_with_window(window_geo, gnp, gnp.vertices[i], gnp.vertices[v], Pts)) {
-                        hout<<"Error in Find_boundary_points_partially_inside_case when calling Find_two_intersections_of_gnp_edges_with_window"<<endl;
-                        return 0;
-                    }
-                    
-                    //If intersections were found, add them to the accumulator
-                    if (Pts.size()) {
-                        for (int k = 0; k < (int)Pts.size(); k++) {
-                            //Add to the corresponding boundary as indicated by the point flag
-                            points_acc[Pts[k].flag].push_back(Pts[k]);
-                        }
-                    }
-                    
-                    //Mark edge as visited (done twice because the adjacency matrix is symmetric)
-                    visited[i][j] = 1;
-                    visited[j][i] = 1;
-                }
+            //Substitute P (which has the coordinates of the outside vertex)
+            //by the intersection at the boundary
+            //hout<<"P="<<P_out.str();
+            if (!Substitute_boundary_point(window_geo, P_in, P_out)) {
+                hout<<"Error in Find_boundary_points_partially_inside_case when calling Substitute_boundary_point"<<endl;
+                return 0;
+            }
+            //hout<<" P_substituted="<<P_out.str();
+            
+            //Check in which boundary P is located
+            int P_boundary;
+            string P_loc = Where_is_with_boundary(P_out, window_geo, P_boundary);
+            //hout<<" P_loc="<<P_loc<<endl;
+            
+            //Double check that P is actually at the boundary
+            if (P_loc != "boundary") {
+                hout<<"Error in Find_boundary_points_partially_inside_case calculating point at boundary."<<endl;
+                hout<<"Point P is not at bundary but it should be since one vertex is inside the window and the second vertex is outside."<<endl;
+                hout<<"Location of P is: "<<P_loc<<", P="<<P_out.str()<<endl;
+                hout<<"V1="<<gnp.vertices[v1].str()<<". V2="<<gnp.vertices[v2].str()<<endl;
+                return 0;
             }
             
+            //Accumulate P into the corresponding boundary
+            points_acc[P_boundary].push_back(P_out);
+        }
+        
+        //Check if the vertices go outside-outside
+        else if (locations[v1] == "outside" && locations[v2] == "outside") {
+            
+            //Go to the case where two outside vertices intersect a sample boundary
+            vector<Point_3D> Pts;
+            if (!Find_two_intersections_of_gnp_edges_with_window(window_geo, gnp, gnp.vertices[v1], gnp.vertices[v2], Pts)) {
+                hout<<"Error in Find_boundary_points_partially_inside_case when calling Find_two_intersections_of_gnp_edges_with_window"<<endl;
+                return 0;
+            }
+            
+            //If intersections were found, add them to the accumulator
+            if (Pts.size()) {
+                for (int k = 0; k < (int)Pts.size(); k++) {
+                    //Add to the corresponding boundary as indicated by the point flag
+                    //hout<<"Pts[k="<<k<<"]="<<Pts[k].str()<<" flag="<<Pts[k].flag<<endl;
+                    points_acc[Pts[k].flag].push_back(Pts[k]);
+                }
+            }
         }
     }
     
@@ -905,79 +882,49 @@ int Cutoff_Wins::Find_intersections_of_window_edges_with_gnp_faces(const cuboid 
         window_geo.poi_min + Point_3D(window_geo.len_x,0,0),                //7
     };
     
-    //Adjacency matrix of window vertices
-    int adj[][3] = {
-        {1,3,4},
-        {2,5,6},
-        {1,3,6},
-        {0,2,7},
-        {0,5,7},
-        {1,4,6},
-        {2,5,7},
-        {3,4,6}
-    };
-    
-    //Array of visited vertices
-    int visited[][3] = {
-        {0,0,0},
-        {0,0,0},
-        {0,0,0},
-        {0,0,0},
-        {0,0,0},
-        {0,0,0},
-        {0,0,0},
-        {0,0,0}
+    //Array of window edges
+    Edge wes[] = {
+        Edge(0,1),Edge(0,3),Edge(0,4),
+        Edge(2,1),Edge(2,3),Edge(2,6),
+        Edge(5,1),Edge(5,4),Edge(5,6),
+        Edge(7,3),Edge(7,4),Edge(7,6)
     };
     
     //Array of boundaries to be added
-    int boundaries[][3] = {
-        {0,0,3},
-        {3,0,3},
-        {4,0,4},
-        {2,5,2},
-        {2,3,1},
-        {4,1,1},
-        {5,4,1},
-        {5,2,5}
+    int boundaries[][2] = {
+        {0,3}, {0,2}, {2,3},
+        {0,4}, {0,5}, {4,5},
+        {3,4}, {1,3}, {1,4},
+        {2,5}, {1,2}, {1,5}
     };
     
-    //Go through all vertices of the sample
-    for (int i = 0; i < 8; i++) {
+    //Go through all edges of the window
+    for (int i = 0; i < 12; i++) {
         
-        //Go through all adjacent vertices and check if the edge iv intersects a GNP face
-        for (int j = 0; j < 3; j++) {
+        //Check if current edge intersects a GNP face
+        //hout<<"edge="<<wes[i].str()<<endl;
+        Point_3D P;
+        if (Does_edge_intersect_gnp(wes[i], window_vertices, gnp, P)) {
             
-            //Get adjacent vertex
-            int v = adj[i][j];
+            //Current Edge intersects a GNP face
+            //Intersection is stored in P
+            //Add P to the correspoding boundaries
+            int b1 = boundaries[i][0];
+            int b2 = boundaries[i][1];
             
-            //Check if current edge has been visited
-            if (!visited[i][j]) {
-                
-                //Check if the edge iv intersects a GNP face
-                Point_3D P;
-                if (Does_edge_intersect_gnp(window_vertices[i], window_vertices[v], gnp, P)) {
-                    
-                    //Edge iv intersects a GNP face
-                    //Intersection is stored in P
-                    //Add P to the correspoding boundaries
-                    int b1 = boundaries[i][j];
-                    int b2 = boundaries[j][i];
-                    
-                    points_acc[b1].push_back(P);
-                    points_acc[b2].push_back(P);
-                }
-                
-                //Mark edge as visited (done twice because the adjacency matrix is symmetric)
-                visited[i][j] = 1;
-                visited[j][i] = 1;
-            }
+            //P is added to two boundaries because and edge is the intersection
+            //of two boundaries
+            points_acc[b1].push_back(P);
+            points_acc[b2].push_back(P);
+            //hout<<"P="<<P.str()<<" b1="<<b1<<" b2="<<b2<<" edge="<<wes[i].str()<<endl;
+            //hout<<"window_vertices["<<wes[i].v1<<"]="<<window_vertices[wes[i].v1].str()<<" window_vertices["<<wes[i].v2<<"]="<<window_vertices[wes[i].v2].str()<<endl;
         }
     }
     
     return 1;
 }
 //This function determines if an edge defined by two points intersects a GNP face
-int Cutoff_Wins::Does_edge_intersect_gnp(const Point_3D &V1, const Point_3D &V2, const GNP &gnp, Point_3D &P)
+int Cutoff_Wins::Does_edge_intersect_gnp(const Edge &edg, const Point_3D window_vertices[], const GNP &gnp, Point_3D &P)
 {
     //Adjacency matrix of GNP faces
     int adj_face[][4] = {
@@ -992,6 +939,10 @@ int Cutoff_Wins::Does_edge_intersect_gnp(const Point_3D &V1, const Point_3D &V2,
     //Vertices on each plane to calculate dot products
     int V[] = {0,4,0,0,1,2};
     
+    //Vertex numbers of the window edge
+    int V1 = edg.v1;
+    int V2 = edg.v2;
+    
     //Lambda (anonymous) function to calculate the lambda value of a line defined by two points
     auto calc_lambda = [](const Point_3D &N, const double &d, const Point_3D &P1, const Point_3D &P1P2){
         return ((-N.dot(P1) - d)/(N.dot(P1P2)));
@@ -1001,8 +952,9 @@ int Cutoff_Wins::Does_edge_intersect_gnp(const Point_3D &V1, const Point_3D &V2,
     for (int i = 0; i < 6; i++) {
         
         //Check wich side of GNP face i are the vertices of the edge
-        int v1_loc = gnp.faces[i].N.dot(V1 - V[i]) > Zero;
-        int v2_loc = gnp.faces[i].N.dot(V2 - V[i]) > Zero;
+        int v1_loc = gnp.faces[i].N.dot(window_vertices[V1] - gnp.vertices[V[i]]) > Zero;
+        int v2_loc = gnp.faces[i].N.dot(window_vertices[V2] - gnp.vertices[V[i]]) > Zero;
+        //hout<<"face i="<<i<<" v1_loc="<<v1_loc<<" v2_loc="<<v2_loc<<endl;
         
         //If signs are different, then edge V1V2 intersects the plane of GNP face i
         if (v2_loc != v1_loc) {
@@ -1012,11 +964,12 @@ int Cutoff_Wins::Does_edge_intersect_gnp(const Point_3D &V1, const Point_3D &V2,
             
             //First calculate the lambda of the line equation
             //Calculate the vector P1P2
-            Point_3D V1V2 = V2 - V1;
-            double lambda = calc_lambda(gnp.faces[i].N, gnp.faces[i].coef[3], V1, V1V2);
+            Point_3D V1V2 = window_vertices[V2] - window_vertices[V1];
+            double lambda = calc_lambda(gnp.faces[i].N, gnp.faces[i].coef[3], window_vertices[V1], V1V2);
             
             //Calculate the point at the plane of GNP face i
-            P = V1 + V1V2*lambda;
+            P = window_vertices[V1] + V1V2*lambda;
+            //hout<<"P.N+d="<<P.dot(gnp.faces[i].N)+gnp.faces[i].coef[3]<<endl;
             
             bool ignore_flag = false;
             
@@ -1027,7 +980,8 @@ int Cutoff_Wins::Does_edge_intersect_gnp(const Point_3D &V1, const Point_3D &V2,
                 int face_j = adj_face[i][j];
                 
                 //Check if P is "above" face_j
-                if (gnp.faces[face_j].N.dot(P - V[face_j]) > Zero) {
+                //hout<<"gnp.faces[face_j="<<face_j<<"].N.dot(P - V[face_j])="<<gnp.faces[face_j].N.dot(P - gnp.vertices[V[face_j]])<<endl;
+                if (gnp.faces[face_j].N.dot(P - gnp.vertices[V[face_j]]) > Zero) {
                     
                     //Set the ignore flag to true
                     ignore_flag = true;
@@ -1049,7 +1003,7 @@ int Cutoff_Wins::Does_edge_intersect_gnp(const Point_3D &V1, const Point_3D &V2,
     //If this part of the code is reached, then no intersections or invalid intersections were found
     return 0;
 }
-//This function finds is a sample vertex is inside a GNP and accumulates it into the corresponding boundaries
+//This function finds if a window vertex is inside a GNP and accumulates it into the corresponding boundaries
 int Cutoff_Wins::Find_window_vertex_inside_gnp(const cuboid &window_geo, const GNP &gnp, vector<vector<Point_3D> > &points_acc)
 {
     //Array of window vertices
@@ -1082,13 +1036,14 @@ int Cutoff_Wins::Find_window_vertex_inside_gnp(const cuboid &window_geo, const G
         //Check if vertex i is inside the GNP
         if (gnp.Is_point_inside_gnp(window_vertices[i])) {
             
-            //Add the window vertes to three boundaries
+            //Add the window vertex to three boundaries
             int b = boundaries[i][0];
             points_acc[b].push_back(window_vertices[i]);
             b = boundaries[i][1];
             points_acc[b].push_back(window_vertices[i]);
             b = boundaries[i][2];
             points_acc[b].push_back(window_vertices[i]);
+            //hout<<"window_v="<<window_vertices[i].str()<<" b1="<<boundaries[i][0]<<" b2="<<boundaries[i][1]<<" b3="<<boundaries[i][2]<<endl;
             
             //More than one vertex cannot be inside the GNP, so terminate the function
             return 1;

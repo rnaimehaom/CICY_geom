@@ -98,7 +98,7 @@ public:
     int Merge_labels(const int &root1, const int &root2, vector<int> &labels_labels);
     //-------------------------------------------------------
     //Visualization files
-    int Export_clusters(const int &percolation, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<GNP> &gnps);
+    int Export_clusters(const int &percolation, const vector<vector<int> > &clusters_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &clusters_gnp, const vector<GNP> &gnps);
     int Combine_into_one_cluster(const vector<vector<int> > &clusters, vector<int> &cluster);
     
     

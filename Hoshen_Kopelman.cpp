@@ -76,6 +76,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
         
         //If there are no CNTs, then the number of clusters is the same as n_total_labels
         //If CNTs were generated, n_clusters will be updated in Make_mixed_clusters
+        //hout<<"clusters_gnp.size()="<<clusters_gnp.size()<<" n_total_labels="<<n_total_labels<<endl;
         n_clusters = n_total_labels;
     }
     
@@ -111,7 +112,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     
     //Export visualization files for clusters if needed
     if (vis_flags.clusters) {
-        if (!Export_clusters(0, structure_cnt, points_cnt, gnps)) {
+        if (!Export_clusters(0, clusters_cnt_tmp, structure_cnt, points_cnt, clusters_gnp_tmp, gnps)) {
             hout<<"Error in Determine_clusters when calling Export_clusters (before percolation)"<<endl;
             return 0;
         }
@@ -127,7 +128,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     
     //Export visualization files for percolated clusters if needed
     if (vis_flags.percolated_clusters) {
-        if (!Export_clusters(1, structure_cnt, points_cnt, gnps)) {
+        if (!Export_clusters(1, clusters_cnt, structure_cnt, points_cnt, clusters_gnp, gnps)) {
             hout<<"Error in Determine_clusters when calling Export_clusters (after percolation)"<<endl;
             return 0;
         }
@@ -1772,7 +1773,7 @@ int Hoshen_Kopelman::Find_clusters_connected_to_boundaries(const vector<vector<i
         if (boundary_gnp.size()) {
             
             //Add the GNP clusters connected to boundary b1 to the set boundary1
-            //hout<<"Add_clusters_in_boundary GNP"<<endl;
+            //hout<<"Add_clusters_in_boundary dir="<<i<<" GNP boundary_gnp[b1="<<b1<<"].size="<<boundary_gnp[b1].size()<<endl;
             if (!Add_clusters_in_boundary(boundary_gnp[b1], labels_gnp, boundary1)) {
                 hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_clusters_in_boundary (GNP)"<<endl;
                 return 0;
@@ -1804,7 +1805,7 @@ int Hoshen_Kopelman::Find_clusters_connected_to_boundaries(const vector<vector<i
                 
                 //Find the GNP clusters connected to boundary b2 and add a percolated direction
                 //if percolation is determined
-                //hout<<"Add_percolated_direction GNP"<<endl;
+                //hout<<"Add_percolated_direction dir="<<i<<" GNP boundary_gnp[b2="<<b2<<"].size="<<boundary_gnp[b2].size()<<endl;
                 if (!Add_percolated_direction(i, boundary_gnp[b2], labels_gnp, boundary1, percolated_dirs)) {
                     hout<<"Error in Find_clusters_connected_to_boundaries when calling Add_percolated_direction (GNP)"<<endl;
                     return 0;
@@ -2166,7 +2167,7 @@ int Hoshen_Kopelman::Merge_labels(const int &root1, const int &root2, vector<int
 //Visualization files
 //
 //This function is used to export clusters before determining percolation
-int Hoshen_Kopelman::Export_clusters(const int &percolation, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<GNP> &gnps)
+int Hoshen_Kopelman::Export_clusters(const int &percolation, const vector<vector<int> > &clusters_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &clusters_gnp, const vector<GNP> &gnps)
 {
     //VTK export object
     VTK_Export VTK_E;
