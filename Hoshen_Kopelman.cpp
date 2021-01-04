@@ -670,8 +670,10 @@ int Hoshen_Kopelman::Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A,
             //Calculate the point in the Minkowski sum
             Point_3D Q = GNP_A.vertices[i] - GNP_B.vertices[j];
             
-            //Check if Q is part of the simplex closest to the origin
-            if (abs(Q.dot(N)) - distance <= Zero) {
+            //Check if Q is part of the simplex closest to the origin by checking if the
+            //cutoff is computationally zero, i.e., its absolute value is less than Zero
+            //hout<<"abs(Q.dot(N)) - distance="<<abs(abs(Q.dot(N)) - distance)<<endl;
+            if (abs(abs(Q.dot(N)) - distance) <= Zero) {
                 
                 //Q is at the same distance to the origin as the simplex in the Minkowski sum
                 //that is closest to the origin
