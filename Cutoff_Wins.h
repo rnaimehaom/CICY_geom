@@ -33,8 +33,6 @@ public:
     //GNP points located at a window boundary
     //boundary_gnp_pts[i] contains GNP points at boundary i
     vector<vector<long int> > boundary_gnp_pts;
-    //Total GNP points at boundaries
-    long int n_gnp_pts_b;
     
 
     

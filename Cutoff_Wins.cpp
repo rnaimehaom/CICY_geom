@@ -601,9 +601,6 @@ int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, c
         //so it is ignored and not included in the vector of gnps_inside
     }
     
-    //Get the number of GNP points at boundaries
-    n_gnp_pts_b = (long int)points_gnp.size();
-    
     return 1;
 }
 //This function determines if a GNP is partially inside an observation window or inside of it

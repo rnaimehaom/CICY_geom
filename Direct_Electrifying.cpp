@@ -267,30 +267,32 @@ int Direct_Electrifying::LM_matrix_for_gnps(const int &n_cluster, Hoshen_Kopelma
     
     //Add the mappings of all GNP points at a boundary with prescribed boundary conditions
     //into the class variable
+    //hout<<"Map_points_at_boundaries"<<endl;
     if (!Map_points_at_boundaries(HoKo->family[n_cluster], Cutwins->boundary_gnp_pts, LMM_gnps)) {
         hout<<"Error in LM_matrix_for_gnps when calling Map_points_at_boundaries"<<endl;
         return 0;
     }
     
     //Iterate over all GNPs in the cluster
-    for (int i = 0; i < (int)HoKo->clusters_cnt[n_cluster].size(); i++) {
+    for (int i = 0; i < (int)HoKo->clusters_gnp[n_cluster].size(); i++) {
         
         //Get current GNP
-        int GNP = HoKo->clusters_cnt[n_cluster][i];
+        int gnp_i = HoKo->clusters_gnp[n_cluster][i];
         
         //Iterate over all points in GNP
-        for (int j = 0; j < (int)structure_gnp[GNP].size(); j++) {
+        for (int j = 0; j < (int)structure_gnp[gnp_i].size(); j++) {
             
             //Get current point number
-            long int P = structure_gnp[GNP][j];
+            long int P = structure_gnp[gnp_i][j];
             
-            //Check it is not a boundary node
-            if (P >= Cutwins->n_gnp_pts_b) {
+            //Check it is not a boundary node with prescribed conditions
+            if (LMM_gnps.find(P) == LMM_gnps.end()) {
                 
                 //P is not a boundary point
                 
                 //Add the mapping of the current GNP point to a node number
                 LMM_gnps[P] = global_nodes;
+                //hout<<"LMM_gnps[P="<<P<<"] = "<<global_nodes<<endl;
                 
                 //Update the next available node
                 global_nodes++;
@@ -833,6 +835,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
         
         //current hybrid particle
         int gnp_i = cluster_gnp[i];
+        //hout<<endl<<"gnp_i="<<gnp_i<<endl;
         
         //Check if the triangulation needs to be performed
         //Triangulation is performed when calculating the backbone (R_flag == 0)
@@ -844,7 +847,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
                 hout << "Error in Fill_2d_matrices_gnp when calling delaunay->Generate_3d_trangulation" << endl;
                 return 0;
             }
-            //hout << "Triangulation " << i << ", " << structure_gnp[GNP].size() << " points in GNP " << GNP<<", " << gnps[GNP].triangulation.size() << " edges"<< endl;
+            //hout << "Triangulation " << i << ", " << structure_gnp[gnp_i].size() << " points in GNP " << gnp_i<<", " << gnps[gnp_i].triangulation.size() << " edges"<< endl;
         }
         
         //Add elements from the triangulation
@@ -857,7 +860,9 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
             
             //Get the node numbers
             long int node1 = LMM_gnps.at(v1);
+            //hout<<"v1="<<v1<<" node1="<<node1<<endl;
             long int node2 = LMM_gnps.at(v2);
+            //hout<<"v2="<<v2<<" node2="<<node2<<endl;
             
             //Initialize resistor with unit resistance
             double Re_inv = 1.0;
@@ -910,7 +915,6 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
                 hout << "Error in Fill_2d_matrices_gnp when calling Add_elements_to_2d_sparse_matrix" << endl;
                 return 0;
             }
-            //hout << "flag1="<<hybrid_particles[hyb].triangulation_flags[j][0]<<" P1="<<P1<<" node1="<<node1<<" flag2="<<hybrid_particles[hyb].triangulation_flags[j][1]<<" P2="<<P2<<" node2="<<node2<<" Re="<<Re<<endl;
         }
     }
     //hout << "Triangulation done" << endl;
