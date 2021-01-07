@@ -20,6 +20,9 @@ class Electrical_analysis
 {
 public:
     
+    //Constructor
+    Electrical_analysis(){};
+    
     int Perform_analysis_on_clusters(const cuboid &window, const Simu_para &simu_param, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps);
     int Electrical_resistance_along_each_percolated_direction (const int &R_flag, const int &n_cluster, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const Simu_para &simu_param, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<vector<double> > &paralel_resistors);
     int Vector_of_directions(const int &family, const Simu_para &simu_param, vector<int> &directions);
@@ -27,7 +30,7 @@ public:
     int Get_boundaries_from_direction(const int &direction, int &b1, int &b2);
     int Currents_through_boundary_cnts(const Electric_para &electric_param, Direct_Electrifying *DEA, const vector<Point_3D> &points_cnt, const vector<double> &radii, vector<set<long int> > &elements, const vector<int> &boundary_cnt, double &I);
     int Current_of_element_in_boundary(const long int &P1, const long int &P2, const double &radius, Direct_Electrifying *DEA, const Electric_para &electric_param, const vector<Point_3D> &points_cnt, double &I);
-    int Currents_through_boundary_gnps(const int &node, const Electric_para &electric_param, Direct_Electrifying *DEA, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const vector<int> &boundary_gnp, double &I);
+    int Currents_through_boundary_gnps(const long int &node, const Electric_para &electric_param, Direct_Electrifying *DEA, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const vector<int> &boundary_gnp, double &I);
     int Calculate_percolated_families_fractions(const int &cnt_gnp_flag, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<GNP> &gnps, Hoshen_Kopelman *HoKo, Backbone_Network *BN);
     int Calculate_volume_of_non_percolated_cnts(const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &isolated_cnts, Backbone_Network *BN, double &np_cnts);
     int Calculate_volume_of_non_percolated_gnps(const vector<GNP> &gnps, const vector<vector<int> > &isolated_gnps, double &np_gnps);

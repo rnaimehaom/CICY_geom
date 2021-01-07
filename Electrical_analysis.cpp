@@ -487,7 +487,7 @@ int Electrical_analysis::Current_of_element_in_boundary(const long int &P1, cons
     return 1;
 }
 //This function calculates the current though GNPs at a given boundary
-int Electrical_analysis::Currents_through_boundary_gnps(const int &node, const Electric_para &electric_param, Direct_Electrifying *DEA, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const vector<int> &boundary_gnp, double &I)
+int Electrical_analysis::Currents_through_boundary_gnps(const long int &node, const Electric_para &electric_param, Direct_Electrifying *DEA, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const vector<int> &boundary_gnp, double &I)
 {
     //Iterate over the GNPs at the boundary
     for (int i = 0; i < (int)boundary_gnp.size(); i++) {
@@ -510,6 +510,8 @@ int Electrical_analysis::Currents_through_boundary_gnps(const int &node, const E
                 //Get the nodes of the vertices of the triangulation
                 long int nodeA = DEA->LMM_gnps.at(v1);
                 long int nodeB = DEA->LMM_gnps.at(v2);
+                //hout<<"nodeA="<<nodeA<<" v1="<<v1<<" P(v1)="<<points_gnp[v1].str()<<endl;
+                //hout<<"nodeB="<<nodeB<<" v2="<<v2<<" P(v2)="<<points_gnp[v2].str()<<endl;
                 
                 //Check if any node is at a boundary
                 if (nodeA <= 1 || nodeB <= 1) {
@@ -521,8 +523,9 @@ int Electrical_analysis::Currents_through_boundary_gnps(const int &node, const E
                     }
                     
                     //Set node1 to be the node at boundary b
-                    long int node1 = (nodeA == (long int)node)? nodeA: nodeB;
-                    long int node2 = (nodeA == (long int)node)? nodeB: nodeA;
+                    long int node1 = (nodeA == node)? nodeA: nodeB;
+                    long int node2 = (nodeA == node)? nodeB: nodeA;
+                    //hout<<"node1="<<node1<<" node2="<<node2<<endl;
                     
                     //Get the radii for calculating the resistance of the triangulation edge
                     double rad1 = (DEA->points_cnt_rad.find(v1) == DEA->points_cnt_rad.end())? gnps[GNPi].t/2: DEA->points_cnt_rad.at(v1);
@@ -539,9 +542,11 @@ int Electrical_analysis::Currents_through_boundary_gnps(const int &node, const E
                         hout<<"Error in Currents_through_boundary_gnps when calling DEA->Calculate_resistance_gnp"<<endl;
                         return 0;
                     }
+                    //hout<<"V="<<DEA->voltages[node2]<<" - "<<DEA->voltages[node1]<<", Re="<<Re<<endl;
                     
                     //Add calcualted current
                     I = I + V/Re;
+                    //hout<<"I="<<I<<endl;
                 }
             }
         }
