@@ -58,8 +58,10 @@ public:
     void Two_overlapping_points(const vector<double> &cutoffs, const vector<Point_3D> &affected_points, Point_3D &point)const;
     void Three_or_more_overlapping_points(const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, Point_3D &point)const;
     int Check_segment_orientation(const Point_3D &point, const vector<Point_3D> &cnt_new)const;
+    int Get_direction_and_point(const Nanotube_Geo &nanotube_geo, MathMatrix &multiplier, Point_3D &cnt_poi, mt19937 &engine_theta, mt19937 &engine_phi, uniform_real_distribution<double> &dist)const;
     //Calculate the effective portion (length) which falls into the given region defined by a cuboid
     double Length_inside_sample(const Geom_sample &geom_sample, const Point_3D &prev_point, const Point_3D &new_point, const bool &is_prev_inside_sample, bool &is_new_inside_sample)const;
+    int Store_or_ignore_new_cnt(const Geom_sample &geom_sample, const int &penetration_model_flag, const int &points_in, const double &cnt_len, const double &cnt_rad, const double &cnt_cross_area, const vector<Point_3D> &new_cnt, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius, const int n_subregions[], vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coordinates, double &vol_sum, int &cnt_ignore_count)const;
     void Add_cnt_point_to_overlapping_regions(const Geom_sample &geom_sample, Point_3D point, long int global_num, const int n_subregions[], vector<vector<long int> > &sectioned_domain)const;
     int Calculate_t(int a, int b, int c, int sx, int sy)const;
     int Transform_points_cnts(const Geom_sample &geom_sample, const Nanotube_Geo &nano_geo, vector<vector<Point_3D> > &cnts_points, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures)const;

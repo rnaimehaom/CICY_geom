@@ -207,27 +207,27 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         
         //---------------------------------------------------------------------------
         //Randomly generate a seed (initial point) of a CNT in the extended domain
-        Point_3D cnt_poi;
+        Point_3D new_point;
         //hout<<"Get_seed_point_mt"<<endl;
-        if(Get_point_in_cuboid_mt(geom_sample.ex_dom_cnt, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
+        if(Get_point_in_cuboid_mt(geom_sample.ex_dom_cnt, new_point, engine_x, engine_y, engine_z, dist)==0) return 0;
         
         //Check overlapping of the intial point
         int counter = 1;
         //hout<<"Check_penetration (while)"<<endl;
-        while (simu_para.penetration_model_flag && !Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
-            if(Get_point_in_cuboid_mt(geom_sample.ex_dom_cnt, cnt_poi, engine_x, engine_y, engine_z, dist)==0) return 0;
+        while (simu_para.penetration_model_flag && !Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, new_point)) {
+            if(Get_point_in_cuboid_mt(geom_sample.ex_dom_cnt, new_point, engine_x, engine_y, engine_z, dist)==0) return 0;
             cnt_seed_count++;                    //record the number of seed generations
             //hout << "Seed deleted" << endl;
             if (counter == MAX_ATTEMPTS) {
                 hout << "Too many attempts to resolve overlapping of an intial CNT point (" << counter << " attempts). ";
-                hout << cnt_poi.x << ' ' << cnt_poi.y << ' ' << cnt_poi.z << endl;
+                hout << new_point.x << ' ' << new_point.y << ' ' << new_point.z << endl;
                 return 0;
             }
             counter ++;
         }
         
         //Add the CNT seed to the current CNT vector
-        new_cnt.push_back(cnt_poi);
+        new_cnt.push_back(new_point);
         
         //---------------------------------------------------------------------------
         //Count the numer of CNT seeds generated
@@ -255,29 +255,21 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         //Start generation of a CNT siven the generated seed
         for(int i=0; i<step_num; i++)
         {
-            //Randomly generate a direction in the spherical coordinates
-            //To have the positive Z-axis to be a central axis
-            //Then, the radial angle, theta, obeys a normal distribution (theta \in fabs[(-omega,+omega)]) and the zonal angle, phi, obeys a uniform distribution (phi \in (0,2PI))
-            double cnt_theta = 0, cnt_phi = 0;
-            if(Get_normal_direction_mt(nanotube_geo.angle_max, cnt_theta, cnt_phi, engine_theta, engine_phi, dist)==0) return 0;
-            
-            //Calculate the rotation matrix for current segment
-            multiplier = multiplier*Get_transformation_matrix(cnt_theta, cnt_phi);
-            
-            //hout << "i="<<i<<"<"<<step_num<<endl;
-            cnt_poi = cnt_poi + Get_new_point(multiplier, nanotube_geo.step_length);
-            //1 means that point is not the intial point
-            cnt_poi.flag = 1;
+            //Generates a new CNT point such that the new CNT segment has a random orientation
+            if (!Get_direction_and_point(nanotube_geo, multiplier, new_point, engine_theta, engine_phi, dist)) {
+                hout<<"Error in generating a new CNT point (not a seed) at iteration i="<<i<<endl;
+                return 0;
+            }
             
             //Check if the new point, cnt_poi, is inside the extended domain
-            if(Is_point_inside_cuboid(geom_sample.ex_dom_cnt, cnt_poi))
+            if(Is_point_inside_cuboid(geom_sample.ex_dom_cnt, new_point))
             {
                 //If the point is inside the extended domain, then check for penetration if non-penetrating
                 //model is used, or just add it if penetrating model is used
                 
                 //Check for penetration
                 //hout << "Check penetration ";
-                if (!simu_para.penetration_model_flag || Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, cnt_poi)) {
+                if (!simu_para.penetration_model_flag || Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, new_point)) {
                     
                     //---------------------------------------------------------------------------
                     //If the penetrating model is used or if the new point, cnt_poi, was placed
@@ -286,7 +278,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                     
                     //Calculate the segment length inside the sample and add it to the total CNT length
                     bool is_new_inside_sample;
-                    cnt_len = cnt_len + Length_inside_sample(geom_sample, new_cnt.back(), cnt_poi, is_prev_in_sample, is_new_inside_sample);
+                    cnt_len = cnt_len + Length_inside_sample(geom_sample, new_cnt.back(), new_point, is_prev_in_sample, is_new_inside_sample);
                     
                     //If the new point, cnt_poi, is inside the sample, then increase the number
                     //of points inside the sample of the new CNT
@@ -299,7 +291,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                     is_prev_in_sample = is_new_inside_sample;
                     
                     //Add the new point to the current CNT
-                    new_cnt.push_back(cnt_poi);
+                    new_cnt.push_back(new_point);
                     
                     //---------------------------------------------------------------------------
                     //Check if the target volume fraction has been reached
@@ -339,51 +331,12 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         }
         
         //---------------------------------------------------------------------------
-        //Store the CNT points
-        //hout << "Store CNT ";
-        //Check that is a valid CNT
-        //If size is 0, the CNT was rejected
-        //If size is 1, then only the CNT seed was generated in a valid position but the second point
-        //could not be placed in a valid position (i.e., without interpenetrating another CNT)
-        if(new_cnt.size() >= 2 && points_in)
-        {
-            //Update the volume and weigth of generated CNTs
-            vol_sum += cnt_len*cnt_cross_area;
-            
-            //If the new_cnt vector has at least two points, then it can be added to the rest of the points
-            cnts_points.push_back(new_cnt);
-            
-            //Add the radius to the vector of radii
-            cnts_radius.push_back(cnt_rad);
-            
-            //Perform these operations when the non-overlapping model is used
-            if (simu_para.penetration_model_flag) {
-                
-                //Variable needed for updating global_coordinates
-                vector<int> empty;
-                
-                int CNT = (int)cnts_points.size()-1;
-                
-                //Scan all points in the CNT that was just generated
-                for(int ii=0; ii<(int)new_cnt.size(); ii++)
-                {
-                    
-                    //Add global coordinate
-                    global_coordinates.push_back(empty);
-                    global_coordinates.back().push_back(CNT);
-                    global_coordinates.back().push_back(ii);
-                    //Add point to an overlapping region in the vector sectioned_domain
-                    Add_cnt_point_to_overlapping_regions(geom_sample, new_cnt[ii], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
-                    
-                }
-            }
+        //Store or ignore the CNT points
+        //hout<<"Store_or_ignore_new_cnt"<<endl;
+        if (!Store_or_ignore_new_cnt(geom_sample, simu_para.penetration_model_flag, points_in, cnt_len, cnt_rad, cnt_cross_area, new_cnt, cnts_points, cnts_radius, n_subregions, sectioned_domain, global_coordinates, vol_sum, cnt_ignore_count)) {
+            hout<<"Error when storing or ignoring a new CNT"<<endl;
+            return 0;
         }
-        else if (!points_in){
-            
-            //The CNT can be ignored as it is completely outside the sample
-            cnt_ignore_count++;
-        }
-        //hout << "done"<<endl;
         
         //Check progress
         if (vol_sum > vol_completed*nanotube_geo.volume) {
@@ -701,45 +654,66 @@ void Generate_Network::One_overlapping_point(const vector<double> &cutoffs, cons
     //When there is overlapping with one point only, then this is the simplest and easiest case
     //Just move the point in the direction form P_old to P_new a distance cutoff from P_old
     
-    //Get the penetrating point. Its coordinates are in the first (and only) element of affected_points
-    Point_3D P = affected_points[0];
-    //Calculate direction unit vector. distances[0] already has the lenght of the vector form point to P
-    Point_3D direction = (point - P)/distances[0];
-    //So the new point is P_old + d*n. d is the cutoff and n the unit vector
-    point = P + direction*(cutoffs[0]+Zero); //The Zero is to avoid machine precision errors. Without it, when comparing
-    //the new point with the other points in the same region, the program was judging them to be below the cutoff
-    //for the van der Waals distance. Even though they were in the limit. After adding this Zero that issue
-    //was eliminated
+    //Check that point is not the same as the overlapping point
+    if (distances[0] < Zero) {
+        
+        //The points are the same or too close to be at the same location
+        
+        //Create a random direction
+        Point_3D rand_dir = Point_3D( (double)(rand()%200 - 99), (double)(rand()%200 - 99), (double)(rand()%200 - 99));
+        rand_dir.make_unit();
+        
+        //Move it into a random direction
+        point = affected_points[0] + rand_dir*(cutoffs[0]+Zero);
+    }
+    //Proceed as usual
+    else {
+        
+        //Calculate direction unit vector
+        //distances[0] already has the lenght of the vector form point to P
+        Point_3D direction = (point - affected_points[0])/distances[0];
+        
+        //So the new point is P_old + d*n. d is the cutoff and n the unit vector
+        //The Zero is to avoid machine precision errors. Without it, when comparing
+        //the new point with the other points in the same region, the program was judging
+        //them to be below the cutoff for the van der Waals distance. Even though they were
+        //in the limit. After adding this Zero that issue was eliminated
+        point = affected_points[0] + direction*(cutoffs[0]+Zero);
+    }
 }
 //---------------------------------------------------------------------------
 //This function finds the new location for an overlapping point when it overlaps two points
 void Generate_Network::Two_overlapping_points(const vector<double> &cutoffs, const vector<Point_3D> &affected_points, Point_3D &point)const
 {
-    //Point variables
-    Point_3D P, Q, R, P1, P2;
-    //distance variables
-    double a, b, c, d;
-    
     //Get the penetrating points.
-    P1 = affected_points[0];
+    Point_3D P1 = affected_points[0];
     //hout << "(" << affected_points[0].x << ", " << affected_points[0].y << ", " << affected_points[0].z << ")." << endl;
-    P2 = affected_points[1];
+    Point_3D P2 = affected_points[1];
     //hout << "(" << affected_points[1].x << ", " << affected_points[1].y << ", " << affected_points[1].z << ")." << endl;
     //Calculate P vector
-    P = P2 - P1;
+    Point_3D P = P2 - P1;
     //hout<<"P="<<P.str()<<endl;
     //Calculate Q vector
-    Q = point - P1;
+    Point_3D Q = point - P1;
     //hout<<"Q="<<Q.str()<<endl;
+    
+    //Check that point and P1 are not the same point
+    if (Q.length2() < Zero) {
+        
+        //Go to the case of one overlapping point with P2
+        One_overlapping_point(vector<double> (1, cutoffs[1]), vector<double>(1, point.distance_to(P2)), vector<Point_3D>(1,affected_points[1]), point);
+    }
+    
     //Calculate normal vector PxQ
-    R = (P.cross(Q)).cross(P);
+    Point_3D R = (P.cross(Q)).cross(P);
     //hout<<"R="<<R.str()<<endl;
+    
     //Sides of the triangle
-    a = cutoffs[0];
-    b = cutoffs[1];
-    c = P1.distance_to(P2);
+    double a = cutoffs[0];
+    double b = cutoffs[1];
+    double c = P1.distance_to(P2);
     //Distance from P1 to M
-    d = (b*b - a*a - c*c)/(-2*c);
+    double d = (b*b - a*a - c*c)/(-2*c);
     //hout<<"a="<<a<<" b="<<b<<" c="<<c<<" d="<<d<<endl;
     //Make P a unit vector
     P = P/sqrt(P.dot(P));
@@ -802,12 +776,12 @@ void Generate_Network::Three_or_more_overlapping_points(const vector<double> &cu
     }
     
     //Generate the necessary vectors for the case of two overlapping points
-    vector<Point_3D> two_affected_points;
-    two_affected_points.push_back(affected_points[i1]);
-    two_affected_points.push_back(affected_points[i2]);
-    vector<double> two_cutoffs;
-    two_cutoffs.push_back(cutoffs[i1]);
-    two_cutoffs.push_back(cutoffs[i2]);
+    vector<Point_3D> two_affected_points(2);
+    two_affected_points[0] = affected_points[i1];
+    two_affected_points[1] = affected_points[i2];
+    vector<double> two_cutoffs(2);
+    two_cutoffs[0] = cutoffs[i1];
+    two_cutoffs[1] = cutoffs[i2];
     
     //Now, call the function that moves a point that overlaps two points
     Two_overlapping_points(two_cutoffs, two_affected_points, point);
@@ -856,6 +830,28 @@ int Generate_Network::Check_segment_orientation(const Point_3D &point, const vec
         return 1;
     }
 }
+//This function generates the new point of a CNT, such that the new segment has a random orientation
+int Generate_Network::Get_direction_and_point(const Nanotube_Geo &nanotube_geo, MathMatrix &multiplier, Point_3D &cnt_poi, mt19937 &engine_theta, mt19937 &engine_phi, uniform_real_distribution<double> &dist)const
+{
+    //Randomly generate a direction in the spherical coordinates
+    //To have the positive Z-axis to be a central axis
+    //Then, the radial angle, theta, obeys a normal distribution (theta \in fabs[(-omega,+omega)]) and the zonal angle, phi, obeys a uniform distribution (phi \in (0,2PI))
+    double cnt_theta = 0, cnt_phi = 0;
+    if(!Get_normal_direction_mt(nanotube_geo.angle_max, cnt_theta, cnt_phi, engine_theta, engine_phi, dist)){
+        hout<<"Error in Get_direction_and_point when calling Get_normal_direction_mt"<<endl;
+        return 0;
+    }
+    
+    //Calculate the rotation matrix for current segment
+    multiplier = multiplier*Get_transformation_matrix(cnt_theta, cnt_phi);
+    
+    //hout << "i="<<i<<"<"<<step_num<<endl;
+    cnt_poi = cnt_poi + Get_new_point(multiplier, nanotube_geo.step_length);
+    //1 means that point is not the intial point
+    cnt_poi.flag = 1;
+    
+    return 1;
+}
 //---------------------------------------------------------------------------
 //Calculate the effective portion (length) which falls into the given region defined by a cuboid
 double Generate_Network::Length_inside_sample(const Geom_sample &geom_sample, const Point_3D &prev_point, const Point_3D &new_point, const bool &is_prev_inside_sample, bool &is_new_inside_sample)const
@@ -898,6 +894,55 @@ double Generate_Network::Length_inside_sample(const Geom_sample &geom_sample, co
             return 0.0;
         }
     }
+}
+//This function checks if the newly generated CNT needs to be stored or ignore
+int Generate_Network::Store_or_ignore_new_cnt(const Geom_sample &geom_sample, const int &penetration_model_flag, const int &points_in, const double &cnt_len, const double &cnt_rad, const double &cnt_cross_area, const vector<Point_3D> &new_cnt, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius, const int n_subregions[], vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coordinates, double &vol_sum, int &cnt_ignore_count)const
+{
+    //Store the CNT points
+    //hout << "Store CNT ";
+    //Check that is a valid CNT
+    //If size is 0, the CNT was rejected
+    //If size is 1, then only the CNT seed was generated in a valid position but the second point
+    //could not be placed in a valid position (i.e., without interpenetrating another CNT)
+    if(new_cnt.size() >= 2 && points_in) {
+        //Update the volume and weigth of generated CNTs
+        vol_sum += cnt_len*cnt_cross_area;
+        
+        //If the new_cnt vector has at least two points, then it can be added to the rest of the points
+        cnts_points.push_back(new_cnt);
+        
+        //Add the radius to the vector of radii
+        cnts_radius.push_back(cnt_rad);
+        
+        //Perform these operations when the non-overlapping model is used
+        if (penetration_model_flag) {
+            
+            //Variable needed for updating global_coordinates
+            vector<int> empty(2);
+            
+            int CNT = (int)cnts_points.size()-1;
+            
+            //Scan all points in the CNT that was just generated
+            for(int ii = 0; ii < (int)new_cnt.size(); ii++) {
+                
+                //Add global coordinate
+                empty[0] = CNT;
+                empty[1] = ii;
+                global_coordinates.push_back(empty);
+                //Add point to an overlapping region in the vector sectioned_domain
+                Add_cnt_point_to_overlapping_regions(geom_sample, new_cnt[ii], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
+                
+            }
+        }
+    }
+    else if (!points_in){
+        
+        //The CNT can be ignored as it is completely outside the sample
+        cnt_ignore_count++;
+    }
+    //hout << "done"<<endl;
+    
+    return 1;
 }
 //---------------------------------------------------------------------------
 //This function adds a point to a region so penetration can be checked
@@ -2630,20 +2675,11 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
         //Start generation of a CNT siven the generated seed
         for(int i = 0; i < step_num; i++)
         {
-            //Randomly generate a direction in the spherical coordinates
-            //To have the positive Z-axis to be a central axis
-            //Then, the radial angle, theta, obeys a normal distribution (theta \in fabs[(-omega,+omega)]) and the zonal angle, phi, obeys a uniform distribution (phi \in (0,2PI))
-            double cnt_theta = 0, cnt_phi = 0;
-            //hout<<"Get_normal_direction_mt"<<endl;
-            if(Get_normal_direction_mt(nanotube_geo.angle_max, cnt_theta, cnt_phi, engine_theta, engine_phi, dist)==0) return 0;
-            
-            //Calculate the rotation matrix for current segment
-            multiplier = multiplier*Get_transformation_matrix(cnt_theta, cnt_phi);
-            
-            //hout << "i="<<i<<"<"<<step_num<<endl;
-            new_point = new_point + Get_new_point(multiplier, nanotube_geo.step_length);
-            //1 means that point is not the intial point
-            new_point.flag = 1;
+            //Generates a new CNT point such that the new CNT segment has a random orientation
+            if (!Get_direction_and_point(nanotube_geo, multiplier, new_point, engine_theta, engine_phi, dist)) {
+                hout<<"Error in generating a new CNT point (not a seed) at iteration i="<<i<<endl;
+                return 0;
+            }
             
             //Check if the new point, cnt_poi, is inside the extended domain
             if(Is_point_inside_cuboid(geom_sample.ex_dom_cnt, new_point))
@@ -2741,52 +2777,12 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
         }
         
         //---------------------------------------------------------------------------
-        //Store the CNT points
-        //hout << "Store CNT ";
-        //Check that is a valid CNT
-        //If size is 0, the CNT was rejected
-        //If size is 1, then only the CNT seed was generated in a valid position but the second point
-        //could not be placed in a valid position (i.e., without interpenetrating another CNT)
-        if(new_cnt.size() >= 2 && points_in)
-        {
-            //Update the volume and weigth of generated CNTs
-            vol_sum += cnt_len*cnt_cross_area;
-            
-            //If the new_cnt vector has at least two points, then it can be added to the rest of the points
-            cnts_points.push_back(new_cnt);
-            
-            //Add the radius to the vector of radii
-            cnts_radius.push_back(cnt_rad);
-            
-            //Perform these operations when the non-overlapping model is used
-            if (simu_para.penetration_model_flag) {
-                
-                //Variable needed for updating global_coordinates
-                vector<int> empty;
-                
-                int CNT = (int)cnts_points.size()-1;
-                
-                //Scan all points in the CNT that was just generated
-                for(int ii=0; ii<(int)new_cnt.size(); ii++)
-                {
-                    
-                    //Add global coordinate
-                    global_coordinates.push_back(empty);
-                    global_coordinates.back().push_back(CNT);
-                    global_coordinates.back().push_back(ii);
-                    //Add point to an overlapping region in the vector sectioned_domain
-                    //hout<<"Add_cnt_point_to_overlapping_regions"<<endl;
-                    Add_cnt_point_to_overlapping_regions(geom_sample, new_cnt[ii], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
-                    
-                }
-            }
+        //Store or ignore the CNT points
+        //hout<<"Store_or_ignore_new_cnt"<<endl;
+        if (!Store_or_ignore_new_cnt(geom_sample, simu_para.penetration_model_flag, points_in, cnt_len, cnt_rad, cnt_cross_area, new_cnt, cnts_points, cnts_radius, n_subregions, sectioned_domain, global_coordinates, vol_sum, cnt_ignore_count)) {
+            hout<<"Error when storing or ignoring a new CNT"<<endl;
+            return 0;
         }
-        else if (!points_in){
-            
-            //The CNT can be ignored as it is completely outside the sample
-            cnt_ignore_count++;
-        }
-        //hout << "done"<<endl;
         
         //Check progress
         if (vol_sum > vol_completed*nanotube_geo.volume) {
