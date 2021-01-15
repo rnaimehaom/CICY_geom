@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Please input the name of application case
+%Please input the application name
 Application
 3D_Electrical_Network
 %
@@ -36,8 +36,8 @@ Create_Network
 %Specify the content of nanoparticles.
 %If 'Read_Network' was selected, this has to be deleted/commented
 %Define how content is measured (volume or weight fraction):
-%    vol: for volume fraction, especify the value after 'vol', for example: vol 0.01
-%    wt: for weight fraction, especify the value after 'wt', for example: wt 0.005
+%    vol: for volume fraction, specify the value after 'vol', for example: vol 0.01
+%    wt: for weight fraction, specify the value after 'wt', for example: wt 0.005
 %For mixed or hybrid particles, in the next line define the CNT/GNP mass ratio,
 %volume ratio, or CNT density on GNPs
 %    mass_ratio: CNT/GNP mass ratio, for example: mass_ratio 1.0
@@ -208,7 +208,7 @@ constant 1e7
 %--------------------------------End
 %========================================================================================================
 %Define flags for visualization files
-Visualization_flags
+Visualization_Flags
 %--------------------------------Start
 %
 %Flag to export generated nanoparticles:
@@ -242,7 +242,7 @@ Visualization_flags
 %If only CNTs or only GNPs are generated, then this flag is ignored
 0
 %Flag to export triangulations
-% 0: do not export Tecplot files
+% 0: do not export triangulations
 % 1: export triangulations
 0
 %-------------------------------- End

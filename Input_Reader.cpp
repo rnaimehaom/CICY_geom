@@ -45,7 +45,7 @@ int Input::Read_input_file(ifstream &infile)
             else if(str_temp=="Electrical_Parameters") {
                 if(Read_electrical_parameters(electric_para, infile)==0) return 0;
             }
-            else if(str_temp=="Visualization_flags") {
+            else if(str_temp=="Visualization_Flags") {
                 if(Read_visualization_flags(vis_flags, infile)==0) return 0;
             }
             else
@@ -81,7 +81,7 @@ int Input::Read_input_file(ifstream &infile)
         Warning_message("Electrical_Parameters");
     }
     if(!vis_flags.mark) {
-        Warning_message("Visualization_flags");
+        Warning_message("Visualization_Flags");
     }
     
     /*
