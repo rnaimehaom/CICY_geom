@@ -107,7 +107,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Hoshen-Kopelman algorithm
         Hoshen_Kopelman *HoKo = new Hoshen_Kopelman;
         ct0 = time(NULL);
-        if (!HoKo->Determine_clusters_and_percolation(Init->simu_para, Init->cutoff_dist, Init->vis_flags, Cutwins->cnts_inside, Contacts->sectioned_domain_cnts, structure_cnt, points_cnt, radii, Cutwins->boundary_cnt, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, gnps, Cutwins->boundary_gnp, structure_gnp, points_gnp)) {
+        if (!HoKo->Determine_clusters_and_percolation(i, Init->simu_para, Init->cutoff_dist, Init->vis_flags, Cutwins->cnts_inside, Contacts->sectioned_domain_cnts, structure_cnt, points_cnt, radii, Cutwins->boundary_cnt, Cutwins->gnps_inside, Contacts->sectioned_domain_gnps, gnps, Cutwins->boundary_gnp, structure_gnp, points_gnp)) {
             hout << "Error when finding clusters and determining percolation" << endl;
             return 0;
         }
@@ -119,7 +119,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         
         //Loop over the different clusters so that the direct electrifying algorithm is aplied on each cluster
         Electrical_analysis *EA = new Electrical_analysis;
-        if (!EA->Perform_analysis_on_clusters(window_geo, Init->simu_para, Init->electric_para, Init->cutoff_dist, Init->vis_flags, HoKo, Cutwins, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps)) {
+        if (!EA->Perform_analysis_on_clusters(i, window_geo, Init->simu_para, Init->electric_para, Init->cutoff_dist, Init->vis_flags, HoKo, Cutwins, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps)) {
             hout << "Error when performing electrical analysis" << endl;
             return 0;
         }

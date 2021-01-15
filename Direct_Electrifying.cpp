@@ -8,7 +8,7 @@
 #include "Direct_Electrifying.h"
 
 //Calculate the voltage values at contact points and endpoints
-int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &R_flag, const Electric_para &electric_param, const Cutoff_dist &cutoffs, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps)
+int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &R_flag, const Simu_para &simu_para, const Electric_para &electric_param, const Cutoff_dist &cutoffs, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps)
 {
     //First we need to prepare the matrices that the direct electrifying needs.
     //The number of reserved nodes is calculated.
@@ -64,7 +64,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     
     //hout << "Solve_DEA_equations_CG_SSS"<<endl;
     //This is where the actual direct electrifying algorithm (DEA) takes place
-    if (!Solve_DEA_equations_CG_SSS(global_nodes, reserved_nodes, col_ind, row_ptr, values, diagonal, R, VEF)) {
+    if (!Solve_DEA_equations_CG_SSS(global_nodes, reserved_nodes, simu_para.tolerance, col_ind, row_ptr, values, diagonal, R, VEF)) {
         hout<<"Error in Compute_voltage_field when calling Solve_DEA_equations_CG_SSS"<<endl;
         return 0;
     }
@@ -1158,7 +1158,7 @@ int Direct_Electrifying::Get_voltage_vector(const long int &reserved_nodes, cons
 }
 //This function solves the equation of the electric circuit using the
 //Direct Electrifing Algorithm (DEA) and the Conjugate-Gradrient
-int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const long int &reserved_nodes, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &R, vector<double> &VEF)
+int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const long int &reserved_nodes, const double &tolerance, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &R, vector<double> &VEF)
 {
     //Preconditioner
     vector<double> M_inv(diagonal.size(),0.0);
@@ -1191,8 +1191,8 @@ int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const
         hout<<"Error in Solve_DEA_equations_CG_SSS when calling V_dot_v (0)"<<endl;
         return 0;
     }
-    double R0 = 1.0E-10*sqrt(R_dot_R);
-    //hout << "R0 = " << R0 << endl;
+    double R0 = tolerance*sqrt(R_dot_R);
+    //hout<<"R0="<<R0<<" tolerance="<<tolerance<< endl;
     
     //Preconditioned
     for (k = 1; k <= max_iter; k++) {

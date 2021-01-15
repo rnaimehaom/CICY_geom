@@ -63,6 +63,12 @@ public:
     //---------------------------------------------------------------------------
     //Mixed
     int Export_hybrid_material(const vector<Point_3D> &points, const vector<vector<long int> > &structure, const vector<GNP> &gnps, const string &filename)const;
+    //---------------------------------------------------------------------------
+    //triangulations
+    int Export_triangulation(const vector<Point_3D> &points, const vector<EdgeL> &triangulation, const string &filename)const;
+    int Add_points_from_triangulation_edges(const vector<Point_3D> &points, const vector<EdgeL> &triangulation, ofstream &otec)const;
+    int Add_offsets_for_trinagulation(const vector<EdgeL> &triangulation, ofstream &otec)const;
+    int Add_connectivity_for_trinagulation(const vector<EdgeL> &triangulation, ofstream &otec)const;
 };
 
 #endif /* VTK_Export_hpp */

@@ -1058,3 +1058,148 @@ int VTK_Export::Export_hybrid_material(const vector<Point_3D> &points, const vec
     
     return 1;
 }
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//Triangulations
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+int VTK_Export::Export_triangulation(const vector<Point_3D> &points, const vector<EdgeL> &triangulation, const string &filename)const
+{
+    //Check that the traingulation has edges
+    if (triangulation.empty()) {
+        hout<<"Vector of triangulation edges is empty. NO visualization file was exported."<<endl;
+        return 1;
+    }
+    
+    //Open the file
+    ofstream otec(filename.c_str());
+    
+    //Add header
+    if (!Add_header(otec)) {
+        hout<<"Error in Export_triangulation when calling Add_header"<<endl;
+        return 0;
+    }
+    
+    //Add the line with the number of points, which is twice the number of edges
+    otec<<"POINTS "<<2*(triangulation.size())<<" float" <<endl;
+    
+    //Add all the points
+    if (!Add_points_from_triangulation_edges(points, triangulation, otec)) {
+        hout<<"Error in Export_triangulation when calling Add_points_from_triangulation_edges"<<endl;
+        return 0;
+    }
+    
+    //Add the line indicating the number of lines+1, and the number of points in those lines
+    otec<<"LINES "<<triangulation.size()+1<<' '<<2*(triangulation.size())<<endl;
+    
+    //Add the offsets:
+    //The number of points used after adding each line, starting with a zero
+    if (!Add_offsets_for_trinagulation(triangulation, otec)) {
+        hout<<"Error in Export_triangulation when calling Add_offsets_for_trinagulation"<<endl;
+        return 0;
+    }
+    
+    //Add connectivity
+    if (!Add_connectivity_for_trinagulation(triangulation, otec)) {
+        hout<<"Error in Export_triangulation when calling Add_connectivity_for_trinagulation"<<endl;
+        return 0;
+    }
+    
+    //Close the file
+    otec.close();
+    
+    return 1;
+}
+int VTK_Export::Add_points_from_triangulation_edges(const vector<Point_3D> &points, const vector<EdgeL> &triangulation, ofstream &otec)const
+{
+    
+    //Add the point coordinates, separated by spaces and in groups of four points
+    //(12 coordinates) per line
+    
+    //Add the points from the first vertex
+    long int v = triangulation[0].v1;
+    otec<<points[v].x<<' '<<points[v].y<<' '<<points[v].z<<' ';
+    v = triangulation[0].v2;
+    otec<<points[v].x<<' '<<points[v].y<<' '<<points[v].z<<' ';
+    
+    //Add the remaninig points
+    for (size_t i = 1; i < triangulation.size(); i++) {
+        
+        //Check if a new line needs to be started
+        if (!(i%4)) {
+            otec<<endl;
+        }
+        
+        //Add points of edge i
+        v = triangulation[i].v1;
+        otec<<points[v].x<<' '<<points[v].y<<' '<<points[v].z<<' ';
+        v = triangulation[i].v2;
+        otec<<points[v].x<<' '<<points[v].y<<' '<<points[v].z<<' ';
+    }
+    
+    //Start a new line
+    otec<<endl;
+    
+    return 1;
+}
+int VTK_Export::Add_offsets_for_trinagulation(const vector<EdgeL> &triangulation, ofstream &otec)const
+{
+    //Add the line with the OFFSETS command
+    otec<<"OFFSETS vtktypeint64"<<endl;
+    
+    //Output a zero, which is required
+    otec<<"0 ";
+    
+    //Variable to store the accumulated number of points,
+    //initialize with 2 which is the number of points in the first vertex
+    long int acc_points = 2;
+    
+    //Output the accumulated number of points
+    otec<<acc_points<<' ';
+    
+    //Output the accumulated number of points for the remaining edges
+    //Print 20 per line
+    for (size_t i = 1; i < triangulation.size(); i++) {
+        
+        //Check if a new line needs to be started
+        if (!(i%20)) {
+            otec<<endl;
+        }
+        
+        //Add the number of points from edge i to the accumulated number of points
+        //i.e., 2 points in each edge
+        acc_points += 2;
+        
+        //Output the accumulated number of points
+        otec<<acc_points<<' ';
+    }
+    
+    //Start a new line
+    otec<<endl;
+    
+    return 1;
+}
+int VTK_Export::Add_connectivity_for_trinagulation(const vector<EdgeL> &triangulation, ofstream &otec)const
+{
+    //Add the line with the CONNECTIVITY command
+    otec<<"CONNECTIVITY vtktypeint64"<<endl;
+    
+    //Variable to count the number of points
+    long int n_points = 0;
+    
+    //Add the connectivity, one connectivity per line
+    for (size_t i = 0; i < triangulation.size(); i++) {
+        
+        //Add the consecutive number of points in the vertex
+        //Not the vertex number, but the consecutive number in which they were printed
+        //in th evtk file
+        otec<<n_points<<' '<<n_points+1<<endl;
+        
+        //Increase the count of points
+        n_points = n_points + 2;
+    }
+    
+    return 1;
+}

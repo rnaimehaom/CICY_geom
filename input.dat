@@ -63,6 +63,10 @@ vol 0.001000
 %    second 1) and do not calculate the resistance along y (second 0)
 %    Example: 0 0 0 0 is equivalent to inputting only "1"
 0 1 1 1
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
+%Tolerance for converge in the conjugate gradient algorithm
+%This value represents the reduction in the initial residual
+1e-10
 %
 %--------------------------------End
 %

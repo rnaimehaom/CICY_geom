@@ -7,7 +7,7 @@
 
 #include "Electrical_analysis.h"
 
-int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, const Simu_para &simu_param, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps)
+int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cuboid &window, const Simu_para &simu_param, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps)
 {
     //Time variables
     time_t ct0, ct1;
@@ -50,12 +50,25 @@ int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, cons
         //DEA with unit resistors
         ct0 = time(NULL);
         //hout<<"DEA->Compute_voltage_field"<<endl;
-        if (!DEA->Compute_voltage_field(j, R_flag, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
+        if (!DEA->Compute_voltage_field(j, R_flag, simu_param, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
             hout<<"Error in Perform_analysis_on_clusters when calling DEA->Compute_voltage_field"<<endl;
             return 0;
         }
         ct1 = time(NULL);
         hout << "Calculate voltage field time: "<<(int)(ct1-ct0)<<" secs."<<endl;
+        
+        //Check if triangulations are to be exported
+        //Eport triangulations when there are GNPs in the current cluster and only when
+        //extracting the backbone
+        if (vis_flags.triangulations && gnps.size() && HoKo->clusters_gnp.size() && HoKo->clusters_gnp[j].size()) {
+            
+            //Export triangulations
+            //hout<<"Export_triangulations"<<endl;
+            if (!Export_triangulations(iter, HoKo->clusters_gnp[j], gnps, points_gnp)) {
+                hout<<"Error in Compute_voltage_field when calling Export_triangulations"<<endl;
+                return 0;
+            }
+        }
         
         //-----------------------------------------------------------------------------------------------------------------------------------------
         //Determine the backbone and dead branches
@@ -103,7 +116,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, cons
     //Export visualization files for isolated particles if needed
     if (vis_flags.backbone) {
         //hout<<"Export_isolated_particles"<<endl;
-        if (!Export_isolated_particles(structure_cnt, points_cnt, HoKo->isolated_cnt, gnps, HoKo->isolated_gnp)) {
+        if (!Export_isolated_particles(iter, structure_cnt, points_cnt, HoKo->isolated_cnt, gnps, HoKo->isolated_gnp)) {
             hout<<"Error in Perform_analysis_on_clusters when calling Export_isolated_particles"<<endl;
             return 0;
         }
@@ -119,6 +132,41 @@ int Electrical_analysis::Perform_analysis_on_clusters(const cuboid &window, cons
             return 0;
         }
     }
+    
+    return 1;
+}
+//This function exports the tirangulation edges of a GNP cluster
+int Electrical_analysis::Export_triangulations(const int &iter, const vector<int> &cluster_gnp, const vector<GNP> &gnps, const vector<Point_3D> &points_gnp)
+{
+    //VTK object to export visualization files
+    VTK_Export VTKE;
+    
+    //Generate all triangulations files
+    for (int i = 0; i < (int)cluster_gnp.size(); i++) {
+        
+        //Generate filename
+        string filename = "Triangulation_" + to_string(i) + ".vtk";
+        
+        //Get current GNP number
+        int gnp_i = cluster_gnp[i];
+        
+        //Export triangulation if there are edges to export
+        if (gnps[gnp_i].triangulation.size()) {
+            if (!VTKE.Export_triangulation(points_gnp, gnps[gnp_i].triangulation, filename)) {
+                hout<<"Error in Export_tirangulations when calling VTKE.Export_triangulation, i="<<i<<endl;
+                return 0;
+            }
+        }
+    }
+    
+    //Make a directory for current cluster
+    char command[100];
+    sprintf(command, "mkdir triangulations_%.4d", iter);
+    system(command);
+    
+    //Move all triangulation files to the corresponding folder
+    sprintf(command, "mv Triangulation_*.vtk triangulations_%.4d", iter);
+    system(command);
     
     return 1;
 }
@@ -153,7 +201,7 @@ int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(c
         //Run a new DEA to obtain the new voltage field in the backbone using the actual resistances
         //As the variable for family use the percolated direction k
         ct0 = time(NULL);
-        if (!DEA_Re->Compute_voltage_field(n_cluster, R_flag, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
+        if (!DEA_Re->Compute_voltage_field(n_cluster, R_flag, simu_param, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
             hout<<"Error in Electrical_resistance_along_each_percolated_direction when calling DEA_Re->Compute_voltage_field"<<endl;
             return 0;
         }
@@ -685,7 +733,7 @@ int Electrical_analysis::Calculate_volume_of_non_percolated_gnps(const vector<GN
     return 1;
 }
 //This function prepares the vectors needed to export isolated particles
-int Electrical_analysis::Export_isolated_particles(const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &isolated_cnts, const vector<GNP> &gnps, const vector<vector<int> > &isolated_gnps)
+int Electrical_analysis::Export_isolated_particles(const int &iter, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &isolated_cnts, const vector<GNP> &gnps, const vector<vector<int> > &isolated_gnps)
 {
     //VTK object to export visualization files
     VTK_Export VTK_E;
@@ -733,6 +781,14 @@ int Electrical_analysis::Export_isolated_particles(const vector<vector<long int>
         hout<<"Error in Export_isolated_particles when calling VTK_E.Export_gnps_in_cluster"<<endl;
         return 0;
     }
+    
+    //Move all visualization files to the folder of the iteration
+    //hout<<"system commands"<<endl;
+    char command[100];
+    sprintf(command, "mkdir backbone_%.4d", iter);
+    system(command);
+    sprintf(command, "mv backbone*.vtk dead*.vtk isolated*.vtk backbone_%.4d", iter);
+    system(command);
     
     return 1;
 }

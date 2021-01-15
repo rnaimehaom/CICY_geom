@@ -117,6 +117,7 @@ int Input::Data_Initialization()
     simu_para.resistances[0] = 1;
     simu_para.resistances[1] = 1;
     simu_para.resistances[2] = 1;
+    simu_para.tolerance = 1e-10;
     
 
 	//Initialize the geometric parameters of the RVE
@@ -436,6 +437,10 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
         }
     }
     
+    //Tolerance for converge in the conjugate gradient algorithm
+    //This value represents the reduction in the initial residual
+    istringstream istr_tol(Get_Line(infile));
+    istr_tol >> simu_para.tolerance;
     
 	return 1;
 }
@@ -1063,8 +1068,8 @@ int Input::Read_visualization_flags(Visualization_flags &vis_flags, ifstream &in
     // 1: export visualization files
     istringstream istr2(Get_Line(infile));
     istr2 >> vis_flags.clusters;
-    if (vis_flags.clusters<0||vis_flags.clusters>3) {
-        hout<<"Error: Flag to export clusters (from HK76 algorithm) can only be an integer in [0,3]. Input was: "<<vis_flags.clusters<<endl;
+    if (vis_flags.clusters<0||vis_flags.clusters>1) {
+        hout<<"Error: Flag to export clusters (from HK76 algorithm) can only be an integer, 0 or 1. Input was: "<<vis_flags.clusters<<endl;
         return 0;
     }
 
@@ -1073,8 +1078,8 @@ int Input::Read_visualization_flags(Visualization_flags &vis_flags, ifstream &in
     // 1: export visualization files
     istringstream istr3(Get_Line(infile));
     istr3 >> vis_flags.percolated_clusters;
-    if (vis_flags.percolated_clusters<0||vis_flags.percolated_clusters>3) {
-        hout<<"Error: Flag to export percolated clusters can only be an integer in [0,3]. Input was: "<<vis_flags.percolated_clusters<<endl;
+    if (vis_flags.percolated_clusters<0||vis_flags.percolated_clusters>1) {
+        hout<<"Error: Flag to export percolated clusters can only be an integer, 0 or 1. Input was: "<<vis_flags.percolated_clusters<<endl;
         return 0;
     }
     
@@ -1086,8 +1091,8 @@ int Input::Read_visualization_flags(Visualization_flags &vis_flags, ifstream &in
     //   Three files if there are GNPs: backbone, dead (attached to the percolated cluster) and isolated
     istringstream istr4(Get_Line(infile));
     istr4 >> vis_flags.backbone;
-    if (vis_flags.backbone<0||vis_flags.backbone>3) {
-        hout<<"Error: Flag to export the backbone clusters can only be an integer in [0,3]. Input was: "<<vis_flags.backbone<<endl;
+    if (vis_flags.backbone<0||vis_flags.backbone>1) {
+        hout<<"Error: Flag to export the backbone clusters can only be an integer, 0 or 1. Input was: "<<vis_flags.backbone<<endl;
         return 0;
     }
     

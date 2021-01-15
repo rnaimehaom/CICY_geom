@@ -55,6 +55,8 @@ struct Simu_para{
     double volume_ratio;
     //CNT density on GNPs
     double cnt_gnp_density;
+    //Tolerance for error reduction in conjugate gradient
+    double tolerance;
 };
 //The geometry of the sample
 struct Geom_sample{

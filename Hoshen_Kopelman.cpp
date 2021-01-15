@@ -14,7 +14,7 @@
  */
 
 //This function groups nanoparticles into clusters
-int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_para, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
+int Hoshen_Kopelman::Determine_clusters_and_percolation(const int &iter, const Simu_para &simu_para, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
 {
     //Label vectors for CNTs and GNPs
     vector<int> labels_cnt, labels_gnp;
@@ -112,7 +112,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     
     //Export visualization files for clusters if needed
     if (vis_flags.clusters) {
-        if (!Export_clusters(0, clusters_cnt_tmp, structure_cnt, points_cnt, clusters_gnp_tmp, gnps)) {
+        if (!Export_clusters(0, iter, clusters_cnt_tmp, structure_cnt, points_cnt, clusters_gnp_tmp, gnps)) {
             hout<<"Error in Determine_clusters when calling Export_clusters (before percolation)"<<endl;
             return 0;
         }
@@ -128,7 +128,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const Simu_para &simu_pa
     
     //Export visualization files for percolated clusters if needed
     if (vis_flags.percolated_clusters) {
-        if (!Export_clusters(1, clusters_cnt, structure_cnt, points_cnt, clusters_gnp, gnps)) {
+        if (!Export_clusters(1, iter, clusters_cnt, structure_cnt, points_cnt, clusters_gnp, gnps)) {
             hout<<"Error in Determine_clusters when calling Export_clusters (after percolation)"<<endl;
             return 0;
         }
@@ -2169,7 +2169,7 @@ int Hoshen_Kopelman::Merge_labels(const int &root1, const int &root2, vector<int
 //Visualization files
 //
 //This function is used to export clusters before determining percolation
-int Hoshen_Kopelman::Export_clusters(const int &percolation, const vector<vector<int> > &clusters_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &clusters_gnp, const vector<GNP> &gnps)
+int Hoshen_Kopelman::Export_clusters(const int &percolation, const int &iter, const vector<vector<int> > &clusters_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &clusters_gnp, const vector<GNP> &gnps)
 {
     //VTK export object
     VTK_Export VTK_E;
@@ -2203,10 +2203,12 @@ int Hoshen_Kopelman::Export_clusters(const int &percolation, const vector<vector
     //Get name for isolated CNTs
     string filename_iso = pref_iso + "cnt.vtk";
     
-    //Export isolated CNTs
-    if (!VTK_E.Export_cnts_in_cluster(points_cnt, structure_cnt, isolated_cnts_all, filename_iso)) {
-        hout<<"Error in Export_clusters when calling VTK_E.Export_cnts_in_cluster (isolated)"<<endl;
-        return 0;
+    //Export isolated CNTs, if any
+    if (isolated_cnts_all.size()) {
+        if (!VTK_E.Export_cnts_in_cluster(points_cnt, structure_cnt, isolated_cnts_all, filename_iso)) {
+            hout<<"Error in Export_clusters when calling VTK_E.Export_cnts_in_cluster (isolated)"<<endl;
+            return 0;
+        }
     }
     
     //Export GNP clusters
@@ -2232,10 +2234,27 @@ int Hoshen_Kopelman::Export_clusters(const int &percolation, const vector<vector
     //Get name for isolated CNTs
     filename_iso = pref_iso + "gnp.vtk";
     
-    //Export isolated GNPs
-    if (!VTK_E.Export_gnps_in_cluster(gnps, isolated_gnps_all, filename_iso)) {
-        hout<<"Error in Export_clusters when calling VTK_E.Export_gnps_in_cluster (isolated)"<<endl;
-        return 0;
+    //Export isolated GNPs if any
+    if (isolated_gnps_all.size()) {
+        if (!VTK_E.Export_gnps_in_cluster(gnps, isolated_gnps_all, filename_iso)) {
+            hout<<"Error in Export_clusters when calling VTK_E.Export_gnps_in_cluster (isolated)"<<endl;
+            return 0;
+        }
+    }
+    
+    //Move all visualization files to the folder of the iteration
+    char command[100];
+    if (percolation) {
+        sprintf(command, "mkdir percolated_%.4d", iter);
+        system(command);
+        sprintf(command, "mv perc_cluster_*.vtk isolated_*.vtk percolated_%.4d", iter);
+        system(command);
+    }
+    else {
+        sprintf(command, "mkdir clusters_%.4d", iter);
+        system(command);
+        sprintf(command, "mv cluster_*.vtk isolated_*.vtk clusters_%.4d", iter);
+        system(command);
     }
     
     return 1;

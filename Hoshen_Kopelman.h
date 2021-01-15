@@ -55,7 +55,7 @@ public:
     Hoshen_Kopelman(){};
     
     //
-    int Determine_clusters_and_percolation(const Simu_para &simu_para, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp);
+    int Determine_clusters_and_percolation(const int &iter, const Simu_para &simu_para, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp);
     int Make_cnt_clusters(const vector<Point_3D> &points_cnt, const vector<double> &radii, const Cutoff_dist &cutoffs, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, vector<int> &labels_cnt, int &n_labels_cnt);
     int Label_cnts_in_window(const vector<Point_3D> &points_cnt, const vector<double> &radii, const double &tunnel_cutoff, const vector<vector<long int> > &sectioned_domain_cnt, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &contact_elements, vector<int> &labels_cnt, vector<int> &labels_labels_cnt);
     int Cleanup_labels(vector<int> &labels_labels, vector<int> &labels, int &n_labels);
@@ -98,7 +98,7 @@ public:
     int Merge_labels(const int &root1, const int &root2, vector<int> &labels_labels);
     //-------------------------------------------------------
     //Visualization files
-    int Export_clusters(const int &percolation, const vector<vector<int> > &clusters_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &clusters_gnp, const vector<GNP> &gnps);
+    int Export_clusters(const int &percolation, const int &iter, const vector<vector<int> > &clusters_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &clusters_gnp, const vector<GNP> &gnps);
     int Combine_into_one_cluster(const vector<vector<int> > &clusters, vector<int> &cluster);
     
     

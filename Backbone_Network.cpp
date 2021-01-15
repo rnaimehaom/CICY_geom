@@ -380,8 +380,8 @@ int Backbone_Network::Find_backbone_and_fractions_cnts(const int &n_cluster, con
         VTK_Export VTK_E;
         
         //Generate filenames
-        string str_bb = "backbone_" + to_string(n_cluster) + "_fam_" + to_string(HoKo->family[n_cluster]) + "_cnts.vtk";
-        string str_db = "dead_branches_" + to_string(n_cluster) + "_fam_" + to_string(HoKo->family[n_cluster]) + "_cnts.vtk";
+        string str_bb = "backbone_C" + to_string(n_cluster) + "_F" + to_string(HoKo->family[n_cluster]) + "_cnts.vtk";
+        string str_db = "dead_branches_C" + to_string(n_cluster) + "_F" + to_string(HoKo->family[n_cluster]) + "_cnts.vtk";
         
         //Export CNTs in the backbone
         if (!VTK_E.Export_from_cnt_indices(points_cnt, backbone_idx, str_bb)) {
@@ -631,8 +631,8 @@ int Backbone_Network::Find_backbone_and_fractions_gnps(const int &n_cluster, con
         VTK_Export VTK_E;
         
         //Generate filenames for CNT files
-        string str_bb = "backbone_" + to_string(n_cluster) + "_fam_" + to_string(HoKo->family[n_cluster]) + "_gnps.vtk";
-        string str_dead = "dead_" + to_string(n_cluster) + "_fam_" + to_string(HoKo->family[n_cluster]) + "_gnps.vtk";
+        string str_bb = "backbone_C" + to_string(n_cluster) + "_F" + to_string(HoKo->family[n_cluster]) + "_gnps.vtk";
+        string str_dead = "dead_C" + to_string(n_cluster) + "_F" + to_string(HoKo->family[n_cluster]) + "_gnps.vtk";
         
         //Export GNPs in the backbone
         if (!VTK_E.Export_gnps_in_cluster(gnps, backbone_gnps_idx, str_bb)) {
