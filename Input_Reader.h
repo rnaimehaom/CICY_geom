@@ -139,8 +139,6 @@ struct GNP_Geo{
     string size_distrib_type;
     //Thickness distribution type (uniform or normal)
     string thick_distrib_type;
-    //Step length (unit: micromether) for discretization of the GNP
-    double discr_step_length;
     //Angles for initial direction (used for 'specific' growth direction)
     double ini_theta, ini_phi;
     //GNP length range (min,max)
@@ -149,7 +147,7 @@ struct GNP_Geo{
     double t_min, t_max;
     //CNT/GNP mass ratio
     double mass_ratio;
-    //GNp volume fraction
+    //GNP volume fraction
     double volume_fraction;
     //Volume of GNPs inside the sample
     double volume;

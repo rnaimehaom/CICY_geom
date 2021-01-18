@@ -6,7 +6,7 @@ Application
 %
 %
 %========================================================================================================
-%Please input the paramters of simulation
+%Please input the parameters of the simulation
 Simulation_Parameters
 %--------------------------------Start
 %Please input the name of simulation
@@ -163,8 +163,6 @@ independent
 random
 %specific 0 0
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Define the step length (in microns) discretization of the GNP
-0.01
 %Define the distribution type (uniform or normal) of the GNP side length (in microns) and maximum and minimum values
 %uniform: uniform distribution
 %normal: normal distribution
@@ -177,6 +175,7 @@ uniform 0.03 0.03
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define the CNT/GNP mass ratio
 1.0
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define the GNP density (in gr/cm^3)
 2.25
 %--------------------------------End
@@ -190,10 +189,13 @@ Electrical_Parameters
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define the value of resistivity of the nanotubes (Ohm.micron)
 20
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define the value of resistivities (thickness, surface; in Ohm.micron) of the GNP
 1e-2 1e-7
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define the value of resistivity of the polymer matrix (Ohm.micron)
 1.03e20
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Provide the type of junction resistance
 %Choose 'constant' or 'exponential'
 %constant: This means a constant value of junction is added, example: constant 1e7
@@ -211,21 +213,25 @@ constant 1e7
 Visualization_Flags
 %--------------------------------Start
 %
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Flag to export generated nanoparticles:
 % 0: do not export visualization files
 % 1: export visualization files (if mixed or hybrid particles generated,
 %    then two files are generated, one for CNTs and one for GNPs)
 0
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Flag to export clusters as obtained from the Hoshen-Kopelman algorithm:
 % 0: do not export visualization files
 % 1: export visualization files (if mixed or hybrid particles generated,
 %    then two files are generated, one for CNTs and one for GNPs)
 0
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Flag to export percolated clusters:
 % 0: do not export visualization files
 % 1: export visualization files (if mixed or hybrid particles generated,
 %    then two files are generated, one for CNTs and one for GNPs)
 0
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Flag to export the backbone:
 % 0: do not export visualization files
 % 1: export visualization files
@@ -233,6 +239,7 @@ Visualization_Flags
 %   Three files if there are CNTs: backbone, dead branches and isolated
 %   Three files if there are GNPs: backbone, dead (attached to percolated clusters) and isolated
 0
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Flag to save CNT and GNP fractions and volumes separately when mixed or hybrid particles are generated
 % 0: do not export CNT and GNP volumes and fractions separately
 % 1: export CNT and GNP volumes and fractions separately
@@ -241,6 +248,7 @@ Visualization_Flags
 %Volumes and fractions of GNPs only (fractions respect to the GNP volume)
 %If only CNTs or only GNPs are generated, then this flag is ignored
 0
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Flag to export triangulations
 % 0: do not export triangulations
 % 1: export triangulations

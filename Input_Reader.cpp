@@ -119,8 +119,7 @@ int Input::Data_Initialization()
     simu_para.resistances[2] = 1;
     simu_para.tolerance = 1e-10;
     
-
-	//Initialize the geometric parameters of the RVE
+	//Initialize the geometric parameters of the sample
 	geom_sample.keywords = "Sample_Geometry";
 	geom_sample.mark = false;
     geom_sample.origin.x = 0.0;
@@ -160,7 +159,7 @@ int Input::Data_Initialization()
 	geom_sample.win_delt_z = 1.0;
 
 	//Initialize the geometric paramters of nanotubes
-	nanotube_geo.keywords = "Nanotube_Geometry";
+	nanotube_geo.keywords = "CNT_Geometry";
 	nanotube_geo.mark = false;
 	nanotube_geo.dir_distrib_type = "random";
 	nanotube_geo.ini_phi = 0.0;
@@ -178,12 +177,32 @@ int Input::Data_Initialization()
 	nanotube_geo.volume = 0.0;
 	nanotube_geo.weight_fraction = 0.0;
 	nanotube_geo.weight = 0.0;
+    
+    //Initialize the geometric paramters of GNPs
+    gnp_geo.keywords = "GNP_Geometry";
+    gnp_geo.mark = false;
+    gnp_geo.criterion = "vol";
+    gnp_geo.growth_type = "independent";
+    gnp_geo.orient_distrib_type = "random";
+    gnp_geo.size_distrib_type = "uniform";
+    gnp_geo.thick_distrib_type = "uniform";
+    gnp_geo.len_min = 1.0;
+    gnp_geo.len_max = 1.0;
+    gnp_geo.t_min = 0.03;
+    gnp_geo.t_max = 0.03;
+    gnp_geo.mass_ratio = 1.0;
+    gnp_geo.volume_fraction = 0.0;
+    gnp_geo.volume = 0.0;
+    gnp_geo.weight_fraction = 0.0;
+    gnp_geo.weight = 0.0;
+    gnp_geo.density = 2.25;
 
 	//Initialize cutoff distances
 	cutoff_dist.keywords = "Cutoff_Distances";
 	cutoff_dist.mark = false;
 	cutoff_dist.tunneling_dist = 0.0018;
 	cutoff_dist.van_der_Waals_dist = 0.00034;
+    cutoff_dist.min_points = 5;
 
 	//Initialize electrical parameters
 	electric_para.keywords = "Electrical_Parameters";
@@ -192,7 +211,7 @@ int Input::Data_Initialization()
 	electric_para.resistivity_CNT = 0.001;
     
     //Initialize visualization flags (do not export anything)
-    vis_flags.keywords = "Visualization_flags";
+    vis_flags.keywords = "Visualization_Flags";
     vis_flags.mark = false;
     vis_flags.generated_nanoparticles = 0;
     vis_flags.clusters = 0;
@@ -203,7 +222,7 @@ int Input::Data_Initialization()
     vis_flags.sample_domain = 0;
     vis_flags.window_domain = 0;
 
-	hout << "    Data initialization files" <<endl<<endl;
+	hout << "    Data initialization done" <<endl<<endl;
 
 	return 1;
 }
@@ -803,16 +822,6 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
             return 0;
         }
     }
-    
-    //----------------------------------------------------------------------
-    //Read the step length (in microns) discretization of the GNP
-    istringstream istr2(Get_Line(infile));
-    istr2 >> gnp_geo.discr_step_length;
-    if(gnp_geo.discr_step_length<=Zero||
-       gnp_geo.discr_step_length>=0.25*geom_sample.len_x||
-       gnp_geo.discr_step_length>=0.25*geom_sample.wid_y||
-       gnp_geo.discr_step_length>=0.25*geom_sample.hei_z) {
-        hout << "Error: the step length must be positive and up to 0.25 times the side length of the sample. Input was: "<<gnp_geo.discr_step_length<< endl;    return 0; }
     
     //----------------------------------------------------------------------
     //Read the distribution type (uniform or normal) of the GNP side length (in microns) and maximum and minimum values
