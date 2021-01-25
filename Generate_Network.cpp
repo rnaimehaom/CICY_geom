@@ -31,7 +31,16 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
             return 0;
         }
         
-    } else if (simu_para.particle_type == "GNP_cuboids") {
+    }
+    else if (simu_para.particle_type == "CNT_deposit") {
+        
+        //Generate a network of deposited CNTs
+        if (!Generate_cnt_deposit_mt(simu_para, geom_sample, nanotube_geo, cutoffs, cnts_points, radii_in)) {
+            hout << "Error in generating a CNT deposit" << endl;
+            return 0;
+        }
+    }
+    else if (simu_para.particle_type == "GNP_cuboids") {
         
         //Generate a GNP network
         vector<vector<int> > sectioned_domain_gnp;
@@ -40,7 +49,8 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
             return 0;
         }
         
-    } else if (simu_para.particle_type == "GNP_CNT_mix") {
+    }
+    else if (simu_para.particle_type == "GNP_CNT_mix") {
         
         //Generate a GNP network
         vector<vector<int> > sectioned_domain_gnp;
@@ -55,9 +65,11 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
             return 0;
         }
         
-    } else if (simu_para.particle_type == "Hybrid_particles") {
-    } else {
-        hout << "Error: the type of particles shoud be one of the following: CNT_wires, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input value was: " << simu_para.particle_type << endl;
+    }
+    else if (simu_para.particle_type == "Hybrid_particles") {
+    }
+    else {
+        hout << "Error: the type of particles shoud be one of the following: CNT_wires, CNT_deposit, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input value was: " << simu_para.particle_type << endl;
         return 0;
     }
     
@@ -1396,6 +1408,732 @@ int Generate_Network::Recalculate_vol_fraction_cnts(const Geom_sample &geom_samp
     return 1;
 }
 //---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//CNT deposit
+int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radii)const
+{
+    //Initial seeds, if any are in network_seeds within geom_sample.
+    //However, geom_sample cannot be modified, so copy the seeds to a new vector
+    unsigned int net_seeds[7];
+    if (!CNT_seeds(simu_para.CNT_seeds, net_seeds)) {
+        hout<<"Error in CNT_seeds"<<endl;
+        return 0;
+    }
+    
+    //Use the seeds generated above
+    std::mt19937 engine_x(net_seeds[0]);
+    std::mt19937 engine_y(net_seeds[1]);
+    std::mt19937 engine_z(net_seeds[2]);
+    std::mt19937 engine_phi(net_seeds[3]);
+    std::mt19937 engine_theta(net_seeds[4]);
+    std::mt19937 engine_rand(net_seeds[5]);
+    std::mt19937 engine_initial_direction(net_seeds[6]);
+    
+    // "Filter" MT's output to generate double values, uniformly distributed on the closed interval [0, 1].
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+    // "Filter" MT's output to generate double values, uniformly distributed on the closed interval [-1, 1].
+    std::uniform_real_distribution<double> dist_initial(-1.0, 1.0);
+
+    //Time variables to keep track of generation time
+    time_t ct0, ct1;
+    
+    //Variables for the generated CNT volume and weight
+    double vol_sum = 0;
+    
+    //Variable to count the generated CNT seeds
+    int cnt_seed_count = 0;
+    
+    //Vectors for handling CNT penetration
+    //global_coordinates[i][0] stores the CNT number of global point i
+    //global_coordinates[i][1] stores the local point number of global point i
+    vector<vector<int> > global_coordinates;
+    //sectioned_domain[i] contains all the points in sub-region i.
+    //Sub-region i is an overlapping subregion to check for penetrations
+    vector<vector<long int> > sectioned_domain;
+    //n_subregions[0] is the number of subregions along x
+    //n_subregions[1] is the number of subregions along y
+    //n_subregions[2] is the number of subregions along z
+    int n_subregions[3];
+    //Initialize the vector sub-regions
+    if (!Initialize_cnt_subregions_extended_domain(geom_sample, n_subregions, sectioned_domain)) {
+        hout << "Error in Generate_network_threads_mt when calling Initialize_cnt_subregions_extended_domain" <<endl;
+        return 0;
+    }
+    
+    //Get the time when generation started
+    ct0 = time(NULL);
+    //Check when 10% is completed
+    double vol_completed = 0.1;
+    
+    //Boolean to terminate the main while loop, initialized to false to start the loop
+    bool terminate = false;
+    
+    //Generate CNTs while the total volume required is not reached
+    while(!terminate)
+    {
+        //Vector for a new nanotube
+        vector<Point_3D> new_cnt;
+        
+        //Randomly generate a CNT length and CNT radius
+        double cnt_length, cnt_rad;
+        //hout<<"Get_random_value_mt 1"<<endl;
+        if (!Get_length_and_radius(nanotube_geo, engine_rand, dist, cnt_length, cnt_rad)) {
+            hout << "Error in Generate_network_threads_mt when calling Get_length_and_radius" <<endl;
+            return 0;
+        }
+        
+        //Calculate the number of CNT growth steps
+        int step_num = (int)(cnt_length/nanotube_geo.step_length) + 1;
+        
+        //Cross-sectional area of the current CNT. It is used to calculate the CNT volume.
+        const double cnt_cross_area = PI*cnt_rad*cnt_rad;
+        
+        //Randomly generate a CNT seed (initial point) at the bottom of the extended domain
+        Point_3D new_point;
+        if (!Get_point_in_xy_plane_mt(geom_sample.ex_dom_cnt, new_point, engine_x, engine_y, dist)) {
+            hout<<"Error when generating a point in the xy plane"<<endl;
+            return 0;
+        }
+        
+        //Get the sub-region the point belongs to
+        //hout<<"Get_subregion"<<endl;
+        int subregion = Get_cnt_point_subregion_extended_domain(geom_sample, n_subregions, new_point);
+        
+        //Find the upmost position where the CNT seed can be placed
+        if (!Find_upmost_position_for_seed(geom_sample, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, subregion, new_point)) {
+            hout<<"Error in Generate_network_threads_mt when calling Find_upmost_position_for_seed"<<endl;
+            return 0;
+        }
+        
+        //Add the CNT seed to the current CNT vector
+        new_cnt.push_back(new_point);
+        
+        //Count the numer of CNT seeds generated
+        cnt_seed_count++;
+        //hout << "Seed="<<cnt_seed_count<<endl;
+        int max_seed = 1E9;
+        if(cnt_seed_count > max_seed)  {
+            hout<<"The number of generated seeds is lager than "<<max_seed<<", but the nanotube generation still fails to acheive the requested volume fraction."<<endl;
+            return 0;
+        }
+        
+        //Randomly generate an initial direction, then generate the rotation matrix
+        //that results in that rotation
+        MathMatrix mult_2d(2,2);
+        if (!Get_initial_direction_2d(mult_2d, engine_theta, dist)) {
+            hout<<"Error when generating an initial 2D direction."<<endl;
+            return 0;
+        }
+        
+        //hout<<"Growth of CNT"<<endl;
+        
+        //Get the location of the seed
+        bool is_prev_in_sample = Is_point_inside_cuboid(geom_sample.sample, new_cnt[0]);
+        
+        //Variable to store the length of the current CNT that is inside the sample
+        double cnt_len = 0.0;
+        
+        //Start generation of a CNT siven the generated seed
+        for (int i = 0; i < step_num; i++) {
+            
+            //Generate a point in a random direction in the plane xy
+            if (!Get_direction_and_point_2d(nanotube_geo, mult_2d, new_point, engine_theta, dist)) {
+                hout<<"Error when generating a new direction and point in the xy plane."<<endl;
+                return 0;
+            }
+            
+            //Check if the new point, cnt_poi, is inside the extended domain
+            if(Is_point_inside_cuboid(geom_sample.ex_dom_cnt, new_point)) {
+                
+                //The point is inside the extended domain, so check find its upmost position
+                //and if it stays in the upmost position found or needs to be moved
+                //NOTE: due to the nature of the deposit, the non-penetrating model is always used
+                
+                //Find upmost position of new_point
+                if (!Find_upmost_position_for_new_point(geom_sample, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, nanotube_geo.step_length, new_cnt, new_point)) {
+                    hout<<"Error when adding a new point to the CNT, i="<<i<<endl;
+                    return 0;
+                }
+                
+                //Calculate the segment length inside the sample and add it to the total CNT length
+                bool is_new_inside_sample;
+                cnt_len = cnt_len + Length_inside_sample(geom_sample, new_cnt.back(), new_point, is_prev_in_sample, is_new_inside_sample);
+                
+                //For the next iteration of the for loop, cnt_poi will become previous point,
+                //so update the boolean is_prev_in_sample for the next iteration
+                is_prev_in_sample = is_new_inside_sample;
+                
+                //Add the new point to the current CNT
+                new_cnt.push_back(new_point);
+                
+                //Check if the target volume fraction has been reached
+                if( (vol_sum + cnt_len*cnt_cross_area) >= nanotube_geo.volume) {
+                    
+                    //Set the terminate variable to true so that the main while-loop is terminated
+                    terminate = true;
+                    
+                    //Break the for-loop so that the current CNT stops its growth
+                    break;
+                }
+                
+            }
+            else {
+                
+                //If the point is outside the extended domain, break the for-loop
+                //to terminate the CNT growth
+                break;
+            }
+            
+            //for-loop ends here
+        }
+        
+        //Store or ignore the CNT points
+        //hout<<"Store_or_ignore_new_cnt"<<endl;
+        int cnt_ignore_count = 0;
+        if (!Store_or_ignore_new_cnt(geom_sample, 1, (int)new_cnt.size(), cnt_len, cnt_rad, cnt_cross_area, new_cnt, cnts_points, cnts_radii, n_subregions, sectioned_domain, global_coordinates, vol_sum, cnt_ignore_count)) {
+            hout<<"Error when storing or ignoring a new CNT"<<endl;
+            return 0;
+        }
+        
+        //Check progress
+        if (vol_sum > vol_completed*nanotube_geo.volume) {
+            //Get the time
+            ct1 = time(NULL);
+            
+            //Output elapsed time
+            hout << "Completed " << vol_completed*100 << " % of target volume. Elapsed time: " << (int)(ct1-ct0) << " secs." <<endl;
+            
+            //When the next 10% is completed send another message
+            vol_completed = vol_completed + 0.1;
+        }
+        
+    }
+    
+    //Output the CNT content generated
+    if(nanotube_geo.criterion == "wt") {
+        
+        //Calculate matrix weight
+        double matrix_weight = (geom_sample.volume - vol_sum)*geom_sample.matrix_density;
+        
+        //Calculate the CNT weight
+        double cnt_weight = vol_sum*nanotube_geo.density;
+        
+        hout << endl << "The weight fraction of generated CNTs is: " << cnt_weight/(matrix_weight + cnt_weight);
+        hout << ", the target weight fraction was " << nanotube_geo.weight_fraction << endl << endl;
+
+    } else if(nanotube_geo.criterion == "vol") {
+        hout << endl << "The volume fraction of generated CNTs was " << vol_sum/geom_sample.volume;
+        hout << ", the target volume fraction was " << nanotube_geo.volume_fraction << endl << endl;
+    }
+    
+    return 1;
+}
+//This functions initializes the vectors n_subregions and sectioned_domain
+//
+//The n_subregions vector is defined to avoid calculating the number of sub-regions for every point
+//n_subregions[0] is the number of subregions along x
+//n_subregions[1] is the number of subregions along y
+//n_subregions[2] is the number of subregions along z
+//
+//The vector sectioned_domain contains the sub-regions to look for overlapping
+//It is initialized with the number of sub-regions in the sample
+int Generate_Network::Initialize_cnt_subregions_extended_domain(const Geom_sample &sample_geom, int n_subregion[], vector<vector<long int> > &sectioned_domain)const
+{
+    //Calculate the number of variables along each direction
+    //Make sure there is at least one subregion along each direction
+    //
+    //Number of subregions along x
+    n_subregion[0] = max(1, (int)(sample_geom.ex_dom_cnt.len_x/sample_geom.gs_minx));
+    //Number of subregions along y
+    n_subregion[1] = max(1, (int)(sample_geom.ex_dom_cnt.wid_y/sample_geom.gs_miny));
+    //Number of subregions along z
+    n_subregion[2] = max(1, (int)(sample_geom.ex_dom_cnt.hei_z/sample_geom.gs_minz));
+    
+    //Initialize sectioned_domain
+    sectioned_domain.assign(n_subregion[0]*n_subregion[1]*n_subregion[2], vector<long int>());
+    
+    return 1;
+}
+//Randomly generate a CNT seed (intial point of a CNT) in the xy plane of the extended domain
+int Generate_Network::Get_point_in_xy_plane_mt(const cuboid &cub, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, uniform_real_distribution<double> &dist)const
+{
+    point.x = cub.poi_min.x + cub.len_x*dist(engine_x);
+    
+    point.y = cub.poi_min.y + cub.wid_y*dist(engine_y);
+    
+    point.z = cub.poi_min.z;
+    
+    //Zero flag denotes this point is the initial point of a CNT
+    point.flag = 0;
+    
+    return 1;
+}
+//This function returns the subregion a point belongs to
+//Here, the boundary layer is also included in the subregions
+int Generate_Network::Get_cnt_point_subregion_extended_domain(const Geom_sample &geom_sample, const int n_subregions[], const Point_3D &point)const
+{
+    if (Is_point_inside_cuboid(geom_sample.ex_dom_cnt, point)) {
+        //These variables will give me the region cordinates of the region that a point belongs to
+        int a, b, c;
+        //Calculate the region-coordinates
+        a = (int)((point.x-geom_sample.ex_dom_cnt.poi_min.x)/geom_sample.gs_minx);
+        //Limit the value of a as it has to go from 0 to n_subregions[0]-1
+        if (a == n_subregions[0]) a--;
+        b = (int)((point.y-geom_sample.ex_dom_cnt.poi_min.y)/geom_sample.gs_miny);
+        //Limit the value of b as it has to go from 0 to n_subregions[1]-1
+        if (b == n_subregions[1]) b--;
+        c = (int)((point.z-geom_sample.ex_dom_cnt.poi_min.z)/geom_sample.gs_minz);
+        //Limit the value of c as it has to go from 0 to n_subregions[2]-1
+        if (c == n_subregions[2]) c--;
+        
+        return (a + (b*n_subregions[0]) + (c*n_subregions[0]*n_subregions[1]));
+    } else {
+        //If the point is in the boundary layer, then there is no need to calculate its sub-region
+        return -1;
+    }
+}
+//This function finds the upmost position for a CNT seed
+int Generate_Network::Find_upmost_position_for_seed(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const int &subregion, Point_3D &new_point)const
+{
+    //Variable to store the upmost overlapping point
+    Point_3D p_ovrlp;
+    
+    //Check if there is a 2D overlapping
+    if (Check_2d_overlapping(sectioned_domain[subregion], cnts_points, cnts_radii, global_coordinates, new_point, cnt_rad+d_vdW, p_ovrlp)) {
+        
+        //Use the overlapping point to determine the z-coordinate of the new point
+        if (!Update_z_coordinate(p_ovrlp, cnts_radii[p_ovrlp.flag], cnt_rad+d_vdW, new_point)) {
+            hout<<"Error in Find_upmost_position_for_seed when calling Update_z_coordinate"<<endl;
+            return 0;
+        }
+    }
+    //There is no overlapping, decide the next step
+    else {
+        
+        //Check if there is a "layer below" in the sectioned domain
+        if (subregion < n_subregions[0]*n_subregions[1]) {
+            
+            //There is no overlapping point and there are no more subregions below
+            //the current one, so set the point on the surface of the sample
+            //To do this, set the z-coordinate to be the minimum z-coordinate of the sample
+            //plus the radius
+            new_point.z = geom_sample.sample.poi_min.z + cnt_rad;
+        }
+        else {
+            
+            //Go to the subregion in the layer below by calling this function recursively
+            //The layer below is found by substracting n_subregions[0]*n_subregions[1] to
+            //the current subregion
+            if (!Find_upmost_position_for_seed(geom_sample, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, d_vdW, subregion-n_subregions[0]*n_subregions[1], new_point)) {
+                hout<<"Error in Find_upmost_position_for_seed when calling itself recursively"<<endl;
+                return 0;
+            }
+        }
+    }
+    
+    return 1;
+}
+//This function determines if there is a point in the subregion that overlaps the new point
+//in the projection on the xy plane
+bool Generate_Network::Check_2d_overlapping(const vector<long int> &subregion, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnt_radii, const vector<vector<int> > &global_coordinates, const Point_3D &new_point, const double &rad_p_dvdw, Point_3D &p_ovrlp)const
+{
+    //Lambda function to check the distance of two points considering only the
+    //x- and y-coordinates
+    auto dist_xy = [](const Point_3D &P1, const Point_3D &P2){
+        return sqrt( (P1.x - P2.x)*(P1.x - P2.x) + (P1.y - P2.y)*(P1.y - P2.y) );
+    };
+    
+    //Flag to check if there was 2D overlapping
+    bool overlap_2d = false;
+    
+    //Variables to store the z-coordinate and the global coordinate of the
+    //overlaping point in the xy plane
+    double zcoord = 0;
+    
+    //Scan all points in the subregion
+    for (int i = 0; i < (int)subregion.size(); i++) {
+        
+        //Get the global coordinate
+        long int gc = subregion[i];
+        
+        //Get CNT and point number
+        int CNTi = global_coordinates[gc][0];
+        int P = global_coordinates[gc][1];
+        
+        //Check if new_point overlaps P in the projection on the xy plane
+        if ( dist_xy(new_point, cnts_points[CNTi][P]) - rad_p_dvdw - cnt_radii[CNTi] < Zero) {
+            
+            //Check if this is the first overlapping point found,
+            //i.e., the overlapping flag is still false
+            if (overlap_2d) {
+                
+                //At least one overlapping point has been found before
+                //Check if the new one is at a higher position
+                if (cnts_points[CNTi][P].z > zcoord) {
+                    
+                    //Update the z-coordinate and overlapping point
+                    zcoord = cnts_points[CNTi][P].z;
+                    p_ovrlp = cnts_points[CNTi][P];
+                    //Save the CNT number
+                    p_ovrlp.flag = CNTi;
+                }
+            }
+            //The overlapping flag is false, so this is the first overlapping point
+            else {
+                
+                //Set the z-coordinte and the overlapping point to be the same as that of
+                //the current point (P at CNTi)
+                zcoord = cnts_points[CNTi][P].z;
+                p_ovrlp = cnts_points[CNTi][P];
+                //Save the CNT number
+                p_ovrlp.flag = CNTi;
+                
+                //Set the overlapping flag to true
+                overlap_2d = true;
+            }
+        }
+    }
+    
+    return overlap_2d;
+}
+//This function calculate the z-coordinate of a deposited CNT point
+int Generate_Network::Update_z_coordinate(const Point_3D &p_ovrlp, const double &rad_ovrlp, const double &rad_p_dvdw, Point_3D &new_point)const
+{
+    //Get the distance squared between points in the xy plane
+    double d2_xy = (new_point.x - p_ovrlp.x)*(new_point.x - p_ovrlp.x) + (new_point.y - p_ovrlp.y)*(new_point.y - p_ovrlp.y);
+    
+    //Get the squared distance that should be between the two points
+    double d2 = rad_ovrlp + rad_p_dvdw;
+    d2 = d2*d2;
+    
+    //Calculate the z-coordinate of the new point
+    new_point.z = p_ovrlp.z + sqrt(d2 - d2_xy);
+    
+    return 1;
+}
+//This function generates a 2D rotation matrix for the initial direction
+//The angle theta has a uniform distribution in [0, 2PI]
+// R(theta) = |cos(theta)  -sin(theta)|
+//          |sin(theta)   cos(theta)|
+int Generate_Network::Get_initial_direction_2d(MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const
+{
+    //Generate a rotaion angle theta
+    //theta satisfies a uniform distribution in (0, 2PI)
+    double theta = 2.0*PI*dist(engine_theta);
+    
+    //Fill the ratation matrix with a rotation by an anlge phi
+    M.element[0][0] = cos(theta);
+    M.element[1][0] = sin(theta);
+    M.element[1][1] = M.element[0][0];
+    M.element[0][1] = -M.element[1][0];
+    
+    return 1;
+}
+//This function generates a random direction and a point in the plane xy
+int Generate_Network::Get_direction_and_point_2d(const Nanotube_Geo &nanotube_geo, MathMatrix &M, Point_3D &new_point, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const
+{
+    //Matrix for the new direction
+    MathMatrix M_new(2,2);
+    
+    //Randomly generate a direction
+    if(!Get_direction_2d(nanotube_geo.angle_max, M_new, engine_theta, dist)){
+        hout<<"Error in Get_direction_and_point_2d when calling Get_direction_2d"<<endl;
+        return 0;
+    }
+    
+    //Calculate the rotation matrix for current segment
+    M = M*M_new;
+    
+    //Get location of new point
+    new_point = new_point + Get_new_point_2d(M, nanotube_geo.step_length);
+    
+    //1 means that point is not the intial point
+    new_point.flag = 1;
+    
+    return 1;
+}
+Point_3D Generate_Network::Get_new_point_2d(MathMatrix &M, const double &step)const
+{
+    //Rotate the 2D vector [step; 0] using the rotation matrix M
+    //Note that the matrix M is a 2D rotation matrix, however the output is a 2D point
+    //Thus, the z-coordinate of the point is set to 0
+    return Point_3D(M.element[0][0]*step,M.element[1][0]*step,0);
+}
+//This function generates a 2D rotation matrix for the initial direction
+//The angle theta has a normal distribution in [-omega, +omega]
+// R(theta) = |cos(theta)  -sin(theta)|
+//          |sin(theta)   cos(theta)|
+int Generate_Network::Get_direction_2d(const double &omega, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const
+{
+    //theta centers around 0 and obeys a normal distribution in (-omega, +omega)
+    double sum = 0;
+    for(int i=0; i<12; i++)
+    {
+        sum = sum + dist(engine_theta);
+    }
+    double theta = abs(omega*(sum/6 - 1));
+    
+    //Fill the ratation matrix with a rotation by an anlge phi
+    M.element[0][0] = cos(theta);
+    M.element[1][0] = sin(theta);
+    M.element[1][1] = M.element[0][0];
+    M.element[0][1] = -M.element[1][0];
+    
+    return 1;
+}
+//This function finds the upmost position for a new CNT point (not a seed point)
+int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const double &step, const vector<Point_3D> &new_cnt, Point_3D &new_point)const
+{
+    //Variable to store the upmost overlapping point
+    Point_3D p_ovrlp;
+    
+    //Get the new_point subregion
+    int subregion = Get_cnt_point_subregion_extended_domain(geom_sample, n_subregions, new_point);
+    
+    //Check if there is a 2D overlapping
+    if (Check_2d_overlapping(sectioned_domain[subregion], cnts_points, cnts_radii, global_coordinates, new_point, cnt_rad+d_vdW, p_ovrlp)) {
+        
+        //Use the overlapping point to determine the z-coordinate of the new point
+        if (!Update_z_coordinate(p_ovrlp, cnts_radii[p_ovrlp.flag], cnt_rad+d_vdW, new_point)) {
+            hout<<"Error in Find_upmost_position_for_point when calling Update_z_coordinate"<<endl;
+            return 0;
+        }
+        
+        //Shorten the segment that goes from prev_point to new_point to be equal to
+        //the step length
+        new_point = new_cnt.back() + (new_point - new_cnt.back()).unit()*step;
+        
+        //Check if the new point needs further relocation
+        //This extra relocation might be needed when the z-coordinate of the new point
+        //is above the z-coordinate of the old point
+        if (new_cnt.back().z - new_point.z < Zero) {
+            
+            //Check if the segment needs to be rotated due to penetration
+            //of new_point with other points
+            if (!Check_if_cnt_segment_needs_rotation(geom_sample, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad+d_vdW, step, new_cnt.back(), new_point)) {
+                hout<<"Error in Find_upmost_position_for_point when calling Check_if_cnt_segment_needs_rotation"<<endl;
+                return 0;
+            }
+        }
+    }
+    else {
+        
+        //If no overlapping point was found check if the point should be left with the same
+        //z-coordinate of the previous point (i.e., at floor level) or it should be hanging
+        if (new_point.z - geom_sample.sample.poi_min.z - cnt_rad - Zero > Zero) {
+            
+            //The CNT point needs to be hanging, determine the new position
+            if (!Find_hanging_position(geom_sample.sample, cnt_rad, step, new_cnt, new_point)) {
+                hout<<"Error in Find_upmost_position_for_point when calling Find_hanging_position"<<endl;
+                return 0;
+            }
+        }
+        //else, the point is already at floor level, so leave it as it is
+    }
+    
+    return 1;
+}
+//Given a point, this function finds its closest penetrating point and rotates the current
+//CNT segment that the given point makes with the previous point
+int Generate_Network::Check_if_cnt_segment_needs_rotation(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &rad_p_dvdw, const double &step, const Point_3D &prev_point, Point_3D &new_point)const
+{
+    //Variable to store the number of attempts
+    int attempts = 0;
+    
+    //Move the segment from prev_point to new_point while the maximum number of
+    //attempts is not reached
+    while (attempts < MAX_ATTEMPTS) {
+        
+        //Get the subregion of the new point
+        int subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
+        
+        //Find closest penetrating point
+        Point_3D p_point;
+        if (!Get_closest_penetrating_point(cnts_points, cnts_radii, global_coordinates, sectioned_domain[subregion], rad_p_dvdw, new_point, p_point)) {
+            hout<<"Error in Rotate_cnt_segment when calling Get_closest_penetrating_point"<<endl;
+            return 0;
+        }
+        
+        //Check if there was a penetrating point
+        if (p_point.flag == -1) {
+            
+            //There were no penetrating points, so terminate the function
+            return 1;
+        }
+        
+        //The closest penetrating point was identified
+        //"Rotate" the CNT segment, i.e., calculate the new position of new_point
+        if (!Rotate_cnt_segment(new_point.distance_to(p_point), step, p_point, prev_point, new_point)) {
+            hout<<"Error in Check_if_cnt_segment_needs_rotation when calling Rotate_cnt_segment"<<endl;
+            return 0;
+        }
+        
+        //Increase the number of attempts for the next iteration
+        attempts++;
+    }
+    
+    //If this part of the code is reached, then new_point could not be placed in a
+    //valid non-penetrating position
+    //Set the CNT flag to -1 to indicate this scenario
+    new_point.flag = -1;
+    
+    return 1;
+}
+//
+int Generate_Network::Get_closest_penetrating_point(const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<long int> &subregion, const double &rad_p_dvdw, const Point_3D &new_point, Point_3D &p_point)const
+{
+    //Variable to store the minimum distance between penetrating points
+    double min_dist = 0.0;
+    
+    //Variable to determine when to initialize the minimum distance
+    bool is_first = true;
+    
+    //Iterate over the points in the subregion
+    for (int i = 0; i < (int)subregion.size(); i++) {
+        
+        //Get the global point number
+        long int P_g = subregion[i];
+        
+        //Get the CNT number and local point number
+        int CNTi = global_coordinates[P_g][0];
+        int Pi = global_coordinates[P_g][1];
+        
+        //Get the radius of point i
+        int rad_i = cnts_radii[CNTi];
+        
+        //Get the distance between points
+        double new_dist = new_point.distance_to(cnts_points[CNTi][Pi]);
+        
+        //Check if there is penetration
+        if (new_dist - rad_i - rad_p_dvdw < Zero) {
+            
+            //Update the minimum distance if is the first penetrating point
+            if (is_first) {
+                
+                //Set the minimum distance to be equal to new_dist
+                min_dist = new_dist;
+                
+                //Set the penetrating point to be Pi at CNTi
+                p_point = cnts_points[CNTi][Pi];
+                
+                //Set the is_first flag to false
+                is_first = false;
+            }
+            //If this is not the first penetrating point, then update the minumum distance
+            //if the new distance is less than the stored minimum distance
+            else if (new_dist - min_dist < Zero) {
+                
+                //Update the minimum distance
+                min_dist = new_dist;
+                
+                //Update the penetrating point
+                p_point = cnts_points[CNTi][Pi];
+            }
+        }
+    }
+    
+    //If there were no penetrating points, then set the flag of the penetrating point to -1
+    //If the flag is_first is still true, then there were no penetrating points
+    if (is_first) {
+        p_point.flag = -1;
+    }
+    else
+        p_point.flag = 0;
+    
+    return 1;
+}
+//If new_point is penetrating another point (p_point), this function moves new_point to a new
+//position by "rotating" the CNT segment that goes from prev_point to new_point
+//The rotation is actually done by calculating the new position of new_point constraining the
+//plane that contains the CNT segment (from prev_point to new_point) that is perpendicular
+//to the plane xy
+int Generate_Network::Rotate_cnt_segment(const double &d_new_p, const double &step, const Point_3D &p_point, const Point_3D &prev_point, Point_3D &new_point)const
+{
+    //Get the coordinates of new_point taking prev_point as the origin
+    Point_3D N = new_point - prev_point;
+    
+    //Get the components of the unit vector on the xy plane
+    double len_xy = sqrt(N.x*N.x + N.y*N.y);
+    double ux = N.x/len_xy;
+    double uy = N.y/len_xy;
+    
+    //Step length squared is used more than once
+    double step2 = step*step;
+    
+    //Calculate "k" constants
+    double k1 = -2.0*ux*p_point.x - 2.0*uy*p_point.y;
+    double k2 = -2*p_point.z;
+    double k3 = step*step + p_point.length2() - d_new_p*d_new_p;
+    
+    //Some intermediate quantities
+    double k2_2 = k2*k2;
+    double k1_k2_2 = k1*k1/k2_2;
+    double k3_k2_2 = k3*k3/k2_2;
+    double len_u_2 = ux*ux + uy*uy;
+    
+    //Calculate constants for solving the quadratic equation
+    double two_a_bar = 2*(k1_k2_2 + len_u_2);
+    double b_bar = 2*k1*k3/k1_k2_2;
+    double Delta = 2*sqrt(k1_k2_2*step2 + len_u_2*(step2 - k3_k2_2));
+    
+    //Calculate the two possible values for the length along the unit vector on the xy plane
+    double a1 = (-b_bar + Delta)/two_a_bar;
+    double a2 = (-b_bar - Delta)/two_a_bar;
+    
+    //Find the smallest positive a
+    double a;
+    if (a1 > Zero && a2 > Zero) {
+        //Set a to have the value of the smallest between a1 and a2
+        a = min(a1, a2);
+    }
+    else {
+        
+        //One of a1 and a2 is negative, set a to have the positive value
+        a = (a1 < Zero)? a2: a1;
+    }
+    
+    //Using a, set the x- and y-coordinates of new_point
+    new_point.x = a*ux;
+    new_point.y = a*uy;
+    
+    //Now that a is defined, we can calculate the z-coordinate of new_point
+    new_point.z = sqrt(step2 - a*a*len_u_2);
+    
+    return 1;
+}
+//This function finds the position of a new point when the point needs to be hanging
+int Generate_Network::Find_hanging_position(const cuboid &sample, const double &cnt_rad, const double &step, const vector<Point_3D> &new_cnt, Point_3D &new_point)const
+{
+    //Check the size of the new CNT, that will determine how to calculate the new position
+    //If new point is the second point, i.e., there is no previous segment
+    //OR
+    //If there is a previous segment, but it goes downwards
+    //Then set the new segment hanging in a 45 degree (PI/4) angle
+    if (new_cnt.size() == 1 || new_cnt[(int)new_cnt.size() - 2].z - new_cnt.back().z > Zero) {
+        
+        //There is no previous segment, so any orientation is valid
+        //Calculate the distance of a 45 degree (PI/4) angle
+        double l_45 = step/sqrt(2);
+        
+        //Check if there is enough space for a 45 degree (PI/4) angle
+        if (new_cnt.back().z - sample.poi_min.z - cnt_rad - l_45 >= Zero) {
+            
+            //Set the z-coordinate of new_point to have a 45 degree (PI/4) angle
+            new_point.z = new_cnt.back().z - l_45;
+        }
+        else {
+            //Set the z-coordinate of new_point to be at "floor level"
+            new_point.z = sample.poi_min.z + cnt_rad;
+        }
+        
+        //Cut the segment so that it has the step length
+        new_point = (new_point - new_cnt.back()).unit()*step;
+    }
+    //If the previous segment goes up, leave the point in its current position
+    
+    return 1;
+}
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
