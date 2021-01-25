@@ -60,7 +60,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const int &iter, const S
     }
     
     //Check if there are GNPs in the sample and make the GNP clusters accordingly
-    if (simu_para.particle_type != "CNT_wires") {
+    if (simu_para.particle_type != "CNT_wires" && simu_para.particle_type != "CNT_deposit") {
         
         //Vectors of labels
         //The size of the vector labels has to be equal to the number of GNPs

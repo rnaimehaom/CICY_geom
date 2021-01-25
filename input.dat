@@ -16,7 +16,8 @@ Test
 1
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define the type of particles inside the sample:
-%CNT_wires for CNTs,
+%CNT_wires for randomly dispersed CNTs,
+%CNT_deposit for a deposit of CNTs,
 %GNP_cuboids for GNPs,
 %GNP_CNT_mix for CNTs and GNPs non-hybrid mixed fillers, or
 %Hybrid_particles for GNP-CNT hybrid particles
@@ -47,6 +48,7 @@ Create_Network
 vol 0.001000
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Indicate if non-penetrating model is used or no
+%If CNT_deposit is chosen, the input value of this flag is ignored and automatically set to 1
 % 1: Use non-penetrating model
 % 0: Use penetrating model
 1
@@ -84,6 +86,9 @@ Sample_Geometry
 %delta_length, delta_width, delta_height
 %Min_length, Min_width, Min_height
 %Observation widows have the same center of the sample
+%If CNT_deposit is chosen, then the options for the z-direction are ignored as the observation window
+%does not change along that direction. However, some values still need to be indicated for the z-direction
+%so that the code reads the input file without errors.
 2.00000 2.00000 2.00000
 0.250000 0.250000 0.250000
 2.000000 2.000000 2.000000

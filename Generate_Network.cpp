@@ -1591,7 +1591,7 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
         //Store or ignore the CNT points
         //hout<<"Store_or_ignore_new_cnt"<<endl;
         int cnt_ignore_count = 0;
-        if (!Store_or_ignore_new_cnt(geom_sample, 1, (int)new_cnt.size(), cnt_len, cnt_rad, cnt_cross_area, new_cnt, cnts_points, cnts_radii, n_subregions, sectioned_domain, global_coordinates, vol_sum, cnt_ignore_count)) {
+        if (!Store_or_ignore_new_cnt(geom_sample, simu_para.penetration_model_flag, (int)new_cnt.size(), cnt_len, cnt_rad, cnt_cross_area, new_cnt, cnts_points, cnts_radii, n_subregions, sectioned_domain, global_coordinates, vol_sum, cnt_ignore_count)) {
             hout<<"Error when storing or ignoring a new CNT"<<endl;
             return 0;
         }

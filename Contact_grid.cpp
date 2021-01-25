@@ -52,7 +52,7 @@ int Contact_grid::Generate_contact_grid(const int &window, const string &particl
     
     //Fill the vector for the sectioned domain for discrete GNPs only when there are GNPs in the structure
     //Equivalently, this is done when the structure is not made of only CNTs
-    if (particle_type != "CNT_wires") {
+    if (particle_type != "CNT_wires" && particle_type != "CNT_deposit") {
         
         //Fill the sectioned domain corresponding to GNP numbers
         //hout<<"Fill_sectioned_domain_gnps"<<endl;

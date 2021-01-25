@@ -64,7 +64,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
     
     //Remove GNPs that are outside the observation window
     //Check if the structure has GNPs, this happens when the particle type is not CNT
-    if (particle_type != "CNT_wires") {
+    if (particle_type != "CNT_wires" && particle_type != "CNT_deposit") {
         
         //Assign the correct size to the GNP structure
         structure_gnp.assign(gnps.size(), vector<long int>());

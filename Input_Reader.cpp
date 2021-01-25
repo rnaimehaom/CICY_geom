@@ -285,8 +285,8 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
     //GNP_CNT_mix for mixed CNT and GNP without hybridizing
     istringstream istr_perticle_type(Get_Line(infile));
     istr_perticle_type >> simu_para.particle_type;
-    if (simu_para.particle_type != "CNT_wires" && simu_para.particle_type != "GNP_cuboids" && simu_para.particle_type != "Hybrid_particles" && simu_para.particle_type != "GNP_CNT_mix") {
-        hout << "Error: the type of particles shoud be one of the following: CNT_wires, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input was: "<<simu_para.particle_type<< endl;
+    if (simu_para.particle_type != "CNT_wires" && simu_para.particle_type != "CNT_deposit" && simu_para.particle_type != "GNP_cuboids" && simu_para.particle_type != "Hybrid_particles" && simu_para.particle_type != "GNP_CNT_mix") {
+        hout << "Error: the type of particles shoud be one of the following: CNT_wires, CNT_deposit, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input was: "<<simu_para.particle_type<< endl;
         return 0;
     }
     
@@ -318,8 +318,8 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
                 //hout << simu_para.CNT_seeds[i] << endl;
             }
         }
-        if (simu_para.particle_type!="CNT_wires") {
-            //If the particle type is not CNT_wires, then GNPs are generated for sure
+        if (simu_para.particle_type!="CNT_wires" && simu_para.particle_type!="CNT_deposit") {
+            //If the particle type is not CNT_wires nor CNT_deposit, then GNPs are generated for sure
             
             //6 seeds are required for GNPs
             int n_seeds = 6;
@@ -424,6 +424,10 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
     istr_pm_flag >> simu_para.penetration_model_flag;
     if (simu_para.penetration_model_flag > 1 || simu_para.penetration_model_flag < 0) {
         hout << "Error: Invalid value for penetration model flag. Valid options are 0 (penetrating model) or 1 (non-penetrating model). Input was: " << simu_para.penetration_model_flag << endl; return 0;
+    }
+    //If CNT_depost is chose, override the flag
+    if (simu_para.particle_type == "CNT_deposit") {
+        simu_para.penetration_model_flag = 1;
     }
     
     //Flag to avoid calculating the resistance of the network
@@ -764,13 +768,20 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
     //If mixed or hybrid particles are generated, CNT content is calculated after reading the
     //input value for GNP density
     
+    //Calculate the extension of the domain along each direction
+    //In the case of the CNT deposit, the boundary layer is drastically reduced to
+    //reduce memmory usage. This because the boundary layer is also divided into
+    //subregions to identify non-penetrating points
+    double l_ext = (simu_para.particle_type=="CNT_deposit")? 0.2*nanotube_geo.len_max: nanotube_geo.len_max;
+    double l_ext_half = 0.5*l_ext;
+    
     //Get the geometry of the extended domain for CNTs
-    geom_sample.ex_dom_cnt.poi_min.x = geom_sample.origin.x - nanotube_geo.len_max/2.0;
-    geom_sample.ex_dom_cnt.poi_min.y = geom_sample.origin.y - nanotube_geo.len_max/2.0;
-    geom_sample.ex_dom_cnt.poi_min.z = geom_sample.origin.z - nanotube_geo.len_max/2.0;
-    geom_sample.ex_dom_cnt.len_x = geom_sample.len_x + nanotube_geo.len_max;
-    geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y + nanotube_geo.len_max;
-    geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + nanotube_geo.len_max;
+    geom_sample.ex_dom_cnt.poi_min.x = geom_sample.origin.x - l_ext_half;
+    geom_sample.ex_dom_cnt.poi_min.y = geom_sample.origin.y - l_ext_half;
+    geom_sample.ex_dom_cnt.poi_min.z = geom_sample.origin.z - l_ext_half;
+    geom_sample.ex_dom_cnt.len_x = geom_sample.len_x + l_ext;
+    geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y + l_ext;
+    geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + l_ext;
     geom_sample.ex_dom_cnt.max_x = geom_sample.ex_dom_cnt.poi_min.x +  geom_sample.ex_dom_cnt.len_x;
     geom_sample.ex_dom_cnt.max_y = geom_sample.ex_dom_cnt.poi_min.y +  geom_sample.ex_dom_cnt.wid_y;
     geom_sample.ex_dom_cnt.max_z = geom_sample.ex_dom_cnt.poi_min.z +  geom_sample.ex_dom_cnt.hei_z;
@@ -1120,7 +1131,7 @@ int Input::Read_visualization_flags(Visualization_flags &vis_flags, ifstream &in
         return 0;
     }
     //Reset the flag to zero if only CNTs or only GNPs are generated
-    if (simu_para.particle_type == "CNT_wires"|| simu_para.particle_type == "GNP_cuboids") {
+    if (simu_para.particle_type == "CNT_wires"||simu_para.particle_type == "CNT_deposit"|| simu_para.particle_type == "GNP_cuboids") {
         vis_flags.cnt_gnp_flag = 0;
     }
     
