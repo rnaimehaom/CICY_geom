@@ -733,7 +733,7 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
     
     //---------------------------------------------------------------------------------------
     //If only CNTs are to be generated, then copy directly the CNT content
-    if (simu_para.particle_type == "CNT_wires") {
+    if (simu_para.particle_type == "CNT_wires" || simu_para.particle_type == "CNT_deposit") {
         
         //Copy the criterion for measuring content
         nanotube_geo.criterion = simu_para.criterion;
