@@ -2247,14 +2247,26 @@ int Hoshen_Kopelman::Export_clusters(const int &percolation, const int &iter, co
     if (percolation) {
         sprintf(command, "mkdir percolated_%.4d", iter);
         system(command);
-        sprintf(command, "mv perc_cluster_*.vtk isolated_*.vtk percolated_%.4d", iter);
+        sprintf(command, "mv isolated_*.vtk percolated_%.4d", iter);
         system(command);
+        
+        //Check if there are percolated clusters and, thus, the corresponding visualization files
+        if (clusters_cnt.size() || clusters_gnp.size()) {
+            sprintf(command, "mv perc_cluster_*.vtk isolated_*.vtk percolated_%.4d", iter);
+            system(command);
+        }
     }
     else {
         sprintf(command, "mkdir clusters_%.4d", iter);
         system(command);
-        sprintf(command, "mv cluster_*.vtk isolated_*.vtk clusters_%.4d", iter);
+        sprintf(command, "mv isolated_*.vtk clusters_%.4d", iter);
         system(command);
+        
+        //Check if there are clusters and, thus, the corresponding visualization files
+        if (clusters_cnt.size() || clusters_gnp.size()) {
+            sprintf(command, "mv cluster_*.vtk clusters_%.4d", iter);
+            system(command);
+        }
     }
     
     return 1;

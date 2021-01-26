@@ -114,7 +114,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
     delete BN;
     
     //Export visualization files for isolated particles if needed
-    if (vis_flags.backbone) {
+    if (vis_flags.backbone && (HoKo->clusters_cnt.size() || HoKo->clusters_gnp.size())) {
         //hout<<"Export_isolated_particles"<<endl;
         if (!Export_isolated_particles(iter, structure_cnt, points_cnt, HoKo->isolated_cnt, gnps, HoKo->isolated_gnp)) {
             hout<<"Error in Perform_analysis_on_clusters when calling Export_isolated_particles"<<endl;
