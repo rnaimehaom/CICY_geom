@@ -151,9 +151,9 @@ void Printer::Window_geometry(ofstream &otec, const struct Geom_sample &sample, 
     double w_z = sample.win_max_z - window*sample.win_delt_z;
     
     //These variables are the coordinates of the lower corner of the observation window
-    double xmin = sample.origin.x + (sample.len_x - w_x)/2;
-    double ymin = sample.origin.y + (sample.wid_y - w_y)/2;
-    double zmin = sample.origin.z + (sample.hei_z - w_z)/2;
+    double xmin = sample.sample.poi_min.x + (sample.sample.len_x - w_x)/2;
+    double ymin = sample.sample.poi_min.y + (sample.sample.wid_y - w_y)/2;
+    double zmin = sample.sample.poi_min.z + (sample.sample.hei_z - w_z)/2;
     
     otec << "ZONE N=" << 8 << ", E=" << 1 << ", F=FEPOINT, ET=BRICK" << endl;
     double cell_x[2] = {xmin, xmin+w_x};

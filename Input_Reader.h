@@ -62,12 +62,6 @@ struct Simu_para{
 struct Geom_sample{
     string keywords;
     bool mark;
-    //Lower left corner of sample
-    Point_3D origin;
-    //Length, width and height of sample domain
-    double len_x, wid_y, hei_z;
-    //Coordinates of the sample's boundaries opposite to those given by the coordinates of origin
-    double x_max, y_max, z_max;
     double volume;
     double matrix_density;
     //Minimum size for background grids (overlapping sub-regions)

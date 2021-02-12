@@ -122,13 +122,13 @@ int Input::Data_Initialization()
 	//Initialize the geometric parameters of the sample
 	geom_sample.keywords = "Sample_Geometry";
 	geom_sample.mark = false;
-    geom_sample.origin.x = 0.0;
-	geom_sample.origin.y = 0.0;
-	geom_sample.origin.z = 0.0;
-	geom_sample.origin.flag = 0;
-	geom_sample.len_x = 1.0;
-	geom_sample.wid_y = 1.0;
-	geom_sample.hei_z = 1.0;
+    geom_sample.sample.poi_min.x = 0.0;
+	geom_sample.sample.poi_min.y = 0.0;
+	geom_sample.sample.poi_min.z = 0.0;
+	geom_sample.sample.poi_min.flag = 0;
+	geom_sample.sample.len_x = 1.0;
+	geom_sample.sample.wid_y = 1.0;
+	geom_sample.sample.hei_z = 1.0;
     geom_sample.ex_dom_cnt.poi_min.x = 0.0;
 	geom_sample.ex_dom_cnt.poi_min.y = 0.0;
 	geom_sample.ex_dom_cnt.poi_min.z = 0.0;
@@ -143,7 +143,7 @@ int Input::Data_Initialization()
     geom_sample.ex_dom_gnp.len_x = 1.0;
     geom_sample.ex_dom_gnp.wid_y = 1.0;
     geom_sample.ex_dom_gnp.hei_z = 1.0;
-	geom_sample.volume = geom_sample.len_x*geom_sample.wid_y*geom_sample.hei_z;
+	geom_sample.volume = geom_sample.sample.len_x*geom_sample.sample.wid_y*geom_sample.sample.hei_z;
 	geom_sample.matrix_density = 1.0;
 	geom_sample.gs_minx = 1.0;
 	geom_sample.gs_miny = 1.0;
@@ -481,25 +481,16 @@ int Input::Read_sample_geometry(Geom_sample &geom_sample, ifstream &infile)
     //----------------------------------------------------------------------
 	//Read the lower-left corner of the sample, its length, width and height
 	istringstream istr0(Get_Line(infile));
-	istr0 >> geom_sample.origin.x >> geom_sample.origin.y >> geom_sample.origin.z;
-    geom_sample.sample.poi_min.x = geom_sample.origin.x;
-    geom_sample.sample.poi_min.y = geom_sample.origin.y;
-    geom_sample.sample.poi_min.z = geom_sample.origin.z;
-	istr0 >> geom_sample.len_x >> geom_sample.wid_y >> geom_sample.hei_z;
-    geom_sample.sample.len_x = geom_sample.len_x;
-    geom_sample.sample.wid_y = geom_sample.wid_y;
-    geom_sample.sample.hei_z = geom_sample.hei_z;
-	if(geom_sample.len_x<=0||geom_sample.wid_y<=0||geom_sample.hei_z<=0)
+	istr0 >> geom_sample.sample.poi_min.x >> geom_sample.sample.poi_min.y >> geom_sample.sample.poi_min.z;
+	istr0 >> geom_sample.sample.len_x >> geom_sample.sample.wid_y >> geom_sample.sample.hei_z;
+	if(geom_sample.sample.len_x<=0||geom_sample.sample.wid_y<=0||geom_sample.sample.hei_z<=0)
 	{
 		hout << "Error: the dimensions of the sample along each direction should be positive." << endl;
 		return 0;
 	}
     //Calculate the sample's volume
-	geom_sample.volume = geom_sample.len_x*geom_sample.wid_y*geom_sample.hei_z;
+	geom_sample.volume = geom_sample.sample.len_x*geom_sample.sample.wid_y*geom_sample.sample.hei_z;
     //Calculate the coordinates of the sample's boundaries opposite to those given by the coordinates of origin
-    geom_sample.x_max = geom_sample.origin.x + geom_sample.len_x;
-    geom_sample.y_max = geom_sample.origin.y + geom_sample.wid_y;
-    geom_sample.z_max = geom_sample.origin.z + geom_sample.hei_z;
     geom_sample.sample.max_x = geom_sample.sample.poi_min.x + geom_sample.sample.len_x;
     geom_sample.sample.max_y = geom_sample.sample.poi_min.y + geom_sample.sample.wid_y;
     geom_sample.sample.max_z = geom_sample.sample.poi_min.z + geom_sample.sample.hei_z;
@@ -514,7 +505,7 @@ int Input::Read_sample_geometry(Geom_sample &geom_sample, ifstream &infile)
 	istr3 >> geom_sample.win_min_x >> geom_sample.win_min_y >> geom_sample.win_min_z;
 
 	if(geom_sample.win_max_x<=Zero||geom_sample.win_max_y<=Zero||geom_sample.win_max_z<=Zero||
-	   geom_sample.win_max_x>geom_sample.len_x||geom_sample.win_max_y>geom_sample.wid_y||geom_sample.win_max_y>geom_sample.hei_z)
+	   geom_sample.win_max_x>geom_sample.sample.len_x||geom_sample.win_max_y>geom_sample.sample.wid_y||geom_sample.win_max_y>geom_sample.sample.hei_z)
 	{
 		hout << "Error: the maximum side lenght of the observation window in each direction (win_max) should be positive and smaller than the size of the sample." << endl;
 		return 0;
@@ -672,9 +663,9 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
 	istringstream istr2(Get_Line(infile));
 	istr2 >> nanotube_geo.step_length;
 	if(nanotube_geo.step_length<=Zero||
-	   nanotube_geo.step_length>=0.25*geom_sample.len_x||
-	   nanotube_geo.step_length>=0.25*geom_sample.wid_y||
-       nanotube_geo.step_length>=0.25*geom_sample.hei_z) {
+	   nanotube_geo.step_length>=0.25*geom_sample.sample.len_x||
+	   nanotube_geo.step_length>=0.25*geom_sample.sample.wid_y||
+       nanotube_geo.step_length>=0.25*geom_sample.sample.hei_z) {
         hout << "Error: The step length must be positive and up to 0.25 times the side length of the sample. Input was: "<<nanotube_geo.step_length << endl;	return 0; }
     
 	//----------------------------------------------------------------------
@@ -775,18 +766,18 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
     double l_ext_half = 0.5*l_ext;
     
     //Get the geometry of the extended domain for CNTs
-    geom_sample.ex_dom_cnt.poi_min.x = geom_sample.origin.x - l_ext_half;
-    geom_sample.ex_dom_cnt.poi_min.y = geom_sample.origin.y - l_ext_half;
-    geom_sample.ex_dom_cnt.len_x = geom_sample.len_x + l_ext;
-    geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y + l_ext;
+    geom_sample.ex_dom_cnt.poi_min.x = geom_sample.sample.poi_min.x - l_ext_half;
+    geom_sample.ex_dom_cnt.poi_min.y = geom_sample.sample.poi_min.y - l_ext_half;
+    geom_sample.ex_dom_cnt.len_x = geom_sample.sample.len_x + l_ext;
+    geom_sample.ex_dom_cnt.wid_y = geom_sample.sample.wid_y + l_ext;
     //The z-coordinates will be the same as the sample's coordinates in the case of a CNT deposit
     if (simu_para.particle_type=="CNT_deposit") {
-        geom_sample.ex_dom_cnt.poi_min.z = geom_sample.origin.z;
-        geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z;
+        geom_sample.ex_dom_cnt.poi_min.z = geom_sample.sample.poi_min.z;
+        geom_sample.ex_dom_cnt.hei_z = geom_sample.sample.hei_z;
     }
     else {
-        geom_sample.ex_dom_cnt.poi_min.z = geom_sample.origin.z - l_ext_half;
-        geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + l_ext;
+        geom_sample.ex_dom_cnt.poi_min.z = geom_sample.sample.poi_min.z - l_ext_half;
+        geom_sample.ex_dom_cnt.hei_z = geom_sample.sample.hei_z + l_ext;
     }
     geom_sample.ex_dom_cnt.max_x = geom_sample.ex_dom_cnt.poi_min.x +  geom_sample.ex_dom_cnt.len_x;
     geom_sample.ex_dom_cnt.max_y = geom_sample.ex_dom_cnt.poi_min.y +  geom_sample.ex_dom_cnt.wid_y;
@@ -972,10 +963,10 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
     //---------------------------------------------------------------------------------------
     //Get the geometry of the extended domain for GNPs
     double len_max_halved = gnp_geo.len_max/2.0;
-    geom_sample.ex_dom_gnp.poi_min = geom_sample.origin - Point_3D(len_max_halved,len_max_halved,len_max_halved);
-    geom_sample.ex_dom_gnp.len_x = geom_sample.len_x + len_max_halved;
-    geom_sample.ex_dom_gnp.wid_y = geom_sample.wid_y + len_max_halved;
-    geom_sample.ex_dom_gnp.hei_z = geom_sample.hei_z + len_max_halved;
+    geom_sample.ex_dom_gnp.poi_min = geom_sample.sample.poi_min - Point_3D(len_max_halved,len_max_halved,len_max_halved);
+    geom_sample.ex_dom_gnp.len_x = geom_sample.sample.len_x + len_max_halved;
+    geom_sample.ex_dom_gnp.wid_y = geom_sample.sample.wid_y + len_max_halved;
+    geom_sample.ex_dom_gnp.hei_z = geom_sample.sample.hei_z + len_max_halved;
     geom_sample.ex_dom_gnp.max_x = geom_sample.ex_dom_gnp.poi_min.x + geom_sample.ex_dom_gnp.len_x;
     geom_sample.ex_dom_gnp.max_y = geom_sample.ex_dom_gnp.poi_min.y + geom_sample.ex_dom_gnp.wid_y;
     geom_sample.ex_dom_gnp.max_z = geom_sample.ex_dom_gnp.poi_min.z + geom_sample.ex_dom_gnp.hei_z;

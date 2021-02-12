@@ -453,11 +453,11 @@ int Generate_Network::Initialize_cnt_subregions(const Geom_sample &sample_geom, 
     //Make sure there is at least one subregion along each direction
     //
     //Number of subregions along x
-    n_subregion[0] = max(1, (int)(sample_geom.len_x/sample_geom.gs_minx));
+    n_subregion[0] = max(1, (int)(sample_geom.sample.len_x/sample_geom.gs_minx));
     //Number of subregions along y
-    n_subregion[1] = max(1, (int)(sample_geom.wid_y/sample_geom.gs_miny));
+    n_subregion[1] = max(1, (int)(sample_geom.sample.wid_y/sample_geom.gs_miny));
     //Number of subregions along z
-    n_subregion[2] = max(1, (int)(sample_geom.hei_z/sample_geom.gs_minz));
+    n_subregion[2] = max(1, (int)(sample_geom.sample.hei_z/sample_geom.gs_minz));
     
     //Initialize sectioned_domain
     sectioned_domain.assign(n_subregion[0]*n_subregion[1]*n_subregion[2], vector<long int>());
@@ -581,13 +581,13 @@ int Generate_Network::Get_cnt_point_subregion(const Geom_sample &geom_sample, co
         //These variables will give me the region cordinates of the region that a point belongs to
         int a, b, c;
         //Calculate the region-coordinates
-        a = (int)((point.x-geom_sample.origin.x)/geom_sample.gs_minx);
+        a = (int)((point.x-geom_sample.sample.poi_min.x)/geom_sample.gs_minx);
         //Limit the value of a as it has to go from 0 to n_subregions[0]-1
         if (a == n_subregions[0]) a--;
-        b = (int)((point.y-geom_sample.origin.y)/geom_sample.gs_miny);
+        b = (int)((point.y-geom_sample.sample.poi_min.y)/geom_sample.gs_miny);
         //Limit the value of b as it has to go from 0 to n_subregions[1]-1
         if (b == n_subregions[1]) b--;
-        c = (int)((point.z-geom_sample.origin.z)/geom_sample.gs_minz);
+        c = (int)((point.z-geom_sample.sample.poi_min.z)/geom_sample.gs_minz);
         //Limit the value of c as it has to go from 0 to n_subregions[2]-1
         if (c == n_subregions[2]) c--;
         
@@ -1289,16 +1289,16 @@ Point_3D Generate_Network::Find_intersection_at_boundary(const Geom_sample &geom
     //Check if any of the x-boundaries is intersected
     double lambda_x = - 1.0;
     //x-left boundary
-    if ( (p_outside.x - geom_sample.origin.x) < Zero ) {
+    if ( (p_outside.x - geom_sample.sample.poi_min.x) < Zero ) {
         
         //Calculate the lambda value
-        lambda_x = calc_lambda(geom_sample.origin.x, p_outside.x, T.x);
+        lambda_x = calc_lambda(geom_sample.sample.poi_min.x, p_outside.x, T.x);
     }
     //x-right boundary
-    else if ( (geom_sample.x_max - p_outside.x) < Zero ) {
+    else if ( (geom_sample.sample.max_x - p_outside.x) < Zero ) {
         
         //Calculate the lambda value
-        lambda_x = calc_lambda(geom_sample.x_max, p_outside.x, T.x);
+        lambda_x = calc_lambda(geom_sample.sample.max_x, p_outside.x, T.x);
     }
     //hout<<"lambda_x="<<lambda_x<<endl;
     
@@ -1311,32 +1311,32 @@ Point_3D Generate_Network::Find_intersection_at_boundary(const Geom_sample &geom
     //Check if any of the y-boundaries is intersected
     double lambda_y = -1.0;
     //y-left boundary
-    if ( (p_outside.y - geom_sample.origin.y) < Zero ) {
+    if ( (p_outside.y - geom_sample.sample.poi_min.y) < Zero ) {
         
         //Calculate the lambda value
-        lambda_y = calc_lambda(geom_sample.origin.y, p_outside.y, T.y);
+        lambda_y = calc_lambda(geom_sample.sample.poi_min.y, p_outside.y, T.y);
     }
     //y-right boundary
-    else if ( (geom_sample.y_max - p_outside.y) < Zero ) {
+    else if ( (geom_sample.sample.max_y - p_outside.y) < Zero ) {
         
         //Calculate the lambda value
-        lambda_y = calc_lambda(geom_sample.y_max, p_outside.y, T.y);
+        lambda_y = calc_lambda(geom_sample.sample.max_y, p_outside.y, T.y);
     }
     //hout<<"lambda_y="<<lambda_y<<endl;
     
     //Check if any of the z-boundaries is intersected
     double lambda_z = -1.0;
     //z-left boundary
-    if ( (p_outside.z - geom_sample.origin.z) < Zero ) {
+    if ( (p_outside.z - geom_sample.sample.poi_min.z) < Zero ) {
         
         //Calculate the lambda value
-        lambda_z = calc_lambda(geom_sample.origin.z, p_outside.z, T.z);
+        lambda_z = calc_lambda(geom_sample.sample.poi_min.z, p_outside.z, T.z);
     }
     //z-right boundary
-    else if ( (geom_sample.z_max - p_outside.z) < Zero ) {
+    else if ( (geom_sample.sample.max_z - p_outside.z) < Zero ) {
         
         //Calculate the lambda value
-        lambda_z = calc_lambda(geom_sample.z_max, p_outside.z, T.z);
+        lambda_z = calc_lambda(geom_sample.sample.max_z, p_outside.z, T.z);
     }
     //hout<<"lambda_z="<<lambda_z<<endl;
     
@@ -2531,11 +2531,11 @@ int Generate_Network::Initialize_gnp_subregions(const Geom_sample &sample_geom, 
     //Make sure there is at least one subregion along each direction
     //
     //Number of subregions along x
-    n_subregion[0] = max(1, (int)(sample_geom.len_x/sample_geom.gs_minx));
+    n_subregion[0] = max(1, (int)(sample_geom.sample.len_x/sample_geom.gs_minx));
     //Number of subregions along y
-    n_subregion[1] = max(1, (int)(sample_geom.wid_y/sample_geom.gs_miny));
+    n_subregion[1] = max(1, (int)(sample_geom.sample.wid_y/sample_geom.gs_miny));
     //Number of subregions along z
-    n_subregion[2] = max(1, (int)(sample_geom.hei_z/sample_geom.gs_minz));
+    n_subregion[2] = max(1, (int)(sample_geom.sample.hei_z/sample_geom.gs_minz));
     
     //Initialize sectioned_domain
     sectioned_domain.assign(n_subregion[0]*n_subregion[1]*n_subregion[2], vector<int>());
@@ -2780,13 +2780,13 @@ int Generate_Network::Add_gnp_subregions_to_set_for_gnp_point(const Geom_sample 
     int min_c = n_subregions[2], max_c = 0;
     
     //Calculate the region-coordinates a, b, c
-    int a = (int)((new_point.x-geom_sample.origin.x)/geom_sample.gs_minx);
+    int a = (int)((new_point.x-geom_sample.sample.poi_min.x)/geom_sample.gs_minx);
     //Limit the value of a as it has to go from 0 to n_subregions[0]-1
     if (a == n_subregions[0]) a--;
-    int b = (int)((new_point.y-geom_sample.origin.y)/geom_sample.gs_miny);
+    int b = (int)((new_point.y-geom_sample.sample.poi_min.y)/geom_sample.gs_miny);
     //Limit the value of b as it has to go from 0 to n_subregions[1]-1
     if (b == n_subregions[1]) b--;
-    int c = (int)((new_point.z-geom_sample.origin.z)/geom_sample.gs_minz);
+    int c = (int)((new_point.z-geom_sample.sample.poi_min.z)/geom_sample.gs_minz);
     //Limit the value of c as it has to go from 0 to n_subregions[2]-1
     if (c == n_subregions[2]) c--;
     //hout<<"a="<<a<<" b="<<b<<" c="<<c<<endl;
@@ -2800,11 +2800,11 @@ int Generate_Network::Add_gnp_subregions_to_set_for_gnp_point(const Geom_sample 
     if (c > max_c) { max_c = c; }
     
     //Calculate the coordinates of non-overlaping region the point belongs to
-    double x1 = (double)a*geom_sample.gs_minx +  geom_sample.origin.x;
+    double x1 = (double)a*geom_sample.gs_minx +  geom_sample.sample.poi_min.x;
     double x2 = x1 + geom_sample.gs_minx;
-    double y1 = (double)b*geom_sample.gs_miny +  geom_sample.origin.y;
+    double y1 = (double)b*geom_sample.gs_miny +  geom_sample.sample.poi_min.y;
     double y2 = y1 + geom_sample.gs_miny;
-    double z1 = (double)c*geom_sample.gs_minz +  geom_sample.origin.z;
+    double z1 = (double)c*geom_sample.gs_minz +  geom_sample.sample.poi_min.z;
     double z2 = z1 + geom_sample.gs_minz;
     
     //Update subregion coordinates in case the point is in the overlapping part of the subregion
