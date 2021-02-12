@@ -293,8 +293,8 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
     //Read keyword for creating a new network or reading a network from a file
 	istringstream istr2(Get_Line(infile));
 	istr2 >> simu_para.create_read_network;
-	if(simu_para.create_read_network!="Create_Network"&&simu_para.create_read_network!="Read_Network"&&simu_para.create_read_network!="Network_From_Seeds")
-	{
+    if(simu_para.create_read_network!="Create_Network"&&simu_para.create_read_network!="Read_Network"&&simu_para.create_read_network!="Network_From_Seeds")
+    {
         hout << "Error: Invalid keyword. Valid options are 'Create_Network', 'Read_Network', or 'Network_From_Seeds'. Input was: " << simu_para.create_read_network << endl; return 0; }
     
     //----------------------------------------------------------------------
@@ -315,7 +315,7 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
             //Add seeds to the vector
             for (int i = 0; i < n_seeds; i++) {
                 istr_network_seeds >> simu_para.CNT_seeds[i];
-                //hout << simu_para.CNT_seeds[i] << endl;
+                //hout<<"seed["<<i<<"]="<<simu_para.CNT_seeds[i]<<endl;
             }
         }
         if (simu_para.particle_type!="CNT_wires" && simu_para.particle_type!="CNT_deposit") {
@@ -336,6 +336,7 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
     }
     
     //Read the nanoparticle content unless read from file
+    //If the network is generated randomly or from seeds, these parameters need to be read
     if (simu_para.create_read_network!="Read_Network") {
         
         //Read the content
@@ -416,8 +417,6 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
             }
         }
     }
-    
-    
     
     //Flag that defines whether the non-penetrating or penetrating model is used
     istringstream istr_pm_flag(Get_Line(infile));
@@ -778,10 +777,17 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
     //Get the geometry of the extended domain for CNTs
     geom_sample.ex_dom_cnt.poi_min.x = geom_sample.origin.x - l_ext_half;
     geom_sample.ex_dom_cnt.poi_min.y = geom_sample.origin.y - l_ext_half;
-    geom_sample.ex_dom_cnt.poi_min.z = geom_sample.origin.z - l_ext_half;
     geom_sample.ex_dom_cnt.len_x = geom_sample.len_x + l_ext;
     geom_sample.ex_dom_cnt.wid_y = geom_sample.wid_y + l_ext;
-    geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + l_ext;
+    //The z-coordinates will be the same as the sample's coordinates in the case of a CNT deposit
+    if (simu_para.particle_type=="CNT_deposit") {
+        geom_sample.ex_dom_cnt.poi_min.z = geom_sample.origin.z;
+        geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z;
+    }
+    else {
+        geom_sample.ex_dom_cnt.poi_min.z = geom_sample.origin.z - l_ext_half;
+        geom_sample.ex_dom_cnt.hei_z = geom_sample.hei_z + l_ext;
+    }
     geom_sample.ex_dom_cnt.max_x = geom_sample.ex_dom_cnt.poi_min.x +  geom_sample.ex_dom_cnt.len_x;
     geom_sample.ex_dom_cnt.max_y = geom_sample.ex_dom_cnt.poi_min.y +  geom_sample.ex_dom_cnt.wid_y;
     geom_sample.ex_dom_cnt.max_z = geom_sample.ex_dom_cnt.poi_min.z +  geom_sample.ex_dom_cnt.hei_z;

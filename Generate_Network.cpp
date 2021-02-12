@@ -34,6 +34,12 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     }
     else if (simu_para.particle_type == "CNT_deposit") {
         
+        //Sample geometry data structure used for CNT_deposit only
+        Geom_sample geom_sample_deposit = geom_sample;
+        
+        //Set the sample geometry to be the same as the extended domain
+        geom_sample_deposit.sample = geom_sample.ex_dom_cnt;
+        
         //Generate a network of deposited CNTs
         if (!Generate_cnt_deposit_mt(simu_para, geom_sample, nanotube_geo, cutoffs, cnts_points, radii_in)) {
             hout << "Error in generating a CNT deposit" << endl;
@@ -971,20 +977,20 @@ void Generate_Network::Add_cnt_point_to_overlapping_regions(const Geom_sample &g
         //These variables will give me the region cordinates of the region that a point belongs to
         int a, b, c;
         //Calculate the region-coordinates
-        a = (int)((x-geom_sample.origin.x)/geom_sample.gs_minx);
+        a = (int)((x-geom_sample.sample.poi_min.x)/geom_sample.gs_minx);
         //Limit the value of a as it has to go from 0 to n_subregions[0]-1
         if (a == n_subregions[0]) a--;
-        b = (int)((y-geom_sample.origin.y)/geom_sample.gs_miny);
+        b = (int)((y-geom_sample.sample.poi_min.y)/geom_sample.gs_miny);
         //Limit the value of b as it has to go from 0 to n_subregions[1]-1
         if (b == n_subregions[1]) b--;
-        c = (int)((z-geom_sample.origin.z)/geom_sample.gs_minz);
+        c = (int)((z-geom_sample.sample.poi_min.z)/geom_sample.gs_minz);
         //Limit the value of c as it has to go from 0 to n_subregions[2]-1
         if (c == n_subregions[2]) c--;
         
         //These variables are the coordinates of the lower corner of the RVE that defines its geometry
-        double xmin = geom_sample.origin.x;
-        double ymin = geom_sample.origin.y;
-        double zmin = geom_sample.origin.z;
+        double xmin = geom_sample.sample.poi_min.x;
+        double ymin = geom_sample.sample.poi_min.y;
+        double zmin = geom_sample.sample.poi_min.z;
         
         //Coordinates of non-overlaping region the point belongs to
         double x1 = (double)a*geom_sample.gs_minx +  xmin;
@@ -1543,7 +1549,7 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
                 return 0;
             }
             
-            //Check if the new point, cnt_poi, is inside the extended domain
+            //Check if new_point is inside the extended domain
             if(Is_point_inside_cuboid(geom_sample.ex_dom_cnt, new_point)) {
                 
                 //The point is inside the extended domain, so check find its upmost position
@@ -1872,9 +1878,9 @@ int Generate_Network::Get_direction_2d(const double &omega, MathMatrix &M, mt199
     {
         sum = sum + dist(engine_theta);
     }
-    double theta = abs(omega*(sum/6 - 1));
+    double theta = omega*(sum/6 - 1);
     
-    //Fill the ratation matrix with a rotation by an anlge phi
+    //Fill the rotation matrix with a rotation by an anlge theta
     M.element[0][0] = cos(theta);
     M.element[1][0] = sin(theta);
     M.element[1][1] = M.element[0][0];
