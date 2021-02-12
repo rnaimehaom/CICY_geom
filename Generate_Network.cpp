@@ -41,7 +41,7 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         geom_sample_deposit.sample = geom_sample.ex_dom_cnt;
         
         //Generate a network of deposited CNTs
-        if (!Generate_cnt_deposit_mt(simu_para, geom_sample, nanotube_geo, cutoffs, cnts_points, radii_in)) {
+        if (!Generate_cnt_deposit_mt(simu_para, geom_sample_deposit, nanotube_geo, cutoffs, cnts_points, radii_in)) {
             hout << "Error in generating a CNT deposit" << endl;
             return 0;
         }
@@ -1897,6 +1897,21 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
     //Get the new_point subregion
     int subregion = Get_cnt_point_subregion_extended_domain(geom_sample, n_subregions, new_point);
     
+    //Calculate the minimum z-coordinate
+    double zcoord = new_point.z ;
+    if (!Find_minimum_z_coordinate(cnt_rad+d_vdW, step, new_cnt, new_point, zcoord)) {
+        hout<<"Error in Find_upmost_position_for_point when calling Find_minimum_z_coordinate"<<endl;
+        return 0;
+    }
+    
+    //Find highest overlapping point
+    if (Check_2d_overlapping_for_new_point(sectioned_domain[subregion], cnts_points, cnts_radii, global_coordinates, new_point, cnt_rad+d_vdW, zcoord, p_ovrlp)) {
+        hout<<"Error in Find_upmost_position_for_point when calling Check_2d_overlapping_for_new_point"<<endl;
+        return 0;
+    }
+    
+    //Use the overlapping point to determine the z-coordinate of the new point
+    
     //Check if there is a 2D overlapping
     if (Check_2d_overlapping(sectioned_domain[subregion], cnts_points, cnts_radii, global_coordinates, new_point, cnt_rad+d_vdW, p_ovrlp)) {
         
@@ -1936,6 +1951,116 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
             }
         }
         //else, the point is already at floor level, so leave it as it is
+    }
+    
+    return 1;
+}
+//This function find the minimum z-coordinate that new_point may have so that
+//it forms a valid segment
+int Generate_Network::Find_minimum_z_coordinate(const double &rad_p_dvdW, const double &step, const vector<Point_3D> &new_cnt, Point_3D &new_point, double &zcoord)const
+{
+    //Check if there is a previous segment
+    if (new_cnt.size() >= 2) {
+        
+        //Calcualte vectors of segments
+        Point_3D v0 = new_cnt[new_cnt.size()-2] - new_cnt.back();
+        Point_3D v1 = new_point - new_cnt.back();
+        
+        //Calculate the dot product of the segments
+        double dot_p = (v0).dot(v1);
+        
+        //Check if dot product is non-zero
+        //If the dot product is non-zero, then we need to calculate a new location for new_point
+        //Then the minimum z-coordinate is obtained using the radius and van der Waals distance
+        if (abs(dot_p) > Zero) {
+            
+            //Calculate new location of new_point
+            
+            //Calculate rotation axis
+            Point_3D r = v1.cross(Point_3D(0,0,1));
+            //Make unitary vector
+            r.make_unit();
+            //Make sure it goes in the direction opposite to v0, i.e., the dot procduct
+            //is negative
+            if (r.dot(v0) > Zero) {
+                
+                //Reverse the direction
+                r = r*-1;
+            }
+            
+            //Calcualte rotation angle of segment
+            Point_3D cross_p = r.cross(v1);
+            double theta = -atan(dot_p/v0.dot(cross_p));
+            
+            //Calculate rotated vector v1, store it on v0
+            v0 = v1*cos(theta) + cross_p*sin(theta);
+            
+            //Calculate new position of new_point
+            new_point = new_cnt.back() + v0;
+        }
+        
+        //Calculate zcoord, which is a distance equal to radius plus van der Waals distance
+        //below the coordinate of new_point
+        zcoord = new_point.z - rad_p_dvdW;
+    }
+    else {
+        
+        //There is no previous segment, so the minimum z-coordinate is obtained by the new
+        //segment making a 90 degree angle with the xy-plane
+        zcoord = new_point.z - step - rad_p_dvdW;
+    }
+    
+    return 1;
+}
+//This function checks if there is overlapping of new_point with a previous point in the
+//plane xy and such that this overlapping point is above certain z-coordinate
+int Generate_Network::Check_2d_overlapping_for_new_point(const vector<long int> &subregion, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnt_radii, const vector<vector<int> > &global_coordinates, const Point_3D &new_point, const double &rad_p_dvdw, const double zcoord, Point_3D &p_ovrlp)const
+{
+    //Lambda function to check the distance of two points considering only the
+    //x- and y-coordinates
+    auto dist_xy = [](const Point_3D &P1, const Point_3D &P2){
+        return sqrt( (P1.x - P2.x)*(P1.x - P2.x) + (P1.y - P2.y)*(P1.y - P2.y) );
+    };
+    
+    //Variables to store the highest z-coordinate of the overlaping point in the xy plane
+    double z_high = 0;
+    
+    //Initialize flag of overlapping point with -1
+    p_ovrlp.flag = -1;
+    
+    //Scan all points in the subregion
+    for (int i = 0; i < (int)subregion.size(); i++) {
+        
+        //Get the global coordinate
+        long int gc = subregion[i];
+        
+        //Get CNT and point number
+        int CNTi = global_coordinates[gc][0];
+        int P = global_coordinates[gc][1];
+        
+        //Check if:
+        //Point P is at least close enough along the z-axis so that new_point can lie
+        //above P and form a valid segment (in respect to angles) with the previous points
+        //AND
+        //new_point overlaps P in the projection on the xy plane
+        if (cnts_points[CNTi][P].z - zcoord - cnt_radii[CNTi] > Zero  &&
+            dist_xy(new_point, cnts_points[CNTi][P]) - rad_p_dvdw - cnt_radii[CNTi] < Zero) {
+            
+            //Update variables if:
+            //This is the first overlapping point found,
+            //i.e., the flag of p_ovrlp is still -1
+            //OR
+            //The z-coorndinate of P is above the previous highest coordinate
+            //(provided an overlapping point was already found, i.e., the previous is false)
+            if (p_ovrlp.flag == -1 || cnts_points[CNTi][P].z - z_high > Zero) {
+                
+                //Update the z-coordinate and overlapping point
+                z_high = cnts_points[CNTi][P].z;
+                p_ovrlp = cnts_points[CNTi][P];
+                //Save the CNT number
+                p_ovrlp.flag = CNTi;
+            }
+        }
     }
     
     return 1;
