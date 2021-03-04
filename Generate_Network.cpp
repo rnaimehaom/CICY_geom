@@ -1891,57 +1891,522 @@ int Generate_Network::Get_direction_2d(const double &omega, MathMatrix &M, mt199
 //This function finds the upmost position for a new CNT point (not a seed point)
 int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const double &step, const vector<Point_3D> &new_cnt, Point_3D &new_point)const
 {
+    //This variable is defined for code readability
+    double floor = geom_sample.sample.poi_min.z;
+    
     //Variable to store the upmost overlapping point
-    Point_3D p_ovrlp;
+    Point_3D p_ovrlp(0.,0.0,-floor);
     
     //Get the new_point subregion
     int subregion = Get_cnt_point_subregion_extended_domain(geom_sample, n_subregions, new_point);
     
-    //Calculate the minimum z-coordinate
-    double zcoord = new_point.z ;
+    //Calculate the minimum z-coordinate of the sphere with radius cnt_rad with center at new_point
+    double zcoord = new_point.z - cnt_rad;
     
-    //Use the overlapping point to determine the z-coordinate of the new point
+    //Variables to rotate a point towards the coordinates of the torus
+    double dx = new_point.x - new_cnt.back().x;
+    double dy = new_point.y - new_cnt.back().y;
+    double h = sqrt(dx*dx + dy*dy);
+    double hdx = h/dx;
+    double hdy = h/dy;
     
-    //Check if there is a 2D overlapping
-    if (Check_2d_overlapping(sectioned_domain[subregion], cnts_points, cnts_radii, global_coordinates, new_point, cnt_rad+d_vdW, p_ovrlp)) {
+    //Radius of new CNT plus van der Waals distance
+    double rad_p_dvdw = cnt_rad + d_vdW;
+    
+    //Scan all points in the subregion
+    for (int i = 0; i < (int)sectioned_domain[subregion].size(); i++) {
         
-        //Use the overlapping point to determine the z-coordinate of the new point
-        if (!Update_z_coordinate(p_ovrlp, cnts_radii[p_ovrlp.flag], cnt_rad+d_vdW, new_point)) {
-            hout<<"Error in Find_upmost_position_for_point when calling Update_z_coordinate"<<endl;
-            return 0;
+        //Get the global coordinate
+        long int gc = sectioned_domain[subregion][i];
+        
+        //Get CNT and point number
+        int CNTi = global_coordinates[gc][0];
+        int Pj = global_coordinates[gc][1];
+        
+        //Calculate the vector of the previous segment in new_cnt
+        Point_3D P_vec;
+        if (new_cnt.size() >= 2) {
+            
+            //Use the last two points in the new_cnt vector to obtain P
+            P_vec = new_cnt.back() - new_cnt[new_cnt.size()-2];
+        }
+        else {
+            
+            //Set vector P to have the same direction as the segment formed by the seed point
+            //(which is the only point in the new_cnt vector) and new_point
+            P_vec = new_point - new_cnt.back();
         }
         
-        //Shorten the segment that goes from prev_point to new_point to be equal to
-        //the step length
-        new_point = new_cnt.back() + (new_point - new_cnt.back()).unit()*step;
-        
-        //Check if the new point needs further relocation
-        //This extra relocation might be needed when the z-coordinate of the new point
-        //is above the z-coordinate of the old point
-        if (new_cnt.back().z - new_point.z < Zero) {
+        //Check if current point in the subregion:
+        //is high enough to penetrate new_point
+        //AND
+        //is in the same direction as P_vec
+        if (cnts_points[CNTi][Pj].z > zcoord - cnts_radii[CNTi] && P_vec.dot(cnts_points[CNTi][Pj] - new_cnt.back()) > Zero) {
             
-            //Check if the segment needs to be rotated due to penetration
-            //of new_point with other points
-            if (!Check_if_cnt_segment_needs_rotation(geom_sample, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad+d_vdW, step, new_cnt.back(), new_point)) {
-                hout<<"Error in Find_upmost_position_for_point when calling Check_if_cnt_segment_needs_rotation"<<endl;
-                return 0;
+            Point_3D rotated_p = new_point;
+            
+            //Check if there is penetration of point Pj with new_point
+            if (cnts_points[CNTi][Pj].distance_to(new_point) < rad_p_dvdw + cnts_radii[CNTi]) {
+                
+                //Move new_point to avoid penetration by rotating the new segment
+                //Save the result in rotated_p
+                if (!Rotate_cnt_segment(rad_p_dvdw+cnts_radii[CNTi], step, cnts_points[CNTi][Pj], new_cnt.back(), rotated_p)) {
+                    hout<<"Error in Find_upmost_position_for_new_point when calling Rotate_cnt_segment"<<endl;
+                    return 0;
+                }
+            }
+            //Check if there is possible penetration of point Pj with new_point if
+            //new_point was rotated
+            else {
+                
+                //Calculate distance to torus to find possible penetration
+                double dist_torus = 0.0;
+                //R is the radius of the donut, i.e., the step length
+                //r is the radius of the circle that is sweeped along the center circle
+                //of the torus, i.e., the CNT radius
+                if (!Calculate_distance_to_torus(cnts_points[CNTi][Pj], new_cnt.back(), hdx, hdy, step, cnt_rad, dist_torus)) {
+                    hout<<"Error in Find_upmost_position_for_new_point when calling Calculate_distance_to_torus"<<endl;
+                    return 0;
+                }
+                
+                //Check if the distance to the torus results in penetration
+                if (dist_torus < rad_p_dvdw + cnts_radii[CNTi]) {
+                    
+                    //If so, find the new position of the point by rotating
+                    //the new segment (save it in rotated_p)
+                    if (!Rotate_cnt_segment(rad_p_dvdw+cnts_radii[CNTi], step, cnts_points[CNTi][Pj], new_cnt.back(), rotated_p)) {
+                        hout<<"Error in Find_upmost_position_for_new_point when calling Rotate_cnt_segment"<<endl;
+                        return 0;
+                    }
+                }
+            }
+            
+            //Check if new_loc needs updating, which happens when:
+            //the z-coordinate of rotated_p is above floor level
+            //AND
+            //the z-coordinate of rotated_p is higher than the previous value of p_ovrlp
+            if (rotated_p.z > floor && rotated_p.z > p_ovrlp.z) {
+                
+                //Update p_ovrlp
+                p_ovrlp = rotated_p;
             }
         }
     }
+    
+    //Check if penetration was found
+    //This happens when the z-coordinate of p_ovrlp is above floor level
+    if (p_ovrlp.z - floor > Zero) {
+        
+        //Penetration was found, so just substitute new_point by p_ovrlp
+        new_point = p_ovrlp;
+    }
     else {
         
-        //If no overlapping point was found check if the point should be left with the same
+        //If no overlapping point was found, check if the point should be left with the same
         //z-coordinate of the previous point (i.e., at floor level) or it should be hanging
-        if (new_point.z - geom_sample.sample.poi_min.z - cnt_rad - Zero > Zero) {
+        if (new_point.z - floor - cnt_rad - Zero > Zero) {
             
             //The CNT point needs to be hanging, determine the new position
             if (!Find_hanging_position(geom_sample.sample, cnt_rad, step, new_cnt, new_point)) {
-                hout<<"Error in Find_upmost_position_for_point when calling Find_hanging_position"<<endl;
+                hout<<"Error in Find_upmost_position_for_new_point when calling Find_hanging_position"<<endl;
                 return 0;
             }
         }
         //else, the point is already at floor level, so leave it as it is
     }
+    
+    return 1;
+}
+//This function checks if there is overlapping of new_point with a previous point in the
+//plane xy and such that this overlapping point is above certain z-coordinate
+int Generate_Network::Check_2d_overlapping_for_new_point(const vector<long int> &subregion, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnt_radii, const vector<vector<int> > &global_coordinates, const vector<Point_3D> &new_cnt, const double &cnt_rad, const double &d_vdw, const double &zcoord, const double &step, const double &floor, Point_3D &new_point)const
+{
+    //Variable to store the upmost overlapping point
+    Point_3D p_ovrlp(0.,0.0,-floor);
+    
+    //Variables to rotate a point towards the coordinates of the torus
+    double dx = new_point.x - new_cnt.back().x;
+    double dy = new_point.y - new_cnt.back().y;
+    double h = sqrt(dx*dx + dy*dy);
+    double hdx = h/dx;
+    double hdy = h/dy;
+    
+    //Radius of new CNT plus van der Waals distance
+    double rad_p_dvdw = cnt_rad + d_vdw;
+    
+    //Scan all points in the subregion
+    for (int i = 0; i < (int)subregion.size(); i++) {
+        
+        //Get the global coordinate
+        long int gc = subregion[i];
+        
+        //Get CNT and point number
+        int CNTi = global_coordinates[gc][0];
+        int Pj = global_coordinates[gc][1];
+        
+        //Calculate the vector of the previous segment in new_cnt
+        Point_3D P_vec;
+        if (new_cnt.size() >= 2) {
+            
+            //Use the last two points in the new_cnt vector to obtain P
+            P_vec = new_cnt.back() - new_cnt[new_cnt.size()-2];
+        }
+        else {
+            
+            //Set vector P to have the same direction as the segment formed by the seed point
+            //(which is the only point in the new_cnt vector) and new_point
+            P_vec = new_point - new_cnt.back();
+        }
+        
+        //Check if current point in the subregion:
+        //is high enough to penetrate new_point
+        //AND
+        //is in the same direction as P_vec
+        if (cnts_points[CNTi][Pj].z > zcoord - cnt_radii[CNTi] && P_vec.dot(cnts_points[CNTi][Pj] - new_cnt.back()) > Zero) {
+            
+            Point_3D rotated_p = new_point;
+            
+            //Check if there is penetration of point Pj with new_point
+            if (cnts_points[CNTi][Pj].distance_to(new_point) < rad_p_dvdw + cnt_radii[CNTi]) {
+                
+                //Move new_point to avoid penetration by rotating the new segment
+                //Save the result in rotated_p
+                if (!Rotate_cnt_segment(rad_p_dvdw+cnt_radii[CNTi], step, cnts_points[CNTi][Pj], new_cnt.back(), rotated_p)) {
+                    hout<<"Error in Check_2d_overlapping_for_new_point when calling Rotate_cnt_segment"<<endl;
+                    return 0;
+                }
+            }
+            //Check if there is possible penetration of point Pj with new_point if
+            //new_point was rotated
+            else {
+                
+                //Calculate distance to torus to find possible penetration
+                double dist_torus = 0.0;
+                //R is the radius of the donut, i.e., the step length
+                //r is the radius of the circle that is sweeped along the center circle
+                //of the torus, i.e., the CNT radius
+                if (!Calculate_distance_to_torus(cnts_points[CNTi][Pj], new_cnt.back(), hdx, hdy, step, cnt_rad, dist_torus)) {
+                    hout<<"Error in Check_2d_overlapping_for_new_point when calling Calculate_distance_to_torus"<<endl;
+                    return 0;
+                }
+                
+                //Check if the distance to the torus results in penetration
+                if (dist_torus < rad_p_dvdw + cnt_radii[CNTi]) {
+                    
+                    //If so, find the new position of the point by rotating
+                    //the new segment (save it in rotated_p)
+                    if (!Rotate_cnt_segment(rad_p_dvdw+cnt_radii[CNTi], step, cnts_points[CNTi][Pj], new_cnt.back(), rotated_p)) {
+                        hout<<"Error in Check_2d_overlapping_for_new_point when calling Rotate_cnt_segment"<<endl;
+                        return 0;
+                    }
+                }
+            }
+            
+            //Check if new_loc needs updating, which happens when:
+            //the z-coordinate of rotated_p is above floor level
+            //AND
+            //the z-coordinate of rotated_p is higher than the previous value of p_ovrlp
+            if (rotated_p.z > floor && rotated_p.z > p_ovrlp.z) {
+                
+                //Update p_ovrlp
+                p_ovrlp = rotated_p;
+            }
+        }
+    }
+    
+    //Check if penetration was found
+    //This happens when the z-coordinate of p_ovrlp is above floor level
+    if (p_ovrlp.z - floor > Zero) {
+        
+        //Penetration was found, so just substitute new_point by p_ovrlp
+        new_point = p_ovrlp;
+    }
+    else {
+        
+        //If no overlapping point was found, check if the point should be left with the same
+        //z-coordinate of the previous point (i.e., at floor level) or it should be hanging
+        if (new_point.z - floor - cnt_rad - Zero > Zero) {
+            
+            //The CNT point needs to be hanging, determine the new position
+        }
+        //else, the point is already at floor level, so leave it as it is
+    }
+    
+    return 1;
+}
+//Function that calculates the distance from a point P0 to the torus that is formed by
+//all the positions that new_point might take if rotated along the plane where the new
+//segment lies and is perpendicular to the xy plane
+//R is the radius of the donut, i.e., the step length
+//r is the radius of the circle that is sweeped along the center circle of the torus, i.e.,
+//  the CNT radius
+int Generate_Network::Calculate_distance_to_torus(const Point_3D &P0, const Point_3D &prev_p, const double &hdx, const double &hdy, const double &R, const double &r, double dist)const
+{
+    //Map P0 to the coordinate system of the torus
+    Point_3D P0_tmp = P0 - prev_p;
+    Point_3D P0_T(hdx*P0_tmp.x + hdy*P0_tmp.z, hdy*P0_tmp.x - hdx*P0_tmp.z, P0_tmp.y);
+    
+    /* /Get the angles that minimize the distance of P0 to the torus
+    double phi = 0.0, theta = 0.0;
+    if (!Find_angles_in_torus(P0_T, R, r, phi, theta)) {
+        hout<<"Error in Calculate_distance_to_torus when calling Find_angles_in_torus"<<endl;
+        return 0;
+    }
+    
+    //Calculate the coordinates of the torus using the angles
+    double tmp = R + r*cos(theta);
+    double x = tmp*cos(phi);
+    double y = tmp*sin(phi);
+    double z = r*sin(theta);
+    
+    //Calculate the squared distance from P0 (in the torus'es coordinates) to the torus
+    dist = sqrt((x-P0_T.x)*(x-P0_T.x) + (y-P0_T.y)*(y-P0_T.y) + (z-P0_T.z)*(z-P0_T.z));*/
+    
+    //Get the angles that minimize the distance of P0 to the torus
+    double phi = 0.0, theta1 = 0.0, theta2 = 0.0;
+    if (!Find_all_angles_in_torus(P0_T, R, r, phi, theta1, theta2)) {
+        hout<<"Error in Calculate_distance_to_torus when calling Find_all_angles_in_torus"<<endl;
+        return 0;
+    }
+    
+    //Calculate the coordinates of the torus for theta1
+    double tmp = R + r*cos(theta1);
+    double x = tmp*cos(phi);
+    double y = tmp*sin(phi);
+    double z = r*sin(theta1);
+    
+    //Calculate the squared distance from P0 (in the torus'es coordinates) to the torus for theta1
+    double dist1 = (x-P0_T.x)*(x-P0_T.x) + (y-P0_T.y)*(y-P0_T.y) + (z-P0_T.z)*(z-P0_T.z);
+    
+    //Calculate the coordinates of the torus for theta2
+    tmp = R + r*cos(theta2);
+    x = tmp*cos(phi);
+    y = tmp*sin(phi);
+    z = r*sin(theta2);
+    
+    //Calculate the squared distance from P0 (in the torus'es coordinates) to the torus for theta1
+    double dist2 = (x-P0_T.x)*(x-P0_T.x) + (y-P0_T.y)*(y-P0_T.y) + (z-P0_T.z)*(z-P0_T.z);
+    
+    //The distance I'm looking for is the smallest between dist1 and dist2
+    dist = sqrt(min(dist1, dist2));
+    
+    return 1;
+}
+//This function finds the angles of the torus that have minimum distance with a point P0
+int Generate_Network::Find_all_angles_in_torus(const Point_3D &P0, const double R, const double &r, double &phi, double &theta1, double &theta2)const
+{
+    //Get the phi angle
+    //phi is in the interval [-PI/2,PI/2], which is the range of atan, thus there is no
+    //need to adjust the result of the atan function
+    phi = atan(P0.y/P0.x);
+    
+    //These operations are repeated
+    double x0cosphi = P0.x*cos(phi);
+    double y0sinphi = P0.y*sin(phi);
+    double x0cosp_y0sinp = x0cosphi + y0sinphi;
+    
+    //Get the theta angles
+    //theta is in the inteval [0, 2PI], thus two possible values have to be considered
+    theta1 = atan(P0.z/(x0cosp_y0sinp - R));
+    theta2 = 0.0;
+    
+    //Make sure what are the two values of the atan function
+    if (!Get_two_atan_values(theta1, theta2)) {
+        hout<<"Error in Find_angles_in_torus when calling Get_two_atan_values"<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//This function finds the angles of the torus that have minimum distance with a point P0
+int Generate_Network::Find_angles_in_torus(const Point_3D &P0, const double R, const double &r, double &phi, double &theta)const
+{
+    //Get the phi angle
+    //phi is in the interval [-PI/2,PI/2], which is the range of atan, thus there is no
+    //need to adjust the result of the atan function
+    phi = atan(P0.y/P0.x);
+    
+    //These operations are repeated
+    double x0cosphi = P0.x*cos(phi);
+    double y0sinphi = P0.y*sin(phi);
+    double x0cosp_y0sinp = x0cosphi + y0sinphi;
+    
+    //Get the theta angles
+    //theta is in the inteval [0, 2PI], thus two possible values have to be considered
+    double theta1 = atan(P0.z/(x0cosp_y0sinp - R));
+    double theta2 = 0.0;
+    
+    //Make sure what are the two values of the atan function
+    if (!Get_two_atan_values(theta1, theta2)) {
+        hout<<"Error in Find_angles_in_torus when calling Get_two_atan_values"<<endl;
+        return 0;
+    }
+    
+    //Calculate the scaled discriminants
+    //The actual discriminant is calculated as:
+    //D = 4*r*r*cos(theta)*cos(theta)*(x0cosp_y0sinp*x0cosp_y0sinp + z0 + R*(z0*sin(theta) - 1))
+    //But since I only need to know if D is positive or negative, I can avoid calculating the
+    //factor 4*r*r*cos(theta)*cos(theta) as it is always positive
+    //So to determine the sign of D I just need to check the sign of
+    //x0cosp_y0sinp*x0cosp_y0sinp + z0 + R*(z0*sin(theta) - 1)
+    //Thus, only this last factor is calculated
+    //This is why the D is called "scaled"
+    bool D1 = x0cosp_y0sinp*x0cosp_y0sinp + P0.z + R*(P0.z*sin(theta1) - 1) > Zero;
+    bool D2 = x0cosp_y0sinp*x0cosp_y0sinp + P0.z + R*(P0.z*sin(theta2) - 1) > Zero;
+    
+    //Calculate the second derivatives with respect to phi and check if they are greater than zero
+    //Atually d^2f/dphi^2 = 2*r*cos(theta)*(x0cos(phi) + y0sin(phi))
+    //However, I only need to know if this is greater than zero
+    //To do so, I only need to check if cos(theta)*(x0cos(phi) + y0sin(phi)) is greater than zero
+    //This because 2*r is always positive
+    bool sec_der1 = cos(theta1)*x0cosp_y0sinp > Zero;
+    bool sec_der2 = cos(theta2)*x0cosp_y0sinp > Zero;
+    
+    //Find the theta angle that defines a point in the torus with minimum distance
+    theta = 0.0;
+    //This happens when scaled D and second derivative respect to phi are both greater than zero
+    if (D1 && sec_der1) {
+        
+        //The point in the torus has phi and theta1 as angles
+        theta = theta1;
+    }
+    else if (D2 && sec_der2) {
+        
+        //The point in the torus has phi and theta2 as angles
+        theta = theta1;
+    }
+    else {
+        //This should not happen
+        hout<<"A minium distance to the torus could not be found"<<endl;
+        hout<<"D1 double="<<x0cosp_y0sinp*x0cosp_y0sinp + P0.z + R*(P0.z*sin(theta1) - 1)<<", D1 bool="<<D1<<endl;
+        hout<<"sec_der1 double="<<cos(theta1)*x0cosp_y0sinp<<",sec_der1 bool="<<sec_der1<<endl;
+        hout<<"D2 double="<<x0cosp_y0sinp*x0cosp_y0sinp + P0.z + R*(P0.z*sin(theta2) - 1)<<", D2 bool="<<D2<<endl;
+        hout<<"sec_der2 double="<<cos(theta2)*x0cosp_y0sinp<<",sec_der2 bool="<<sec_der2<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//Function that calculates the distance from a point P0 to the torus that is formed by
+//all the positions that new_point might take if rotated along the plane where the new
+//segment lies and is perpendicular to the xy plane
+//R is the radius of the donut, i.e., the step length
+//r is the radius of the circle that is sweeped alonf the center circle of the torus
+double Generate_Network::Calculate_distance_to_torus_from_four_tans(const Point_3D &P0, const Point_3D &prev_p, const Point_3D &new_point, const double &R, const double &r, Point_3D &new_loc)const
+{
+    //Get the phi angles
+    double phi1 = atan(P0.y/P0.x);
+    double phi2 = 0.0;
+    
+    //Make sure what are the two values of the atan function
+    if (!Get_two_atan_values(phi1, phi2)) {
+        hout<<"Error in Calculate_distance_to_torus when calling Get_two_atan_values phi"<<endl;
+        return 0;
+    }
+    
+    //These operations are repeated
+    double x0cosphi1 = P0.x*cos(phi1);
+    double y0sinphi1 = P0.y*sin(phi1);
+    double x0cosphi2 = P0.x*cos(phi2);
+    double y0sinphi2 = P0.y*sin(phi2);
+    double x0cosp1_y0sinp1 = x0cosphi1 + y0sinphi1;
+    double x0cosp2_y0sinp2 = x0cosphi2 + y0sinphi2;
+    
+    //Get the theta angles
+    double theta11 = atan(P0.z/(x0cosp1_y0sinp1 - R));
+    double theta21 = atan(P0.z/(x0cosp2_y0sinp2 - R));
+    double theta12 = 0.0, theta22 = 0.0;
+    
+    //Make sure what are the two values of the atan function
+    if (!Get_two_atan_values(theta11, theta12)) {
+        hout<<"Error in Calculate_distance_to_torus_from_four_tans when calling Get_two_atan_values theta1"<<endl;
+        return 0;
+    }
+    if (!Get_two_atan_values(theta21, theta22)) {
+        hout<<"Error in Calculate_distance_to_torus_from_four_tans when calling Get_two_atan_values theta2"<<endl;
+        return 0;
+    }
+    
+    //Anonymous function for calculating the discriminant D, which is used to determine
+    //if a maximum or minimum was found
+    auto D_scaled = [](const double &theta, const double &z0, const double &R, const double &x0cosp_y0sinp) {
+        //Actually:
+        //D = 4*r*r*cos(theta)*cos(theta)*(x0cosp_y0sinp*x0cosp_y0sinp + z0 + R*(z0*sin(theta) - 1))
+        //But since I only need to know if D is positive or negative, I can avoid calculating the
+        //factor 4*r*r*cos(theta)*cos(theta) as it is always positive
+        //So to determine the sign of D I just need to check the sign of
+        //x0cosp_y0sinp*x0cosp_y0sinp + z0 + R*(z0*sin(theta) - 1)
+        //Thus, only this last factor is calculated
+        //This is why the D is called "scaled"
+        return (x0cosp_y0sinp*x0cosp_y0sinp + z0 + R*(z0*sin(theta) - 1));
+    };
+    
+    //Calculate the four D_scaled and check if they are greater than zero
+    vector<bool> D(4,0);
+    D[0] = D_scaled(theta11, P0.z, R, x0cosp1_y0sinp1) > Zero;
+    D[1] = D_scaled(theta12, P0.z, R, x0cosp1_y0sinp1) > Zero;
+    D[2] = D_scaled(theta21, P0.z, R, x0cosp2_y0sinp2) > Zero;
+    D[3] = D_scaled(theta22, P0.z, R, x0cosp2_y0sinp2) > Zero;
+    
+    //Calculate the second derivatives with respect to phi and check if they are greater than zero
+    vector<bool> d2fdphi2(4,0);
+    //Atually d^2f/dphi^2 = 2*r*cos(theta)*(x0cos(phi) + y0sin(phi))
+    //However, I only need to know if this is greater than zero
+    //To do so, I only need to check if cos(theta)*(x0cos(phi) + y0sin(phi)) is greater than zero
+    //This because 2*r is always positive
+    d2fdphi2[0] = cos(theta11)*x0cosp1_y0sinp1 > Zero;
+    d2fdphi2[1] = cos(theta12)*x0cosp1_y0sinp1 > Zero;
+    d2fdphi2[2] = cos(theta21)*x0cosp2_y0sinp2 > Zero;
+    d2fdphi2[3] = cos(theta22)*x0cosp2_y0sinp2 > Zero;
+    
+    //Iterate over the four scaled D's and the second derivatives respect to phi
+    int minimum = -1;
+    //Array to store the squared distances
+    double d2[] = {0,0,0,0};
+    double phis[] = {phi1, phi1, phi2, phi2};
+    double thetas[] = {theta11, theta12, theta21, theta22};
+    for (int i = 0; i < 4; i++) {
+        
+        //Check if scaled D and second derivative respect to phi are both greater than zero
+        if (D[i] && d2fdphi2[i]) {
+            
+            //Both quantities are greater than zero, so calculate the squared distance
+            
+            //calculate the coordinates of the torus using the angles
+            double tmp = R + r*cos(thetas[i]);
+            double x = tmp*cos(phis[i]);
+            double y = tmp*sin(phis[i]);
+            double z = r*sin(thetas[i]);
+            
+            d2[i] = (x-P0.x)*(x-P0.x) + (y-P0.y)*(y-P0.y) + (z-P0.z)*(z-P0.z);
+            
+            //Check if this is the absolute minimum or if this is the first minimum found
+            if (minimum == -1 || d2[i] < d2[minimum]) {
+                
+                //Update the index of the minimum
+                minimum = i;
+            }
+        }
+    }
+    
+    //Return the squred root of the minimumm squared distance found
+    return sqrt(d2[minimum]);
+}
+//This function finds what are the two possible values of the atan function so that
+//the results are in the range [0, 2PI]
+//The input phi1 is already the invers tangent of some angle. Thus, phi2 is calculated
+//and it is decided whether phi1 needs to be updated (i.e., in case it is negative)
+int Generate_Network::Get_two_atan_values(double &phi1, double &phi2)const
+{
+    //Check if atan is negative
+    if (phi1 < Zero) {
+        
+        //phi1 needs to be updated
+        phi1 = phi1 + PI;
+    }
+    
+    //At this point phi1 is in the range [0,2PI], thus phi2 is always phi1 + PI
+    phi2 = phi1 + PI;
     
     return 1;
 }
@@ -2111,37 +2576,71 @@ int Generate_Network::Rotate_cnt_segment(const double &d_new_p, const double &st
     //Now that a is defined, we can calculate the z-coordinate of new_point
     new_point.z = sqrt(step2 - a*a*len_u_2);
     
+    //Demap new_point, so add the previous point
+    new_point = new_point + prev_point;
+    
     return 1;
 }
 //This function finds the position of a new point when the point needs to be hanging
+//The new segment hangs half the angle that the previous segment makes with the xy plane
 int Generate_Network::Find_hanging_position(const cuboid &sample, const double &cnt_rad, const double &step, const vector<Point_3D> &new_cnt, Point_3D &new_point)const
 {
-    //Check the size of the new CNT, that will determine how to calculate the new position
-    //If new point is the second point, i.e., there is no previous segment
-    //OR
-    //If there is a previous segment, but it goes downwards
-    //Then set the new segment hanging in a 45 degree (PI/4) angle
-    if (new_cnt.size() == 1 || new_cnt[(int)new_cnt.size() - 2].z - new_cnt.back().z > Zero) {
+    //Calculate vector u, it's magnitude and u_hat (unit vector along u)
+    //u is the vector of the new segment
+    Point_3D u = new_point - new_cnt.back();
+    //Point_3D u_hat = u.unit();
+    double u_len = u.length();
+    
+    //Check if there is a previous segment, i.e., if there are at least two points in new_cnt
+    if (new_cnt.size() >= 2) {
         
-        //There is no previous segment, so any orientation is valid
-        //Calculate the distance of a 45 degree (PI/4) angle
-        double l_45 = step/sqrt(2);
+        //Calculate rotation vector
+        //Point_3D r = u_hat.cross(Point_3D(0.0,0.0,1.0));
         
-        //Check if there is enough space for a 45 degree (PI/4) angle
-        if (new_cnt.back().z - sample.poi_min.z - cnt_rad - l_45 >= Zero) {
-            
-            //Set the z-coordinate of new_point to have a 45 degree (PI/4) angle
-            new_point.z = new_cnt.back().z - l_45;
-        }
-        else {
-            //Set the z-coordinate of new_point to be at "floor level"
-            new_point.z = sample.poi_min.z + cnt_rad;
-        }
+        //Calculate vector v (the vector of the previous segment) and its length
+        Point_3D v = new_cnt.back() - new_cnt[new_cnt.size() - 2];
+        double v_len = v.length();
         
-        //Cut the segment so that it has the step length
-        new_point = (new_point - new_cnt.back()).unit()*step;
+        //Obtain half the angle of v with the xy plane using the arcsine function
+        //Using the arcsine helps recover the sign of the angle
+        //According to cplusplus.com, asin reutnr "Principal arc sine of x,
+        //in the interval [-pi/2,+pi/2] radians."
+        //PI/10 is around 0.31415926536
+        double theta_half = asin(v.z/v_len)/2 - 0.31415926536;
+        
+        //Calculate sine and cosine of theta_half
+        double sinT = sin(theta_half);
+        double cosT = cos(theta_half);
+        
+        //Calculate new vector u
+        Point_3D u_new = u*cosT;
+        u_new.z = u_new.z + u_len*sinT;
+        
+        //Update the location of new_point
+        new_point = u_new + new_cnt.back();
     }
-    //If the previous segment goes up, leave the point in its current position
+    else {
+        
+        //There is no previous segment, so check if the point is already at floor level
+        //Calculate the distance below the previous point where new_point
+        //should be located
+        double dz = step/sqrt(2);
+        
+        //Check if moving new_point a distance dz along the direction -z would result
+        //in new_point being above floor level (floor = sample.poi_min.z)
+        if (new_point.z - dz - cnt_rad - sample.poi_min.z > Zero) {
+            
+            //Move new_point a distance dz along the direction -z
+            
+            //First calculate the temporary position along the current segment
+            new_point = new_cnt.back() + (new_point - new_cnt.back()).unit()*dz;
+            
+            //Update the z coordinate
+            new_point.z = new_point.z - dz;
+        }
+        //else: There is no space for the CNT to hang a 45 degree (PI/4) angle,
+        //so leave it where it is
+    }
     
     return 1;
 }
