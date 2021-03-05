@@ -87,11 +87,7 @@ public:
     int Get_direction_2d(const double &omega, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
     int Find_upmost_position_for_new_point(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const double &step, const vector<Point_3D> &new_cnt, Point_3D &new_point)const;
     int Check_2d_overlapping_for_new_point(const vector<long int> &subregion, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnt_radii, const vector<vector<int> > &global_coordinates, const vector<Point_3D> &new_cnt, const double &cnt_rad, const double &d_vdw, const double &zcoord, const double &step, const double &floor, Point_3D &new_point)const;
-    int Calculate_distance_to_torus(const Point_3D &P0, const Point_3D &prev_p, const double &hdx, const double &hdy, const double &R, const double &r, double dist)const;
-    int Find_all_angles_in_torus(const Point_3D &P0, const double R, const double &r, double &phi, double &theta1, double &theta2)const;
-    int Find_angles_in_torus(const Point_3D &P0, const double R, const double &r, double &phi, double &theta)const;
-    double Calculate_distance_to_torus_from_four_tans(const Point_3D &P0, const Point_3D &prev_p, const Point_3D &new_point, const double &R, const double &r, Point_3D &new_loc)const;
-    int Get_two_atan_values(double &phi1, double &phi2)const;
+    int Calculate_distance_to_torus(const Point_3D &P0, const double &hdx, const double &hdy, const double &R, const double &r, double dist)const;
     int Check_if_cnt_segment_needs_rotation(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &rad_p_dvdw, const double &step, const Point_3D &prev_point, Point_3D &new_point)const;
     int Get_closest_penetrating_point(const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<long int> &subregion, const double &rad_p_dvdw, const Point_3D &new_point, Point_3D &p_point)const;
     int Rotate_cnt_segment(const double &d_new_p, const double &step, const Point_3D &p_point, const Point_3D &prev_point, Point_3D &new_point)const;
