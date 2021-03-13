@@ -1895,7 +1895,7 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
     double floor = geom_sample.sample.poi_min.z;
     
     //Variable to store the upmost overlapping point
-    Point_3D p_ovrlp(0.,0.0,-floor);
+    Point_3D p_ovrlp(0.,0.0,floor-cnt_rad);
     
     //Get the new_point subregion
     int subregion = Get_cnt_point_subregion_extended_domain(geom_sample, n_subregions, new_point);
@@ -1913,6 +1913,22 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
     //Radius of new CNT plus van der Waals distance
     double rad_p_dvdw = cnt_rad + d_vdW;
     
+    //Calculate the vector of the previous segment in new_cnt
+    Point_3D P_vec;
+    
+    if (new_cnt.size() >= 2) {
+        
+        //Use the last two points in the new_cnt vector to obtain P
+        P_vec = new_cnt.back() - new_cnt[new_cnt.size()-2];
+    }
+    else {
+        
+        //Set vector P to have the same direction as the segment formed by the seed point
+        //(which is the only point in the new_cnt vector) and new_point
+        P_vec = new_point - new_cnt.back();
+    }
+    //hout<<endl<<"new_point="<<new_point.str()<<endl;
+    
     //Scan all points in the subregion
     for (int i = 0; i < (int)sectioned_domain[subregion].size(); i++) {
         
@@ -1922,20 +1938,7 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
         //Get CNT and point number
         int CNTi = global_coordinates[gc][0];
         int Pj = global_coordinates[gc][1];
-        
-        //Calculate the vector of the previous segment in new_cnt
-        Point_3D P_vec;
-        if (new_cnt.size() >= 2) {
-            
-            //Use the last two points in the new_cnt vector to obtain P
-            P_vec = new_cnt.back() - new_cnt[new_cnt.size()-2];
-        }
-        else {
-            
-            //Set vector P to have the same direction as the segment formed by the seed point
-            //(which is the only point in the new_cnt vector) and new_point
-            P_vec = new_point - new_cnt.back();
-        }
+        //hout<<"i="<<i<<" CNTi="<<CNTi<<" Pj="<<Pj<<endl;
         
         //Check if current point in the subregion:
         //is high enough to penetrate new_point
@@ -1943,17 +1946,20 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
         //is in the same direction as P_vec
         if (cnts_points[CNTi][Pj].z > zcoord - cnts_radii[CNTi] && P_vec.dot(cnts_points[CNTi][Pj] - new_cnt.back()) > Zero) {
             
-            Point_3D rotated_p = new_point;
+            Point_3D rotated_p(0.0,0.0,floor-cnt_rad);
             
             //Check if there is penetration of point Pj with new_point
             if (cnts_points[CNTi][Pj].distance_to(new_point) < rad_p_dvdw + cnts_radii[CNTi]) {
                 
                 //Move new_point to avoid penetration by rotating the new segment
                 //Save the result in rotated_p
-                if (!Rotate_cnt_segment(rad_p_dvdw+cnts_radii[CNTi], step, cnts_points[CNTi][Pj], new_cnt.back(), rotated_p)) {
+                //hout<<"     d_NS="<<cnts_points[CNTi][Pj].distance_to(new_point)<<endl;
+                if (!Rotate_cnt_segment(rad_p_dvdw+cnts_radii[CNTi], step, cnts_points[CNTi][Pj], new_cnt.back(), new_point, rotated_p)) {
                     hout<<"Error in Find_upmost_position_for_new_point when calling Rotate_cnt_segment"<<endl;
                     return 0;
                 }
+                //hout<<"     rotated_p="<<rotated_p.str()<<endl;
+                //hout<<"     d_NS_new="<<cnts_points[CNTi][Pj].distance_to(rotated_p)<<endl;
             }
             //Check if there is possible penetration of point Pj with new_point if
             //new_point was rotated
@@ -1968,16 +1974,19 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
                     hout<<"Error in Find_upmost_position_for_new_point when calling Calculate_distance_to_torus"<<endl;
                     return 0;
                 }
+                //hout<<"     dist_torus="<<dist_torus<<" dist_torus - d_vdW - cnts_radii[CNTi] ="<<dist_torus - d_vdW - cnts_radii[CNTi] <<" cnt_rad="<<cnt_rad<<" r_CNTi="<<cnts_radii[CNTi]<<endl;
                 
                 //Check if the distance to the torus results in penetration
                 if (dist_torus - d_vdW - cnts_radii[CNTi] < Zero) {
                     
                     //If so, find the new position of the point by rotating
                     //the new segment (save it in rotated_p)
-                    if (!Rotate_cnt_segment(rad_p_dvdw+cnts_radii[CNTi], step, cnts_points[CNTi][Pj], new_cnt.back(), rotated_p)) {
+                    //hout<<"Rotate_cnt_segment (torus)"<<endl;
+                    if (!Rotate_cnt_segment(rad_p_dvdw+cnts_radii[CNTi], step, cnts_points[CNTi][Pj], new_cnt.back(), new_point, rotated_p)) {
                         hout<<"Error in Find_upmost_position_for_new_point when calling Rotate_cnt_segment"<<endl;
                         return 0;
                     }
+                    //hout<<"     torus_p="<<rotated_p.str()<<endl;
                 }
             }
             
@@ -1988,6 +1997,7 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
             if (rotated_p.z > floor && rotated_p.z > p_ovrlp.z) {
                 
                 //Update p_ovrlp
+                //hout<<"     Update, rotated_p="<<rotated_p.str()<<endl;
                 p_ovrlp = rotated_p;
             }
         }
@@ -1998,6 +2008,7 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
     if (p_ovrlp.z - floor > Zero) {
         
         //Penetration was found, so just substitute new_point by p_ovrlp
+        //hout<<"     p_ovrlp="<<p_ovrlp.str()<<endl;
         new_point = p_ovrlp;
     }
     else {
@@ -2011,6 +2022,7 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
                 hout<<"Error in Find_upmost_position_for_new_point when calling Find_hanging_position"<<endl;
                 return 0;
             }
+            //hout<<"     p_hang="<<new_point.str()<<endl;
         }
         //else, the point is already at floor level, so leave it as it is
     }
@@ -2020,21 +2032,37 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
 //Function that calculates the distance from a point P0 to the torus that is formed by
 //all the positions that new_point might take if rotated along the plane where the new
 //segment lies and is perpendicular to the xy plane
-int Generate_Network::Calculate_distance_to_torus(const Point_3D &P0, const double &hdx, const double &hdy, const double &R, const double &r, double dist)const
+int Generate_Network::Calculate_distance_to_torus(const Point_3D &P0, const double &hdx, const double &hdy, const double &R, const double &r, double &dist)const
 {
     //Map P0 to the coordinate system of the torus
     Point_3D P0_T(hdx*P0.x + hdy*P0.z, hdy*P0.x - hdx*P0.z, P0.y);
     
     //Calculate some quantitites
-    //2R^(3/2)
-    double R_32 = 2*R*sqrt(R);
+    //x0^2 + y0^2
+    double l_xy2 = P0_T.x*P0_T.x + P0_T.y*P0_T.y;
     //R^2
     double R2 = R*R;
-    //x0^2+y0^2+z0^2
-    double P0_len = P0_T.length();
     
-    //Calculate the distance to the torus
-    dist = R_32 + R + R2 -2*(P0_T.x + P0_T.y)*(R + r) - 2*P0_T.z*sqrt(R_32 - R) + P0_len;
+    //Check in which region P0 is located
+    if (l_xy2 - R2 <= Zero && abs(P0_T.z) - r > Zero) {
+        
+        //P0 is in region 1
+        dist = abs(P0_T.z) - r;
+    }
+    else {
+        
+        //P0 is in region 2
+        
+        //Calculate coordinates of auxiliary circle
+        double tmp = R/sqrt(l_xy2);
+        double xc = P0_T.x*tmp;
+        double yc = P0_T.y*tmp;
+        
+        //Calculate the distance form P0_T to the center of the auxiliary circle
+        double Dx = P0_T.x - xc, Dy = P0_T.y - yc;
+        dist = Dx*Dx + Dy*Dy + P0_T.z*P0_T.z;
+        dist = sqrt(dist) - r;
+    }
     
     return 1;
 }
@@ -2068,10 +2096,12 @@ int Generate_Network::Check_if_cnt_segment_needs_rotation(const Geom_sample &geo
         
         //The closest penetrating point was identified
         //"Rotate" the CNT segment, i.e., calculate the new position of new_point
-        if (!Rotate_cnt_segment(new_point.distance_to(p_point), step, p_point, prev_point, new_point)) {
+        Point_3D rotated_p = new_point;
+        if (!Rotate_cnt_segment(new_point.distance_to(p_point), step, p_point, prev_point, new_point, rotated_p)) {
             hout<<"Error in Check_if_cnt_segment_needs_rotation when calling Rotate_cnt_segment"<<endl;
             return 0;
         }
+        new_point = rotated_p;
         
         //Increase the number of attempts for the next iteration
         attempts++;
@@ -2152,10 +2182,13 @@ int Generate_Network::Get_closest_penetrating_point(const vector<vector<Point_3D
 //The rotation is actually done by calculating the new position of new_point constraining the
 //plane that contains the CNT segment (from prev_point to new_point) that is perpendicular
 //to the plane xy
-int Generate_Network::Rotate_cnt_segment(const double &d_new_p, const double &step, const Point_3D &p_point, const Point_3D &prev_point, Point_3D &new_point)const
+int Generate_Network::Rotate_cnt_segment(const double &d_new_p, const double &step, const Point_3D &p_point, const Point_3D &prev_point, const Point_3D &new_point, Point_3D &rotated_p)const
 {
     //Get the coordinates of new_point taking prev_point as the origin
     Point_3D N = new_point - prev_point;
+    
+    //Get the penetrating point in the coordinates where prev_point is the origin
+    Point_3D S = p_point - prev_point;
     
     //Get the components of the unit vector on the xy plane
     double len_xy = sqrt(N.x*N.x + N.y*N.y);
@@ -2166,30 +2199,36 @@ int Generate_Network::Rotate_cnt_segment(const double &d_new_p, const double &st
     double step2 = step*step;
     
     //Calculate "k" constants
-    double k1 = -2.0*ux*p_point.x - 2.0*uy*p_point.y;
-    double k2 = -2*p_point.z;
-    double k3 = step*step + p_point.length2() - d_new_p*d_new_p;
+    double k1 = -2.0*ux*S.x - 2.0*uy*S.y;
+    double k2 = -2*S.z;
+    double k3 = step2 + S.length2() - d_new_p*d_new_p;
     
     //Some intermediate quantities
+    //Squared k's
+    double k1_2 = k1*k1;
     double k2_2 = k2*k2;
-    double k1_k2_2 = k1*k1/k2_2;
-    double k3_k2_2 = k3*k3/k2_2;
+    double k3_2 = k3*k3;
+    //Length of u
     double len_u_2 = ux*ux + uy*uy;
-    
-    //Calculate constants for solving the quadratic equation
-    double two_a_bar = 2*(k1_k2_2 + len_u_2);
-    double b_bar = 2*k1*k3/k1_k2_2;
-    double Delta = 2*sqrt(k1_k2_2*step2 + len_u_2*(step2 - k3_k2_2));
+    //denominator
+    double den = k1_2 + k2_2*len_u_2;
+    //Common term
+    double common = -k1*k3/den;
+    //Numerator of "conjugate" term
+    double num = k2*sqrt(step2*k1_2 - len_u_2*(k3_2 - step2*k2_2));
+    //"Conjugate" term
+    double con = num/den;
     
     //Calculate the two possible values for the length along the unit vector on the xy plane
-    double a1 = (-b_bar + Delta)/two_a_bar;
-    double a2 = (-b_bar - Delta)/two_a_bar;
+    double a1 = common + con;
+    double a2 = common - con;
     
-    //Find the smallest positive a
+    //Find the largest positive a
     double a;
     if (a1 > Zero && a2 > Zero) {
-        //Set a to have the value of the smallest between a1 and a2
-        a = min(a1, a2);
+        
+        //Set a to have the value of the largest between a1 and a2
+        a = max(a1, a2);
     }
     else {
         
@@ -2197,15 +2236,18 @@ int Generate_Network::Rotate_cnt_segment(const double &d_new_p, const double &st
         a = (a1 < Zero)? a2: a1;
     }
     
-    //Using a, set the x- and y-coordinates of new_point
-    new_point.x = a*ux;
-    new_point.y = a*uy;
+    //Using a, set the x- and y-coordinates of rotated_p
+    rotated_p.x = a*ux;
+    rotated_p.y = a*uy;
     
-    //Now that a is defined, we can calculate the z-coordinate of new_point
-    new_point.z = sqrt(step2 - a*a*len_u_2);
+    //Now that a is defined, we can calculate the z-coordinate of rotated_p
+    rotated_p.z = sqrt(step2 - a*a*len_u_2);
     
-    //Demap new_point, so add the previous point
-    new_point = new_point + prev_point;
+    //Demap rotated_p, so add the previous point
+    rotated_p = rotated_p + prev_point;
+    //hout<<"     a1="<<a1<<" a2="<<a2<<endl;
+    //hout<<"     p_a1="<<(Point_3D(a1*ux,a1*uy,sqrt(step2 - a1*a1*len_u_2))+ prev_point).str()<<endl;
+    //hout<<"     p_a2="<<(Point_3D(a2*ux,a2*uy,sqrt(step2 - a2*a2*len_u_2))+ prev_point).str()<<endl;
     
     return 1;
 }
