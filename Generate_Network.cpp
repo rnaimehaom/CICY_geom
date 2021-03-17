@@ -1702,20 +1702,17 @@ int Generate_Network::Get_cnt_point_subregion_extended_domain(const Geom_sample 
 //This function finds the upmost position for a CNT seed
 int Generate_Network::Find_upmost_position_for_seed(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const int &subregion, Point_3D &new_point)const
 {
-    //Variable to store the upmost overlapping point
-    Point_3D p_ovrlp;
+    //Flag to determine if any 2D overlapping was found
+    bool overlap_2d = false;
     
     //Check if there is a 2D overlapping
-    if (Check_2d_overlapping(sectioned_domain[subregion], cnts_points, cnts_radii, global_coordinates, new_point, cnt_rad+d_vdW, p_ovrlp)) {
-        
-        //Use the overlapping point to determine the z-coordinate of the new point
-        if (!Update_z_coordinate(p_ovrlp, cnts_radii[p_ovrlp.flag], cnt_rad+d_vdW, new_point)) {
-            hout<<"Error in Find_upmost_position_for_seed when calling Update_z_coordinate"<<endl;
-            return 0;
-        }
+    if (!Check_2d_overlapping(sectioned_domain[subregion], cnts_points, cnts_radii, global_coordinates, cnt_rad+d_vdW, new_point, overlap_2d)) {
+        hout<<"Error in Find_upmost_position_for_seed when calling Check_2d_overlapping"<<endl;
+        return 0;
     }
-    //There is no overlapping, decide the next step
-    else {
+    
+    //Check if there was no overlapping and decide the next step
+    if (!overlap_2d) {
         
         //Check if there is a "layer below" in the sectioned domain
         if (subregion < n_subregions[0]*n_subregions[1]) {
@@ -1742,19 +1739,16 @@ int Generate_Network::Find_upmost_position_for_seed(const Geom_sample &geom_samp
 }
 //This function determines if there is a point in the subregion that overlaps the new point
 //in the projection on the xy plane
-bool Generate_Network::Check_2d_overlapping(const vector<long int> &subregion, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnt_radii, const vector<vector<int> > &global_coordinates, const Point_3D &new_point, const double &rad_p_dvdw, Point_3D &p_ovrlp)const
+int Generate_Network::Check_2d_overlapping(const vector<long int> &subregion, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnt_radii, const vector<vector<int> > &global_coordinates, const double &rad_p_dvdw, Point_3D &new_point, bool &overlap_2d)const
 {
     //Lambda function to check the distance of two points considering only the
     //x- and y-coordinates
-    auto dist_xy = [](const Point_3D &P1, const Point_3D &P2){
-        return sqrt( (P1.x - P2.x)*(P1.x - P2.x) + (P1.y - P2.y)*(P1.y - P2.y) );
+    auto dist_xy2 = [](const Point_3D &P1, const Point_3D &P2){
+        double Dx = P1.x - P2.x, Dy = P1.y - P2.y;
+        return (Dx*Dx + Dy*Dy);
     };
     
-    //Flag to check if there was 2D overlapping
-    bool overlap_2d = false;
-    
-    //Variables to store the z-coordinate and the global coordinate of the
-    //overlaping point in the xy plane
+    //Variables to store the z-coordinate of the overlaping point in the xy plane
     double zcoord = 0;
     
     //Scan all points in the subregion
@@ -1765,24 +1759,31 @@ bool Generate_Network::Check_2d_overlapping(const vector<long int> &subregion, c
         
         //Get CNT and point number
         int CNTi = global_coordinates[gc][0];
-        int P = global_coordinates[gc][1];
+        int Pj = global_coordinates[gc][1];
         
-        //Check if new_point overlaps P in the projection on the xy plane
-        if ( dist_xy(new_point, cnts_points[CNTi][P]) - rad_p_dvdw - cnt_radii[CNTi] < Zero) {
+        //Calculate the squared distance in the xy plane
+        double d_xy2 = dist_xy2(new_point, cnts_points[CNTi][Pj]);
+        double d_xy = sqrt(d_xy2);
+        
+        //Calcualte the minimum separation needed between the points
+        double min_sep = rad_p_dvdw + cnt_radii[CNTi];
+        
+        //Check if new_point overlaps Pj in the projection on the xy plane
+        if (d_xy - min_sep < Zero) {
+            
+            //Calculate the total height, i.e., the z-coordinate of new_point if placed "above" Pj
+            double z_tot = cnts_points[CNTi][Pj].z + sqrt(min_sep*min_sep - d_xy2);
             
             //Check if this is the first overlapping point found,
             //i.e., the overlapping flag is still false
             if (overlap_2d) {
                 
                 //At least one overlapping point has been found before
-                //Check if the new one is at a higher position
-                if (cnts_points[CNTi][P].z > zcoord) {
+                //Check if the new z-coordinate is at a higher position
+                if (z_tot > zcoord) {
                     
                     //Update the z-coordinate and overlapping point
-                    zcoord = cnts_points[CNTi][P].z;
-                    p_ovrlp = cnts_points[CNTi][P];
-                    //Save the CNT number
-                    p_ovrlp.flag = CNTi;
+                    zcoord = z_tot;
                 }
             }
             //The overlapping flag is false, so this is the first overlapping point
@@ -1790,10 +1791,7 @@ bool Generate_Network::Check_2d_overlapping(const vector<long int> &subregion, c
                 
                 //Set the z-coordinte and the overlapping point to be the same as that of
                 //the current point (P at CNTi)
-                zcoord = cnts_points[CNTi][P].z;
-                p_ovrlp = cnts_points[CNTi][P];
-                //Save the CNT number
-                p_ovrlp.flag = CNTi;
+                zcoord = z_tot;
                 
                 //Set the overlapping flag to true
                 overlap_2d = true;
@@ -1801,7 +1799,14 @@ bool Generate_Network::Check_2d_overlapping(const vector<long int> &subregion, c
         }
     }
     
-    return overlap_2d;
+    //Check again if 2D overlapping was found
+    if (overlap_2d) {
+        
+        //Update the z-coordinate of new_point
+        new_point.z = zcoord;
+    }
+    
+    return 1;
 }
 //This function calculate the z-coordinate of a deposited CNT point
 int Generate_Network::Update_z_coordinate(const Point_3D &p_ovrlp, const double &rad_ovrlp, const double &rad_p_dvdw, Point_3D &new_point)const
