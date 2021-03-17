@@ -726,8 +726,8 @@ int VTK_Export::Export_single_cnt(const vector<Point_3D> &points, const string &
         return 0;
     }
     
-    //Add the line indicating there is 1 line (i.e., 1 CNT), and the number of points in that line
-    otec<<"LINES 1 "<<n_points<<endl;
+    //Add the line indicating number of lines+1 (i.e., 2), and the number of points in that line
+    otec<<"LINES 2 "<<n_points<<endl;
     
     //Add the offsets
     //Add the line with the OFFSETS command
@@ -737,8 +737,11 @@ int VTK_Export::Export_single_cnt(const vector<Point_3D> &points, const string &
     otec<<"0 "<<n_points<<endl;
     
     //Add connectivity
-    otec<<"0 ";
+    //Add the line with the CONNECTIVITY command
+    otec<<"CONNECTIVITY vtktypeint64"<<endl;
+    
     //Iterate over all points in the CNT
+    otec<<"0 ";
     for (size_t j = 1; j < points.size(); j++) {
         
         //Add the consecutive number of point j within the CNT
