@@ -695,6 +695,71 @@ int VTK_Export::Add_connectivity_from_cluster(const vector<vector<long int> > &s
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
+//Function to export a single CNT
+int VTK_Export::Export_single_cnt(const vector<Point_3D> &points, const string &filename)const
+{
+    //Check that there are at least two points in the CNT
+    //(a single point does not make a CNT)
+    if (points.size() <= 1) {
+        hout<<"No point in the CNT to export. NO visualization file was exported. Input filename: "<<filename<<endl;
+        return 1;
+    }
+    
+    //Count the number of points
+    int n_points = (int)points.size();
+    
+    //Open the file
+    ofstream otec(filename.c_str());
+    
+    //Add header
+    if (!Add_header(otec)) {
+        hout<<"Error in Export_single_cnt when calling Add_header"<<endl;
+        return 0;
+    }
+    
+    //Add the line with the number of points
+    otec<<"POINTS "<<n_points<<" float" <<endl;
+    
+    //Add all the points
+    if (!Add_points_from_vector(points, otec)) {
+        hout<<"Error in Export_single_cnt when calling Add_points_from_vector"<<endl;
+        return 0;
+    }
+    
+    //Add the line indicating there is 1 line (i.e., 1 CNT), and the number of points in that line
+    otec<<"LINES 1 "<<n_points<<endl;
+    
+    //Add the offsets
+    //Add the line with the OFFSETS command
+    otec<<"OFFSETS vtktypeint64"<<endl;
+    
+    //First output a zero, which is required then output the number of points in the line (CNT)
+    otec<<"0 "<<n_points<<endl;
+    
+    //Add connectivity
+    otec<<"0 ";
+    //Iterate over all points in the CNT
+    for (size_t j = 1; j < points.size(); j++) {
+        
+        //Add the consecutive number of point j within the CNT
+        otec<<j<<' ';
+        
+        //Add a new line every 50 points
+        if ( !(j%50) ) {
+            otec<<endl;
+        }
+    }
+    //Add one line at the end
+    otec<<endl;
+    
+    //Close the file
+    otec.close();
+    
+    return 1;
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
 //GNPs
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
