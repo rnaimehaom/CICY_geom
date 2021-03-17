@@ -1540,7 +1540,7 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
         //Variable to store the length of the current CNT that is inside the sample
         double cnt_len = 0.0;
         
-        //Start generation of a CNT siven the generated seed
+        //Start generation of a CNT given the generated seed
         for (int i = 0; i < step_num; i++) {
             
             //Generate a point in a random direction in the plane xy
@@ -1905,8 +1905,11 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
     //Get the new_point subregion
     int subregion = Get_cnt_point_subregion_extended_domain(geom_sample, n_subregions, new_point);
     
+    //Radius of new CNT plus van der Waals distance
+    double rad_p_dvdw = cnt_rad + d_vdW;
+    
     //Calculate the minimum z-coordinate of the sphere with radius cnt_rad with center at new_point
-    double zcoord = new_point.z - cnt_rad;
+    double zcoord = new_point.z - rad_p_dvdw;
     
     //Variables to rotate a point towards the coordinates of the torus
     double dx = new_point.x - new_cnt.back().x;
@@ -1914,9 +1917,6 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
     double h = sqrt(dx*dx + dy*dy);
     double hdx = h/dx;
     double hdy = h/dy;
-    
-    //Radius of new CNT plus van der Waals distance
-    double rad_p_dvdw = cnt_rad + d_vdW;
     
     //Calculate the vector of the previous segment in new_cnt
     Point_3D P_vec;
