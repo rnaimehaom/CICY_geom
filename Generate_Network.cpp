@@ -15,7 +15,7 @@
 //3) When adding the new_cnt vector to the global vector of CNTs, split it into segments. This operation is completely useless with a non-periodic sample and was causing some errors when using the penetrating model so I just deleted it.
 
 //Generate a network of nanoparticles
-int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const GNP_Geo &gnp_geo, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, vector<Point_3D> &points_cnt, vector<double> &radii_out, vector<vector<long int> > &structure, vector<GNP> &gnps)const
+int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const GNP_Geo &gnp_geo, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const Output_data_flags &out_flags, vector<Point_3D> &points_cnt, vector<double> &radii_out, vector<vector<long int> > &structure, vector<GNP> &gnps)const
 {
     //Vector of storing the CNT points
     vector<vector<Point_3D> > cnts_points;
@@ -97,6 +97,17 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         
         //Export the sample geometry
         vtk_exp.Export_cuboid(geom_sample.sample, "sample.vtk");
+    }
+    
+    //---------------------------------------------------------------------------
+    //Check if output data files were requested for generated nanoparticles
+    if (out_flags.gnp_4p) {
+        
+        //Create printer object
+        Printer Pr;
+        
+        //Print the four vertices of a GNP needed to generated them in Abaqus
+        Pr.Print_4_vertices_gnps(gnps, "gnp_vertices.csv");
     }
     
     //---------------------------------------------------------------------------

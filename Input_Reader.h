@@ -207,19 +207,29 @@ struct Visualization_flags{
     int sample_domain;
     int window_domain;
 };
+struct Output_data_flags{
+    string keywords;
+    bool mark;
+    //Flag to export separate files with fractions of CNTs and GNPs
+    //(only when using mixed or hybrid particles)
+    int cnt_gnp_flag;
+    //Flag to export four points per GNP to generate GNP network in Abaqus
+    int gnp_4p;
+};
 //---------------------------------------------------------------------------
 class Input
 {
 public:
     //Data members
-    struct App_name app_name;
-    struct Simu_para simu_para;
-    struct Geom_sample geom_sample;
-    struct Nanotube_Geo nanotube_geo;
-    struct Cutoff_dist cutoff_dist;
-    struct Electric_para electric_para;
-    struct GNP_Geo gnp_geo;
-    struct Visualization_flags vis_flags;
+    App_name app_name;
+    Simu_para simu_para;
+    Geom_sample geom_sample;
+    Nanotube_Geo nanotube_geo;
+    Cutoff_dist cutoff_dist;
+    Electric_para electric_para;
+    GNP_Geo gnp_geo;
+    Visualization_flags vis_flags;
+    Output_data_flags out_flags;
     
     //Constructor
     Input(){};
@@ -241,6 +251,7 @@ private:
     int Read_electrical_parameters(Electric_para &electric_para, ifstream &infile);
     int Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile);
     int Read_visualization_flags(Visualization_flags &vis_flags, ifstream &infile);
+    int Read_output_data_flags(Output_data_flags &out_flags, ifstream &infile);
 };
 //---------------------------------------------------------------------------
 #endif

@@ -127,6 +127,28 @@ void Printer::Print_2d_vec(const vector<vector<double> > &num_mat, const string 
     otec.close();
 }
 
+//Print the four vertices of a GNP needed to generated them in Abaqus
+void Printer::Print_4_vertices_gnps(const vector<GNP> &gnps, const string &filename)
+{
+    //Open file
+    ofstream otec(filename.c_str());
+    otec.precision(10);
+    
+    //Iterate over all GNPs
+    for (size_t i = 0; i < gnps.size(); i++) {
+        
+        //Ouput vertices 0 to 2 and 4
+        otec<<gnps[i].vertices[0].x<<' '<<gnps[i].vertices[0].y<<' '<<gnps[i].vertices[0].z<<' '<<endl;
+        otec<<gnps[i].vertices[1].x<<' '<<gnps[i].vertices[1].y<<' '<<gnps[i].vertices[1].z<<' '<<endl;
+        otec<<gnps[i].vertices[2].x<<' '<<gnps[i].vertices[2].y<<' '<<gnps[i].vertices[2].z<<' '<<endl;
+        otec<<gnps[i].vertices[4].x<<' '<<gnps[i].vertices[4].y<<' '<<gnps[i].vertices[4].z<<' '<<endl;
+        
+    }
+    
+    //Close file
+    otec.close();
+}
+
 void Printer::Print_CNTs_in_window(const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<int> &cnts_inside, const vector<vector<long int> > &structure, const int &window)
 {
     //Filename

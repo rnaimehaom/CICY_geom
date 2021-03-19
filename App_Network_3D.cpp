@@ -37,7 +37,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     hout << "Generating nanoparticle network......" << endl;
     ct0 = time(NULL);
     Generate_Network *Generator = new Generate_Network;
-    if (!Generator->Generate_nanoparticle_network(Init->simu_para, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, Init->cutoff_dist, Init->vis_flags, points_cnt, radii, structure_cnt, gnps)) {
+    if (!Generator->Generate_nanoparticle_network(Init->simu_para, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, Init->cutoff_dist, Init->vis_flags, Init->out_flags, points_cnt, radii, structure_cnt, gnps)) {
         hout<<"Error in Generate_nanoparticle_network."<<endl;
         return 0;
     }

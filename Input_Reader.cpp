@@ -28,25 +28,28 @@ int Input::Read_input_file(ifstream &infile)
                 if(!Read_application(app_name, infile)) return 0;
             }
             else if(str_temp=="Simulation_Parameters") {
-                if(Read_simulation_parameters(simu_para, infile)==0) return 0;
+                if(!Read_simulation_parameters(simu_para, infile)) return 0;
             }
             else if(str_temp=="Sample_Geometry") {
-                if(Read_sample_geometry(geom_sample, infile)==0) return 0;
+                if(!Read_sample_geometry(geom_sample, infile)) return 0;
             }
             else if(str_temp=="Cutoff_Distances") {
-                if(Read_cutoff_distances(cutoff_dist, infile)==0) return 0;
+                if(!Read_cutoff_distances(cutoff_dist, infile)) return 0;
             }
             else if(str_temp=="CNT_Geometry") {
-                if(Read_nanotube_geo_parameters(nanotube_geo, infile)==0) return 0;
+                if(!Read_nanotube_geo_parameters(nanotube_geo, infile)) return 0;
             }
             else if(str_temp=="GNP_Geometry") {
-                if(Read_gnp_geo_parameters(gnp_geo, infile)==0) return 0;
+                if(!Read_gnp_geo_parameters(gnp_geo, infile)) return 0;
             }
             else if(str_temp=="Electrical_Parameters") {
-                if(Read_electrical_parameters(electric_para, infile)==0) return 0;
+                if(!Read_electrical_parameters(electric_para, infile)) return 0;
             }
             else if(str_temp=="Visualization_Flags") {
-                if(Read_visualization_flags(vis_flags, infile)==0) return 0;
+                if(!Read_visualization_flags(vis_flags, infile)) return 0;
+            }
+            else if(str_temp=="Output_Data_Flags") {
+                if(!Read_output_data_flags(out_flags, infile)) return 0;
             }
             else
             {
@@ -82,6 +85,9 @@ int Input::Read_input_file(ifstream &infile)
     }
     if(!vis_flags.mark) {
         Warning_message("Visualization_Flags");
+    }
+    if(!out_flags.mark) {
+        Warning_message("Output_Data_Flags");
     }
     
     /*
@@ -221,6 +227,12 @@ int Input::Data_Initialization()
     vis_flags.cnt_gnp_flag = 0;
     vis_flags.sample_domain = 0;
     vis_flags.window_domain = 0;
+    
+    //Initialize output data flags (do not output any data)
+    out_flags.keywords = "Output_Data_Flags";
+    out_flags.mark = false;
+    out_flags.cnt_gnp_flag = 0;
+    out_flags.gnp_4p = 0;
 
 	hout << "    Data initialization done" <<endl<<endl;
 
@@ -1148,6 +1160,51 @@ int Input::Read_visualization_flags(Visualization_flags &vis_flags, ifstream &in
     }
     
 	return 1;
+}
+//---------------------------------------------------------------------------
+//Read flags for output data files
+int Input::Read_output_data_flags(Output_data_flags &out_flags, ifstream &infile)
+{
+    if(out_flags.mark)
+    {
+        //Output a message that the keyword has already been iput
+        Warning_message_already_input(out_flags.keywords);
+        return 0;
+    }
+    else out_flags.mark = true;
+    
+    //Flag to save CNT and GNP fractions and volume separately when mixed or hybrid particles are generated
+    // 0: do not export CNT and GNP volumes and fractions separately
+    // 1: export CNT and GNP volumes and fractions separately
+    //When this flag is set to 1, in addition to total fractions and volumes, four more files are written:
+    //Volumes and fractions of CNTs only (fractions respect to the CNT volume)
+    //Volumes and fractions of GNPs only (fractions respect to the GNP volume)
+    //If only CNTs or only GNPs are generated, then this flag is ignored
+    istringstream istr_cnt_gnp_flag(Get_Line(infile));
+    istr_cnt_gnp_flag >> out_flags.cnt_gnp_flag;
+    //Check it is a valid flag
+    if (out_flags.cnt_gnp_flag<0||out_flags.cnt_gnp_flag>1) {
+        hout<<"Error: Flag to export CNT and GNP fractions and volume separately can only be 0 or 1. Input was: "<<out_flags.cnt_gnp_flag<<endl;
+        return 0;
+    }
+    //Reset the flag to zero if only CNTs or only GNPs are generated
+    if (simu_para.particle_type == "CNT_wires"||simu_para.particle_type == "CNT_deposit"|| simu_para.particle_type == "GNP_cuboids") {
+        out_flags.cnt_gnp_flag = 0;
+    }
+    
+    //Flag to output a text file with four points so that GNPs may be generated in Abaqus
+    //The coice of four points depends entirely in the way the GNPs are generated in Abaqus:
+    //Three points define a plane which is used to draw the squared base of the GNP
+    //The fourth point is used to define the thickness of the GNP
+    istringstream istr_4_points(Get_Line(infile));
+    istr_4_points >> out_flags.gnp_4p;
+    //Check it is a valid flag
+    if (out_flags.gnp_4p<0||out_flags.gnp_4p>1) {
+        hout<<"Error: Flag to export four points of a GNP can only be 0 or 1. Input was: "<<out_flags.gnp_4p<<endl;
+        return 0;
+    }
+    
+    return 1;
 }
 //---------------------------------------------------------------------------
 //Read the input data in a whole line (to skip over the comment line starting with a '%')
