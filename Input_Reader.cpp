@@ -224,7 +224,6 @@ int Input::Data_Initialization()
     vis_flags.percolated_clusters = 0;
     vis_flags.backbone = 0;
     vis_flags.triangulations = 0;
-    vis_flags.cnt_gnp_flag = 0;
     vis_flags.sample_domain = 0;
     vis_flags.window_domain = 0;
     
@@ -1123,25 +1122,6 @@ int Input::Read_visualization_flags(Visualization_flags &vis_flags, ifstream &in
     if (vis_flags.backbone<0||vis_flags.backbone>1) {
         hout<<"Error: Flag to export the backbone clusters can only be an integer, 0 or 1. Input was: "<<vis_flags.backbone<<endl;
         return 0;
-    }
-    
-    //Flag to save CNT and GNP fractions and volume separately when mixed or hybrid particles are generated
-    // 0: do not export CNT and GNP volumes and fractions separately
-    // 1: export CNT and GNP volumes and fractions separately
-    //When this flag is set to 1, in addition to total fractions and volumes, four more files are written:
-    //Volumes and fractions of CNTs only (fractions respect to the CNT volume)
-    //Volumes and fractions of GNPs only (fractions respect to the GNP volume)
-    //If only CNTs or only GNPs are generated, then this flag is ignored
-    istringstream istr_cnt_gnp_flag(Get_Line(infile));
-    istr_cnt_gnp_flag >> vis_flags.cnt_gnp_flag;
-    //Check it is a valid flag
-    if (vis_flags.cnt_gnp_flag<0||vis_flags.cnt_gnp_flag>1) {
-        hout<<"Error: Flag to export CNT and GNP fractions and volume separately can only be 0 or 1. Input was: "<<vis_flags.cnt_gnp_flag<<endl;
-        return 0;
-    }
-    //Reset the flag to zero if only CNTs or only GNPs are generated
-    if (simu_para.particle_type == "CNT_wires"||simu_para.particle_type == "CNT_deposit"|| simu_para.particle_type == "GNP_cuboids") {
-        vis_flags.cnt_gnp_flag = 0;
     }
     
     //Flag to export triangulations if set to 1

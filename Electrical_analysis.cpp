@@ -7,7 +7,7 @@
 
 #include "Electrical_analysis.h"
 
-int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cuboid &window, const Simu_para &simu_param, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps)
+int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cuboid &window, const Simu_para &simu_param, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const Output_data_flags &out_flags, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps)
 {
     //Time variables
     time_t ct0, ct1;
@@ -105,7 +105,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
     
     //Calculate clusters fractions
     //hout<<"Calculate_percolated_families_fractions"<<endl;
-    if (!Calculate_percolated_families_fractions(vis_flags.cnt_gnp_flag, structure_cnt, points_cnt, radii, gnps, HoKo, BN)) {
+    if (!Calculate_percolated_families_fractions(out_flags.cnt_gnp_flag, structure_cnt, points_cnt, radii, gnps, HoKo, BN)) {
         hout<<"Error in Perform_analysis_on_clusters when calling Calculate_percolated_families_fractions"<<endl;
         return 0;
     }

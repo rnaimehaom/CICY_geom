@@ -119,7 +119,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         
         //Loop over the different clusters so that the direct electrifying algorithm is aplied on each cluster
         Electrical_analysis *EA = new Electrical_analysis;
-        if (!EA->Perform_analysis_on_clusters(i, window_geo, Init->simu_para, Init->electric_para, Init->cutoff_dist, Init->vis_flags, HoKo, Cutwins, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps)) {
+        if (!EA->Perform_analysis_on_clusters(i, window_geo, Init->simu_para, Init->electric_para, Init->cutoff_dist, Init->vis_flags, Init->out_flags, HoKo, Cutwins, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps)) {
             hout << "Error when performing electrical analysis" << endl;
             return 0;
         }

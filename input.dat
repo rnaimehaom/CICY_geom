@@ -245,15 +245,6 @@ Visualization_Flags
 %   Three files if there are GNPs: backbone, dead (attached to percolated clusters) and isolated
 0
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Flag to save CNT and GNP fractions and volumes separately when mixed or hybrid particles are generated
-% 0: do not export CNT and GNP volumes and fractions separately
-% 1: export CNT and GNP volumes and fractions separately
-%When this flag is set to 1, in addition to total fractions and volumes, four more files are written:
-%Volumes and fractions of CNTs only (fractions respect to the CNT volume)
-%Volumes and fractions of GNPs only (fractions respect to the GNP volume)
-%If only CNTs or only GNPs are generated, then this flag is ignored
-0
-%------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Flag to export triangulations
 % 0: do not export triangulations
 % 1: export triangulations
