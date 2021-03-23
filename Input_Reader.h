@@ -210,8 +210,11 @@ struct Output_data_flags{
     //Flag to export separate files with fractions of CNTs and GNPs
     //(only when using mixed or hybrid particles)
     int cnt_gnp_flag;
-    //Flag to export four points per GNP to generate GNP network in Abaqus
+    //Flag to export four vertices per GNP to generate a GNP network in Abaqus
     int gnp_4p;
+    //Precision (number of digits after the decimal point) used for
+    //exporting the vertices
+    int prec_gnp;
 };
 //---------------------------------------------------------------------------
 class Input

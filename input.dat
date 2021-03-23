@@ -264,8 +264,11 @@ Output_Data_Flags
 %Volumes and fractions of GNPs only (fractions respect to the GNP volume)
 %If only CNTs or only GNPs are generated, then this flag is ignored
 0
-%Flag to output a text file with four points so that GNPs may be generated in Abaqus
-%The coice of four points depends entirely in the way the GNPs are generated in Abaqus:
+%Flag to output a text file with four vertices per GNP so that they may be generated in Abaqus
+% 0: do not export file with vertices
+% 1: export file with vertices
+%If set to 1, the desired precision (number of digits after the decimal point) needs to be specified too
+%The choice of four points depends entirely in the way the GNPs are generated in Abaqus:
 %Three points define a plane which is used to draw the squared base of the GNP
 %The fourth point is used to define the thickness of the GNP
 0

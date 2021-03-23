@@ -170,6 +170,24 @@ string Point_3D::str()const
     
     return s;
 }
+//---------------------------------------------------------------------------
+//Make a string version of the point with the indicated precision
+string Point_3D::str(const int &prec)const
+{
+    //Define a string stream
+    stringstream ss;
+    
+    //Set the presicion of the string stream
+    ss.precision(prec);
+    
+    //Send the components of the point to the sting stream
+    //The std::fixed is needed so that all other double sent to the sting stream
+    //also have the precision set above
+    //Otherwise, without the std::fixed, all doubles that follow will have the default precision
+    ss<<fixed<<x<<", "<<y<<", "<<z;
+    
+    return ss.str();
+}
 //===========================================================================
 //Functions for the 3D Line class
 //---------------------------------------------------------------------------

@@ -54,6 +54,7 @@ public:
     void set(const double &x_, const double &y_, const double &z_);
     void set(const Point_3D &P);
     string str()const;
+    string str(const int &prec)const;
 };
 //---------------------------------------------------------------------------
 //Definition for 3D line segements

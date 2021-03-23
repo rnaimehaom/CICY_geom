@@ -27,7 +27,6 @@ public:
     void Print_2d_vec(const vector<vector<int> > &num_mat, const string &filename);
     void Print_2d_vec(const vector<vector<long int> > &num_mat, const string &filename);
     void Print_2d_vec(const vector<vector<double> > &num_mat, const string &filename);
-    void Print_4_vertices_gnps(const vector<GNP> &gnps, const string &filename);
-    void Print_CNTs_in_window(const struct Geom_sample &sample, const vector<Point_3D> &points_in, const vector<int> &cnts_inside, const vector<vector<long int> > &structure, const int &window);
+    void Print_4_vertices_gnps(const vector<GNP> &gnps, const int &prec, const string &filename);
 };
 #endif

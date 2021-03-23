@@ -1177,10 +1177,15 @@ int Input::Read_output_data_flags(Output_data_flags &out_flags, ifstream &infile
     //Three points define a plane which is used to draw the squared base of the GNP
     //The fourth point is used to define the thickness of the GNP
     istringstream istr_4_points(Get_Line(infile));
-    istr_4_points >> out_flags.gnp_4p;
+    istr_4_points >> out_flags.gnp_4p >> out_flags.prec_gnp;
     //Check it is a valid flag
     if (out_flags.gnp_4p<0||out_flags.gnp_4p>1) {
-        hout<<"Error: Flag to export four points of a GNP can only be 0 or 1. Input was: "<<out_flags.gnp_4p<<endl;
+        hout<<"Error: Flag to export four vertices of a GNP can only be 0 or 1. Input was: "<<out_flags.gnp_4p<<endl;
+        return 0;
+    }
+    //Check the precision is a positive integer
+    if (out_flags.prec_gnp <= 0) {
+        hout<<"Error: Precision used to export GNP vertices must be at least 1. Input was: "<<out_flags.prec_gnp<<endl;
         return 0;
     }
     

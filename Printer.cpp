@@ -128,20 +128,20 @@ void Printer::Print_2d_vec(const vector<vector<double> > &num_mat, const string 
 }
 
 //Print the four vertices of a GNP needed to generated them in Abaqus
-void Printer::Print_4_vertices_gnps(const vector<GNP> &gnps, const string &filename)
+//The precision (number of digits after the decimal point) is specified as an input
+void Printer::Print_4_vertices_gnps(const vector<GNP> &gnps, const int &prec, const string &filename)
 {
     //Open file
     ofstream otec(filename.c_str());
-    otec.precision(10);
     
     //Iterate over all GNPs
     for (size_t i = 0; i < gnps.size(); i++) {
         
         //Ouput the coordinates of vertices 0 to 2 and 4
-        otec<<gnps[i].vertices[0].x<<' '<<gnps[i].vertices[0].y<<' '<<gnps[i].vertices[0].z<<' '<<endl;
-        otec<<gnps[i].vertices[1].x<<' '<<gnps[i].vertices[1].y<<' '<<gnps[i].vertices[1].z<<' '<<endl;
-        otec<<gnps[i].vertices[2].x<<' '<<gnps[i].vertices[2].y<<' '<<gnps[i].vertices[2].z<<' '<<endl;
-        otec<<gnps[i].vertices[4].x<<' '<<gnps[i].vertices[4].y<<' '<<gnps[i].vertices[4].z<<' '<<endl;
+        otec<<gnps[i].vertices[0].str(prec)<<endl;
+        otec<<gnps[i].vertices[1].str(prec)<<endl;
+        otec<<gnps[i].vertices[2].str(prec)<<endl;
+        otec<<gnps[i].vertices[4].str(prec)<<endl;
     }
     
     //Close file

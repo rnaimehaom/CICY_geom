@@ -107,7 +107,7 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         Printer Pr;
         
         //Print the four vertices of a GNP needed to generated them in Abaqus
-        Pr.Print_4_vertices_gnps(gnps, "gnp_vertices.csv");
+        Pr.Print_4_vertices_gnps(gnps, out_flags.prec_gnp, "gnp_vertices.csv");
     }
     
     //---------------------------------------------------------------------------
