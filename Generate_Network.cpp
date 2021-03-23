@@ -1518,7 +1518,7 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
         
         //Get the sub-region the point belongs to
         //hout<<"Get_subregion"<<endl;
-        int subregion = Get_cnt_point_subregion_extended_domain(geom_sample, n_subregions, new_point);
+        int subregion = Get_subregion_for_cnt_seed_in_deposit(geom_sample, sectioned_domain, n_subregions, new_point);
         
         //Find the upmost position where the CNT seed can be placed
         if (!Find_upmost_position_for_seed(geom_sample, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, subregion, new_point)) {
@@ -1700,27 +1700,38 @@ int Generate_Network::Get_point_in_xy_plane_mt(const cuboid &cub, Point_3D &poin
 }
 //This function returns the subregion a point belongs to
 //Here, the boundary layer is also included in the subregions
-int Generate_Network::Get_cnt_point_subregion_extended_domain(const Geom_sample &geom_sample, const int n_subregions[], const Point_3D &point)const
+int Generate_Network::Get_subregion_for_cnt_seed_in_deposit(const Geom_sample &geom_sample, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const Point_3D &point)const
 {
-    if (Is_point_inside_cuboid(geom_sample.ex_dom_cnt, point)) {
-        //These variables will give me the region cordinates of the region that a point belongs to
-        int a, b, c;
-        //Calculate the region-coordinates
-        a = (int)((point.x-geom_sample.ex_dom_cnt.poi_min.x)/geom_sample.gs_minx);
-        //Limit the value of a as it has to go from 0 to n_subregions[0]-1
-        if (a == n_subregions[0]) a--;
-        b = (int)((point.y-geom_sample.ex_dom_cnt.poi_min.y)/geom_sample.gs_miny);
-        //Limit the value of b as it has to go from 0 to n_subregions[1]-1
-        if (b == n_subregions[1]) b--;
-        c = (int)((point.z-geom_sample.ex_dom_cnt.poi_min.z)/geom_sample.gs_minz);
-        //Limit the value of c as it has to go from 0 to n_subregions[2]-1
-        if (c == n_subregions[2]) c--;
+    //For a CNT deposit, only x and y coordinates are randomly assigned
+    //Thus, first I need the a- and b- coordinates of the subregions
+    
+    //Calculate the region-coordinates a and b
+    int a = (int)((point.x-geom_sample.ex_dom_cnt.poi_min.x)/geom_sample.gs_minx);
+    //Limit the value of a as it has to go from 0 to n_subregions[0]-1
+    if (a == n_subregions[0]) a--;
+    int b = (int)((point.y-geom_sample.ex_dom_cnt.poi_min.y)/geom_sample.gs_miny);
+    //Limit the value of b as it has to go from 0 to n_subregions[1]-1
+    if (b == n_subregions[1]) b--;
+    
+    //Now, I need to find the c-coordinate of the subregions
+    //To do this, I need to start at the highest c in the (a,b) column
+    //From there I go down and find the first non-empty subregion
+    //The case i=0 can be ignored in the loop, as if that coordinate is reached
+    //it does not matter if there are points or not, that is the c-coordinate of the subregion
+    for (int i = n_subregions[2]-1; i >= 1; i--) {
         
-        return (a + (b*n_subregions[0]) + (c*n_subregions[0]*n_subregions[1]));
-    } else {
-        //If the point is in the boundary layer, then there is no need to calculate its sub-region
-        return -1;
+        //Check if subregion wihth c-coordinate equal to i is empty
+        int subregion = a + (b*n_subregions[0]) + (i*n_subregions[0]*n_subregions[1]);
+        if (sectioned_domain[subregion].size()) {
+            
+            //There are elements in subregion i
+            //Thus i is the c-coordinate, so calculate the subregion using i as the c-coordinate
+            return (a + (b*n_subregions[0]) + (i*n_subregions[0]*n_subregions[1]));
+        }
     }
+    
+    //If all subregions were empty, then return the subregion calculated only with a and b
+    return (a + (b*n_subregions[0]) );
 }
 //This function finds the upmost position for a CNT seed
 int Generate_Network::Find_upmost_position_for_seed(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const int &subregion, Point_3D &new_point)const
@@ -2014,7 +2025,12 @@ int Generate_Network::Find_highest_position_for_new_point(const Geom_sample &geo
     Point_3D p_ovrlp(0.,0.0,floor-cnt_rad);
     
     //Get the new_point subregion
-    int subregion = Get_cnt_point_subregion_extended_domain(geom_sample, n_subregions, new_point);
+    //For the case of CNT deposit, the cuboids for the sample and extended domain are
+    //the same
+    //Thus, the function for the random distribution of CNTs can be used for a new CNT point
+    //that is not a seed
+    //hout<<"Get_cnt_point_subregion"<<endl;
+    int subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
     
     //Radius of new CNT plus van der Waals distance
     double rad_p_dvdw = cnt_rad + d_vdW;

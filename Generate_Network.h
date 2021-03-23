@@ -78,7 +78,7 @@ public:
     int Generate_cnt_deposit_mt(const Simu_para &simu_para, const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radii)const;
     int Initialize_cnt_subregions_extended_domain(const Geom_sample &sample_geom, int n_subregion[], vector<vector<long int> > &sectioned_domain)const;
     int Get_point_in_xy_plane_mt(const cuboid &cub, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, uniform_real_distribution<double> &dist)const;
-    int Get_cnt_point_subregion_extended_domain(const Geom_sample &geom_sample, const int n_subregions[], const Point_3D &point)const;
+    int Get_subregion_for_cnt_seed_in_deposit(const Geom_sample &geom_sample, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const Point_3D &point)const;
     int Find_upmost_position_for_seed(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnt_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const int &subregion, Point_3D &new_point)const;
     int Check_2d_overlapping(const vector<long int> &subregion, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnt_radii, const vector<vector<int> > &global_coordinates, const double &rad_p_dvdw, Point_3D &new_point, bool &overlap_2d)const;
     int Get_initial_direction_2d(MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
