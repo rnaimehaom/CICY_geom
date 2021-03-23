@@ -1461,6 +1461,9 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
     //Variable to count the generated CNT seeds
     int cnt_seed_count = 0;
     
+    //Variable to coun the number of rejected CNTs
+    int cnt_reject_count = 0;
+    
     //Vectors for handling CNT penetration
     //global_coordinates[i][0] stores the CNT number of global point i
     //global_coordinates[i][1] stores the local point number of global point i
@@ -1554,24 +1557,31 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
         //Start generation of a CNT given the generated seed
         for (int i = 0; i < step_num; i++) {
             
-            //Generate a point in a random direction in the plane xy
-            if (!Get_direction_and_point_2d(nanotube_geo, mult_2d, new_point, engine_theta, dist)) {
-                hout<<"Error when generating a new direction and point in the xy plane."<<endl;
+            //Generate a point in a random direction in the plane xy and find its highest position
+            //NOTE: due to the nature of the deposit, the non-penetrating model is always used
+            int status = Find_highest_position_for_new_point_iteratively(geom_sample, nanotube_geo, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, new_cnt, new_point, mult_2d, engine_theta, dist);
+            
+            //Check the value of status
+            if (status == -1) {
+                hout<<"Error when finding the highest position of a new point (not a seed)"<<endl;
                 return 0;
+            }
+            else if (!status) {
+                
+                //A point coud not be generated, so discard current CNT
+                
+                //Clear the new_cnt vector so that it is not added to the rest of CNTs
+                new_cnt.clear();
+                
+                //Increase the count of rejected cnts
+                cnt_reject_count++;
+                
+                //Break the for-loop to terminate the CNT growth
+                break;
             }
             
             //Check if new_point is inside the extended domain
             if(Is_point_inside_cuboid(geom_sample.ex_dom_cnt, new_point)) {
-                
-                //The point is inside the extended domain, so check find its upmost position
-                //and if it stays in the upmost position found or needs to be moved
-                //NOTE: due to the nature of the deposit, the non-penetrating model is always used
-                
-                //Find upmost position of new_point
-                if (!Find_upmost_position_for_new_point(geom_sample, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, nanotube_geo.step_length, new_cnt, new_point)) {
-                    hout<<"Error when adding a new point to the CNT, i="<<i<<endl;
-                    return 0;
-                }
                 
                 //Calculate the segment length inside the sample and add it to the total CNT length
                 bool is_new_inside_sample;
@@ -1643,6 +1653,8 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
         hout << endl << "The volume fraction of generated CNTs was " << vol_sum/geom_sample.volume;
         hout << ", the target volume fraction was " << nanotube_geo.volume_fraction << endl << endl;
     }
+    
+    hout << "There were " << cnt_reject_count << " CNTs rejected." << endl;
     
     return 1;
 }
@@ -1904,8 +1916,111 @@ int Generate_Network::Get_direction_2d(const double &omega, MathMatrix &M, mt199
     
     return 1;
 }
+//This function finds the highest position for a new CNT point (not a seed point)
+//The highest position is found by rotating the segment from the last point in the new_cnt
+//vector to new_point
+int Generate_Network::Find_highest_position_for_new_point_iteratively(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const vector<Point_3D> &new_cnt, Point_3D &new_point, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const
+{
+    //Variable to count the number of attempts to find the highest position of new_point
+    int attempts = 0;
+    
+    //Iterate while the maximum number of attepts is not reached
+    while (attempts < MAX_ATTEMPTS) {
+        
+        //Matrix for the new direction
+        MathMatrix M_new(2,2);
+        
+        //Randomly generate a direction. This direction is given by the rotation matrix M_new
+        if(!Get_direction_2d(nanotube_geo.angle_max, M_new, engine_theta, dist)){
+            hout<<"Error in Find_highest_position_for_new_point_iteratively when calling Get_direction_2d"<<endl;
+            return -1;
+        }
+        
+        //Get a temporary new point
+        if (!Get_temporary_new_point_2d(M, M_new, nanotube_geo.step_length, new_point)) {
+            hout<<"Error in Find_highest_position_for_new_point_iteratively when calling Get_temporary_new_point_2d"<<endl;
+            return -1;
+        }
+        
+        //Find the highest position of new_point
+        if (!Find_highest_position_for_new_point(geom_sample, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, d_vdW, nanotube_geo.step_length, new_cnt, new_point)) {
+            hout<<"Error in Find_highest_position_for_new_point_iteratively when calling Find_upmost_position_for_new_point"<<endl;
+            return -1;
+        }
+        
+        //Check if there are at least two points in new_cnt (so that there are at leat two CNT
+        //semgents in total)
+        if (new_cnt.size() >= 2) {
+            
+            //Calculate the two vectors needed to determine if the last two CNT segments make
+            //a valid angle
+            Point_3D u = new_point - new_cnt.back();
+            Point_3D v = new_cnt.back() - new_cnt[new_cnt.size()-2];
+            
+            //Check that the last two segments make an angle <= PI/2
+            //This is equivalent to the vectors u and v having a negative dot product
+            if (u.dot(v) < Zero) {
+                
+                //Check if the angle can be made valid by lifting new_point
+                //This happens when the v vector goes downwards, i.e., v.dot(z) is negative
+                //But v.dot(z) is just v_z (the z-coordinate of v)
+                //Thus check if the z-coordinate of v is negative
+                if (v.z < Zero) {
+                    
+                    //Lift new_point by rotating it 30 degrees (PI/6 radians)
+                    if (!Rotate_cnt_segment_around_axis(u, new_cnt.back(), new_point)) {
+                        hout<<"Error in Find_highest_position_for_new_point_iteratively when calling Rotate_cnt_segment_around_axis"<<endl;
+                    }
+                    
+                    //new_point is now in a valid position, so update them accumulated rotation
+                    //matrix and terminate the function with 1
+                    M = M*M_new;
+                    
+                    return 1;
+                }
+            }
+            else {
+                
+                //The segment makes a valid angle, so update them accumulated rotation
+                //matrix and terminate the function with 1
+                M = M*M_new;
+                return 1;
+            }
+        }
+        else {
+            
+            //If there is only one point in new_cnt, any position of new_point is valid
+            //Thus terminate the function
+            return 1;
+        }
+        
+        //If this part of the while-loop is reached, then new_point is in an invalid position
+        //Increase the number of attempts for the next iteration where a new point is generated
+        attempts++;
+    }
+    
+    return 0;
+}
+//This function generates a new_point using the previous 2D rotation matrix M and the new 2D
+//rotation matrix M_new
+//It is a temporary new point beacause new_point may be discarded to generate another one and,
+//because of this, the accumulated rotation matix is not calculated nor used to obtain
+//new_point. The accumulated rotation matix is calculated once new_point is determined to
+//have a valid position
+int Generate_Network::Get_temporary_new_point_2d(const MathMatrix &M, const MathMatrix &M_new, const double &step, Point_3D &new_point)const
+{
+    //Calculate the x-coordinate of new_point
+    new_point.x = new_point.x + step*(M.element[0][0]*M_new.element[0][0] + M.element[0][1]*M_new.element[0][1]);
+    
+    //Calculate the y-coordinate of new_point
+    new_point.y = new_point.y + step*(M.element[1][0]*M_new.element[0][0] + M.element[1][1]*M_new.element[0][1]);
+    
+    //The z-coordinate of new_point remains unchaged
+    
+    return 1;
+}
 //This function finds the upmost position for a new CNT point (not a seed point)
-int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const double &step, const vector<Point_3D> &new_cnt, Point_3D &new_point)const
+int Generate_Network::Find_highest_position_for_new_point(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const double &step, const vector<Point_3D> &new_cnt, Point_3D &new_point)const
 {
     //This variable is defined for code readability
     double floor = geom_sample.sample.poi_min.z;
@@ -1930,18 +2045,18 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
     double hdy = h/dy;
     
     //Calculate the vector of the previous segment in new_cnt
-    Point_3D P_vec;
+    Point_3D v_vec;
     
     if (new_cnt.size() >= 2) {
         
         //Use the last two points in the new_cnt vector to obtain P
-        P_vec = new_cnt.back() - new_cnt[new_cnt.size()-2];
+        v_vec = new_cnt.back() - new_cnt[new_cnt.size()-2];
     }
     else {
         
         //Set vector P to have the same direction as the segment formed by the seed point
         //(which is the only point in the new_cnt vector) and new_point
-        P_vec = new_point - new_cnt.back();
+        v_vec = new_point - new_cnt.back();
     }
     //hout<<endl<<"new_point="<<new_point.str()<<endl;
     
@@ -1960,7 +2075,7 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
         //is high enough to penetrate new_point
         //AND
         //is in the same direction as P_vec
-        if (cnts_points[CNTi][Pj].z > zcoord - cnts_radii[CNTi] && P_vec.dot(cnts_points[CNTi][Pj] - new_cnt.back()) > Zero) {
+        if (cnts_points[CNTi][Pj].z > zcoord - cnts_radii[CNTi] && v_vec.dot(cnts_points[CNTi][Pj] - new_cnt.back()) > Zero) {
             
             Point_3D rotated_p(0.0,0.0,floor-cnt_rad);
             
@@ -2042,6 +2157,22 @@ int Generate_Network::Find_upmost_position_for_new_point(const Geom_sample &geom
         }
         //else, the point is already at floor level, so leave it as it is
     }
+    
+    return 1;
+}
+//This function rotates the new CNT segment 30 degrees (PI/6 radians) around an axis
+int Generate_Network::Rotate_cnt_segment_around_axis(const Point_3D &u, const Point_3D &prev, Point_3D &new_point)const
+{
+    //Calculate axis of rotation, which is u.cross(z), where z is the unit vector along z
+    Point_3D r(u.y,-u.x,0.0);
+    
+    //Calculate the rotation of vector u
+    //cos(30) = cos(PI/6) = 0.866025403
+    //sin(30) = sin(PI/6) = 0.5
+    Point_3D u_rot = u*0.866025403 +r.cross(u)*0.5;
+    
+    //Calculate new_point from the rotated segment (u_rot) and the previous point in the CNT
+    new_point = prev + u_rot;
     
     return 1;
 }
@@ -2292,7 +2423,7 @@ int Generate_Network::Find_hanging_position(const cuboid &sample, const double &
         //According to cplusplus.com, asin reutnr "Principal arc sine of x,
         //in the interval [-pi/2,+pi/2] radians."
         //PI/10 is around 0.31415926536
-        double theta_half = asin(v.z/v_len)/2 - 0.31415926536;
+        double theta_half = asin(v.z/v_len)*0.5 - 0.31415926536;
         
         //Calculate sine and cosine of theta_half
         double sinT = sin(theta_half);
@@ -2310,7 +2441,9 @@ int Generate_Network::Find_hanging_position(const cuboid &sample, const double &
         //There is no previous segment, so check if the point is already at floor level
         //Calculate the distance below the previous point where new_point
         //should be located
-        double dz = step/sqrt(2);
+        //1/sqrt(2)=0.707106781, for a 45 degree (PI/4) angle
+        //0.5 for a 30 degree (PI/6) angle
+        double dz = 0.5*step;
         
         //Check if moving new_point a distance dz along the direction -z would result
         //in new_point being above floor level (floor = sample.poi_min.z)
@@ -2324,7 +2457,7 @@ int Generate_Network::Find_hanging_position(const cuboid &sample, const double &
             //Update the z coordinate
             new_point.z = new_point.z - dz;
         }
-        //else: There is no space for the CNT to hang a 45 degree (PI/4) angle,
+        //else: There is no space for the CNT to hang a 30 degree (PI/6) angle,
         //so leave it where it is
     }
     
