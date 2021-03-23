@@ -1831,21 +1831,6 @@ int Generate_Network::Check_2d_overlapping(const vector<long int> &subregion, co
     
     return 1;
 }
-//This function calculate the z-coordinate of a deposited CNT point
-int Generate_Network::Update_z_coordinate(const Point_3D &p_ovrlp, const double &rad_ovrlp, const double &rad_p_dvdw, Point_3D &new_point)const
-{
-    //Get the distance squared between points in the xy plane
-    double d2_xy = (new_point.x - p_ovrlp.x)*(new_point.x - p_ovrlp.x) + (new_point.y - p_ovrlp.y)*(new_point.y - p_ovrlp.y);
-    
-    //Get the squared distance that should be between the two points
-    double d2 = rad_ovrlp + rad_p_dvdw;
-    d2 = d2*d2;
-    
-    //Calculate the z-coordinate of the new point
-    new_point.z = p_ovrlp.z + sqrt(d2 - d2_xy);
-    
-    return 1;
-}
 //This function generates a 2D rotation matrix for the initial direction
 //The angle theta has a uniform distribution in [0, 2PI]
 // R(theta) = |cos(theta)  -sin(theta)|
@@ -1887,7 +1872,7 @@ int Generate_Network::Get_direction_and_point_2d(const Nanotube_Geo &nanotube_ge
     
     return 1;
 }
-Point_3D Generate_Network::Get_new_point_2d(MathMatrix &M, const double &step)const
+Point_3D Generate_Network::Get_new_point_2d(const MathMatrix &M, const double &step)const
 {
     //Rotate the 2D vector [step; 0] using the rotation matrix M
     //Note that the matrix M is a 2D rotation matrix, however the output is a 2D point
@@ -2210,117 +2195,6 @@ int Generate_Network::Calculate_distance_to_torus(const Point_3D &P0, const doub
         dist = Dx*Dx + Dy*Dy + P0_T.z*P0_T.z;
         dist = sqrt(dist) - r;
     }
-    
-    return 1;
-}
-//Given a point, this function finds its closest penetrating point and rotates the current
-//CNT segment that the given point makes with the previous point
-int Generate_Network::Check_if_cnt_segment_needs_rotation(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &rad_p_dvdw, const double &step, const Point_3D &prev_point, Point_3D &new_point)const
-{
-    //Variable to store the number of attempts
-    int attempts = 0;
-    
-    //Move the segment from prev_point to new_point while the maximum number of
-    //attempts is not reached
-    while (attempts < MAX_ATTEMPTS) {
-        
-        //Get the subregion of the new point
-        int subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
-        
-        //Find closest penetrating point
-        Point_3D p_point;
-        if (!Get_closest_penetrating_point(cnts_points, cnts_radii, global_coordinates, sectioned_domain[subregion], rad_p_dvdw, new_point, p_point)) {
-            hout<<"Error in Rotate_cnt_segment when calling Get_closest_penetrating_point"<<endl;
-            return 0;
-        }
-        
-        //Check if there was a penetrating point
-        if (p_point.flag == -1) {
-            
-            //There were no penetrating points, so terminate the function
-            return 1;
-        }
-        
-        //The closest penetrating point was identified
-        //"Rotate" the CNT segment, i.e., calculate the new position of new_point
-        Point_3D rotated_p = new_point;
-        if (!Rotate_cnt_segment(new_point.distance_to(p_point), step, p_point, prev_point, new_point, rotated_p)) {
-            hout<<"Error in Check_if_cnt_segment_needs_rotation when calling Rotate_cnt_segment"<<endl;
-            return 0;
-        }
-        new_point = rotated_p;
-        
-        //Increase the number of attempts for the next iteration
-        attempts++;
-    }
-    
-    //If this part of the code is reached, then new_point could not be placed in a
-    //valid non-penetrating position
-    //Set the CNT flag to -1 to indicate this scenario
-    new_point.flag = -1;
-    
-    return 1;
-}
-//
-int Generate_Network::Get_closest_penetrating_point(const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<long int> &subregion, const double &rad_p_dvdw, const Point_3D &new_point, Point_3D &p_point)const
-{
-    //Variable to store the minimum distance between penetrating points
-    double min_dist = 0.0;
-    
-    //Variable to determine when to initialize the minimum distance
-    bool is_first = true;
-    
-    //Iterate over the points in the subregion
-    for (int i = 0; i < (int)subregion.size(); i++) {
-        
-        //Get the global point number
-        long int P_g = subregion[i];
-        
-        //Get the CNT number and local point number
-        int CNTi = global_coordinates[P_g][0];
-        int Pi = global_coordinates[P_g][1];
-        
-        //Get the radius of point i
-        int rad_i = cnts_radii[CNTi];
-        
-        //Get the distance between points
-        double new_dist = new_point.distance_to(cnts_points[CNTi][Pi]);
-        
-        //Check if there is penetration
-        if (new_dist - rad_i - rad_p_dvdw < Zero) {
-            
-            //Update the minimum distance if is the first penetrating point
-            if (is_first) {
-                
-                //Set the minimum distance to be equal to new_dist
-                min_dist = new_dist;
-                
-                //Set the penetrating point to be Pi at CNTi
-                p_point = cnts_points[CNTi][Pi];
-                
-                //Set the is_first flag to false
-                is_first = false;
-            }
-            //If this is not the first penetrating point, then update the minumum distance
-            //if the new distance is less than the stored minimum distance
-            else if (new_dist - min_dist < Zero) {
-                
-                //Update the minimum distance
-                min_dist = new_dist;
-                
-                //Update the penetrating point
-                p_point = cnts_points[CNTi][Pi];
-            }
-        }
-    }
-    
-    //If there were no penetrating points, then set the flag of the penetrating point to -1
-    //If the flag is_first is still true, then there were no penetrating points
-    if (is_first) {
-        p_point.flag = -1;
-    }
-    else
-        p_point.flag = 0;
     
     return 1;
 }
