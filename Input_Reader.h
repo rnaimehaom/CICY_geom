@@ -215,6 +215,12 @@ struct Output_data_flags{
     //Precision (number of digits after the decimal point) used for
     //exporting the vertices
     int prec_gnp;
+    //Flag to export CNT points
+    int cnt_data;
+    //Precision (number of digits after the decimal point) used for
+    //exporting the CNT points
+    int prec_cnt;
+    
 };
 //---------------------------------------------------------------------------
 class Input

@@ -100,7 +100,7 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     }
     
     //---------------------------------------------------------------------------
-    //Check if output data files were requested for generated nanoparticles
+    //Check if output data files were requested for generated GNPs
     if (out_flags.gnp_4p) {
         
         //Create printer object
@@ -121,6 +121,17 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
             hout<<"Error in Recalculate_vol_fraction_cnts."<<endl; return 0;
         }
         hout<<endl;
+    }
+    
+    //---------------------------------------------------------------------------
+    //Check if output data files were requested for generated CNTs
+    if (out_flags.cnt_data) {
+        
+        //Create printer object
+        Printer Pr;
+        
+        //Print the CNT points needed to generated them in Abaqus
+        Pr.Print_cnt_points_and_structure(structure, points_cnt, radii_out, out_flags.prec_cnt, "cnt_coordinates.csv", "cnt_struct.csv");
     }
     
     return 1;

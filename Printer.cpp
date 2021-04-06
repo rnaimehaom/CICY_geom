@@ -147,3 +147,39 @@ void Printer::Print_4_vertices_gnps(const vector<GNP> &gnps, const int &prec, co
     //Close file
     otec.close();
 }
+
+//This function prints the coordinates of all CNT points into a file
+//Two files are exported, one with the coordinates and one with the number of CNTs and
+//the number of points for each CNT
+void Printer::Print_cnt_points_and_structure(const vector<vector<long int> > &structure, const vector<Point_3D> &points_cnt, const vector<double> &radii, const int &prec, const string &filename_points, const string &filename_struct)
+{
+    //Open file for CNT points
+    ofstream otec_points(filename_points.c_str());
+    //Open file for CNT structure
+    ofstream otec_struct(filename_struct.c_str());
+    
+    //Output the number of CNTs and radii
+    otec_struct<<structure.size()<<' '<<radii.size()<<endl;
+    
+    //Iterate over all points in the structure
+    for (size_t i = 0; i < structure.size(); i++) {
+        
+        //Output the number of points in CNT i and its radius
+        otec_struct<<structure[i].size()<<' '<<radii[i]<<endl;
+        
+        //Iterate over the points in CNT i
+        for (size_t j = 0; j < structure[i].size(); j++) {
+            
+            //Get the point number
+            long int Pj = structure[i][j];
+            
+            //Output the coordinates of point j in CNT i
+            otec_points<<points_cnt[Pj].str(prec)<<endl;
+        }
+    }
+    
+    
+    //Close files
+    otec_points.close();
+    otec_struct.close();
+}

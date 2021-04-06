@@ -272,4 +272,11 @@ Output_Data_Flags
 %Three points define a plane which is used to draw the squared base of the GNP
 %The fourth point is used to define the thickness of the GNP
 0
+%Flag to output a text file with the coordinates of all CNT points
+%Two files are exported, one with the coordinates and one with the number of CNTs and
+%the number of points for each CNT
+% 0: do not export file with CNT point coordinates and CNT structure
+% 1: export files
+%If set to 1, the desired precision (number of digits after the decimal point) needs to be specified too
+0
 %-------------------------------- End
