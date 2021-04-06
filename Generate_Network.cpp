@@ -1964,29 +1964,9 @@ int Generate_Network::Find_highest_position_for_new_point_iteratively(const Geom
             Point_3D u = new_point - new_cnt.back();
             Point_3D v = new_cnt.back() - new_cnt[new_cnt.size()-2];
             
-            //Check that the last two segments make an angle <= PI/2
-            //This is equivalent to the vectors u and v having a negative dot product
-            if (u.dot(v) < Zero) {
-                
-                //Check if the angle can be made valid by lifting new_point
-                //This happens when the v vector goes downwards, i.e., v.dot(z) is negative
-                //But v.dot(z) is just v_z (the z-coordinate of v)
-                //Thus check if the z-coordinate of v is negative
-                if (v.z < Zero) {
-                    
-                    //Lift new_point by rotating it 30 degrees (PI/6 radians)
-                    if (!Rotate_cnt_segment_around_axis(u, new_cnt.back(), new_point)) {
-                        hout<<"Error in Find_highest_position_for_new_point_iteratively when calling Rotate_cnt_segment_around_axis"<<endl;
-                    }
-                    
-                    //new_point is now in a valid position, so update them accumulated rotation
-                    //matrix and terminate the function with 1
-                    M = M*M_new;
-                    
-                    return 1;
-                }
-            }
-            else {
+            //Check that the last two segments make an angle >= PI/2
+            //This is equivalent to the vectors u and v having a positive dot product (or zero)
+            if (u.dot(v) >= Zero) {
                 
                 //The segment makes a valid angle, so update them accumulated rotation
                 //matrix and terminate the function with 1
