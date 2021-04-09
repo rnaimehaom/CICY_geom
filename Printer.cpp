@@ -159,13 +159,13 @@ void Printer::Print_cnt_points_and_structure(const vector<vector<long int> > &st
     ofstream otec_struct(filename_struct.c_str());
     
     //Output the number of CNTs and radii
-    otec_struct<<structure.size()<<' '<<radii.size()<<endl;
+    otec_struct<<structure.size()<<", "<<radii.size()<<endl;
     
     //Iterate over all points in the structure
     for (size_t i = 0; i < structure.size(); i++) {
         
         //Output the number of points in CNT i and its radius
-        otec_struct<<structure[i].size()<<' '<<radii[i]<<endl;
+        otec_struct<<structure[i].size()<<", "<<radii[i]<<endl;
         
         //Iterate over the points in CNT i
         for (size_t j = 0; j < structure[i].size(); j++) {
