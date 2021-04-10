@@ -127,7 +127,72 @@ void Printer::Print_2d_vec(const vector<vector<double> > &num_mat, const string 
     otec.close();
 }
 
-//Print the four vertices of a GNP needed to generated them in Abaqus
+//Print the GNP data needed to generate them in Abaqus
+void Printer::Print_gnp_data(const vector<GNP> &gnps, const int &prec, const string &filename)
+{
+    //Open file
+    ofstream otec(filename.c_str());
+    
+    //Calculate 2PI so the operation is done only once
+    double two_PI = 2*PI;
+    
+    //Iterate over all GNPs
+    for (size_t i = 0; i < gnps.size(); i++) {
+        
+        //Output the geometry of the GNP separated by commas
+        otec<<gnps[i].l<<", "<<gnps[i].l<<", "<<gnps[i].t<<", ";
+        
+        //Calculate the rotation angles
+        //Angle phi corresponds to the rotation angle around z
+        double phi = Recover_angle(gnps[i].rotation.element[1][1], abs(gnps[i].rotation.element[0][1]), two_PI);
+        //Angle theta corresponds to the rotation angle around y
+        double theta = Recover_angle(gnps[i].rotation.element[2][2], abs(gnps[i].rotation.element[2][0]), two_PI);
+        
+        //Output the rotation angles
+        otec<<theta<<", "<<phi<<", ";
+        
+        //Ouput the coordinates of the centroid and add a line break
+        otec<<gnps[i].center.str(prec)<<endl;
+    }
+    
+    //Close file
+    otec.close();
+}
+
+//This function is used to recover the two angles used in the rotation matrix
+double Printer::Recover_angle(const double &cos_alpha, const double &sin_alpha, const double &two_PI)
+{
+    
+    //Check the signs of the trigonometric functions
+    if (cos_alpha > Zero) {
+        if (sin_alpha > Zero) {
+            
+            //No adjustment required
+            return acos(cos_alpha);
+        }
+        else {
+            
+            //Recover angle from the sine
+            double phi = asin(sin_alpha) + two_PI;
+            return phi;
+        }
+    }
+    else {
+        if (sin_alpha > Zero) {
+            
+            //Angle can be ontained directly fom cosine
+            return acos(cos_alpha);
+        }
+        else {
+            
+            //Recover angle from the cosine
+            double phi = two_PI - acos(cos_alpha);
+            return phi;
+        }
+    }
+}
+
+//Print the four vertices of a GNP needed to generate them in Abaqus
 //The precision (number of digits after the decimal point) is specified as an input
 void Printer::Print_4_vertices_gnps(const vector<GNP> &gnps, const int &prec, const string &filename)
 {

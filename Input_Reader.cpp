@@ -231,7 +231,8 @@ int Input::Data_Initialization()
     out_flags.keywords = "Output_Data_Flags";
     out_flags.mark = false;
     out_flags.cnt_gnp_flag = 0;
-    out_flags.gnp_4p = 0;
+    out_flags.gnp_data = 0;
+    out_flags.cnt_data = 0;
 
 	hout << "    Data initialization done" <<endl<<endl;
 
@@ -1222,14 +1223,14 @@ int Input::Read_output_data_flags(Output_data_flags &out_flags, ifstream &infile
     //Three points define a plane which is used to draw the squared base of the GNP
     //The fourth point is used to define the thickness of the GNP
     istringstream istr_4_points(Get_Line(infile));
-    istr_4_points >> out_flags.gnp_4p;
+    istr_4_points >> out_flags.gnp_data;
     //Check it is a valid flag
-    if (out_flags.gnp_4p<0||out_flags.gnp_4p>1) {
-        hout<<"Error: Flag to export four vertices of a GNP can only be 0 or 1. Input was: "<<out_flags.gnp_4p<<endl;
+    if (out_flags.gnp_data<0||out_flags.gnp_data>1) {
+        hout<<"Error: Flag to export four vertices of a GNP can only be 0 or 1. Input was: "<<out_flags.gnp_data<<endl;
         return 0;
     }
     //Check if flag is not zero
-    if (out_flags.gnp_4p) {
+    if (out_flags.gnp_data) {
         
         //Flag was set to 1, so read the precision
         istr_4_points >> out_flags.prec_gnp;

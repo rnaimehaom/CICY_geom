@@ -28,6 +28,8 @@ public:
     void Print_2d_vec(const vector<vector<long int> > &num_mat, const string &filename);
     void Print_2d_vec(const vector<vector<double> > &num_mat, const string &filename);
     void Print_4_vertices_gnps(const vector<GNP> &gnps, const int &prec, const string &filename);
+    void Print_gnp_data(const vector<GNP> &gnps, const int &prec, const string &filename);
+    double Recover_angle(const double &cos_alpha, const double &sin_alpha, const double &two_PI);
     void Print_cnt_points_and_structure(const vector<vector<long int> > &structure, const vector<Point_3D> &points_cnt, const vector<double> &radii, const int &prec, const string &filename_points, const string &filename_struct);
 };
 #endif

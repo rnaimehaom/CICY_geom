@@ -215,7 +215,7 @@ struct Output_data_flags{
     //(only when using mixed or hybrid particles)
     int cnt_gnp_flag;
     //Flag to export four vertices per GNP to generate a GNP network in Abaqus
-    int gnp_4p;
+    int gnp_data;
     //Precision (number of digits after the decimal point) used for
     //exporting the vertices
     int prec_gnp;

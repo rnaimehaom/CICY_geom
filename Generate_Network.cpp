@@ -17,7 +17,7 @@
 //Generate a network of nanoparticles
 int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const GNP_Geo &gnp_geo, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const Output_data_flags &out_flags, vector<Point_3D> &points_cnt, vector<double> &radii_out, vector<vector<long int> > &structure, vector<GNP> &gnps)const
 {
-    //Vector of storing the CNT points
+    //Vector for storing the CNT points
     vector<vector<Point_3D> > cnts_points;
     //Vector for radii, internal variable
     vector<double> radii_in;
@@ -100,17 +100,6 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     }
     
     //---------------------------------------------------------------------------
-    //Check if output data files were requested for generated GNPs
-    if (out_flags.gnp_4p) {
-        
-        //Create printer object
-        Printer Pr;
-        
-        //Print the four vertices of a GNP needed to generated them in Abaqus
-        Pr.Print_4_vertices_gnps(gnps, out_flags.prec_gnp, "gnp_vertices.csv");
-    }
-    
-    //---------------------------------------------------------------------------
     //If there are CNTS, transform the 2D cnts_points into 1D cpoints and 2D cstructures
     //Also, remove the CNTs in the boundary layer
     if (simu_para.particle_type != "GNP_cuboids") {
@@ -123,12 +112,25 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         hout<<endl;
     }
     
+    //Create printer object in case it might be used
+    Printer Pr;
+    
+    //---------------------------------------------------------------------------
+    //Check if output data files were requested for generated GNPs
+    if (out_flags.gnp_data == 1) {
+        
+        //Print the GNP needed to generate them in Abaqus
+        Pr.Print_gnp_data(gnps, out_flags.prec_gnp, "gnp_data.csv");
+    }
+    else if (out_flags.gnp_data == 2) {
+        
+        //Print the four vertices of a GNP needed to generate them in Abaqus
+        Pr.Print_4_vertices_gnps(gnps, out_flags.prec_gnp, "gnp_vertices.csv");
+    }
+    
     //---------------------------------------------------------------------------
     //Check if output data files were requested for generated CNTs
     if (out_flags.cnt_data) {
-        
-        //Create printer object
-        Printer Pr;
         
         //Print the CNT points needed to generated them in Abaqus
         Pr.Print_cnt_points_and_structure(structure, points_cnt, radii_out, out_flags.prec_cnt, "cnt_coordinates.csv", "cnt_struct.csv");
