@@ -127,6 +127,10 @@ struct GNP_Geo{
     string criterion;				
     //CNT growth type on GNP surfaces (parallel or independent)
     string growth_type;
+    //Criterion for minimum GNP volume inside the sample
+    string vol_in;
+    //Minimum GNP volume inside the sample
+    double min_vol_in;
     //GNP orientation type (random or specific)
     string orient_distrib_type;
     //Length distribution type (uniform or normal)

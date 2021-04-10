@@ -698,10 +698,10 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
         
         //Update the GNP volume
         Generate_Network GN;
-        bool tmp;
-        double gnp_vol = 0;
+        //Calculate the total GNP volume
+        double gnp_vol = gnp.l*gnp.l*gnp.t;
         //hout<<"GN.Approximate_gnp_volume_inside_sample"<<endl;
-        if (!GN.Approximate_gnp_volume_inside_sample(window_geo, gnp, gnp_vol, tmp)) {
+        if (!GN.Approximate_gnp_volume_inside_sample(window_geo, gnp, gnp_vol)) {
             //hout<<"Error in Find_gnp_boundary_points when calling GN.Approximate_gnp_volume_inside_sample"<<endl;
             return 0;
         }

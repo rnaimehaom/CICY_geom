@@ -2632,32 +2632,49 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
             //vector of GNPs
             
             //Flag to determine if a GNP can be added or not into the vector of GNPs
-            bool is_all_outside = false;
+            //This will depend on the minimum required volume of a GNP inside the sample
+            bool is_enough_inside = false;
             
-            //Calculate (or approximate) the generated volume
-            //hout<<"Calculate_generated_gnp_vol_and_update_total_vol"<<endl;
-            if (!Calculate_generated_gnp_vol_and_update_total_vol(gnp_geo, geom_sample, gnp, gnp_vol_tot, is_all_outside)) {
-                hout<<"Error in Calculate_generated_gnp_volume."<<endl;
-                return 0;
+            //Check what is the criterion for the minimum GNP volume inside the sample
+            if (gnp_geo.vol_in == "all_in") {
+                
+                //Check that all vertices of the GNP are inside the sample
+                if (!Check_all_gnp_vertices_are_inside_sample(geom_sample, gnp, is_enough_inside)) {
+                    hout<<"Error in Check_all_gnp_vertices_are_inside_sample."<<endl;
+                    return 0;
+                }
+            }
+            else {
+                
+                //Calculate (or approximate) the generated volume
+                //hout<<"Calculate_generated_gnp_vol_and_update_total_vol"<<endl;
+                if (!Calculate_generated_gnp_vol(gnp_geo, geom_sample, gnp, is_enough_inside)) {
+                    hout<<"Error in Calculate_generated_gnp_vol."<<endl;
+                    return 0;
+                }
+                hout<<"gnp.volume="<<gnp.volume<<endl;
             }
             
             //Only add the GNP if it is at least partially inside
-            if (!is_all_outside) {
+            if (is_enough_inside) {
                 
                 //Update the GNP flag
                 gnp.flag = (int)gnps.size();
+                
+                //hout << "Total volume = " << gnp_vol_tot << ". Approximated volume = " << gnp.volume <<endl;
+                //Update the total volume
+                gnp_vol_tot = gnp_vol_tot + gnp.volume;
                 
                 //Add the current particle to the vector of particles
                 gnps.push_back(gnp);
             }
             else {
                 
-                //The GNP is completely outside so increase the count of ignored GNPs
+                //The GNP is completely outside the sample or not of it enough inside the sample
+                //so increase the count of ignored GNPs
                 gnp_ignored_count++;
-                
             }
-            
-        }
+        }//End of if for rejected flag
     }
     
     if (simu_para.particle_type == "GNP_cuboids" || simu_para.particle_type == "GNP_CNT_mix") {
@@ -3370,42 +3387,90 @@ int Generate_Network::Add_valid_gnp_to_subregions(const int &gnp_new_idx, const 
     
     return 1;
 }
-//This function calculates the generated volume of a GNP and adds it to the global variables
-int Generate_Network::Calculate_generated_gnp_vol_and_update_total_vol(const GNP_Geo gnp_geom, const Geom_sample &sample_geom, GNP &gnp, double &gnp_vol_tot, bool &is_all_outside)const
+//This function checks if GNP is completely inside the sample
+int Generate_Network::Check_all_gnp_vertices_are_inside_sample(const Geom_sample &sample_geom, GNP &gnp, bool &is_enough_inside)const
 {
-    //---------------------------------------------------------------------------
-    //Add the volume and weight corresponding to the GNP
-    double gnp_vol = gnp.volume;
-    
     //Iterate over the eight vertices of the GNP and check if all of them are inside the sample
     for (int i = 0; i < 8; i++) {
         
         //Check if current vertex is outside the sample
         if (!Is_point_inside_cuboid(sample_geom.sample, gnp.vertices[i])) {
             
-            //Vertex i is outside the sample, then approximate the GNP volume
-            if (!Approximate_gnp_volume_inside_sample(sample_geom.sample, gnp, gnp_vol, is_all_outside)) {
-                hout << "Error in Calculate_generated_volume when calling Approximate_gnp_volume_inside_sample." << endl;
-                return 0;
-            }
-            
-            //Update the GNP's volume
-            gnp.volume = gnp_vol;
-            
+            //A vertex was found to be outside the sample
             //Break the loop as it is not necessary to continue cheking the rest of the vertices
-            break;
+            //Flag is_enough_inside is already false, so there is no need to update it
+            //Thus, just terminate the function
+            return 1;
         }
     }
     
-    //hout << "Total volume = " << gnp_vol_tot << ". Approximated volume = " << gnp_vol <<endl;
-    //Update the total volume
-    gnp_vol_tot = gnp_vol_tot + gnp_vol;
+    //The eight GNP vertices were inside the sample, so set the flag is_enough_inside to true
+    is_enough_inside = true;
+    
+    return 1;
+}
+//This function calculates the generated volume of a GNP and adds it to the global variables
+int Generate_Network::Calculate_generated_gnp_vol(const GNP_Geo gnp_geom, const Geom_sample &sample_geom, GNP &gnp, bool &is_enough_inside)const
+{
+    //---------------------------------------------------------------------------
+    //Add the volume and weight corresponding to the GNP
+    double gnp_vol = gnp.volume;
+    
+    //Get the location of the first vertex
+    int loc_0 = Is_point_inside_cuboid(sample_geom.sample, gnp.vertices[0]);
+    
+    //Iterate over the eight vertices of the GNP and check if all of them have the same
+    //location as the first vertex
+    int i = 0;
+    for (i = 1; i < 8; i++) {
+        
+        //Check if current vertex has the same location as the first vertex
+        if (loc_0 != Is_point_inside_cuboid(sample_geom.sample, gnp.vertices[i])) {
+            
+            //Vertex i has a different location than vertex 0
+            //This means that the GNP is partially inside the sample
+            //Thus, approximate the GNP volume inside the sample
+            if (!Approximate_gnp_volume_inside_sample(sample_geom.sample, gnp, gnp_vol)) {
+                hout << "Error in Calculate_generated_gnp_vol when calling Approximate_gnp_volume_inside_sample." << endl;
+                return 0;
+            }
+            
+            //Check the criterion for the minimum GNP volume inside the sample
+            if (gnp_geom.vol_in == "no_min" || gnp_vol/gnp.volume - gnp_geom.min_vol_in >= Zero) {
+                
+                //If no minimum specified there is at least some volume inside the sample
+                //If specified, the minimum required GNP volume is acutually inside the sample
+                
+                //Thus, update the flag that indicates that the minimun required GNP volume
+                //is actually inside the sample
+                is_enough_inside = true;
+                
+                //Update the GNP's volume
+                gnp.volume = gnp_vol;
+            }
+            
+            //Terminate the function as it is not necessary to continue
+            //cheking the rest of the vertices
+            return 1;
+        }
+    }
+    
+    //If all vertices had the same location as the first one, this means that the GNP is
+    //either completely inside or completely outside the sample
+    //Check if the GNP is completely inside the sample
+    if (loc_0) {
+        
+        //Update the flag that indicates that the minimun required GNP volume is acutually
+        //inside the sample
+        //No need to update GNP volume as the variable already has the volume of the GNP
+        is_enough_inside = true;
+    }
     
     return 1;
 }
 //This function approximates the volume of a GNP inside the sample depending of the number of points in
 //the discretization of its middle plane that are inside the sample
-int Generate_Network::Approximate_gnp_volume_inside_sample(const cuboid &sample_geom, const GNP &gnp, double &gnp_vol, bool &is_all_outside)const
+int Generate_Network::Approximate_gnp_volume_inside_sample(const cuboid &sample_geom, const GNP &gnp, double &gnp_vol)const
 {
     //---------------------------------------------------------------------------
     //Number of points per side to approximate volume
@@ -3458,15 +3523,7 @@ int Generate_Network::Approximate_gnp_volume_inside_sample(const cuboid &sample_
     }
     
     //Check if all points where outside the sample
-    if (points_in == 0) {
-        
-        //All points are outside the sample, so set the is_all_outside flag to true
-        is_all_outside = true;
-        
-        //Directly set the GNP volume to zero
-        gnp_vol = 0.0;
-    }
-    else {
+    if (points_in != 0) {
         
         //The gnp is partially outside the sample, so approximate the volume inside
         gnp_vol = gnp_vol*((double)points_in/(n_points*n_points));

@@ -810,14 +810,59 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
         return 0;
     }
     else gnp_geo.mark = true;
-
+    
     //----------------------------------------------------------------------
-    //Read the type of generation of CNTs on the GNP surface (parallel or independent)
+    //Depending on the network type, read:
+    //the type of CNT growth on GNP surfaces
+    //OR
+    //the criterion for minimum GNP volume inside the sample
     istringstream istr0(Get_Line(infile));
-    istr0 >> gnp_geo.growth_type;
-    if (gnp_geo.growth_type != "parallel" && gnp_geo.growth_type != "independent") {
-        hout << "Error: The growth type of the CNTs on the GNP surface should be either parallel or independent. Input was: " << gnp_geo.growth_type << endl;
-        return 0;
+    
+    //---------------------------------------------------------------------------------------
+    //Check the netwrok being generated
+    if (simu_para.particle_type == "GNP_cuboids" || simu_para.particle_type == "GNP_CNT_mix") {
+        
+        //----------------------------------------------------------------------
+        //Save the criterion for minimum GNP volume inside the sample
+        istr0 >> gnp_geo.vol_in;
+        if (gnp_geo.vol_in != "all_in" && gnp_geo.vol_in != "min_in" && gnp_geo.vol_in != "no_min") {
+            hout << "Error: The criterion for minimum GNP volume inside the sample can only be all_in, min_in or no_min. Input was: " << gnp_geo.vol_in << endl;
+            return 0;
+        }
+        //If a minimum volume is specified, read it
+        if (gnp_geo.vol_in == "min_in" ) {
+            istr0 >> gnp_geo.min_vol_in;
+            
+            //Check the minimum volume is not a negative number or too small
+            if (gnp_geo.min_vol_in < Zero) {
+                
+                //If the absolute value is greater than zero, then a negative number was input
+                if (abs(gnp_geo.min_vol_in) > Zero) {
+                    hout << "Error: The minimum volume of a GNP inside the sample is negative. Input was: " << gnp_geo.min_vol_in << endl;
+                    return 0;
+                }
+                else {
+                    
+                    //If the absolute value is still less than zero but non-negative,
+                    //then a very small number was input
+                    //In such case, reset keyword to no_min
+                    gnp_geo.vol_in = "no_min";
+                    
+                    //Send a warning for this reset value
+                    hout << "Warning: The input minimum volume of a GNP inside the sample is too small. Keyword was changed from 'min_in' to 'no_min'."<< endl;
+                }
+            }
+        }
+    }
+    else if (simu_para.particle_type == "Hybrid_particles") {
+        
+        //----------------------------------------------------------------------
+        //Save the type of CNT growth on GNP surfaces
+        istr0 >> gnp_geo.growth_type;
+        if (gnp_geo.growth_type != "parallel" && gnp_geo.growth_type != "independent") {
+            hout << "Error: The growth type of the CNTs on the GNP surface should be either parallel or independent. Input was: " << gnp_geo.growth_type << endl;
+            return 0;
+        }
     }
     
     //----------------------------------------------------------------------

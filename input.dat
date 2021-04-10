@@ -160,8 +160,13 @@ uniform 0.005000 0.005000
 %Define the geometric parameters of the GNPs
 GNP_Geometry
 %--------------------------------Start
-%Define if the generation of the CNTs on the GNP surface should be parallel or independent
-independent
+%Define the generation constraints for nanoparticles
+%If only GNPs or mixed CNTs and GNPs are being generated, indicate whether GNPs are allowed to go outside the sample or not
+%by using keyword 'all_in'. Use keyword 'min_in' followed by the minimum fraction of GNP volume
+%that must be inside the sample. If no minimum volume inside the sample is required, use 'no_min'
+%Example, at least 50% of the GNP inside the sample: min_in 0.5
+%If hybrid particles are being generated, define if the generation of the CNTs on the GNP surface should be 'parallel' or 'independent'
+all_in
 %Define the GNP orientation type (random or specific)
 %random: GNP orientation is random
 %specific: GNP orientation is along a specific direction, and please input the direction angles (in spherical coordinates), for example: specific 0 0
