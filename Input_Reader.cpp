@@ -834,12 +834,12 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
         if (gnp_geo.vol_in == "min_in" ) {
             istr0 >> gnp_geo.min_vol_in;
             
-            //Check the minimum volume is not a negative number or too small
+            //Check the minimum fraction of volume is not a negative number or too small
             if (gnp_geo.min_vol_in < Zero) {
                 
                 //If the absolute value is greater than zero, then a negative number was input
                 if (abs(gnp_geo.min_vol_in) > Zero) {
-                    hout << "Error: The minimum volume of a GNP inside the sample is negative. Input was: " << gnp_geo.min_vol_in << endl;
+                    hout << "Error: The minimum fraction of volume of a GNP inside the sample is negative. Input was: " << gnp_geo.min_vol_in << endl;
                     return 0;
                 }
                 else {
@@ -850,8 +850,13 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
                     gnp_geo.vol_in = "no_min";
                     
                     //Send a warning for this reset value
-                    hout << "Warning: The input minimum volume of a GNP inside the sample is too small. Keyword was changed from 'min_in' to 'no_min'."<< endl;
+                    hout << "Warning: The input minimum fraction of volume of a GNP inside the sample is too small. Keyword was changed from 'min_in' to 'no_min'."<< endl;
                 }
+            }
+            //Check that the minimum fraction of volume is not greater than 1
+            else if (gnp_geo.min_vol_in - 1 > Zero) {
+                hout << "Error: The minimum fraction of volume of a GNP inside the sample cannot be larger than 1. Input was:" << gnp_geo.min_vol_in << endl;
+                return 0;
             }
         }
     }
