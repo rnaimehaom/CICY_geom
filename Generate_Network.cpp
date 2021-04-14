@@ -2654,7 +2654,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
                     hout<<"Error in Calculate_generated_gnp_vol."<<endl;
                     return 0;
                 }
-                hout<<"gnp.volume="<<gnp.volume<<endl;
+                //hout<<"gnp.volume="<<gnp.volume<<endl;
             }
             
             //Only add the GNP if it is at least partially inside

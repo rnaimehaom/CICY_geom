@@ -12,6 +12,7 @@ using namespace hns;
 
 #include "Input_Reader.h"
 #include "App_Network_3D.h"
+#include "App_Content_Dist.h"
 
 int main(int argc, char** argv)
 {
@@ -80,18 +81,35 @@ int main(int argc, char** argv)
     if(Init->app_name.str=="3D_Electrical_Network")
     {
         //----------------------------------------------------------------------
-        //Define an application to create a 3D network of nanotubes
-        App_Network_3D *Network3D =  new  App_Network_3D;
+        //Application to create a 3D network of nanotubes
+        App_Network_3D *Network3D = new App_Network_3D;
         int count = Init->simu_para.sample_num;
         //Implement all samples
         for(int i=1; i<=count; i++) {
-            if(Network3D->Generate_nanoparticle_resistor_network(Init)==0) {
+            if(!Network3D->Generate_nanoparticle_resistor_network(Init)) {
                 hout<<"Error in Generate_nanoparticle_resistor_network in sample "<<i<<endl;
                 return 0;
             }
         }
             
         delete Network3D;
+    }
+    else if(Init->app_name.str=="Content_Distribution") {
+        
+        //Create an object to call the application that calculates the content
+        //at each observation window
+        App_Content_Dist *ContentDist = new App_Content_Dist;
+        if (!ContentDist->Calculate_content_on_each_window(Init)) {
+            hout<<"Error in Calculate_content_on_each_window"<<endl;
+            return 0;
+        }
+        delete ContentDist;
+    }
+    else {
+        //Delete Init object and terminate with error
+        delete Init;
+        hout<<"Error: Invalid application name. Input was:"<<Init->app_name.str<<endl;
+        return 0;
     }
     
     //----------------------------------------------------------------------

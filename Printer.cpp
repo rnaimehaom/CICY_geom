@@ -59,6 +59,15 @@ void Printer::Print_1d_vec(const vector<double> &list, const string &filename)
 }
 
 //Print a vector of doubles with the specified filename
+void Printer::Append(const double &value, const string &filename)
+{
+    ofstream otec(filename.c_str(), std::ios_base::app);
+    otec.precision(15);
+    otec << value << endl;
+    otec.close();
+}
+
+//Print a vector of doubles with the specified filename
 void Printer::Append_1d_vec(const vector<double> &list, const string &filename)
 {
     ofstream otec(filename.c_str(), std::ios_base::app);
