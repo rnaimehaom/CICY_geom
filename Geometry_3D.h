@@ -127,6 +127,37 @@ struct cuboid
     double len_x, wid_y, hei_z;
     //Cuboid's maximum corrdinates
     double max_x, max_y, max_z;
+    
+    //Update the geometry of the observation window
+    void Update_observation_window_geometry(const int &window, const string particle_type, const double &delt_x, const double &delt_y, const double &delt_z, const cuboid &sample_geo)
+    {
+        //Check the particle type
+        //If a deposit of CNTs is generated, then the observation window will not change along z
+        if (particle_type != "CNTdeposit") {
+            
+            //Update the dimension along z of the current observation window
+            hei_z = sample_geo.max_z - ((double)window)*delt_z;
+            
+            //Upadte the z-coordinate of the lower corner of the observation window
+            poi_min.z = sample_geo.poi_min.z + (sample_geo.hei_z - hei_z)/2;
+        }
+        
+        //Update dimensions of the current observation window
+        len_x = sample_geo.max_x - ((double)window)*delt_x;
+        wid_y = sample_geo.max_y - ((double)window)*delt_y;
+        //hout<<"len_x="<<len_x<<" wid_y="<<wid_y<<" hei_z="<<hei_z<<endl;
+        
+        //These variables are the coordinates of the lower corner of the observation window
+        poi_min.x = sample_geo.poi_min.x + (sample_geo.len_x - len_x)/2;
+        poi_min.y = sample_geo.poi_min.y + (sample_geo.wid_y - wid_y)/2;
+        //hout<<"poi_min.x="<<poi_min.x<<" poi_min.y="<<poi_min.y<<" poi_min.z="<<poi_min.z<<endl;
+        
+        //Boundaries with maximum values of coordinates
+        max_x = poi_min.x + len_x;
+        max_y = poi_min.y + wid_y;
+        max_z = poi_min.z + hei_z;
+        //hout<<"max_x="<<max_x<<" max_y="<<max_y<<" max_z="<<max_z<<endl;
+    }
 };
 //---------------------------------------------------------------------------
 //Data structure for a junction

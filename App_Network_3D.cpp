@@ -74,9 +74,13 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         
         //Update observation window geometry
         //hout<<"Update observation window geometry"<<endl;
-        if (!Update_obseravtion_window_geometry(i, Init->vis_flags.window_domain, Init->geom_sample, Init->simu_para.particle_type, window_geo)) {
-            hout<<"Error when updating the geometry for observation window "<<i<<endl;
-            return 0;
+        window_geo.Update_observation_window_geometry(i, Init->simu_para.particle_type, Init->geom_sample.win_delt_x, Init->geom_sample.win_delt_y, Init->geom_sample.win_delt_z, Init->geom_sample.sample);
+        
+        //Export the window geometry if needed
+        if (Init->vis_flags.window_domain) {
+            string str = "window_" + to_string(i) + ".vtk";
+            VTK_Export VTK_E;
+            VTK_E.Export_cuboid(window_geo, str);
         }
         
         //----------------------------------------------------------------------
@@ -131,45 +135,6 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         
         it1 = time(NULL);
         hout << "Iteration "<<i+1<<" time: "<<(int)(it1-it0)<<" secs."<<endl;
-    }
-    
-    return 1;
-}
-//Update the geometry of the observation window
-int App_Network_3D::Update_obseravtion_window_geometry(const int &window, const int &window_domain, const Geom_sample &sample_geo, const string particle_type, cuboid &window_geo)const
-{
-    //Check the particle type
-    //If a deposit of CNTs is generated, then the observation window will not change along z
-    if (particle_type != "CNTdeposit") {
-        
-        //Update the dimension along z of the current observation window
-        window_geo.hei_z = sample_geo.win_max_z - ((double)window)*sample_geo.win_delt_z;
-        
-        //Upadte the z-coordinate of the lower corner of the observation window
-        window_geo.poi_min.z = sample_geo.sample.poi_min.z + (sample_geo.sample.hei_z - window_geo.hei_z)/2;
-    }
-    
-    //Update dimensions of the current observation window
-    window_geo.len_x = sample_geo.win_max_x - ((double)window)*sample_geo.win_delt_x;
-    window_geo.wid_y = sample_geo.win_max_y - ((double)window)*sample_geo.win_delt_y;
-    //hout<<"window_geo.len_x="<<window_geo.len_x<<" window_geo.wid_y="<<window_geo.wid_y<<" window_geo.hei_z="<<window_geo.hei_z<<endl;
-    
-    //These variables are the coordinates of the lower corner of the observation window
-    window_geo.poi_min.x = sample_geo.sample.poi_min.x + (sample_geo.sample.len_x - window_geo.len_x)/2;
-    window_geo.poi_min.y = sample_geo.sample.poi_min.y + (sample_geo.sample.wid_y - window_geo.wid_y)/2;
-    //hout<<"window_geo.poi_min.x="<<window_geo.poi_min.x<<" window_geo.poi_min.y="<<window_geo.poi_min.y<<" window_geo.poi_min.z="<<window_geo.poi_min.z<<endl;
-    
-    //Boundaries with maximum values of coordinates
-    window_geo.max_x = window_geo.poi_min.x + window_geo.len_x;
-    window_geo.max_y = window_geo.poi_min.y + window_geo.wid_y;
-    window_geo.max_z = window_geo.poi_min.z + window_geo.hei_z;
-    //hout<<"window_geo.max_x="<<window_geo.max_x<<" window_geo.max_y="<<window_geo.max_y<<" window_geo.max_z="<<window_geo.max_z<<endl;
-    
-    //Export the window geometry if needed
-    if (window_domain) {
-        string str = "window_" + to_string(window) + ".vtk";
-        VTK_Export VTK_E;
-        VTK_E.Export_cuboid(window_geo, str);
     }
     
     return 1;
