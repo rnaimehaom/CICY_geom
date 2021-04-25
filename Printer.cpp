@@ -153,9 +153,9 @@ void Printer::Print_gnp_data(const vector<GNP> &gnps, const int &prec, const str
         
         //Calculate the rotation angles
         //Angle phi corresponds to the rotation angle around z
-        double phi = Recover_angle(gnps[i].rotation.element[1][1], abs(gnps[i].rotation.element[0][1]), two_PI);
+        double phi = Recover_angle(gnps[i].rotation.element[1][1], -gnps[i].rotation.element[0][1], two_PI);
         //Angle theta corresponds to the rotation angle around y
-        double theta = Recover_angle(gnps[i].rotation.element[2][2], abs(gnps[i].rotation.element[2][0]), two_PI);
+        double theta = Recover_angle(gnps[i].rotation.element[2][2], -gnps[i].rotation.element[2][0], two_PI);
         
         //Output the rotation angles
         otec<<theta<<", "<<phi<<", ";
