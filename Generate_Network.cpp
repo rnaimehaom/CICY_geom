@@ -2185,14 +2185,12 @@ int Generate_Network::Calculate_distance_to_torus(const Point_3D &P0, const doub
     double R2 = R*R;
     
     //Check in which region P0 is located
-    if (l_xy2 - R2 <= Zero && abs(P0_T.z) - r > Zero) {
+    if (l_xy2 - R2 >= Zero || abs(P0_T.z) - r < Zero) {
         
-        //P0 is in region 1
-        dist = abs(P0_T.z) - r;
-    }
-    else {
-        
-        //P0 is in region 2
+        //P0 is outside the circle or radius R
+        //OR
+        //P0 is inside the circle of radius R but its z-coordinate is in [-r, r]
+        //Thus P0 is in region 2
         
         //Calculate coordinates of auxiliary circle
         double tmp = R/sqrt(l_xy2);
@@ -2203,6 +2201,11 @@ int Generate_Network::Calculate_distance_to_torus(const Point_3D &P0, const doub
         double Dx = P0_T.x - xc, Dy = P0_T.y - yc;
         dist = Dx*Dx + Dy*Dy + P0_T.z*P0_T.z;
         dist = sqrt(dist) - r;
+    }
+    else {
+        
+        //P0 is in region 1
+        dist = abs(P0_T.z) - r;
     }
     
     return 1;
