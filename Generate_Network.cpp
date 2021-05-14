@@ -87,7 +87,19 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         
         //Export generated CNTs if any
         if (cnts_points.size()) {
-            vtk_exp.Export_cnts_2D_vector(cnts_points, "cnts_generated.vtk");
+            if (vis_flags.generated_nanoparticles == 2) {
+                
+                //Generate one visualization file per CNT
+                for (size_t i = 0; i < cnts_points.size(); i++) {
+                    string filename = "cnt_" + to_string(i) + ".vtk";
+                    vtk_exp.Export_single_cnt(cnts_points[i], filename);
+                }
+            }
+            else {
+                
+                //Generate one visualization file with all the CNTs
+                vtk_exp.Export_cnts_2D_vector(cnts_points, "cnts_generated.vtk");
+            }
         }
         
         //Export generated GNPs if any
@@ -253,11 +265,19 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         //hout<<"Get_seed_point_mt"<<endl;
         if(Get_point_in_cuboid_mt(geom_sample.ex_dom_cnt, new_point, engine_x, engine_y, engine_z, dist)==0) return 0;
         
+        //Calculate some cutoffs for penetration and self-penetration
+        double rad_p_dvdw = cnt_rad + cutoffs.van_der_Waals_dist;
+        double cnt_cutoff = cnt_rad + rad_p_dvdw;
+        double cnt_cutoff2 = cnt_cutoff*cnt_cutoff;
+        
+        //Map to find self-penetrating points
+        map<int, vector<int> > subr_point_map;
+        
         //Check overlapping of the intial point
         int counter = 1;
-        //hout<<"Check_penetration (while)"<<endl;
-        while (simu_para.penetration_model_flag && !Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, new_point)) {
-            if(Get_point_in_cuboid_mt(geom_sample.ex_dom_cnt, new_point, engine_x, engine_y, engine_z, dist)==0) return 0;
+        //hout<<"Check_penetration step_num="<<step_num<<endl;
+        while (simu_para.penetration_model_flag && !Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, point_overlap_count, point_overlap_count_unique, new_point, subr_point_map)) {
+            if(!Get_point_in_cuboid_mt(geom_sample.ex_dom_cnt, new_point, engine_x, engine_y, engine_z, dist)) return 0;
             cnt_seed_count++;                    //record the number of seed generations
             //hout << "Seed deleted" << endl;
             if (counter == MAX_ATTEMPTS) {
@@ -310,8 +330,8 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                 //model is used, or just add it if penetrating model is used
                 
                 //Check for penetration
-                //hout << "Check penetration ";
-                if (!simu_para.penetration_model_flag || Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, point_overlap_count, point_overlap_count_unique, new_point)) {
+                //hout << "Check penetration i="<<i<<endl;
+                if (!simu_para.penetration_model_flag || Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, point_overlap_count, point_overlap_count_unique, new_point, subr_point_map)) {
                     
                     //---------------------------------------------------------------------------
                     //If the penetrating model is used or if the new point, cnt_poi, was placed
@@ -515,7 +535,7 @@ int Generate_Network::Get_length_and_radius(const Nanotube_Geo &nanotube_geo, mt
 //   b) No need to check for penetration (point is in boundary layer or there are no other points in the same sub-region)
 //   c) There was penetration but it was succesfully resolved
 //0: There was penetration but could not be resolved
-int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const int n_subregions[], const double &cnt_rad, const double &d_vdw, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point)const
+int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const int n_subregions[], const double &rad_p_dvdw, const double &cnt_cutoff, const double &cnt_cutoff2, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &point, map<int, vector<int> > &subr_point_map)const
 {
     //Get the sub-region the point belongs to
     //hout<<"Get_subregion 0"<<endl;
@@ -531,14 +551,26 @@ int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Na
     vector<double> cutoffs_p;
     //This vector stores the distance at which the two points actually are
     vector<double> distances;
-    //Need to keep the count of the number of attempts outside the for-loop
-    int attempts;
+    
+    //Iteration 0:
+    //Check if there are any penetrations in the corresponding sub-region
+    //hout<<"Get_penetrating_points 0"<<endl;
+    Get_penetrating_points(cnts, global_coordinates, sectioned_domain[subregion], radii, rad_p_dvdw, point, affected_points, cutoffs_p, distances);
+    //hout<<"1 affected_points.size="<<affected_points.size()<<endl;
+    
+    //Check if there are any penetration within the CNT
+    //hout<<"Get_penetrating_points_within_cnt 0"<<endl;
+    //hout<<"point="<<point.str()<<endl;
+    Get_penetrating_points_within_cnt(subregion, cnt_cutoff, cnt_cutoff2, point, cnt_new, subr_point_map, affected_points, cutoffs_p, distances);
+    //hout<<"2 affected_points.size="<<affected_points.size()<<endl;
+    
+    //Update the counter of overlapping points only when an overlapping point was found the first time
+    if (affected_points.size()) {
+        point_overlap_count_unique++;
+    }
+    
     //I move the point up to max_attempts times. If there is still penetration then I delete it
-    for (attempts = 0; attempts <= MAX_ATTEMPTS; attempts++) {
-        
-        //Check if there are any penetrations in the corresponding sub-region
-        //hout<<"Get_penetrating_points"<<endl;
-        Get_penetrating_points(cnts, global_coordinates, sectioned_domain[subregion], radii, cnt_rad+d_vdw, point, affected_points, cutoffs_p, distances);
+    for (int attempts = 0; attempts < MAX_ATTEMPTS; attempts++) {
         
         //--------------------------------------------------------------------------------------------
         //Check if there are any penetrating points
@@ -546,36 +578,23 @@ int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Na
             //Update the counter of overlaps
             point_overlap_count++;
             
-            //Update the counter of overlapping points only when an overlapping point was found the first time
-            //i.e. attempts = 0
-            if (!attempts) {
-                point_overlap_count_unique++;
-            }
-            
-            //If this is the last iteration and there are still affected points then the point could not be accommodated
-            if (attempts == MAX_ATTEMPTS) {
-                //hout << "Deleted CNT number " << cnts.size() << " of size " << cnt_new.size();
-                //hout << " (reached maximum number of attempts for relocation)" << endl;//*/
-                return 0;
-            }
-            
             //Find the new point
             //hout << "Point " << global_coordinates.size()-1+cnt_new.size() << " in CNT " << cnts.size() << " is overlapping." <<endl;
-            //hout << "Moved a point from initial position (" << point.x << ", " << point.y << ", " << point.z << ")." << endl;
+            //hout << "Moved a point from initial position "<<point.str()<<" attempts="<<attempts<<endl;
             Move_point(cnt_new, point, cutoffs_p, distances, affected_points);
-            //hout << "Moved a point to final position (" << point.x << ", " << point.y << ", " << point.z << ")." << endl;
+            //hout << "Moved a point to final position "<<point.str()<<endl;
             
             //Check that the new point is within the permited orientation repect to the previous segment
             //hout<<"Check_segment_orientation"<<endl;
             if (!Check_segment_orientation(point, cnt_new)) {
                 //hout << "Deleted CNT number " << cnts.size() << " of size " << cnt_new.size();
-                //hout << " (the point is not in a valid orientation)" << endl;//*/
+                //hout << " (the point is not in a valid orientation)" << endl;
                 //When not in a valid position it cannot be moved again so a new CNT is needed
                 return 0;
             }
             
             //Need to update point sub-region as it could be relocated to a new sub-region
-            //hout<<"Get_subregion 1"<<endl;
+            //hout<<"Get_subregion 1 point="<<point.str()<<endl;
             subregion = Get_cnt_point_subregion(geom_sample, n_subregions, point);
             //Check if after moving the point it is now in the boundary layer
             if (subregion == -1) {
@@ -589,13 +608,48 @@ int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Na
             cutoffs_p.clear();
             distances.clear();
             
+            //Check if there are any penetrations in the corresponding sub-region
+            //for the point in its new position
+            //hout<<"Get_penetrating_points sectioned_domain.size="<<sectioned_domain.size()<<" sectioned_domain["<<subregion<<"].size="<<sectioned_domain[subregion].size()<<endl;
+            Get_penetrating_points(cnts, global_coordinates, sectioned_domain[subregion], radii, rad_p_dvdw, point, affected_points, cutoffs_p, distances);
+            //hout<<"3 affected_points.size="<<affected_points.size()<<endl;
+            
+            //Check if there are any penetration within the CNT
+            //hout<<"Get_penetrating_points_within_cnt"<<endl;
+            //hout<<"point="<<point.str()<<endl;
+            Get_penetrating_points_within_cnt(subregion, cnt_cutoff, cnt_cutoff2, point, cnt_new, subr_point_map, affected_points, cutoffs_p, distances);
+            //hout<<"4 affected_points.size="<<affected_points.size()<<endl;
         } else {
-            //if the size of affected_points is zero, then terminate the function
+            
+            //If the size of affected_points is zero there are no penetrating points
+            
+            //Add the current CNT point to the map of CNT points if it is inside the sample
+            if (subregion != -1) {
+                subr_point_map[subregion].push_back((int)cnt_new.size());
+            }
+            
+            //Terminate the function with 1 to indicate succesful relocation of point
             return 1;
         }
+        //hout<<"for end"<<endl;
     }
     
-    return 1;
+    //If the last iteration is reached and there are still affected points
+    //then the point could not be accommodated, so terminate with 0
+    if (affected_points.size()) {
+        //hout<<"There are still penetrating points"<<endl;
+        //hout << "Deleted CNT number " << cnts.size() << " of size " << cnt_new.size() << endl;
+        return 0;
+    }
+    else {
+        
+        //Add the current CNT point to the map of CNT points if it is inside the sample
+        if (subregion != -1) {
+            subr_point_map[subregion].push_back((int)cnt_new.size());
+        }
+        
+        return 1;
+    }
 }
 //---------------------------------------------------------------------------
 //This function returns the subregion a point belongs to
@@ -622,7 +676,7 @@ int Generate_Network::Get_cnt_point_subregion(const Geom_sample &geom_sample, co
     }
 }
 //---------------------------------------------------------------------------
-//This functions iterates over a sub-region and determines if there are any penetrating points
+//This function iterates over a sub-region and determines if there are any penetrating points
 //If there are penetrating points, they are stored in the vector affected_points
 void Generate_Network::Get_penetrating_points(const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<long int> &subregion_vec, const vector<double> &radii, const double &rad_plus_dvdw, Point_3D &point, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
 {
@@ -664,6 +718,52 @@ void Generate_Network::Get_penetrating_points(const vector<vector<Point_3D> > &c
         //hout << "Check5 ";
     }
     //hout << "Check6 " << endl;
+}
+//---------------------------------------------------------------------------
+//This function checks if there are points within the same CNT that may be penetrating
+//NOTE: cutoff = (2*cnt_rad + d_vdw), cutoff2 = (2*cnt_rad + d_vdw)^2
+void Generate_Network::Get_penetrating_points_within_cnt(const int &subregion, const double &cnt_cutoff, const double &cnt_cutoff2, const Point_3D &point, const vector<Point_3D> &cnt_new, const map<int, vector<int> > &subr_point_map, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
+{
+    //Search for the subregion in the map and save it in the iterator variable
+    map<int, vector<int> >::const_iterator it = subr_point_map.find(subregion);
+    
+    //Check if:
+    //there is a map from subregion to a vector of point numbers
+    //AND
+    //there are points within the CNT in the subregion (i.e., elements in the vector)
+    if (it != subr_point_map.end() && subr_point_map.at(subregion).size()) {
+        
+        //Calculate the index of the previous to last point in the CNT
+        int prev_last_idx = (int)cnt_new.size() - 2;
+        
+        //There are points in the sub-region, so check if any of them penetrate
+        //the newly generated point
+        for (size_t i = 0; i < subr_point_map.at(subregion).size(); i++) {
+            
+            //Get the point number within cnt_new
+            int Pi = subr_point_map.at(subregion)[i];
+            
+            //Ignore the last two points in the CNT as both of them are always below the
+            //cutoff distance
+            if (Pi < prev_last_idx) {
+                
+                //Calculate the squared distance to point
+                double dist = point.squared_distance_to(cnt_new[Pi]);
+                
+                //Check if point is below the cutoff
+                if (dist + Zero - cnt_cutoff2< Zero) {
+                    
+                    //point is too close to point Pi, so add it to the corresponding vectors
+                    affected_points.push_back(cnt_new[Pi]);
+                    cutoffs_p.push_back(cnt_cutoff);
+                    distances.push_back(sqrt(dist));
+                    //hout<<"aff_pt"<<cnt_new[Pi].str()<<" dist="<<sqrt(dist)<<" cnt_cutoff="<<cnt_cutoff<<endl;
+                    //hout<<"Pi="<<Pi<<" dist="<<dist<<" cnt_cutoff2="<<cnt_cutoff2<<endl;
+                    //hout<<"dist + Zero - cnt_cutoff2="<<dist + Zero - cnt_cutoff2<<endl;
+                }
+            }
+        }
+    }
 }
 //---------------------------------------------------------------------------
 //This function moves a point according to the number of points it is overlapping
@@ -725,47 +825,42 @@ void Generate_Network::One_overlapping_point(const vector<double> &cutoffs, cons
 }
 //---------------------------------------------------------------------------
 //This function finds the new location for an overlapping point when it overlaps two points
-void Generate_Network::Two_overlapping_points(const vector<double> &cutoffs, const vector<Point_3D> &affected_points, Point_3D &point)const
+void Generate_Network::Two_overlapping_points(const vector<double> &cutoffs, const vector<Point_3D> &affected_points, Point_3D &new_point)const
 {
-    //Get the penetrating points.
-    Point_3D P1 = affected_points[0];
-    //hout << "(" << affected_points[0].x << ", " << affected_points[0].y << ", " << affected_points[0].z << ")." << endl;
-    Point_3D P2 = affected_points[1];
-    //hout << "(" << affected_points[1].x << ", " << affected_points[1].y << ", " << affected_points[1].z << ")." << endl;
-    //Calculate P vector
-    Point_3D P = P2 - P1;
-    //hout<<"P="<<P.str()<<endl;
-    //Calculate Q vector
-    Point_3D Q = point - P1;
-    //hout<<"Q="<<Q.str()<<endl;
+    //Calculate vectors AP and AB
+    //P is new_point
+    //A is affected_points[0]
+    //B is affected_points[1]
+    Point_3D AP = new_point - affected_points[0];
+    Point_3D AB = affected_points[1] - affected_points[0];
     
-    //Check that point and P1 are not the same point
-    if (Q.length2() < Zero) {
-        
-        //Go to the case of one overlapping point with P2
-        One_overlapping_point(vector<double> (1, cutoffs[1]), vector<double>(1, point.distance_to(P2)), vector<Point_3D>(1,affected_points[1]), point);
-    }
+    //Calculate length of AB
+    double d_AB = AB.length();
     
-    //Calculate normal vector PxQ
-    Point_3D R = (P.cross(Q)).cross(P);
-    //hout<<"R="<<R.str()<<endl;
+    //Calcuate distance from A to midpoint of segment AB, i.e., point Q
+    double dp = AP.dot(AB)/d_AB;
     
-    //Sides of the triangle
-    double a = cutoffs[0];
-    double b = cutoffs[1];
-    double c = P1.distance_to(P2);
-    //Distance from P1 to M
-    double d = (b*b - a*a - c*c)/(-2*c);
-    //hout<<"a="<<a<<" b="<<b<<" c="<<c<<" d="<<d<<endl;
-    //Make P a unit vector
-    P = P/sqrt(P.dot(P));
-    //Make R a unit vector
-    R = R/sqrt(R.dot(R));
-    //Calculate new position
-    point = P1 + P*(d + Zero) + R*(sqrt(a*a - d*d)+Zero);//The Zero is to avoid machine precision errors. Without it, when comparing
-    //the new point with the other points in the same region, the program was judging them to be below the cutoff
-    //for the van der Waals distance. Even though they were in the limit. After adding this Zero that issue
-    //was eliminated
+    //Calculate location of point Q
+    Point_3D Q = affected_points[0] + AB*dp/d_AB;
+    
+    //Calculate distance from Q to P
+    //Instead of using the length of AP, I need the length of AP_new, i.e., the length of
+    //the vector that goes from A to P in its new position
+    //I don't know the new position yet, but I know the distance which is stored in cutoffs[0]
+    //which is the one I use here
+    double d = sqrt(cutoffs[0]*cutoffs[0] - dp*dp);
+    
+    //Calculate vector from segment AB towards point P
+    Point_3D N = (AB.cross(AP)).cross(AB);
+    //Make N a unitary vector
+    N.make_unit();
+    
+    //Calculate position of new_point
+    new_point = Q + N*(d + Zero);
+    //The Zero is to avoid machine precision errors. Without it, when comparing
+    //the new point with the other points in the same region, the program was
+    //judging them to be below the cutoff for the van der Waals distance.
+    //Even though they were in the limit. After adding this Zero that issue was eliminated
 }
 //---------------------------------------------------------------------------
 //This function finds the two closest points and calls the function that moves a point that overlaps two other points

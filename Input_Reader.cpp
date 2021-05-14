@@ -1135,8 +1135,8 @@ int Input::Read_visualization_flags(Visualization_flags &vis_flags, ifstream &in
     //    then two files are generated, one for CNTs and one for GNPs)
     istringstream istr0(Get_Line(infile));
 	istr0 >> vis_flags.generated_nanoparticles;
-    if (vis_flags.generated_nanoparticles<0||vis_flags.generated_nanoparticles>1) {
-        hout<<"Error: Flag to export generated CNTs can only be an integer, 0 or 1. Input was: "<<vis_flags.generated_nanoparticles<<endl;
+    if (vis_flags.generated_nanoparticles<0||vis_flags.generated_nanoparticles>2) {
+        hout<<"Error: Flag to export generated CNTs can only be 0, 1, or 2. Input was: "<<vis_flags.generated_nanoparticles<<endl;
         return 0;
     }
     //The flag for the sample domain has the same value as the flag for generated_nanoparticles

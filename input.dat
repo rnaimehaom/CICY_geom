@@ -225,6 +225,7 @@ Visualization_Flags
 % 0: do not export visualization files
 % 1: export visualization files (if mixed or hybrid particles generated,
 %    then two files are generated, one for CNTs and one for GNPs)
+% 2: same as 1 but in the case of CNTs one visualization file is generated per CNT
 0
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Flag to export clusters as obtained from the Hoshen-Kopelman algorithm:
