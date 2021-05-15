@@ -122,6 +122,7 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
         
         //Iterator for the elements in set
         set<long int>::iterator j = HoKo->elements_cnt[CNT].begin();
+        //hout<<"HoKo->elements_cnt["<<CNT<<"].size="<<HoKo->elements_cnt[CNT].size()<<endl;
         
         //Iterator to find an element in LMM_cnts_boundary
         map<long int, long int>::iterator it;
@@ -131,6 +132,7 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
             
             //Initial point of CNT is not at a boundary, so map it to a new node
             LMM_cnts[*j] = global_nodes;
+            //hout<<"*j="<<*j<<" global_nodes="<<global_nodes<<endl;
             
             //Update the next available node
             global_nodes++;
@@ -163,6 +165,7 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
             
             //Last point of CNT is not at a boundary, so map it to a new node
             LMM_cnts[*j_end] = global_nodes;
+            //hout<<"*j_end="<<*j_end<<" global_nodes="<<global_nodes<<endl;
             
             //Update the next available node
             global_nodes++;
@@ -655,6 +658,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
         //hout<<"CNT1="<<CNT1<<endl;
         int CNT2 = junctions_cnt[idx].N2;
         //hout<<"CNT2="<<CNT2<<endl;
+        //hout<<"idx="<<idx<<" junctions_cnt.size="<<junctions_cnt.size()<<endl;
         
         //Calculate the junction resistance
         double Re_inv = 1.0;
@@ -675,6 +679,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
         //Get node numbers
         long int node1 = LMM_cnts.at(P1);
         long int node2 = LMM_cnts.at(P2);
+        //hout<<"node1="<<node1<<" node2="<<node2<<endl;
         
         //Check if any of the nodes is at a boundary with prescribed voltage
         if (node1 >= reserved_nodes && node2 >= reserved_nodes) {

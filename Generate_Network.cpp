@@ -314,6 +314,12 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         //Variable to store the length of the current CNT that is inside the sample
         double cnt_len = 0.0;
         
+        //Add the seed point to the overlapping subregions it belongs to using the map
+        if (!Add_cnt_point_to_overlapping_regions_map(geom_sample, new_cnt[0], 0, is_prev_in_sample, n_subregions, subr_point_map)) {
+            hout<<"Error when adding the seed point to the map of subregions"<<endl;
+            return 0;
+        }
+        
         //Start generation of a CNT siven the generated seed
         for(int i=0; i<step_num; i++)
         {
@@ -401,7 +407,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         //---------------------------------------------------------------------------
         //Store or ignore the CNT points
         //hout<<"Store_or_ignore_new_cnt"<<endl;
-        if (!Store_or_ignore_new_cnt(geom_sample, simu_para.penetration_model_flag, points_in, cnt_len, cnt_rad, cnt_cross_area, new_cnt, cnts_points, cnts_radius, n_subregions, sectioned_domain, global_coordinates, vol_sum, cnt_ignore_count)) {
+        if (!Store_or_ignore_new_cnt_using_map(simu_para.penetration_model_flag, points_in, cnt_len, cnt_rad, cnt_cross_area, new_cnt, cnts_points, cnts_radius, subr_point_map, sectioned_domain, global_coordinates, vol_sum, cnt_ignore_count)) {
             hout<<"Error when storing or ignoring a new CNT"<<endl;
             return 0;
         }
@@ -1070,6 +1076,75 @@ int Generate_Network::Add_cnt_point_to_overlapping_regions_map(const Geom_sample
 }
 //that is used to deal with self penetration
 //This function checks if the newly generated CNT needs to be stored or ignore
+int Generate_Network::Store_or_ignore_new_cnt_using_map(const int &penetration_model_flag, const int &points_in, const double &cnt_len, const double &cnt_rad, const double &cnt_cross_area, const vector<Point_3D> &new_cnt, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius, const map<int, vector<int> > &subr_point_map, vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coordinates, double &vol_sum, int &cnt_ignore_count)const
+{
+    //Store the CNT points
+    //hout << "Store CNT ";
+    //Check that is a valid CNT
+    //If size is 0, the CNT was rejected
+    //If size is 1, then only the CNT seed was generated in a valid position but the second point
+    //could not be placed in a valid position (i.e., without interpenetrating another CNT)
+    if(new_cnt.size() >= 2 && points_in) {
+        
+        //Update the volume and weigth of generated CNTs
+        vol_sum += cnt_len*cnt_cross_area;
+        
+        //If the new_cnt vector has at least two points, then it can be added to the rest of the points
+        cnts_points.push_back(new_cnt);
+        
+        //Add the radius to the vector of radii
+        cnts_radius.push_back(cnt_rad);
+        
+        //Perform these operations when the non-overlapping model is used
+        if (penetration_model_flag) {
+            
+            //Get the size of the global cooordinates vector before add the points in the new CNT
+            long int gc_size = global_coordinates.size();
+            
+            //Iterate over all elements in the map
+            for (map<int, vector<int> >::const_iterator it = subr_point_map.begin(); it != subr_point_map.end(); ++it) {
+                
+                //Get the current subregion number
+                int subregion = it->first;
+                
+                //Iterate over the points in the vector of the current map
+                for (size_t i = 0; i < it->second.size(); i++) {
+                    
+                    //Get the local point number of the current CNT
+                    long int Pi = it->second[i];
+                    
+                    //Add point to its overlapping subregion
+                    //The global number is the size of the sectioned domain saved in gc_size
+                    //plus the local number Pi
+                    sectioned_domain[subregion].push_back(gc_size+Pi);
+                }
+            }
+            
+            //Variable needed for updating global_coordinates
+            vector<int> empty(2);
+            
+            //Get the CNT number
+            int CNT = (int)cnts_points.size()-1;
+            
+            //Scan all points in the new CNT to add global coordinates
+            for(int ii = 0; ii < (int)new_cnt.size(); ii++) {
+                
+                //Add global coordinate
+                empty[0] = CNT;
+                empty[1] = ii;
+                global_coordinates.push_back(empty);
+            }
+        }
+    }
+    else if (!points_in){
+        
+        //The CNT can be ignored as it is completely outside the sample
+        cnt_ignore_count++;
+    }
+    //hout << "done"<<endl;
+    
+    return 1;
+}
 int Generate_Network::Store_or_ignore_new_cnt(const Geom_sample &geom_sample, const int &penetration_model_flag, const int &points_in, const double &cnt_len, const double &cnt_rad, const double &cnt_cross_area, const vector<Point_3D> &new_cnt, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius, const int n_subregions[], vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coordinates, double &vol_sum, int &cnt_ignore_count)const
 {
     //Store the CNT points
@@ -1094,6 +1169,7 @@ int Generate_Network::Store_or_ignore_new_cnt(const Geom_sample &geom_sample, co
             //Variable needed for updating global_coordinates
             vector<int> empty(2);
             
+            //Get the CNT number
             int CNT = (int)cnts_points.size()-1;
             
             //Scan all points in the CNT that was just generated

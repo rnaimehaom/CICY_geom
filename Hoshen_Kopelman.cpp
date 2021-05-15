@@ -419,7 +419,7 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
                         //vector of junctions
                         Junction j(Pi_junc, i, "CNT", Pj_junc, CNTj, "CNT", d_junc_min);
                         junctions_cnt.push_back(j);
-                        //hout<<"compressed junction added in loop d_junc_min="<<d_junc_min<<endl;
+                        //hout<<"compressed junction added in loop, Pi_junc="<<Pi_junc<<", CNTi="<<i<<", Pj_junc="<<Pj_junc<<", CNTj="<<CNTj<<" d_junc_min="<<d_junc_min<<endl;
                         
                         //Add the junction points to the vectors of elements
                         //hout<<"elements_cnt[i].size="<<elements_cnt[i].size()<<endl;
@@ -455,7 +455,7 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
                 //to the vector of junctions
                 Junction j(Pi_junc, i, "CNT", Pj_junc, CNTj, "CNT", d_junc_min);
                 junctions_cnt.push_back(j);
-                //hout<<"compressed junction added d_junc_min="<<d_junc_min<<endl;
+                //hout<<"compressed junction added, Pi_junc="<<Pi_junc<<", CNTi="<<i<<", Pj_junc="<<Pj_junc<<", CNTj="<<CNTj<<" d_junc_min="<<d_junc_min<<endl;
                 
                 //Add the junction points to the vectors of elements
                 //hout<<"elements_cnt[i].size="<<elements_cnt[i].size()<<endl;
@@ -1908,7 +1908,7 @@ int Hoshen_Kopelman::Determine_family_of_percolated_clusters(const int &n_cluste
             }
             
             //Variable to store the family number
-            int fam = 0;
+            int fam = -1;
             
             //Get the family number from the sum
             //hout<<"Family_map"<<endl;
@@ -1917,6 +1917,11 @@ int Hoshen_Kopelman::Determine_family_of_percolated_clusters(const int &n_cluste
                 return 0;
             }
             
+            //Check a valid family was found
+            if (fam == -1) {
+                hout<<"Error in Find_percolated_clusters. No valid family was found. "<<endl;
+                return 0;
+            }
             //Add the family to the vector of families
             family.push_back(fam);
             
@@ -1927,6 +1932,9 @@ int Hoshen_Kopelman::Determine_family_of_percolated_clusters(const int &n_cluste
             if (clusters_gnp_tmp.size()) {
                 clusters_gnp.push_back(clusters_gnp_tmp[i]);
             }
+            
+            //Increase the count of percolated clusters
+            percolated++;
         }
     }
     
@@ -2040,6 +2048,7 @@ int Hoshen_Kopelman::Group_junctions_same_particle(const vector<Point_3D> &point
         if (percolated_labels.find(L1) != percolated_labels.end()) {
             
             //Add junction number to corresponding cluster
+            //hout<<"junction i="<<i<<" with label L="<<L1<<" added with percolated label="<<percolated_labels.at(L1)<<endl;
             cluster_junction[percolated_labels.at(L1)].push_back(i);
         }
     }
