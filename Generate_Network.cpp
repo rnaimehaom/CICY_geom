@@ -4785,7 +4785,7 @@ int Generate_Network::Output_data_files(const Geom_sample &geom_sample, const Ou
     if (out_flags.gnp_data || out_flags.cnt_data) {
         
         //Open file
-        ofstream otec("sample.csv");
+        ofstream otec("sample_geom.csv");
         
         //Output corner of sample
         otec<<geom_sample.sample.poi_min.str(out_flags.prec_cnt)<<endl;
