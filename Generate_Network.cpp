@@ -124,28 +124,10 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         hout<<endl;
     }
     
-    //Create printer object in case it might be used
-    Printer Pr;
-    
-    //---------------------------------------------------------------------------
-    //Check if output data files were requested for generated GNPs
-    if (out_flags.gnp_data == 1) {
-        
-        //Print the GNP needed to generate them in Abaqus
-        Pr.Print_gnp_data(gnps, out_flags.prec_gnp, "gnp_data.csv");
-    }
-    else if (out_flags.gnp_data == 2) {
-        
-        //Print the four vertices of a GNP needed to generate them in Abaqus
-        Pr.Print_4_vertices_gnps(gnps, out_flags.prec_gnp, "gnp_vertices.csv");
-    }
-    
-    //---------------------------------------------------------------------------
-    //Check if output data files were requested for generated CNTs
-    if (out_flags.cnt_data) {
-        
-        //Print the CNT points needed to generated them in Abaqus
-        Pr.Print_cnt_points_and_structure(structure, points_cnt, radii_out, out_flags.prec_cnt, "cnt_coordinates.csv", "cnt_struct.csv");
+    //Output data files if requested
+    if (!Output_data_files(geom_sample, out_flags, points_cnt, radii_out, structure, gnps)) {
+        hout<<"Error in Output_data_files."<<endl;
+        return 0;
     }
     
     return 1;
@@ -4793,3 +4775,46 @@ vector<int> Generate_Network::Find_gnp_faces_intersecting_boundary(const Geom_sa
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
+//This function generates output data files if requested
+int Generate_Network::Output_data_files(const Geom_sample &geom_sample, const Output_data_flags &out_flags, vector<Point_3D> &points_cnt, vector<double> &radii_out, vector<vector<long int> > &structure, vector<GNP> &gnps)const
+{
+    //Create printer object in case it might be used
+    Printer Pr;
+    
+    //Output the sample geometry data if any data is requested
+    if (out_flags.gnp_data || out_flags.cnt_data) {
+        
+        //Open file
+        ofstream otec("sample.csv");
+        
+        //Output corner of sample
+        otec<<geom_sample.sample.poi_min.str(out_flags.prec_cnt)<<endl;
+        
+        //Output length of sample along each side
+        otec<<geom_sample.sample.len_x<<", "<<geom_sample.sample.wid_y<<", "<<geom_sample.sample.hei_z<<endl;
+        
+        //Close file
+        otec.close();
+    }
+    
+    //Check if output data files were requested for generated GNPs
+    if (out_flags.gnp_data == 1) {
+        
+        //Print the GNP needed to generate them in Abaqus
+        Pr.Print_gnp_data(gnps, out_flags.prec_gnp, "gnp_data.csv");
+    }
+    else if (out_flags.gnp_data == 2) {
+        
+        //Print the four vertices of a GNP needed to generate them in Abaqus
+        Pr.Print_4_vertices_gnps(gnps, out_flags.prec_gnp, "gnp_vertices.csv");
+    }
+    
+    //Check if output data files were requested for generated CNTs
+    if (out_flags.cnt_data) {
+        
+        //Print the CNT points needed to generated them in Abaqus
+        Pr.Print_cnt_points_and_structure(geom_sample.sample, structure, points_cnt, radii_out, out_flags.prec_cnt, "cnt_coordinates.csv", "cnt_struct.csv");
+    }
+    
+    return 1;
+}

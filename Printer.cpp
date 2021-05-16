@@ -225,7 +225,7 @@ void Printer::Print_4_vertices_gnps(const vector<GNP> &gnps, const int &prec, co
 //This function prints the coordinates of all CNT points into a file
 //Two files are exported, one with the coordinates and one with the number of CNTs and
 //the number of points for each CNT
-void Printer::Print_cnt_points_and_structure(const vector<vector<long int> > &structure, const vector<Point_3D> &points_cnt, const vector<double> &radii, const int &prec, const string &filename_points, const string &filename_struct)
+void Printer::Print_cnt_points_and_structure(const cuboid &geom_sample, const vector<vector<long int> > &structure, const vector<Point_3D> &points_cnt, const vector<double> &radii, const int &prec, const string &filename_points, const string &filename_struct)
 {
     //Open file for CNT points
     ofstream otec_points(filename_points.c_str());
@@ -238,22 +238,56 @@ void Printer::Print_cnt_points_and_structure(const vector<vector<long int> > &st
     //Iterate over all points in the structure
     for (size_t i = 0; i < structure.size(); i++) {
         
-        //Output the number of points in CNT i and its radius
-        otec_struct<<structure[i].size()<<", "<<radii[i]<<endl;
+        //Number of points in CNT i
+        int cnt_points = (int)structure[i].size();
+        
+        //Get the first point of CNT i
+        long int Pj = structure[i][0];
+        
+        //Check if the first point of CNT i is at a boundary
+        Check_if_close_enough_to_boundary(geom_sample, points_cnt[Pj], prec, cnt_points, otec_points);
         
         //Iterate over the points in CNT i
-        for (size_t j = 0; j < structure[i].size(); j++) {
+        for (size_t j = 1; j < structure[i].size()-1; j++) {
             
             //Get the point number
-            long int Pj = structure[i][j];
+            Pj = structure[i][j];
             
             //Output the coordinates of point j in CNT i
             otec_points<<points_cnt[Pj].str(prec)<<endl;
         }
+        
+        //Get the last point of CNT i
+        Pj = structure[i].back();
+        
+        //Check if the last point of CNT i is at a boundary
+        Check_if_close_enough_to_boundary(geom_sample, points_cnt[Pj], prec, cnt_points, otec_points);
+        
+        //Output the number of points in CNT i and its radius
+        otec_struct<<cnt_points<<", "<<radii[i]<<endl;
     }
     
     
     //Close files
     otec_points.close();
     otec_struct.close();
+}
+
+//This function checks if a point coordinate is close enough to a boundary to be considered
+//at the boundary
+void Printer::Check_if_close_enough_to_boundary(const cuboid &geom_sample, const Point_3D &P, const int &prec, int &cnt_points, ofstream &otec_points)
+{
+    if (abs(P.x-geom_sample.poi_min.x) < Zero || abs(P.x-geom_sample.max_x) < Zero ||
+        abs(P.y-geom_sample.poi_min.y) < Zero || abs(P.y-geom_sample.max_y) < Zero ||
+        abs(P.z-geom_sample.poi_min.z) < Zero || abs(P.z-geom_sample.max_z) < Zero ) {
+        
+        //Point P is too close to one of the boundaries so it is not sent to the output file
+        //Reduce the number of points in the CNT by 1
+        cnt_points--;
+    }
+    else {
+        
+        //Output the coordinates of point j in CNT i
+        otec_points<<P.str(prec)<<endl;
+    }
 }

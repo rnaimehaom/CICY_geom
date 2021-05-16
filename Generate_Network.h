@@ -151,6 +151,7 @@ public:
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
+    int Output_data_files(const Geom_sample &geom_sample, const Output_data_flags &out_flags, vector<Point_3D> &points_cnt, vector<double> &radii_out, vector<vector<long int> > &structure, vector<GNP> &gnps)const;
     
 };
 //-------------------------------------------------------
