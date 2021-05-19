@@ -55,6 +55,8 @@ public:
     void set(const Point_3D &P);
     string str()const;
     string str(const int &prec)const;
+    bool is_outside_cuboid(const struct cuboid &cub)const;
+    bool is_at_cuboid_boundary(const struct cuboid &cub)const;
 };
 //---------------------------------------------------------------------------
 //Definition for 3D line segements

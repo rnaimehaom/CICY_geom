@@ -112,6 +112,13 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
         //Get the current CNT
         int CNT = shells_cnt[window][i];
         
+        //Generate the percolation layer cuboid
+        cuboid layer_geom;
+        if (Get_percolation_layer_cuboid(radii[CNT], window_geo, layer_geom)) {
+            hout<<"Error in Trim_boundary_cnts when calling Get_percolation_layer_cuboid"<<endl;
+            return 0;
+        }
+        
         //Indices to define the beginning and ending of a segment of a CNT that is inside a sample
         int start = 0;
         int end = 0;
@@ -129,26 +136,44 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
         //Number of points in the current CNT
         int cnt_points = (int)structure_cnt[CNT].size();
         
+        //Initialize the point number with the first point in the CNT
+        long int P1 = structure_cnt[CNT][0];
+        
         //Check where is the first point of the CNT
-        string is_first_inside_sample = Where_is(points_cnt[0], window_geo);
+        //flag = 1 because this point is an endpoint
+        //Calculate vector V
+        Point_3D V = (points_cnt[P1] - points_cnt[structure_cnt[CNT][1]]).unit();
+        string is_first_inside_sample = Where_is_with_layer(points_cnt[P1], window_geo, layer_geom, 1, radii[CNT], V);
+        //hout<<"P0="<<P1<<" idx=0 CNT="<<CNT<<" loc="<<is_first_inside_sample<<endl;
         
         //Scan all remaning points in the current CNT
         for (int j = 1; j < cnt_points; j++) {
             
             //Get the current point number
-            long int P1 = structure_cnt[CNT][j];
+            P1 = structure_cnt[CNT][j];
             
-            point_location = Where_is(points_cnt[P1], window_geo);
-            //hout<<"P1="<<P1<<" CNT="<<CNT<<" loc="<<point_location<<endl;
+            //Check if this is the last point
+            if (j == cnt_points - 1) {
+                //It is the last point
+                //Recalculate vector V
+                long int P2 = structure_cnt[CNT][j-1];
+                V = (points_cnt[P1] - points_cnt[P2]).unit();
+                //flag = 1 because this point is an endpoint
+                point_location = Where_is_with_layer(points_cnt[P1], window_geo, layer_geom, 1, radii[CNT], V);
+            }
+            else {
+                point_location = Where_is_with_layer(points_cnt[P1], window_geo, layer_geom);
+            }
+            //hout<<"P1="<<P1<<" idx="<<j<<" CNT="<<CNT<<" loc="<<point_location<<endl;
             
-            //Check if the point is inside the window or at a boundary
-            if (point_location != "outside") {
+            //Check if the point is inside the window
+            if (point_location == "inside") {
                 
-                //Update the last inside (or boundary) point
+                //Update the last inside point
                 last_inside = j;
                 
             }
-            //The point is outside the window, then a segment might be added
+            //The point is outside the window or at a boundary, then a segment might be added
             else {
                 
                 //End index is the current looping index
@@ -170,7 +195,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
                 if (n_points >= cnts.min_points) {
                     
                     //Add the current segment to the structure
-                    if (!Add_cnt_segment_to_structure(window_geo, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
+                    if (!Add_cnt_segment_to_structure(window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
                         hout<<"Error when adding a CNT segment (Add_cnt_segment_to_structure 1)."<<endl;
                         return 0;
                     }
@@ -194,7 +219,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
             //This was not done becuase, in the for loop, a segement is added only when it finds a point
             //outside the sample
             //Add the current segment to the structure
-            if (!Add_cnt_segment_to_structure(window_geo, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
+            if (!Add_cnt_segment_to_structure(window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
                 hout<<"Error when adding a CNT segment (Add_cnt_segment_to_structure 2)."<<endl;
                 return 0;
             }
@@ -230,8 +255,28 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
     
     return 1;
 }
+//This function calculates the geometry for the percolation layer cuboid
+int Cutoff_Wins::Get_percolation_layer_cuboid(const double &cnt_rad, const cuboid &window_geo, cuboid &layer_geom)
+{
+    //For the corner of the window, increase each coordinate a distance equal to the CNT radius
+    layer_geom.poi_min = window_geo.poi_min + Point_3D(cnt_rad, cnt_rad, cnt_rad);
+    
+    //Reduce the maximum coordinates of the window by a distance equal to the CNT radius
+    layer_geom.max_x = window_geo.max_x - cnt_rad;
+    layer_geom.max_y = window_geo.max_y - cnt_rad;
+    layer_geom.max_z = window_geo.max_z - cnt_rad;
+    
+    //For completeness reduce the length of each side of the window cuboid a distance equal to
+    //twice the CNT radius (i.e., the CNT diameter)
+    double cnt_diam = 2*cnt_rad;
+    layer_geom.len_x = window_geo.len_x - cnt_diam;
+    layer_geom.wid_y = window_geo.wid_y - cnt_diam;
+    layer_geom.hei_z = window_geo.hei_z - cnt_diam;
+    
+    return 1;
+}
 //===========================================================================
-int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &end_point_loc, vector<Point_3D> &points_cnt, vector<vector<long int> > &structure_cnt, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx)
+int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const cuboid &layer_geom, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &end_point_loc, vector<Point_3D> &points_cnt, vector<vector<long int> > &structure_cnt, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx)
 {
     //Variable used in case the start index needs to change
     int new_start = start;
@@ -246,7 +291,18 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const do
     //boundary: add it to the boundary vectors
     //outside: calculate the boundary point, subtitute the outside point by the boundary point,
     //          then add it to the boundary vectors
-    string start_point_loc = Where_is(points_cnt[p_out_start], window_geo);
+    string start_point_loc;
+    if (p_out_start == structure_cnt[CNT][0]) {
+        //p_out_start is the first point of the CNT
+        //Recalculate vector V
+        long int P2 = structure_cnt[CNT][1];
+        Point_3D V = (points_cnt[p_out_start] - points_cnt[P2]).unit();
+        //flag = 1 because this point is an endpoint
+        start_point_loc = Where_is_with_layer(points_cnt[p_out_start], window_geo, layer_geom, 1, radii[CNT], V);
+    }
+    else {
+        start_point_loc = Where_is_with_layer(points_cnt[p_out_start], window_geo, layer_geom);
+    }
     if (start_point_loc != "inside") {
         
         if (start_point_loc == "outside") {
@@ -262,7 +318,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const do
         int CNT_num = (segments)? (int)structure_cnt.size(): CNT;
         
         //Add to the boundary vectors, this happens when the first point is either outside or at a boundary
-        if (!Add_cnt_point_to_boundary_vectors(window_geo, points_cnt[p_out_start], p_out_start, CNT_num)) {
+        if (!Add_cnt_point_to_boundary_vectors(layer_geom, points_cnt[p_out_start], p_out_start, CNT_num)) {
             hout<<"Error in Add_cnt_segment_to_structure when caling Add_cnt_point_to_boundary_vectors (1)"<<endl;
             return 0;
         }
@@ -293,7 +349,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const do
         int CNT_num = (segments)? (int)structure_cnt.size(): CNT;
         
         //Add to the boundary vectors, this happens when the last point is either outside or at a boundary
-        if (!Add_cnt_point_to_boundary_vectors(window_geo, points_cnt[p_out_end], p_out_end, CNT_num)) {
+        if (!Add_cnt_point_to_boundary_vectors(layer_geom, points_cnt[p_out_end], p_out_end, CNT_num)) {
             hout<<"Error in Add_cnt_segment_to_structure when caling Add_cnt_point_to_boundary_vectors (2)"<<endl;
             return 0;
         }
@@ -306,12 +362,14 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const do
         //This is the first segment, so save the two indices of the first segment
         first_idx = new_start;
         last_idx = end;
+        //hout<<"segment 1, new_start="<<new_start<<" end="<<end<<endl;
     }
     else {
         
         //A new CNT is added, so get the new CNT number
         int new_CNT = (int)structure_cnt.size();
         //hout<<"New segment added CNT="<<CNT<<" new CNT="<<new_CNT<<endl;
+        //hout<<"New segment added, new_start="<<new_start<<" end="<<end<<endl;
         
         //If this is not the first segment, then a new CNT needs to be added to the structure
         
@@ -434,27 +492,126 @@ int Cutoff_Wins::Substitute_boundary_point(const cuboid &window_geo, const Point
     
     return 1;
 }
-//This function checks in which of these three location a point is placed:
+//This function checks in which of these three location a point is placed (considering that
+//there is a percolation layer):
 //outside the observation window
 //inside the observation window
 //at the boundary of the observation window
-string Cutoff_Wins::Where_is(const Point_3D &point, const cuboid &window_geo)
+string Cutoff_Wins::Where_is_with_layer(const Point_3D &point, const cuboid &window_geo, const cuboid &layer_geom, const int &flag, const double &cnt_rad, const Point_3D &V)
 {
-    double x = point.x;
-    double y = point.y;
-    double z = point.z;
-    
-    //If the point is close enough to the boudary of the observation window, then consider this point
-    //to be at the boundary
-    if ((abs(x - window_geo.poi_min.x) < Zero)||(abs(x - window_geo.max_x) < Zero)||(abs(y - window_geo.poi_min.y) < Zero)||(abs(y - window_geo.max_y) < Zero)||(abs(z - window_geo.poi_min.z) < Zero)||(abs(z - window_geo.max_z) < Zero))
-    return "boundary";
-    //If the point is outside the observation window then any these conditions needs to be true
-    else if ((x < window_geo.poi_min.x)||(x > window_geo.max_x)||(y < window_geo.poi_min.y)||(y > window_geo.max_y)||(z < window_geo.poi_min.z)||(z > window_geo.max_z))
+    //Check if the point is outside the sample
+    if (point.is_outside_cuboid(window_geo)) {
+        
+        //In this case the point is outside
         return "outside";
+    }
+    else if (point.is_outside_cuboid(layer_geom)) {
+        
+        //In this case the point is inside the sample but outside the percolation layer,
+        //thus the point is within the percolation layer
+        //Check if the flag is set to 1, in which case point is either the first or
+        //last point of the CNT
+        if (flag) {
+            
+            //point is the first or last point of the CNT, so check if the point orientation
+            //meets the criteria to be considered inside or at boundary
+            if (Check_criteria_for_cnt_at_boundary(point.x, window_geo.poi_min.x, window_geo.max_x, layer_geom.poi_min.x, layer_geom.max_x, V.x, cnt_rad) ||
+                Check_criteria_for_cnt_at_boundary(point.y, window_geo.poi_min.y, window_geo.max_y, layer_geom.poi_min.y, layer_geom.max_y, V.y, cnt_rad) ||
+                Check_criteria_for_cnt_at_boundary(point.z, window_geo.poi_min.z, window_geo.max_z, layer_geom.poi_min.z, layer_geom.max_z, V.z, cnt_rad)) {
+                return "boundary";
+            }
+        }
+        else {
+            
+            //point is not one of the endpoints of the CNT, so since point is inside the
+            //boundary layer and is not an endpoint then point is considered to be at a boundary
+            //hout<<"middle point considered to be at boundary"<<endl;
+            return "boundary";
+        }
+    }
     
-    //If the point is not outside the observation window nor at the boundary, then it's inside
-    else
-        return "inside";
+    //If none of the options above, then the point is definitely inside
+    return "inside";
+}
+//This function checks the criteria in two opposite boundaries for an endpoint
+//that is in the percolation layer
+int Cutoff_Wins::Check_criteria_for_cnt_at_boundary(const double &p_coord, const double &min_boundary, const double &max_boundary, const double &min_layer, const double &max_layer, const double &V_cood, const double &cnt_rad)
+{
+    //Left boundary
+    if (min_boundary - p_coord < Zero && p_coord - min_layer < Zero) {
+        
+        //The normal to the boundary is N = x or y or z
+        //Check:
+        //The dot product N.dot(V) is negative, which reduces to V_cood = Vx or Vy or Vz
+        //being negative
+        //AND
+        //cos(alpha) = sqrt(1 - (N.dot(V))^2 ) is less than the threshold d/cnt_rad
+        //where d is the distance to the boundary
+        //also note that sqrt(1 - (N.dot(V))^2 ) reduces to sqrt(1 - (V_cood)^2 )
+        if (V_cood < Zero && sqrt(1 - V_cood*V_cood) - (p_coord - min_boundary)/cnt_rad < Zero) {
+            
+            //point is in a position such that the CNT touches the boundary
+            return 1;
+        }
+    }
+    //Right boundary
+    else if (max_layer < p_coord && p_coord < max_boundary) {
+        
+        //The normal to the boundary is N = -x or -y or -z
+        //Check:
+        //The dot product N.dot(V) is negative, which reduces to V_cood = Vx or Vy or Vz
+        //being positive
+        //AND
+        //cos(alpha) = sqrt(1 - (N.dot(V))^2 ) is less than the threshold d/cnt_rad
+        //where d is the distance to the boundary
+        //also note that sqrt(1 - (N.dot(V))^2 ) reduces to sqrt(1 - (V_cood)^2 )
+        if (V_cood > Zero && sqrt(1 - V_cood*V_cood) - (max_boundary - p_coord)/cnt_rad < Zero) {
+            
+            //point is in a position such that the CNT touches the boundary
+            return 1;
+        }
+        
+    }
+    
+    //-----------------------------------------------------------------------
+    //For reference this is the code I wrote originally for the x-boundary
+    //-----------------------------------------------------------------------
+    //Find a boundary the point might be at
+    /* /x-boundary
+    if (window_geo.poi_min.x - point.x < Zero && point.x - layer_geo.poi_min.x < Zero) {
+        
+        //The normal to the boundary is N = x
+        //Check:
+        //The dot product N.dot(V) is negative, which reduces to Vx being negative
+        //AND
+        //cos(alpha) = sqrt(1 - (N.dot(V))^2 ) is less than the threshold d/cnt_rad
+        //where d is the distance to the boundary
+        //also note that sqrt(1 - (N.dot(V))^2 ) reduces to sqrt(1 - (Vx)^2 )
+        if (V.x < Zero && sqrt(1 - V.x*V.x) - (point.x - window_geo.poi_min.x)/cnt_rad < Zero) {
+            
+            //point is in a position such that the CNT touches the boundary
+            return "boundary";
+        }
+    }
+    //Opposite x-boundary
+    else if (layer_geo.max_x < point.x && point.x < window_geo.max_x) {
+        
+        //The normal to the boundary is N = -x
+        //Check:
+        //The dot product N.dot(V) is negative, which reduces to Vx being positive
+        //AND
+        //cos(alpha) = sqrt(1 - (N.dot(V))^2 ) is less than the threshold d/cnt_rad
+        //where d is the distance to the boundary
+        //also note that sqrt(1 - (N.dot(V))^2 ) reduces to sqrt(1 - (Vx)^2 )
+        if (V.x > Zero && sqrt(1 - V.x*V.x) - (window_geo.max_x - point.x)/cnt_rad < Zero) {
+            
+            //point is in a position such that the CNT touches the boundary
+            return "boundary";
+        }
+        
+    }*/
+    
+    return 0;
 }
 string Cutoff_Wins::Where_is_with_boundary(const Point_3D &point, const cuboid &window_geo, int &boundary)
 {
@@ -518,15 +675,14 @@ string Cutoff_Wins::Where_is_with_boundary(const Point_3D &point, const cuboid &
         return "inside";
 }
 //Add a point to the corrsponding boundary vector
-int Cutoff_Wins::Add_cnt_point_to_boundary_vectors(const cuboid &window_geo, const Point_3D &P, const long int &P_num, const int &CNT_num)
+int Cutoff_Wins::Add_cnt_point_to_boundary_vectors(const cuboid &layer_geom, const Point_3D &P, const long int &P_num, const int &CNT_num)
 {
     //Get the boundary of the point
-    int boundary = -1;
-    string location = Where_is_with_boundary(P, window_geo, boundary);
+    int boundary = In_which_boundary(P, layer_geom);
     
     //Check for error
     if (boundary == -1) {
-        hout<<"Error: point should be at boundary but it is not. Point location is: "<<location<<endl;
+        hout<<"Error: point should be at boundary but it is not."<<endl;
         hout<<"\tP="<<P.str()<<", P_num="<<P_num<<endl;
         return 0;
     }
@@ -539,6 +695,38 @@ int Cutoff_Wins::Add_cnt_point_to_boundary_vectors(const cuboid &window_geo, con
     boundary_cnt_pts[boundary].push_back(P_num);
     
     return 1;
+}
+//Find in which boundary a point is located, considering there is a percolation layer
+int Cutoff_Wins::In_which_boundary(const Point_3D &P, const cuboid &layer_geom)
+{
+    //To determine the boundary number, it suffices to determine in which side of the
+    //parcolation layer the point is located
+    if (P.x - layer_geom.poi_min.x <= Zero) {
+        //boundary = 4;
+        return 4;
+    }
+    else if(layer_geom.max_x - P.x <= Zero) {
+        //boundary = 2;
+        return 2;
+    }
+    else if (P.y - layer_geom.poi_min.y <= Zero){
+        //boundary = 5;
+        return 5;
+    }
+    else if(layer_geom.max_y - P.y <= Zero){
+        //boundary = 3;
+        return 3;
+    }
+    else if (P.z - layer_geom.poi_min.z <= Zero){
+        //boundary = 1;
+        return 1;
+    }
+    else if(layer_geom.max_z - P.z <= Zero) {
+        //boundary = 0;
+        return 0;
+    }
+    
+    return -1;
 }
 //Fill the vector cnts_inside
 int Cutoff_Wins::Fill_cnts_inside(const vector<vector<long int> > &structure)

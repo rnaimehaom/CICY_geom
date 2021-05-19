@@ -188,6 +188,30 @@ string Point_3D::str(const int &prec)const
     
     return ss.str();
 }
+//---------------------------------------------------------------------------
+//This function determines if a point is outside a cuboid
+bool Point_3D::is_outside_cuboid(const struct cuboid &cub)const
+{
+    //Check if the point is outside the cuboid
+    if ((x - cub.poi_min.x < Zero)||(x - cub.max_x > Zero)||(y - cub.poi_min.y < Zero)||(y - cub.max_y > Zero)||(z - cub.poi_min.z < Zero)||(z - cub.max_z > Zero))
+        //The point is outside the cuboid, so return true
+        return true;
+    //If not outside the cuboid, then it is inside or at the boudary, so return false
+    return false;
+}
+//---------------------------------------------------------------------------
+//This function determines if a point is at a cuboid boundary
+bool Point_3D::is_at_cuboid_boundary(const struct cuboid &cub)const
+{
+    //Check if the point is close enough to the cuboid boundary
+    if ((abs(x - cub.poi_min.x) < Zero)||(abs(x - cub.max_x) < Zero)||(abs(y - cub.poi_min.y) < Zero)||(abs(y - cub.max_y) < Zero)||(abs(z - cub.poi_min.z) < Zero)||(abs(z - cub.max_z) < Zero))
+        //The point is at the boundary
+        return true;
+    //If not at the cuboid boundary, then it is inside or outside the cuboid
+    return false;
+}
+//---------------------------------------------------------------------------
+//This function determines is a point is at a cuboid boundary
 //===========================================================================
 //Functions for the 3D Line class
 //---------------------------------------------------------------------------
