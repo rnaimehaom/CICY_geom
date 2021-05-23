@@ -114,7 +114,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
         
         //Generate the percolation layer cuboid
         cuboid layer_geom;
-        if (Get_percolation_layer_cuboid(radii[CNT], window_geo, layer_geom)) {
+        if (!Get_percolation_layer_cuboid(radii[CNT], window_geo, layer_geom)) {
             hout<<"Error in Trim_boundary_cnts when calling Get_percolation_layer_cuboid"<<endl;
             return 0;
         }

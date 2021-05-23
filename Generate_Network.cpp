@@ -2222,6 +2222,11 @@ int Generate_Network::Find_highest_position_for_new_point(const Geom_sample &geo
     //that is not a seed
     //hout<<"Get_cnt_point_subregion"<<endl;
     int subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
+    if (subregion == -1) {
+        //new_point is outside the boundary layer, so leave it where it is
+        //hout<<"new_point="<<new_point.str()<<endl;
+        return 1;
+    }
     
     //Radius of new CNT plus van der Waals distance
     double rad_p_dvdw = cnt_rad + d_vdW;

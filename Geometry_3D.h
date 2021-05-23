@@ -135,7 +135,7 @@ struct cuboid
     {
         //Check the particle type
         //If a deposit of CNTs is generated, then the observation window will not change along z
-        if (particle_type != "CNTdeposit") {
+        if (particle_type != "CNT_deposit") {
             
             //Update the dimension along z of the current observation window
             hei_z = sample_geo.max_z - ((double)window)*delt_z;
