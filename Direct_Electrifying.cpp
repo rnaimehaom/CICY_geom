@@ -8,7 +8,7 @@
 #include "Direct_Electrifying.h"
 
 //Calculate the voltage values at contact points and endpoints
-int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &R_flag, const Simu_para &simu_para, const Electric_para &electric_param, const Cutoff_dist &cutoffs, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps)
+int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &R_flag, const cuboid &window, const Simu_para &simu_para, const Electric_para &electric_param, const Cutoff_dist &cutoffs, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps)
 {
     //First we need to prepare the matrices that the direct electrifying needs.
     //The number of reserved nodes is calculated.
@@ -62,21 +62,34 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
         return 0;
     }
     
+    //Create the approximation of the voltage vector when:
+    //actual resistors are used
+    //AND
+    //the family is 0, 1, or 2
+    vector<double> V_guess(global_nodes-reserved_nodes, 0.0);
+    if (R_flag && reserved_nodes == 2) {
+        
+        //Calculate an initial guess for the conjugate gradient
+        if (!Initial_guess_for_CG(n_cluster, reserved_nodes, HoKo->family[n_cluster], window, electric_param.applied_voltage, HoKo->clusters_cnt, HoKo->elements_cnt, points_cnt, HoKo->clusters_gnp, points_gnp, col_ind, row_ptr, values, diagonal, R, V_guess)) {
+            hout<<"Error in Compute_voltage_field when calling Initial_guess_for_CG"<<endl;
+            return 0;
+        }
+    }//
+    
     //hout << "Solve_DEA_equations_CG_SSS"<<endl;
     //This is where the actual direct electrifying algorithm (DEA) takes place
-    if (!Solve_DEA_equations_CG_SSS(global_nodes, reserved_nodes, simu_para.tolerance, col_ind, row_ptr, values, diagonal, R, VEF)) {
+    if (!Solve_DEA_equations_CG_SSS(global_nodes, reserved_nodes, simu_para.tolerance, col_ind, row_ptr, values, diagonal, R, VEF, V_guess)) {
         hout<<"Error in Compute_voltage_field when calling Solve_DEA_equations_CG_SSS"<<endl;
         return 0;
     }
     
-    /*/Print the voltages
-    Printer *Pr = new Printer;
+    //Print the voltages
+    /*Printer Pr;
     if (R_flag) {
-        Pr->Print_1d_vec(voltages, "voltages_R.txt");
+        Pr.Print_1d_vec(voltages, "voltages_R_"+ to_string(HoKo->family[n_cluster])+ ".txt");
     } else {
-        Pr->Print_1d_vec(voltages, "voltages_unit.txt");
-    }
-    delete Pr;//*/
+        Pr.Print_1d_vec(voltages, "voltages_unit.txt");
+    }//*/
     
     return 1;
 }
@@ -413,6 +426,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const int &n_c
         
         //Get the first point of the element, i.e., the first point of the CNT
         long int P1 = *it;
+        //hout<<"P1="<<P1<<" node="<<LMM_cnts[P1]<<endl;
         
         //Check for the case of three points in the element
         if (HoKo->elements_cnt[CNT].size() == 3 &&
@@ -443,6 +457,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const int &n_c
                 //Get the nodes of the points
                 long int node1 = LMM_cnts[P1];
                 long int node2 = LMM_cnts[P2];
+                //hout<<"Pi="<<P2<<" node="<<node2<<endl;
                 
                 //Calculate inverse of resistance if needed
                 double Re_inv = (R_flag)? 1/Re : Re;
@@ -1131,6 +1146,90 @@ int Direct_Electrifying::From_2d_to_1d_vectors(const long int &reserved_nodes, c
     
     return 1;
 }
+//This function calculates the initial guess for the Conjugate Gradien (CG)
+int Direct_Electrifying::Initial_guess_for_CG(const int &n_cluster, const long int &reserved_nodes, const int &family, const cuboid &window_geom, const double &V_app, const vector<vector<int> > &clusters_cnt, const vector<set<long int> > &elements_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &clusters_gnp, const vector<Point_3D> &points_gnp, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &R, vector<double> &V_guess)
+{
+    
+    //Select the length of the window along the direction indicated by the family
+    double L_window = (family == 0)? window_geom.len_x: (family == 1)? window_geom.wid_y: window_geom.hei_z;
+    
+    //Select the maximum coordinate of the window along the direction indicated by the family
+    double max_coord = (family == 0)? window_geom.max_x: (family == 1)? window_geom.max_y : window_geom.max_z;
+    
+    //Precalculate V_app/L_window
+    double V_P_coord = V_app/L_window;
+    
+    //Scan every CNT in the cluster
+    for (int i = 0; i < (long int)clusters_cnt[n_cluster].size(); i++) {
+        
+        //Current CNT in cluster
+        int CNT = clusters_cnt[n_cluster][i];
+        
+        //Iterate over the points in the elements vector of CNT
+        for (set<long int>::const_iterator it = elements_cnt[CNT].begin();
+             it != elements_cnt[CNT].end(); it++) {
+            
+            //Get the current point of the element
+            long int Pi = *it;
+            
+            //Get the node number of the point
+            long int node_i = LMM_cnts.at(Pi);
+            
+            //Check if node_i is not a reserved node
+            if (node_i >= 2) {
+                
+                //Select the proper coordinate
+                double P_coord = (family == 0)? points_cnt[Pi].x: (family == 1)? points_cnt[Pi].y: points_cnt[Pi].z;
+                
+                //Set the voltage at node_i porportional to the coordinate P_coord
+                //The vector used in CG does not have the reserved nodes, thus these
+                //are subtracted from the index
+                V_guess[node_i-reserved_nodes] = V_P_coord*(max_coord - P_coord);
+                
+            }
+            //Voltages for nodes 0 and 1 have already been assigned, so there is nothing
+            //to do if those nodes are found in this function
+        }
+    }
+    
+    //========================================================================
+    //Calculate A*x0 needed to calculate the residual
+    //The matrix-vector multiplication is done using the SSS format
+    
+    //Size of the system
+    long int N = (long int)V_guess.size();
+    
+    //Initialize result vector
+    vector<double> Ax0(N, 1.0);
+    //SSS
+    //hout<<"SSS, N="<<N<<" col_ind.size="<<col_ind.size()<<" row_ptr.size="<<row_ptr.size()<<endl;
+    for (long int r = 0; r < N; r++) {
+        Ax0[r] = diagonal[r]*V_guess[r];
+        //hout<<"r="<<r<<endl;
+        for (long int j = row_ptr[r]; j < row_ptr[r+1]; j++) {
+            
+            //Get the column index c
+            long int c = col_ind[j];
+            //hout<<" c="<<c<<endl;
+            Ax0[r] = Ax0[r] + values[j]*V_guess[c];
+            Ax0[c] = Ax0[c] + values[j]*V_guess[r];
+        }
+    }
+    
+    //========================================================================
+    //Calculate the residual R = b - A*x0
+    //Variable R already has stored the value of b so I just need to do: R <- b - A*x0
+    for (size_t i = 0; i < N; i++) {
+        R[i] = R[i] - Ax0[i];
+    }
+    
+    //Print the initial guess for the voltages
+    Printer Pr;
+    string filename = "V_guess_" + to_string(family) + ".txt";
+    Pr.Print_1d_vec(V_guess, filename);
+
+    return 1;
+}
 //This function creates a voltage vector depending on the number of prescribed boundary conditios
 int Direct_Electrifying::Get_voltage_vector(const long int &reserved_nodes, const long int &nodes, const int &R_flag, const Electric_para &electric_param, vector<double> &VEF)
 {
@@ -1163,7 +1262,7 @@ int Direct_Electrifying::Get_voltage_vector(const long int &reserved_nodes, cons
 }
 //This function solves the equation of the electric circuit using the
 //Direct Electrifing Algorithm (DEA) and the Conjugate-Gradrient
-int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const long int &reserved_nodes, const double &tolerance, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &R, vector<double> &VEF)
+int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const long int &reserved_nodes, const double &tolerance, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &R, vector<double> &VEF, vector<double> &voltages_sol)
 {
     //Preconditioner
     vector<double> M_inv(diagonal.size(),0.0);
@@ -1181,7 +1280,7 @@ int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const
     vector<double> AP; //Variable for the multiplication A*P
     AP.assign(nodes-reserved_nodes,0);
     double alpha, beta, rr0, rr;
-    vector<double> voltages_sol(nodes-reserved_nodes, 0);
+    //vector<double> voltages_sol(nodes-reserved_nodes, 0);
     
     //Maximum number of iterations for the CG
     long int max_iter = 10*nodes;

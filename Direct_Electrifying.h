@@ -32,7 +32,7 @@ public:
     Direct_Electrifying(){};
     
     //Member Functions
-    int Compute_voltage_field(const int &n_cluster, const int &R_flag, const Simu_para &simu_para, const Electric_para &electric_param, const Cutoff_dist &cutoffs, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps);
+    int Compute_voltage_field(const int &n_cluster, const int &R_flag, const cuboid &window, const Simu_para &simu_para, const Electric_para &electric_param, const Cutoff_dist &cutoffs, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps);
     int Get_global_nodes(const int &family);
     int LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, long int &global_nodes);
     int Map_points_at_boundaries(const int &family, const vector<vector<long int> > &boundary_pts, map<long int, long int> &LMM);
@@ -52,8 +52,9 @@ public:
     int Calculate_resistance_gnp(const Point_3D &P1, const Point_3D &P2, const double &rad1, const double &rad2, const struct Electric_para &electric_param, double &Re);
     int Fill_2d_matrices_gnp_junctions(const int &R_flag, const double &d_vdw, const Electric_para &electric_param, const vector<int> cluster_gnp_junctions_i, const vector<Junction> &junctions_gnp, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, const map<long int, long int> &LMM_gnps, vector<map<long int, double> > &col_values, vector<double> &diagonal);
     int From_2d_to_1d_vectors(const long int &reserved_nodes, const long int &nodes, const int &R_flag, const Electric_para &electric_param, const vector<map<long int, double> > &col_values, vector<long int> &col_ind, vector<long int> &row_ptr, vector<double> &values, vector<double> &diagonal, vector<double> &R, vector<double> &VEF);
+    int Initial_guess_for_CG(const int &n_cluster, const long int &reserved_nodes, const int &family, const cuboid &window_geom, const double &V_app, const vector<vector<int> > &clusters_cnt, const vector<set<long int> > &elements_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &clusters_gnp, const vector<Point_3D> &points_gnp, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &R, vector<double> &V_guess);
     int Get_voltage_vector(const long int &reserved_nodes, const long int &nodes, const int &R_flag, const Electric_para &electric_param, vector<double> &VEF);
-    int Solve_DEA_equations_CG_SSS(const long int &nodes, const long int &reserved_nodes, const double &tolerance, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &R, vector<double> &VEF);
+    int Solve_DEA_equations_CG_SSS(const long int &nodes, const long int &reserved_nodes, const double &tolerance, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &R, vector<double> &VEF, vector<double> &voltages_sol);
     void Jacobi_preconditioner(const vector<double> &diagonal, vector<double> &M_inv);
     void Apply_preconditioner(const vector<double> &M_inv, const vector<double> &R, vector<double> &P, vector<double> &Y);
     void spM_V_SSS(const vector<double> &V, const vector<long int> &rowptr, const vector<long int> &colind, const vector<double> &diagonal, const vector<double> &values, vector<double> &R);

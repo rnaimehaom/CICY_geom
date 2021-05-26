@@ -50,7 +50,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
         //DEA with unit resistors
         ct0 = time(NULL);
         //hout<<"DEA->Compute_voltage_field"<<endl;
-        if (!DEA->Compute_voltage_field(j, R_flag, simu_param, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
+        if (!DEA->Compute_voltage_field(j, R_flag, window, simu_param, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
             hout<<"Error in Perform_analysis_on_clusters when calling DEA->Compute_voltage_field"<<endl;
             return 0;
         }
@@ -94,7 +94,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
             //DEA with actual resistors along each percolated direction for current cluster
             ct0 = time(NULL);
             //hout<<"Electrical_resistance_along_each_percolated_direction"<<endl;
-            if (!Electrical_resistance_along_each_percolated_direction(R_flag, j, HoKo, Cutwins, simu_param, electric_param, cutoffs, structure_cnt, points_cnt, radii, structure_gnp, points_gnp, gnps, parallel_resistors)) {
+            if (!Electrical_resistance_along_each_percolated_direction(R_flag, j, window, HoKo, Cutwins, simu_param, electric_param, cutoffs, structure_cnt, points_cnt, radii, structure_gnp, points_gnp, gnps, parallel_resistors)) {
                 hout<<"Error in Perform_analysis_on_clusters when calling Electrical_resistance_along_each_percolated_direction"<<endl;
                 return 0;
             }
@@ -171,7 +171,7 @@ int Electrical_analysis::Export_triangulations(const int &iter, const vector<int
     return 1;
 }
 //This function calculates the electrical resistance along each percolated direction of a cluster
-int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(const int &R_flag, const int &n_cluster, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const Simu_para &simu_param, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<vector<double> > &paralel_resistors)
+int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(const int &R_flag, const int &n_cluster, const cuboid &window, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const Simu_para &simu_param, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<vector<double> > &paralel_resistors)
 {
     //Time variables
     time_t ct0, ct1;
@@ -201,7 +201,7 @@ int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(c
         //Run a new DEA to obtain the new voltage field in the backbone using the actual resistances
         //As the variable for family use the percolated direction k
         ct0 = time(NULL);
-        if (!DEA_Re->Compute_voltage_field(n_cluster, R_flag, simu_param, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
+        if (!DEA_Re->Compute_voltage_field(n_cluster, R_flag, window, simu_param, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
             hout<<"Error in Electrical_resistance_along_each_percolated_direction when calling DEA_Re->Compute_voltage_field"<<endl;
             return 0;
         }
@@ -491,7 +491,7 @@ int Electrical_analysis::Current_of_element_in_boundary(const long int &P1, cons
     //This means it is on a valid boundary
     if (node1 <= 1) {
         
-        //hout<<"P1="<<P1<<", "<<points_cnt[P1].str()<<" CNT1="<<points_cnt[P1].flag<<" node1="<<node1;
+        //hout<<"P1="<<P1<<", "<<points_cnt[P1].str()<<" CNT1="<<points_cnt[P1].flag<<" node1="<<node1<<endl;
         //Get the node number of the second point, if the point is in the LMM matrix
         it = DEA->LMM_cnts.find(P2);
         if (it == DEA->LMM_cnts.end()) {
@@ -508,7 +508,7 @@ int Electrical_analysis::Current_of_element_in_boundary(const long int &P1, cons
         //so the voltage drop is from node2 to node1
         double V = DEA->voltages[node2] - DEA->voltages[node1];
         
-        //hout << "V1="<<DEA->voltages[node1]<<" V2="<<DEA->voltages[node2]<<"\nDV=" << V;
+        //hout << "V1="<<DEA->voltages[node1]<<" V2="<<DEA->voltages[node2]<<"\nDV=" << V<<endl;
         //Calculate resistance of the element
         double Re;
         if (P1 > P2) {
