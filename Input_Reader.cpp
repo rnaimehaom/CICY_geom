@@ -383,9 +383,9 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
             //Check if mass ratio is defined
             if (simu_para.mixed=="mass_ratio") {
                 
-                if (simu_para.criterion != "wt") {
+                /*if (simu_para.criterion != "wt") {
                     hout << "Error: If nanoparticle content is specified in weight fraction, then CNT/GNP mass ratio must specified, not volume faction"<< endl; return 0;
-                }
+                }*/
                 
                 //Read the mass ratio
                 istr_mixed >> simu_para.mass_ratio;
@@ -820,7 +820,7 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
     istringstream istr0(Get_Line(infile));
     
     //---------------------------------------------------------------------------------------
-    //Check the netwrok being generated
+    //Check the network being generated
     if (simu_para.particle_type == "GNP_cuboids" || simu_para.particle_type == "GNP_CNT_mix") {
         
         //----------------------------------------------------------------------
@@ -923,7 +923,7 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
     }
     
     //---------------------------------------------------------------------------------------
-    //If only GNPs are to be generated, then copy directly the CNT content
+    //If only GNPs are to be generated, then copy directly the total carbon content
     if (simu_para.particle_type == "GNP_cuboids") {
         
         //Copy the criterion for measuring content
@@ -961,27 +961,45 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
         //Check what is the criterion for mixed/hybrid particles
         if (simu_para.mixed == "mass_ratio") {
             
-            //Set the criterion as weight fraction
-            nanotube_geo.criterion = "wt";
-            
-            //Calculate the weight fraction of (required) CNTs in the sample
-            nanotube_geo.weight_fraction = simu_para.mass_ratio*simu_para.weight_fraction/(simu_para.mass_ratio + 1.0);
-            hout<<"nanotube_geo.weight_fraction="<<nanotube_geo.weight_fraction<<endl;
-            
-            //Calculate the weight fraction of (required) GNPs in the sample
-            gnp_geo.weight_fraction = simu_para.weight_fraction/(simu_para.mass_ratio + 1.0);
-            hout<<"gnp_geo.weight_fraction="<<gnp_geo.weight_fraction<<endl;
-            
-            //Calculate the denominator used in calculating volume fractions
-            double den = (1.0 - simu_para.weight_fraction)/geom_sample.matrix_density;
-            den += nanotube_geo.weight_fraction/nanotube_geo.density;
-            den += gnp_geo.weight_fraction/gnp_geo.density;
-            
-            //Calculate the volume fraction of (required) CNTs in the sample
-            nanotube_geo.volume_fraction = nanotube_geo.weight_fraction/(nanotube_geo.density*den);
-            
-            //Calculate the volume fraction of (required) GNPs in the sample
-            gnp_geo.volume_fraction = gnp_geo.weight_fraction/(gnp_geo.density*den);
+            //Check if the total carbon content is given as volume or weight fraction
+            if (simu_para.criterion=="wt") {
+                
+                //Set the criterion as weight fraction
+                nanotube_geo.criterion = "wt";
+                
+                //Calculate the weight fraction of (required) CNTs in the sample
+                nanotube_geo.weight_fraction = simu_para.mass_ratio*simu_para.weight_fraction/(simu_para.mass_ratio + 1.0);
+                hout<<"nanotube_geo.weight_fraction="<<nanotube_geo.weight_fraction<<endl;
+                
+                //Calculate the weight fraction of (required) GNPs in the sample
+                gnp_geo.weight_fraction = simu_para.weight_fraction/(simu_para.mass_ratio + 1.0);
+                hout<<"gnp_geo.weight_fraction="<<gnp_geo.weight_fraction<<endl;
+                
+                //Calculate the denominator used in calculating volume fractions
+                double den = (1.0 - simu_para.weight_fraction)/geom_sample.matrix_density;
+                den += nanotube_geo.weight_fraction/nanotube_geo.density;
+                den += gnp_geo.weight_fraction/gnp_geo.density;
+                
+                //Calculate the volume fraction of (required) CNTs in the sample
+                nanotube_geo.volume_fraction = nanotube_geo.weight_fraction/(nanotube_geo.density*den);
+                
+                //Calculate the volume fraction of (required) GNPs in the sample
+                gnp_geo.volume_fraction = gnp_geo.weight_fraction/(gnp_geo.density*den);
+                
+            }
+            else if (simu_para.criterion=="vol") {
+                
+                //Calculate the volume fraction of (required) CNTs in the sample
+                nanotube_geo.volume_fraction = simu_para.mass_ratio*gnp_geo.density*simu_para.volume_fraction/(nanotube_geo.density + simu_para.mass_ratio*gnp_geo.density);
+                
+                //Calculate the volume fraction of (required) GNPs in the sample
+                gnp_geo.volume_fraction = simu_para.volume_fraction - nanotube_geo.volume_fraction;
+                
+            }
+            else {
+                hout<<"Error when calculating CNT and GNP content from mass ratio: Invalid criterion for measuring content. Criterion can only be \"vol\" or \"wt\". Input was:"<<simu_para.criterion<<endl;
+                return 0;
+            }
             
             //Calcualte the total volume of (required) CNTs in the sample
             nanotube_geo.volume = nanotube_geo.volume_fraction*geom_sample.volume;
