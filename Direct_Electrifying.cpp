@@ -1224,9 +1224,9 @@ int Direct_Electrifying::Initial_guess_for_CG(const int &n_cluster, const long i
     }
     
     //Print the initial guess for the voltages
-    Printer Pr;
+    /*Printer Pr;
     string filename = "V_guess_" + to_string(family) + ".txt";
-    Pr.Print_1d_vec(V_guess, filename);
+    Pr.Print_1d_vec(V_guess, filename);*/
 
     return 1;
 }
