@@ -68,7 +68,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const int &iter, const S
         labels_gnp.assign(gnps.size(), -1);
         
         //Make GNP clusters
-        //hout<<"Make_gnp_clusters"<<endl;
+        //hout<<"Make_gnp_clusters n_total_labels="<<n_total_labels<<endl;
         if (!Make_gnp_clusters(gnps_inside, sectioned_domain_gnp, gnps, cutoffs.tunneling_dist, n_labels_cnt, n_total_labels, structure_gnp, points_gnp, labels_gnp)) {
             hout<<"Error in Determine_clusters when calling Make_gnp_clusters"<<endl;
             return 0;
@@ -311,10 +311,8 @@ int Hoshen_Kopelman::Cleanup_labels(vector<int> &labels_labels, vector<int> &lab
     vector<int> label_map(labels_labels.size(),-1);
     
     //This variable will be used to assign the proper label
-    //It is initalized with the value in n_labels
-    //In case there are only CNTs or only GNPs n_labels = 0
-    //In case there are both CNTs and GNPs n_labels = the number of proper CNT labels
-    int proper_label = n_labels;
+    //It is initalized with 0, which is the first proper label
+    int proper_label = 0;
     
     //First scan all the labels of labels to find the root labels
     //Create a map from root label to proper label
@@ -354,6 +352,22 @@ int Hoshen_Kopelman::Cleanup_labels(vector<int> &labels_labels, vector<int> &lab
             
             //Change the current label by the proper label
             labels[i] = proper;
+        }
+    }
+    
+    return 1;
+}
+//This function renumbre GNP labels to have consecutive numbers after the last CNT label
+int Hoshen_Kopelman::Renumber_gnp_labels(const int &cnt_labels, vector<int> &labels_gnp)
+{
+    //Scan all GNP labels
+    for (size_t i = 0; i < labels_gnp.size(); i++) {
+        
+        //Check if label i is a proper label, i.e., it is positive or zero
+        if (labels_gnp[i] >= 0) {
+            
+            //Add the number of CNT labels
+            labels_gnp[i] = labels_gnp[i] + cnt_labels;
         }
     }
     
@@ -494,27 +508,42 @@ int Hoshen_Kopelman::Make_gnp_clusters(const vector<int> &gnps_inside, const vec
     
     //Label the GNPs
     //hout<<"Label_gnps_in_window"<<endl;
-    if (!Label_gnps_in_window(gnps_inside, sectioned_domain_gnp, gnps, tunnel_cutoff, n_labels_cnt, structure_gnp, points_gnp, labels_gnp, labels_labels_gnp)) {
+    if (!Label_gnps_in_window(gnps_inside, sectioned_domain_gnp, gnps, tunnel_cutoff, structure_gnp, points_gnp, labels_gnp, labels_labels_gnp)) {
         hout<<"Error in Make_gnp_clusters when calling Label_gnps_in_window"<<endl;
         return 0;
     }
     
     //Clean up the labels to find the proper labels, i.e. merged and consecutive labels starting at 0
     //hout<<"Cleanup_labels"<<endl;
-    if (!Cleanup_labels(labels_labels_gnp, labels_gnp, n_total_labels)) {
-        hout << "Error in Make_cnt_clusters when calling Cleanup_labels" << endl;
+    int n_gnp_labels = 0;
+    if (!Cleanup_labels(labels_labels_gnp, labels_gnp, n_gnp_labels)) {
+        hout << "Error in Make_gnp_clusters when calling Cleanup_labels" << endl;
         return 0;
     }
+    
+    //Check if there are CNT clusters
+    if (n_labels_cnt) {
+        
+        //There are CNT clusters, thus rennumber the proper labels to have consecutive numbers
+        //starting from n_total_labels
+        if (!Renumber_gnp_labels(n_labels_cnt, labels_gnp)) {
+            hout << "Error in Make_gnp_clusters when calling Renumber_gnp_labels" << endl;
+            return 0;
+        }
+    }
+    
+    //Update the total number of labels
+    n_total_labels = n_labels_cnt + n_gnp_labels;
     
     return 1;
 }
 //This function labels the GNPs so that they can be grouped into clusters
-int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp)
+int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp)
 {
     //new_label will take the value of the newest cluster
     //Since GNP clusters are made after CNT clusters, the first label for GNPs is equal
     //to the number of CNT labels
-    int new_label = n_labels_cnt;
+    int new_label = 0;
     
     //Collision detection object to find the distance between GNPs
     Collision_detection CL;
@@ -557,6 +586,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const 
                     bool flag1, flag2;
                     
                     //Get the simplex closest to the origin from the Minkowski sum of GNP1 and -GNP2
+                    //hout<<"CL.GJK"<<endl;
                     if (!CL.GJK(gnps[GNP1], gnps[GNP2], simplex, flag1, flag2)) {
                         hout<<"Error in Label_gnps_in_window when calling CL.GJK"<<endl;
                         return 0;
@@ -567,6 +597,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const 
                     double dist;
                     
                     //Get the distance between GNP1 and GNP2 using the simplex from GJK
+                    //hout<<"CL.Distance_and_direction_from_simplex_to_origin"<<endl;
                     if (!CL.Distance_and_direction_from_simplex_to_origin(simplex, N, dist)) {
                         hout<<"Error in Label_gnps_in_window when calling CL.Distance_and_direction_from_simplex_to_origin"<<endl;
                         return 0;
@@ -574,6 +605,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const 
                     
                     //Check if the separation between GNPs is below the cutoff for tunneling
                     //hout<<"GNPa="<<GNPa<<" GNPb="<<GNPb<<" dist="<<dist<<endl;
+                    //hout<<"dist <= tunnel_cutoff = "<<(dist <= tunnel_cutoff)<<endl;
                     if (dist <= tunnel_cutoff) {
                         
                         //Here is where the actual HK76 algorithm takes place
@@ -583,6 +615,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const 
                         }
                         
                         //Add the points of contact on each GNP
+                        //hout<<"Add_junction_points_for_gnps"<<endl;
                         if (!Add_junction_points_for_gnps(gnps[GNP1], gnps[GNP2], N, dist, points_gnp)) {
                             hout << "Error in Label_gnps_in_window when calling Add_junction_points_for_gnps" << endl;
                             return 0;
@@ -1346,22 +1379,26 @@ int Hoshen_Kopelman::Make_mixed_clusters(const int &n_labels, const Cutoff_dist 
     vector<set<int> > adj_labels(n_labels);
     
     //Fill the adjacency matrix and the variables needed to compress contact segments
+    //hout<<"Find_adjacent_labels"<<endl;
     if (!Find_adjacent_labels(labels_cnt, labels_gnp, cutoffs, points_cnt, radii, sectioned_domain_cnt, gnps, sectioned_domain_gnp, contact_points_gnp, point_contacts, point_contacts_dist, gnp_cnt_point_contacts, adj_labels)) {
         hout<<"Error in Make_mixed_clusters when calling Find_adjacent_labels"<<endl;
         return 0;
     }
     
     //Compress contacts
+    //hout<<"Compress_mixed_contacts"<<endl;
     if (!Compress_mixed_contacts(cutoffs, point_contacts, point_contacts_dist, gnp_cnt_point_contacts, contact_points_gnp, structure_gnp, points_gnp)) {
         hout<<"Error in Make_mixed_clusters when calling Compress_mixed_contacts"<<endl;
         return 0;
     }
     
     //Merge labels
+    //hout<<"Merge_cnt_and_gnp_labels"<<endl;
     if (!Merge_cnt_and_gnp_labels(n_labels, labels_cnt, labels_gnp, adj_labels, n_clusters)) {
         hout<<"Error in Make_mixed_clusters when calling Merge_labels"<<endl;
         return 0;
     }
+    //hout<<"Make_mixed_clusters end"<<endl;
     
     return 1;
 }
@@ -1377,15 +1414,18 @@ int Hoshen_Kopelman::Find_adjacent_labels(const vector<int> &labels_cnt, const v
     
     //Iterate over the subregions
     for (int i = 0; i < (int)sectioned_domain_gnp.size(); i++) {
+        //hout<<"i="<<i<<endl;
         
         //Iterate over the GNPs in the given subregion
         for (int j = 0; j < (int)sectioned_domain_gnp[i].size(); j++) {
+            //hout<<"j="<<j<<endl;
             
             //Get the current GNP
             int GNP = sectioned_domain_gnp[i][j];
             
             //Itereate over the points in the given subregion
             for (int k = 0; k < (int)sectioned_domain_cnt[i].size(); k++) {
+                //hout<<"k="<<k<<endl;
                 
                 //Get current point
                 long int P = sectioned_domain_cnt[i][k];
@@ -1564,6 +1604,7 @@ int Hoshen_Kopelman::Merge_cnt_and_gnp_labels(const int &n_labels, vector<int> &
     
     //Perform a DFS on the adjacency matrix of the labels
     vector<vector<int> > mixed_clusters;
+    //hout<<"DFS_on_labels"<<endl;
     if (!DFS_on_labels(n_labels, adj_labels, mixed_clusters)) {
         hout<<"Error in Merge_labels when calling DFS_on_labels"<<endl;
         return 0;
@@ -1587,12 +1628,14 @@ int Hoshen_Kopelman::Merge_cnt_and_gnp_labels(const int &n_labels, vector<int> &
     }
     
     //Renumber the CNT labels with the merged labels using label_map
+    //hout<<"Map_labels CNT"<<endl;
     if (!Map_labels(label_map, labels_cnt)) {
         hout<<"Error in Merge_labels when calling Map_labels (CNTs)"<<endl;
         return 0;
     }
     
     //Renumber the GNP labels with the merged labels using label_map
+    //hout<<"Map_labels GNP"<<endl;
     if (!Map_labels(label_map, labels_gnp)) {
         hout<<"Error in Merge_labels when calling Map_labels (GNPs)"<<endl;
         return 0;
@@ -1662,6 +1705,7 @@ int Hoshen_Kopelman::Explore_labels(const int &label, const vector<set<int> > &a
 int Hoshen_Kopelman::Map_labels(const vector<int> label_map, vector<int> &labels)
 {
     //Renumber the labels with the merged labels using label_map
+    //hout<<"label_map.size="<<label_map.size()<<" labels.size="<<labels.size()<<endl;
     for (int i = 0; i < (int)labels.size(); i++) {
         
         //Check if CNT i has a label assigned
@@ -1669,6 +1713,7 @@ int Hoshen_Kopelman::Map_labels(const vector<int> label_map, vector<int> &labels
             
             //For clarity, get the old label of CNT i
             int old_label = labels[i];
+            //hout<<"old_label="<<old_label<<endl;
             
             //Get the new label number using label_map
             int new_label = label_map[old_label];
