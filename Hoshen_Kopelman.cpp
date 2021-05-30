@@ -702,10 +702,12 @@ int Hoshen_Kopelman::Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A,
             
             //Calculate the point in the Minkowski sum
             Point_3D Q = GNP_A.vertices[i] - GNP_B.vertices[j];
+            //hout<<"Q_ij="<<Q.str(10)<<" A="<<GNP_A.vertices[i].str(10)<<" B="<<GNP_B.vertices[j].str(10)<<endl;
             
             //Check if Q is part of the simplex closest to the origin by checking if the
             //cutoff is computationally zero, i.e., its absolute value is less than Zero
-            //hout<<"abs(Q.dot(N)) - distance="<<abs(abs(Q.dot(N)) - distance)<<endl;
+            //double tmp = abs(Q.dot(N));
+            //hout<<"abs(Q.dot(N))["<<tmp<<"] - distance["<<distance<<"]="<<abs(tmp - distance)<<endl;
             if (abs(abs(Q.dot(N)) - distance) <= Zero) {
                 
                 //Q is at the same distance to the origin as the simplex in the Minkowski sum
@@ -714,10 +716,27 @@ int Hoshen_Kopelman::Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A,
                 //In those GNPs that are closest to each other
                 setA.insert(i);
                 setB.insert(j);
+                //double tmp = abs(Q.dot(N));
+                //hout<<"abs(Q.dot(N))["<<tmp<<"] - distance["<<distance<<"]="<<abs(tmp - distance)<<endl;
                 //hout<<" i="<<i<<"->simplexA j="<<j<<"->simplexB"<<endl;
             }
         }
     }
+    
+    /*VTK_Export VTK;
+    vector<GNP> tmp_vec;
+    GNP tmp_gnp;
+    //i iterates over the vertices of B
+    for (int i = 0; i < 8; i++) {
+        //j iterates over the vertices of A
+        for (int j = 0; j < 8; j++) {
+            //Create a new GNP
+            tmp_gnp.vertices[j] = GNP_A.vertices[j] - GNP_B.vertices[i];
+        }
+        tmp_vec.push_back(tmp_gnp);
+    }
+    //tmp_vec[0] = GNP_A; tmp_vec[1] = GNP_B;
+    VTK.Export_gnps(tmp_vec, "gnps_debug.vtk");*/
     
     //Fill the vectors of the simplices using the sets
     simplexA.assign(setA.begin(), setA.end());
@@ -887,8 +906,9 @@ int Hoshen_Kopelman::Find_point_b_for_edge_in_simplex_a(const vector<int> &simpl
         //Variables to count the negative dot products
         int countA0 = 0, countA1 = 0;
         
-        //Vector to store the intersected edges
-        vector<int> intersected_edges;
+        //Arrays to store positive dot products
+        int arrA0[] = {-1,-1};
+        int arrA1[] = {-1,-1};
         
         //Go though all edges of faceB and find the one that intersects the edgeA
         for (int i = 0; i < 4; i++) {
@@ -903,50 +923,66 @@ int Hoshen_Kopelman::Find_point_b_for_edge_in_simplex_a(const vector<int> &simpl
             int dotA0 = (edgeA[0] - GNP_B.vertices[v1i]).dot(GNP_B.faces[Ni].N) < Zero;
             int dotA1 = (edgeA[1] - GNP_B.vertices[v1i]).dot(GNP_B.faces[Ni].N) < Zero;
             
+            //Check if the count of negative dot products for vertex A0 needs to be updated
             if (dotA0) {
                 //edgeA[0] is likely inside the face
                 countA0++;
             }
+            else {
+                //Save the edge in B that has results in a positive dot product
+                //There can be at most two positive dot prodects, so this if-statement is enough
+                if (arrA0[0] == -1) {
+                    arrA0[0] = i;
+                }
+                else {
+                    arrA0[1] = i;
+                }
+            }
+            //Check if the count of negative dot products for vertex A0 needs to be updated
             if (dotA1) {
                 //edgeA[1] is likely inside the face
                 countA1++;
             }
-            if (dotA0 != dotA1) {
-                
-                //edgeA[0] and edgeA[1] are on opposite sides of the edge
-                intersected_edges.push_back(i);
+            else {
+                //Save the edge in B that has results in a positive dot product
+                //There can be at most two positive dot prodects, so this if-statement is enough
+                if (arrA1[0] == -1) {
+                    arrA1[0] = i;
+                }
+                else {
+                    arrA1[1] = i;
+                }
             }
         }
         
-        //Check the case for calculating pointB
-        if (countA0 == 4 && countA1 == 4) {
-            
-            //Both vertices of edgeA are in the face of GNP_B
-            PointB = (edgeA[0] + edgeA[1])/2;
-            
-            //To calculate PointA, move PointB towards simplexA
-            PointA = PointB - disp;
-        }
-        else if (countA0 == 4) {
-            
-            //Only edgeA[0] is on the face of GNP_B
-            if (!Find_intersection_of_edges(intersected_edges, edges, edgeA[1], edgeA[0], GNP_B.vertices, disp, PointA, PointB)) {
-                hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Find_interseection_of_edges (1)"<<endl;
-                return 0;
-            }
-        }
-        else if (countA1 == 4) {
-            
-            //Only edgeA[1] is on the face of GNP_B
-            if (!Find_intersection_of_edges(intersected_edges, edges, edgeA[0], edgeA[1], GNP_B.vertices, disp, PointA, PointB)) {
-                hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Find_interseection_of_edges (2)"<<endl;
-                return 0;
-            }
-        }
-        else {
-            hout<<"Error in Find_point_b_for_edge_in_simplex_a: none of the two vertices of edgeA are in the face of GNP_B, countA1="<<countA0<<", countA2"<<countA1<<endl;
+        //If edgeA is not entirely inside faceB (simplexB), then we need
+        //to get the intersection points. If a vertex is inside faceB then
+        //the intersection point is the same as the vertex
+        //So, according to the count of negative dot products, get the intersection points
+        
+        //Get intersection point from vertex A0
+        Point_3D A0 = Get_intersection_with_face_edge(countA0, arrA0, edgeA[0], edgeA[1], edges, GNP_B);
+        
+        //Check for an error
+        if (A0.flag == -1) {
+            hout<<"Error in Find_point_b_for_edge_in_simplex_a when calculating an intersecting point (1)"<<endl;
             return 0;
         }
+        
+        //Get intersection point from vertex A1
+        Point_3D A1 = Get_intersection_with_face_edge(countA1, arrA1, edgeA[1], edgeA[0], edges, GNP_B);
+        
+        //Check for an error
+        if (A1.flag == -1) {
+            hout<<"Error in Find_point_b_for_edge_in_simplex_a when calculating an intersecting point (2)"<<endl;
+            return 0;
+        }
+        
+        //Get the average of the intersection points
+        PointB = (A0 + A1)*0.5;
+        
+        //To calculate PointA, move PointB towards simplexA
+        PointA = PointB - disp;
     }
     else {
         hout<<"Error in Find_point_b_for_edge_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 2 or 4"<<endl;
@@ -1051,47 +1087,94 @@ int Hoshen_Kopelman::Get_edges_of_face(const int &face_sum, vector<Edge> &edges,
     
     return 1;
 }
-//This function finds the intersection of and edge in GNP_A and the intersected line-edges of GNP_B
-int Hoshen_Kopelman::Find_intersection_of_edges(const vector<int> &intersected_edges, const vector<Edge> &edges, const Point_3D &P_out, const Point_3D &P_in, const Point_3D verticesB[], const Point_3D &disp, Point_3D &PointA, Point_3D &PointB)
+//This function determines the intersecting point of an edge from the side of a given vertex
+//It is assumed A0 is this vertex in question
+Point_3D Hoshen_Kopelman::Get_intersection_with_face_edge(const int &countA, const int arrA[], const Point_3D &A0, const Point_3D &A1, const vector<Edge> &edges, const GNP GNP_B)
 {
-    //Variable to store the lamda of edgeA
-    double lambda = -1.0;
+    //Point to store the solution
+    Point_3D P;
+    //Set the flag to zero as it will be used to check for errors
+    P.flag = 0;
     
-    //Iterate over the intersected edges
-    for (int i = 0; i < (int)intersected_edges.size(); i++) {
+    //Check the count of negative dot products
+    if (countA == 4) {
         
-        //Get the intersected edge in B
-        int e = intersected_edges[i];
+        //Vertex of edgeA is inside faceB, thus return this vertex (i.e., vertex A0)
+        return A0;
+    }
+    else if (countA  == 3) {
         
-        //Get the vertices in B
-        int v1 = edges[e].v1;
-        int v2 = edges[e].v2;
+        //Vertex A0 is closest to an edge of faceB
+        //This edge is stored in arrA[0], so get the edge number
+        int eB = arrA[0];
         
-        //Calculate the new lambda
-        double new_lambda = Lambda_of_two_lines(P_in, P_out, verticesB[v1], verticesB[v2]);
+        //Get the vertices of the edges
+        int v1 = edges[eB].v1;
+        int v2 = edges[eB].v2;
         
-        //Check if lambda needs updating
-        if (new_lambda > lambda) {
-            lambda = new_lambda;
+        //Calculate the lambda of the equation using the two vertices in edgeA
+        double lambda = Lambda_of_two_lines(A0, A1, GNP_B.vertices[v1], GNP_B.vertices[v2]);
+        
+        //Check that lambda is in the range [0,1]
+        if ( (lambda < Zero && abs(lambda) > Zero) || lambda > 1.0) {
+            hout<<"Error in Get_intersection_with_face_edge (1): lambda is outside the range [0,1], lambda="<<lambda<<endl;
+            P.flag = -1;
+            return P;
         }
+        
+        //Use lambda to calculate the intersecting point
+        P = A1 + (A0 - A1)*lambda;
+    }
+    else if (countA == 2) {
+        
+        //Vertex A0 is closest to a vertex of faceB
+        //This vertex is the intersection of two edges and are stored in arrA[0] and arrA[1],
+        //so get the edge numbers
+        int eB = arrA[0];
+        
+        //Get the vertices of the edges
+        int v1 = edges[eB].v1;
+        int v2 = edges[eB].v2;
+        
+        //Calculate the lambda of the equation using the two vertices in edgeA
+        double lambda = Lambda_of_two_lines(A0, A1, GNP_B.vertices[v1], GNP_B.vertices[v2]);
+        
+        //Check the sign of lambda
+        if (lambda < Zero && abs(lambda) > Zero) {
+            
+            //lambda is negative, so edgeA intersects the straight line that contains
+            //edge eB1, but this intersecting point is not contained in edge eB1
+            //Thus, get the second edge shared by the vertex of faceB closest to A0
+            eB = arrA[1];
+            
+            //Get the vertices of the edges
+            v1 = edges[eB].v1;
+            v2 = edges[eB].v2;
+            
+            //Calculate the lambda of the equation using the two vertices in edgeA
+            lambda = Lambda_of_two_lines(A0, A1, GNP_B.vertices[v1], GNP_B.vertices[v2]);
+            
+            //Check that lambda is in the range [0,1]
+            //This time it cannot be outside this range, otherwise it means edgeA
+            //actually does not intersect any of these edges in faceB
+            if ( (lambda < Zero && abs(lambda) > Zero) || lambda > 1.0) {
+                hout<<"Error in Get_intersection_with_face_edge (2): lambda is outside the range [0,1], lambda="<<lambda<<endl;
+                P.flag = -1;
+                return P;
+            }
+        }
+        
+        //Use the positive lambda to calculate the intersecting point
+        P = A1 + (A0 - A1)*lambda;
+        
+    }
+    else {
+        hout<<"Error in Get_intersection_with_face_edge: invalid value of countA. It can only be 2, 3, or 4. countA="<<countA<<endl;
+        P.flag = -1;
+        return P;
     }
     
-    //Check that lambda is in the range [0,1]
-    if (lambda < Zero || lambda > 1.0) {
-        hout<<"Error in Find_intersection_of_edges: lambda is outside the range [0,1], lambda="<<lambda<<endl;
-        return 0;
-    }
-    
-    //Calculate the intersecting point using the largest lambda found
-    Point_3D I = P_out + (P_in - P_out)*lambda;
-    
-    //Calculate PointB as the average of the inside point and the intersection point
-    PointB = (P_in + I)/2;
-    
-    //Calculate PointA by moving PointB back towards A
-    PointA = PointB - disp;
-    
-    return 1;
+    return P;
 }
 //This function calcualtes the lambda value of the intersection of two lines defined by two points
 //The lambda value corresponds to the line equation defined by the two first points in

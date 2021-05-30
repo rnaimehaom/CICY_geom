@@ -70,7 +70,7 @@ public:
     int Find_point_b_for_vertex_in_simplex_a(const vector<int> &simplexB, const GNP &GNP_B, const Point_3D &N, const double &distance, const Point_3D &PointA, Point_3D &PointB);
     int Find_point_b_for_edge_in_simplex_a(const vector<int> &simplexA, const vector<int> &simplexB, const int &face_sum, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, Point_3D &PointA, Point_3D &PointB);
     int Get_edges_of_face(const int &face_sum, vector<Edge> &edges, vector<int> &normals);
-    int Find_intersection_of_edges(const vector<int> &intersected_edges, const vector<Edge> &edges, const Point_3D &P_out, const Point_3D &P_in, const Point_3D verticesB[], const Point_3D &disp, Point_3D &PointA, Point_3D &PointB);
+    Point_3D Get_intersection_with_face_edge(const int &countA, const int arrA[], const Point_3D &A0, const Point_3D &A1, const vector<Edge> &edges, const GNP GNP_B);
     double Lambda_of_two_lines(const Point_3D &P_in, const Point_3D &P_out, const Point_3D &edge1, const Point_3D &edge2);
     int Find_point_b_for_face_in_simplex_a(const vector<int> &simplexA, const vector<int> &simplexB, const int &face_sumA, const int &face_sumB, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, Point_3D &PointA, Point_3D &PointB);
     int Get_vertices_inside_face(const vector<int> &simplexA, const vector<Edge> &edgesB, const vector<int> &normalsB, const GNP &GNP_A, const GNP &GNP_B, vector<int> &verticesA_inside);
