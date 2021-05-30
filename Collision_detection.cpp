@@ -56,7 +56,17 @@ int Collision_detection::GJK(const GNP &gnp1, const GNP &gnp_new, vector<Point_3
             //thus set the penetration flag to false
             p_flag = false;
             
-            //Make a last update to the simplex if needed
+            //This last update is not actually needed since the update of the simplex
+            //using the function ignores certain simplices of this simplex. In this final
+            //Step all simplices of the simplex need to be check when searching for
+            //the final simplex that is closest to the origin. Because of this, the simplex
+            //that is returned when making this update is not always the closest to the
+            //origin. Thus, this update is not done anymore. For now it is clear to me that
+            //no update is needed and the simplex found by the GJK is the final simplex and
+            //support point A is not part of that simplex (unless it already is part of the
+            //final simplex)
+            //However, I leave the commented code in case some variation of this idea is needed
+            /* /Make a last update to the simplex if needed
             if(Is_point_in_simplex(simplex, A)) {
                 
                 //hout<<"A already in simplex"<<endl;
@@ -73,7 +83,7 @@ int Collision_detection::GJK(const GNP &gnp1, const GNP &gnp_new, vector<Point_3
             //Get the closest simplex to the origin (one last time)
             //There is no need to store the output of the function is_origin_in_simplex
             //hout<<"Last update of the simplex"<<endl;
-            Is_origin_in_simplex(simplex, A, D, t_flag);
+            Is_origin_in_simplex(simplex, A, D, t_flag);*/
             
             //Terminate the function
             //hout<<"Case GJK 1: Origin is outside the Minkowski sum"<<endl;
