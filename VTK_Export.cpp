@@ -763,6 +763,186 @@ int VTK_Export::Export_single_cnt(const vector<Point_3D> &points, const string &
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
+//Function to export CNTs from the vector of points and the structure
+int VTK_Export::Export_from_cnt_structure(const vector<Point_3D> &points, const vector<vector<long int> > &structure, const string &filename)const
+{
+    //Check that there are CNTs to export
+    if (points.empty() || structure.empty()) {
+        hout<<"No CNTs to export. NO visualization file was exported for CNTs."<<endl;
+        return 1;
+    }
+    
+    //Variable to store the number of points
+    long int n_points = 0;
+    
+    //Variable to store the number of lines (CNTs)
+    int n_cnts = (int)structure.size();
+    
+    //Count the number of points
+    if (!Count_points_in_structure(structure, n_points)) {
+        hout<<"Error in Export_from_cnt_structure when calling Count_points_in_structure"<<endl;
+        return 0;
+    }
+    
+    //Check that the points vector has points
+    if (!n_points) {
+        hout<<"No points to export. NO visualization file was exported for CNTs."<<endl;
+        return 1;
+    }
+    
+    //Open the file
+    ofstream otec(filename.c_str());
+    
+    //Add header
+    if (!Add_header(otec)) {
+        hout<<"Error in Export_from_cnt_structure when calling Add_header"<<endl;
+        return 0;
+    }
+    
+    //Add the line with the number of points
+    otec<<"POINTS "<<n_points<<" float" <<endl;
+    
+    //Add all the points
+    if (!Add_points_from_structure(points, structure, otec)) {
+        hout<<"Error in Export_from_cnt_structure when calling Add_points_from_structure"<<endl;
+        return 0;
+    }
+    
+    //Add the line indicating the number of lines+1, and the number of points in those lines
+    otec<<"LINES "<<n_cnts+1<<' '<<n_points<<endl;
+    
+    //Add the offsets:
+    //The number of points used after adding each line, starting with a zero
+    if (!Add_offsets_from_structure(structure, otec)) {
+        hout<<"Error in Export_from_cnt_structure when calling Add_offsets_from_structure"<<endl;
+        return 0;
+    }
+    
+    //Add connectivity
+    if (!Add_connectivity_from_structure(structure, otec)) {
+        hout<<"Error in Export_from_cnt_structure when calling Add_connectivity_from_structure"<<endl;
+        return 0;
+    }
+    
+    //Close the file
+    otec.close();
+    
+    return 1;
+}
+int VTK_Export::Count_points_in_structure(const vector<vector<long int> > &structure, long int &n_points)const
+{
+    //Iterate over all lines (CNTs in the structure)
+    for (int i = 0; i < (int)structure.size(); i++) {
+        
+        //Add the number of points in the CNT
+        n_points = n_points + (long int)structure[i].size();
+    }
+    
+    return 1;
+}
+//This function adds the coordinates of a vector of points into a file as indicated
+//by the structure vector
+//Four points are printed per line
+int VTK_Export::Add_points_from_structure(const vector<Point_3D> &points, const vector<vector<long int> > &structure, ofstream &otec)const
+{
+    //Add the point coordinates, separated by spaces and in groups of four points
+    //(12 coordinates) per line
+    
+    //Variable to count the points
+    long int n_points = 1;
+    
+    //Iterate over all the pairs of indices
+    for (int i = 0; i < (int)structure.size(); i++) {
+        for (int j = 0; j < (int)structure[i].size(); j++) {
+            
+            //Check if a new line needs to be started
+            if (!(n_points%4)) {
+                otec<<endl;
+            }
+            
+            //Get current point of the line (CNT)
+            long int P1 = structure[i][j];
+            
+            //Append point i to file
+            otec<<points[P1].x<<' '<<points[P1].y<<' '<<points[P1].z<<' ';
+            
+            //Increase the count of points (for adding a new line only)
+            n_points++;
+        }
+    }
+    
+    //Start a new line
+    otec<<endl;
+    
+    return 1;
+}
+int VTK_Export::Add_offsets_from_structure(const vector<vector<long int> > &structure, ofstream &otec)const
+{
+    //Add the line with the OFFSETS command
+    otec<<"OFFSETS vtktypeint64"<<endl;
+    
+    //Output a zero, which is required
+    otec<<"0 ";
+    
+    //Accumulate the number of points
+    long int acc_points = 0;
+    
+    //Count the number of offsets
+    int n_offsets = 0;
+    
+    //Iterate over all the pairs of indices
+    for (int i = 0; i < (int)structure.size(); i++) {
+        
+        //Add the difference of indices plus one
+        acc_points = acc_points + (long int)structure[i].size();
+        
+        //Output the accumulated number of points
+        otec<<acc_points<<' ';
+        
+        //Increase the number of lines
+        n_offsets++;
+        
+        //Check if a new line needs to be started
+        if (!(n_offsets%20)) {
+            otec<<endl;
+        }
+    }
+    
+    //Start a new line
+    otec<<endl;
+    
+    return 1;
+}
+int VTK_Export::Add_connectivity_from_structure(const vector<vector<long int> > &structure, ofstream &otec)const
+{
+    //Add the line with the CONNECTIVITY command
+    otec<<"CONNECTIVITY vtktypeint64"<<endl;
+    
+    //Variable to count the number of points
+    long int n_points = 0;
+    
+    //Add the connectivity, one connectivity per line
+    for (int i = 0; i < (int)structure.size(); i++) {
+        for (int j = 0; j < (int)structure[i].size(); j++) {
+            
+            //Add the consecutive number of point structure[i][j] in a line
+            otec<<n_points<<' ';
+            
+            //Increase the number of points
+            n_points++;
+            
+            //Check if a new line needs to be started
+            if (!(n_points%50)) {
+                otec<<endl;
+            }
+        }
+    }
+    
+    return 1;
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
 //GNPs
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------

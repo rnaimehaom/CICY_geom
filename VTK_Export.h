@@ -50,6 +50,12 @@ public:
     //---------------------------------------------------------------------------
     int Export_single_cnt(const vector<Point_3D> &points, const string &filename)const;
     //---------------------------------------------------------------------------
+    int Export_from_cnt_structure(const vector<Point_3D> &points, const vector<vector<long int> > &structure, const string &filename)const;
+    int Count_points_in_structure(const vector<vector<long int> > &structure, long int &n_points)const;
+    int Add_points_from_structure(const vector<Point_3D> &points, const vector<vector<long int> > &structure, ofstream &otec)const;
+    int Add_offsets_from_structure(const vector<vector<long int> > &structure, ofstream &otec)const;
+    int Add_connectivity_from_structure(const vector<vector<long int> > &structure, ofstream &otec)const;
+    //---------------------------------------------------------------------------
     //GNPs
     int Export_gnps(const vector<GNP> &gnps, const string &filename)const;
     int Add_all_gnp_vertices(const vector<GNP> &gnps, ofstream &otec)const;

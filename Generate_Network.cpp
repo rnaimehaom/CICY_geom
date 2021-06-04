@@ -124,6 +124,12 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         hout<<endl;
     }
     
+    //Export generated CNTs after removing the ones that are outside the sample
+    if (vis_flags.generated_nanoparticles == 3) {
+        VTK_Export vtk_exp;
+        vtk_exp.Export_from_cnt_structure(points_cnt, structure, "cnts_generated_trim.vtk");
+    }
+    
     //Output data files if requested
     if (!Output_data_files(geom_sample, out_flags, points_cnt, radii_out, structure, gnps)) {
         hout<<"Error in Output_data_files."<<endl;
