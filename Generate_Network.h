@@ -57,7 +57,12 @@ public:
     void Get_subregion_coordinates(const Geom_sample &geom_sample, const int n_subregions[], const Point_3D &point, int &a, int &b, int &c)const;
     void Get_penetrating_points(const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<long int> &subregion_vec, const vector<double> &radii, const double &rad_plus_dvdw, Point_3D &point, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const;
     void Get_penetrating_points_within_cnt(const int &subregion, const double &cnt_cutoff, const double &cnt_cutoff2, const Point_3D &point, const vector<Point_3D> &cnt_new, const map<int, vector<int> > &subr_point_map, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const;
-    void Move_point(const vector<Point_3D> &cnt_new, Point_3D &point, vector<double> &cutoffs, vector<double> &distances, vector<Point_3D> &affected_points)const;
+    int Move_point_by_totating_cnt_segment(const double &step, const vector<Point_3D> &cnt_new, const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, Point_3D &new_point)const;
+    int One_penetrating_point(const double &d_s, const double &d_c, const Point_3D &S, const Point_3D &P0, Point_3D &N)const;
+    int Two_or_more_penetrating_points(const double &d_s, const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, const Point_3D &P0, Point_3D &N)const;
+    int Two_penetrating_points(const double &d_s, const vector<double> &cutoffs, const vector<Point_3D> &affected_points, const Point_3D &P0, Point_3D &N)const;
+    int Three_or_more_penetrating_points(const double &d_s, const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, const Point_3D &P0, Point_3D &N)const;
+    void Move_point(const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, Point_3D &point)const;
     void One_overlapping_point(const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, Point_3D &point)const;
     void Two_overlapping_points(const vector<double> &cutoffs, const vector<Point_3D> &affected_points, Point_3D &new_point)const;
     void Three_or_more_overlapping_points(const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, Point_3D &point)const;
