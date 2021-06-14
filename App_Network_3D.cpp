@@ -62,7 +62,9 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     hout << "Generate shells and structure time: "<<(int)(ct1-ct0)<<" secs."<<endl;//*/
     
     //Variable to store the geometry of the observation window
-    cuboid window_geo;
+    //Initialize with the sample cuboid (needed to initialize the z-coordinate
+    //in the case of CNT deposit)
+    cuboid window_geo = Init->geom_sample.sample;
     
     for(int i=0; i<=Init->geom_sample.cut_num; i++)
     {

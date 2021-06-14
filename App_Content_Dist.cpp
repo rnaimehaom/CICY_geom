@@ -62,7 +62,9 @@ int App_Content_Dist::Calculate_content_on_each_window(Input *Init)const
     hout << "Generate shells and structure time: "<<(int)(ct1-ct0)<<" secs."<<endl;//*/
     
     //Variable to store the geometry of the observation window
-    cuboid window_geo;
+    //Initialize with the sample cuboid (needed to initialize the z-coordinate
+    //in the case of CNT deposit)
+    cuboid window_geo = Init->geom_sample.sample;
     
     for(int i=0; i<=Init->geom_sample.cut_num; i++)
     {
@@ -110,8 +112,11 @@ int App_Content_Dist::Calculate_content_on_each_window(Input *Init)const
 //This function calculate the volume fraction of CNTs and/or GNPs on a given observation window
 int App_Content_Dist::Calculate_content_in_window(const cuboid &window_geo, const string &particle_type, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure, const vector<int> &cnts_inside, const vector<GNP> &gnps, const vector<int> &gnps_inside)const
 {
+    //Calculate are of the face at the lower xy-plane
+    double window_face_area = window_geo.len_x*window_geo.wid_y;
+    
     //Calculate the volume of the window
-    double window_vol = window_geo.len_x*window_geo.wid_y*window_geo.hei_z;
+    double window_vol = window_face_area*window_geo.hei_z;
     
     //Printer object to output to file
     Printer Pr;
@@ -146,8 +151,17 @@ int App_Content_Dist::Calculate_content_in_window(const cuboid &window_geo, cons
             cnt_vol = cnt_vol + cnti_len*PI*radii[CNTi]*radii[CNTi];
         }
         
-        //Output the volume fraction to the file for CNT volume fractions
-        Pr.Append(cnt_vol/window_vol, "cnt_vol_fracs.txt");
+        //Output to file depeneding if there is a deposit or not
+        if (particle_type != "CNT_deposit") {
+            
+            //Output the volume fraction to the file for CNT volume fractions
+            Pr.Append(cnt_vol/window_vol, "cnt_vol_fracs.txt");
+        }
+        else {
+            
+            //Output the volume per unit area to the file for CNT volume per unit area
+            Pr.Append(cnt_vol/window_face_area, "cnt_vol_per_area.txt");
+        }
     }
     
     //Check if there are GNPs

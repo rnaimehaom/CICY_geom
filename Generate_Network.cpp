@@ -41,7 +41,7 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         geom_sample_deposit.sample = geom_sample.ex_dom_cnt;
         
         //Generate a network of deposited CNTs
-        if (!Generate_cnt_deposit_mt(simu_para, geom_sample_deposit, nanotube_geo, cutoffs, cnts_points, radii_in)) {
+        if (!Generate_cnt_deposit_mt(simu_para, geom_sample, geom_sample_deposit, nanotube_geo, cutoffs, cnts_points, radii_in)) {
             hout << "Error in generating a CNT deposit" << endl;
             return 0;
         }
@@ -378,7 +378,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                     
                     //Calculate the segment length inside the sample and add it to the total CNT length
                     bool is_new_inside_sample;
-                    cnt_len = cnt_len + Length_inside_sample(geom_sample, new_cnt.back(), new_point, is_prev_in_sample, is_new_inside_sample);
+                    cnt_len = cnt_len + Length_inside_sample(geom_sample.sample, new_cnt.back(), new_point, is_prev_in_sample, is_new_inside_sample);
                     
                     //If the new point, cnt_poi, is inside the sample, then increase the number
                     //of points inside the sample of the new CNT
@@ -1301,10 +1301,10 @@ int Generate_Network::Get_direction_and_point(const Nanotube_Geo &nanotube_geo, 
 }
 //---------------------------------------------------------------------------
 //Calculate the effective portion (length) which falls into the given region defined by a cuboid
-double Generate_Network::Length_inside_sample(const Geom_sample &geom_sample, const Point_3D &prev_point, const Point_3D &new_point, const bool &is_prev_inside_sample, bool &is_new_inside_sample)const
+double Generate_Network::Length_inside_sample(const cuboid &sample, const Point_3D &prev_point, const Point_3D &new_point, const bool &is_prev_inside_sample, bool &is_new_inside_sample)const
 {
     //Check if the new point is inside the sample
-    is_new_inside_sample = Is_point_inside_cuboid(geom_sample.sample, new_point);
+    is_new_inside_sample = Is_point_inside_cuboid(sample, new_point);
     
     //Check how to calculate the length inside the sample depending on the location (either
     //inside or outside) of the two points
@@ -1318,7 +1318,7 @@ double Generate_Network::Length_inside_sample(const Geom_sample &geom_sample, co
             
             //The previous point is inside the sample, while the new point is outside the sample
             //Find the intersecting point at the boundary
-            Point_3D boundary = Find_intersection_at_boundary(geom_sample, new_point, prev_point);
+            Point_3D boundary = Find_intersection_at_boundary(sample, new_point, prev_point);
             
             //Return the length from the boundary point towards the inside point
             return prev_point.distance_to(boundary);
@@ -1329,7 +1329,7 @@ double Generate_Network::Length_inside_sample(const Geom_sample &geom_sample, co
             
             //The previous point is outside the sample, while the new point is inside the sample
             //Find the intersecting point at the boundary
-            Point_3D boundary = Find_intersection_at_boundary(geom_sample, prev_point, new_point);
+            Point_3D boundary = Find_intersection_at_boundary(sample, prev_point, new_point);
             
             //Return the length from the boundary point towards the inside point
             return new_point.distance_to(boundary);
@@ -1789,7 +1789,7 @@ int Generate_Network::Add_boundary_point(const Geom_sample &geom_sample, const P
 {
     //Find the coordinates of the point between the ouside (p_outside) and inside (p_inside) that
     //that is located at the sample boundary (one of the faces)
-    Point_3D boundary = Find_intersection_at_boundary(geom_sample, p_outside, p_inside);
+    Point_3D boundary = Find_intersection_at_boundary(geom_sample.sample, p_outside, p_inside);
     
     //Update the points flag
     boundary.flag = cnt_count;
@@ -1812,7 +1812,7 @@ int Generate_Network::Add_boundary_point(const Geom_sample &geom_sample, const P
 //Thus, if there are multiple intersections with the planes, we need to check whether or not
 //the interstion is at an actual boundary
 //This function finds that intersecting point at an actual boundary
-Point_3D Generate_Network::Find_intersection_at_boundary(const Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside)const
+Point_3D Generate_Network::Find_intersection_at_boundary(const cuboid &sample, const Point_3D &p_outside, const Point_3D &p_inside)const
 {
     //The line segment defined by p_outside and p_inside is given by:
     //P = p_outside + lambda*T
@@ -1836,16 +1836,16 @@ Point_3D Generate_Network::Find_intersection_at_boundary(const Geom_sample &geom
     //Check if any of the x-boundaries is intersected
     double lambda_x = - 1.0;
     //x-left boundary
-    if ( (p_outside.x - geom_sample.sample.poi_min.x) < Zero ) {
+    if ( (p_outside.x - sample.poi_min.x) < Zero ) {
         
         //Calculate the lambda value
-        lambda_x = calc_lambda(geom_sample.sample.poi_min.x, p_outside.x, T.x);
+        lambda_x = calc_lambda(sample.poi_min.x, p_outside.x, T.x);
     }
     //x-right boundary
-    else if ( (geom_sample.sample.max_x - p_outside.x) < Zero ) {
+    else if ( (sample.max_x - p_outside.x) < Zero ) {
         
         //Calculate the lambda value
-        lambda_x = calc_lambda(geom_sample.sample.max_x, p_outside.x, T.x);
+        lambda_x = calc_lambda(sample.max_x, p_outside.x, T.x);
     }
     //hout<<"lambda_x="<<lambda_x<<endl;
     
@@ -1858,32 +1858,32 @@ Point_3D Generate_Network::Find_intersection_at_boundary(const Geom_sample &geom
     //Check if any of the y-boundaries is intersected
     double lambda_y = -1.0;
     //y-left boundary
-    if ( (p_outside.y - geom_sample.sample.poi_min.y) < Zero ) {
+    if ( (p_outside.y - sample.poi_min.y) < Zero ) {
         
         //Calculate the lambda value
-        lambda_y = calc_lambda(geom_sample.sample.poi_min.y, p_outside.y, T.y);
+        lambda_y = calc_lambda(sample.poi_min.y, p_outside.y, T.y);
     }
     //y-right boundary
-    else if ( (geom_sample.sample.max_y - p_outside.y) < Zero ) {
+    else if ( (sample.max_y - p_outside.y) < Zero ) {
         
         //Calculate the lambda value
-        lambda_y = calc_lambda(geom_sample.sample.max_y, p_outside.y, T.y);
+        lambda_y = calc_lambda(sample.max_y, p_outside.y, T.y);
     }
     //hout<<"lambda_y="<<lambda_y<<endl;
     
     //Check if any of the z-boundaries is intersected
     double lambda_z = -1.0;
     //z-left boundary
-    if ( (p_outside.z - geom_sample.sample.poi_min.z) < Zero ) {
+    if ( (p_outside.z - sample.poi_min.z) < Zero ) {
         
         //Calculate the lambda value
-        lambda_z = calc_lambda(geom_sample.sample.poi_min.z, p_outside.z, T.z);
+        lambda_z = calc_lambda(sample.poi_min.z, p_outside.z, T.z);
     }
     //z-right boundary
-    else if ( (geom_sample.sample.max_z - p_outside.z) < Zero ) {
+    else if ( (sample.max_z - p_outside.z) < Zero ) {
         
         //Calculate the lambda value
-        lambda_z = calc_lambda(geom_sample.sample.max_z, p_outside.z, T.z);
+        lambda_z = calc_lambda(sample.max_z, p_outside.z, T.z);
     }
     //hout<<"lambda_z="<<lambda_z<<endl;
     
@@ -1964,7 +1964,7 @@ int Generate_Network::Recalculate_vol_fraction_cnts(const Geom_sample &geom_samp
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //CNT deposit
-int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radii)const
+int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const Geom_sample &geom_sample, const Geom_sample &geom_sample_deposit, const Nanotube_Geo &nanotube_geo, const Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radii)const
 {
     //Initial seeds, if any are in network_seeds within geom_sample.
     //However, geom_sample cannot be modified, so copy the seeds to a new vector
@@ -2095,7 +2095,7 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
             
             //Generate a point in a random direction in the plane xy and find its highest position
             //NOTE: due to the nature of the deposit, the non-penetrating model is always used
-            int status = Find_highest_position_for_new_point_iteratively(geom_sample, nanotube_geo, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, new_cnt, new_point, mult_2d, engine_theta, dist);
+            int status = Find_highest_position_for_new_point_iteratively(geom_sample_deposit, nanotube_geo, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, new_cnt, new_point, mult_2d, engine_theta, dist);
             
             //Check the value of status
             if (status == -1) {
@@ -2121,7 +2121,7 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
                 
                 //Calculate the segment length inside the sample and add it to the total CNT length
                 bool is_new_inside_sample;
-                cnt_len = cnt_len + Length_inside_sample(geom_sample, new_cnt.back(), new_point, is_prev_in_sample, is_new_inside_sample);
+                cnt_len = cnt_len + Length_inside_sample(geom_sample.sample, new_cnt.back(), new_point, is_prev_in_sample, is_new_inside_sample);
                 
                 //For the next iteration of the for loop, cnt_poi will become previous point,
                 //so update the boolean is_prev_in_sample for the next iteration
@@ -2154,7 +2154,8 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
         //Store or ignore the CNT points
         //hout<<"Store_or_ignore_new_cnt"<<endl;
         int cnt_ignore_count = 0;
-        if (!Store_or_ignore_new_cnt(geom_sample, simu_para.penetration_model_flag, (int)new_cnt.size(), cnt_len, cnt_rad, cnt_cross_area, new_cnt, cnts_points, cnts_radii, n_subregions, sectioned_domain, global_coordinates, vol_sum, cnt_ignore_count)) {
+        //To add points to global coordinates, need to use the sample geometry of the deposit
+        if (!Store_or_ignore_new_cnt(geom_sample_deposit, simu_para.penetration_model_flag, (int)new_cnt.size(), cnt_len, cnt_rad, cnt_cross_area, new_cnt, cnts_points, cnts_radii, n_subregions, sectioned_domain, global_coordinates, vol_sum, cnt_ignore_count)) {
             hout<<"Error when storing or ignoring a new CNT"<<endl;
             return 0;
         }
@@ -2451,7 +2452,7 @@ int Generate_Network::Get_direction_2d(const double &omega, MathMatrix &M, mt199
 //This function finds the highest position for a new CNT point (not a seed point)
 //The highest position is found by rotating the segment from the last point in the new_cnt
 //vector to new_point
-int Generate_Network::Find_highest_position_for_new_point_iteratively(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const vector<Point_3D> &new_cnt, Point_3D &new_point, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const
+int Generate_Network::Find_highest_position_for_new_point_iteratively(const Geom_sample &geom_sample_deposit, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const vector<Point_3D> &new_cnt, Point_3D &new_point, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const
 {
     //Variable to count the number of attempts to find the highest position of new_point
     int attempts = 0;
@@ -2475,7 +2476,7 @@ int Generate_Network::Find_highest_position_for_new_point_iteratively(const Geom
         }
         
         //Find the highest position of new_point
-        if (!Find_highest_position_for_new_point(geom_sample, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, d_vdW, nanotube_geo.step_length, new_cnt, new_point)) {
+        if (!Find_highest_position_for_new_point(geom_sample_deposit, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, d_vdW, nanotube_geo.step_length, new_cnt, new_point)) {
             hout<<"Error in Find_highest_position_for_new_point_iteratively when calling Find_upmost_position_for_new_point"<<endl;
             return -1;
         }
@@ -4252,7 +4253,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
                     //Calculate the segment length inside the sample and add it to the total CNT length
                     bool is_new_inside_sample;
                     //hout<<"Length_inside_sample"<<endl;
-                    cnt_len = cnt_len + Length_inside_sample(geom_sample, new_cnt.back(), new_point, is_prev_in_sample, is_new_inside_sample);
+                    cnt_len = cnt_len + Length_inside_sample(geom_sample.sample, new_cnt.back(), new_point, is_prev_in_sample, is_new_inside_sample);
                     
                     //If new_point is inside the sample, then increase the number
                     //of points inside the sample of the new CNT

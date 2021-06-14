@@ -69,7 +69,7 @@ public:
     int Check_segment_orientation(const Point_3D &point, const vector<Point_3D> &cnt_new)const;
     int Get_direction_and_point(const Nanotube_Geo &nanotube_geo, MathMatrix &multiplier, Point_3D &cnt_poi, mt19937 &engine_theta, mt19937 &engine_phi, uniform_real_distribution<double> &dist)const;
     //Calculate the effective portion (length) which falls into the given region defined by a cuboid
-    double Length_inside_sample(const Geom_sample &geom_sample, const Point_3D &prev_point, const Point_3D &new_point, const bool &is_prev_inside_sample, bool &is_new_inside_sample)const;
+    double Length_inside_sample(const cuboid &sample, const Point_3D &prev_point, const Point_3D &new_point, const bool &is_prev_inside_sample, bool &is_new_inside_sample)const;
     int Add_cnt_point_to_overlapping_regions_map(const Geom_sample &geom_sample, const Point_3D &new_point, const int &local_num, const int &is_new_inside_sample, const int n_subregions[], map<int, vector<int> > &subr_point_map)const;
     int Store_or_ignore_new_cnt_using_map(const int &penetration_model_flag, const int &points_in, const double &cnt_len, const double &cnt_rad, const double &cnt_cross_area, const vector<Point_3D> &new_cnt, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius, const map<int, vector<int> > &subr_point_map, vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coordinates, double &vol_sum, int &cnt_ignore_count)const;
     int Store_or_ignore_new_cnt(const Geom_sample &geom_sample, const int &penetration_model_flag, const int &points_in, const double &cnt_len, const double &cnt_rad, const double &cnt_cross_area, const vector<Point_3D> &new_cnt, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius, const int n_subregions[], vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coordinates, double &vol_sum, int &cnt_ignore_count)const;
@@ -80,13 +80,13 @@ public:
     int Add_cnts_inside_sample(const Geom_sample &geom_sample, const Nanotube_Geo &nano_geo, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const;
     int Add_cnt_segment(const Geom_sample &geom_sample, const bool &is_first_inside_sample, const int &start, const int &end, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const;
     int Add_boundary_point(const Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside, const int &cnt_count, vector<Point_3D> &cpoints, vector<long int> &struct_temp, long int &point_count)const;
-    Point_3D Find_intersection_at_boundary(const Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside)const;
+    Point_3D Find_intersection_at_boundary(const cuboid &sample, const Point_3D &p_outside, const Point_3D &p_inside)const;
     int Recalculate_vol_fraction_cnts(const Geom_sample &geom_sample, const Simu_para &simu_para, const Nanotube_Geo &nano_geo, const vector<Point_3D> &cpoints, const vector<double> &radii, const vector<vector<long int> > &cstructures)const;
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
     //CNT deposit
-    int Generate_cnt_deposit_mt(const Simu_para &simu_para, const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radii)const;
+    int Generate_cnt_deposit_mt(const Simu_para &simu_para, const Geom_sample &geom_sample, const Geom_sample &geom_sample_deposit, const Nanotube_Geo &nanotube_geo, const Cutoff_dist &cutoffs, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radii)const;
     int Initialize_cnt_subregions_extended_domain(const Geom_sample &sample_geom, int n_subregion[], vector<vector<long int> > &sectioned_domain)const;
     int Get_point_in_xy_plane_mt(const cuboid &cub, Point_3D &point, mt19937 &engine_x, mt19937 &engine_y, uniform_real_distribution<double> &dist)const;
     int Get_subregion_for_cnt_seed_in_deposit(const Geom_sample &geom_sample, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const Point_3D &point)const;
@@ -96,7 +96,7 @@ public:
     int Get_direction_and_point_2d(const Nanotube_Geo &nanotube_geo, MathMatrix &M, Point_3D &new_point, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
     Point_3D Get_new_point_2d(const MathMatrix &M, const double &step)const;
     int Get_direction_2d(const double &omega, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
-    int Find_highest_position_for_new_point_iteratively(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const vector<Point_3D> &new_cnt, Point_3D &new_point, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
+    int Find_highest_position_for_new_point_iteratively(const Geom_sample &geom_sample_deposit, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const vector<Point_3D> &new_cnt, Point_3D &new_point, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
     int Get_temporary_new_point_2d(const MathMatrix &M, const MathMatrix &M_new, const double &step, Point_3D &new_point)const;
     int Find_highest_position_for_new_point(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const double &step, const vector<Point_3D> &new_cnt, Point_3D &new_point)const;
     int Calculate_distance_to_torus(const Point_3D &P0, const double &hdx, const double &hdy, const double &R, const double &r, double &dist)const;
