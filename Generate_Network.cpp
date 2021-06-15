@@ -2340,11 +2340,13 @@ int Generate_Network::Check_2d_overlapping(const vector<long int> &subregion, co
         double d_xy2 = dist_xy2(new_point, cnts_points[CNTi][Pj]);
         double d_xy = sqrt(d_xy2);
         
-        //Calcualte the minimum separation needed between the points
+        //Calculate the minimum separation needed between the points
         double min_sep = rad_p_dvdw + cnt_radii[CNTi];
         
         //Check if new_point overlaps Pj in the projection on the xy plane
-        if (d_xy - min_sep < Zero) {
+        //Zero is added to eliminate points that are at a distance min_sep
+        //(or too close to that distance)
+        if (d_xy - min_sep + Zero < Zero) {
             
             //Calculate the total height, i.e., the z-coordinate of new_point if placed "above" Pj
             double z_tot = cnts_points[CNTi][Pj].z + sqrt(min_sep*min_sep - d_xy2);
