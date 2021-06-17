@@ -61,11 +61,6 @@ int App_Content_Dist::Calculate_content_on_each_window(Input *Init)const
     ct1 = time(NULL);
     hout << "Generate shells and structure time: "<<(int)(ct1-ct0)<<" secs."<<endl;//*/
     
-    //Variable to store the geometry of the observation window
-    //Initialize with the sample cuboid (needed to initialize the z-coordinate
-    //in the case of CNT deposit)
-    cuboid window_geo = Init->geom_sample.sample;
-    
     for(int i=0; i<=Init->geom_sample.cut_num; i++)
     {
         hout << "============================================================================"<<endl;
@@ -76,7 +71,8 @@ int App_Content_Dist::Calculate_content_on_each_window(Input *Init)const
         
         //Update observation window geometry
         //hout<<"Update observation window geometry"<<endl;
-        window_geo.Update_observation_window_geometry(i, Init->simu_para.particle_type, Init->geom_sample.win_delt_x, Init->geom_sample.win_delt_y, Init->geom_sample.win_delt_z, Init->geom_sample.sample);
+        cuboid window_geo = Init->geom_sample.update_observation_window_geometry(i, Init->simu_para.particle_type);
+        //hout<<"window_geo = "<<window_geo.str()<<endl;
         
         //----------------------------------------------------------------------
         //Extract the observation window

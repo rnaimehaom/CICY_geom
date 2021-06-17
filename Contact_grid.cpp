@@ -96,6 +96,8 @@ int Contact_grid::Fill_sectioned_domain_cnts(const cuboid &window_geom, const ve
     //There will be n_regions[0]*n_regions[1]*n_regions[2] different regions
     sectioned_domain_cnts.clear();
     sectioned_domain_cnts.assign(n_regions[0]*n_regions[1]*n_regions[2], vector<long int>());
+    //hout<<"window_geom="<<window_geom.str()<<endl;
+    //hout<<"sectioned_domain_cnts.size="<<sectioned_domain_cnts.size()<<endl;
     
     //First loop over the particles inside the box, then loop over the points inside each particle
     for (int i = 0; i < (int)cnts_inside.size(); i++) {
@@ -114,7 +116,7 @@ int Contact_grid::Fill_sectioned_domain_cnts(const cuboid &window_geom, const ve
             
             //Calculate the region-coordinates
             int a, b, c;
-            //hout << "points_cnt[P]="<<points_cnt[P].str()<< endl;
+            //hout << "points_cnt[P="<<P<<"]="<<points_cnt[P].str()<< endl;
             if (!Calculate_region_coordinates(window_geom, points_cnt[P], l_regions, a, b, c)) {
                 hout << "Error in Generate_sectioned_domain_cnts when calling Calculate_region_coordinates" << endl;
                 return 0;
@@ -137,7 +139,9 @@ int Contact_grid::Fill_sectioned_domain_cnts(const cuboid &window_geom, const ve
                 hout << "Error in Generate_sectioned_domain_cnts when calling Assign_point_to_region" << endl;
                 return 0;
             }
+            //hout<<"for-j"<<endl;
         }
+        //hout<<"for-i"<<endl;
     }
     
     return 1;
@@ -197,7 +201,7 @@ int Contact_grid::Assign_point_to_regions_cnts(const int &a, const int &b, const
         
         //Calculate the region
         t = Calculate_t(a+f_regions[0], b, c, n_regions[0], n_regions[1]);
-        //hout<<"\tt="<<t<<endl;
+        //hout<<"\tt0="<<t<<endl;
         
         //Assign point to region
         sectioned_domain_cnts[t].push_back(P);
@@ -208,7 +212,7 @@ int Contact_grid::Assign_point_to_regions_cnts(const int &a, const int &b, const
         
         //Calculate the region
         t = Calculate_t(a, b+f_regions[1], c, n_regions[0], n_regions[1]);
-        //hout<<"\tt="<<t<<endl;
+        //hout<<"\tt1="<<t<<endl;
         
         //Assign point to region
         sectioned_domain_cnts[t].push_back(P);
@@ -219,7 +223,7 @@ int Contact_grid::Assign_point_to_regions_cnts(const int &a, const int &b, const
         
         //Calculate the region
         t = Calculate_t(a, b, c+f_regions[2], n_regions[0], n_regions[1]);
-        //hout<<"\tt="<<t<<endl;
+        //hout<<"\tt2="<<t<<endl;
         
         //Assign point to region
         sectioned_domain_cnts[t].push_back(P);

@@ -81,6 +81,34 @@ struct Geom_sample{
     //Cuboid for the extended domain for CNTs
     cuboid ex_dom_cnt;
     
+    //Update the geometry of the observation window
+    cuboid update_observation_window_geometry(const int &window, const string particle_type)
+    {
+        //Cuboid to be returned
+        cuboid cub;
+        
+        //Update dimensions of the current observation window
+        cub.len_x = win_max_x - ((double)window)*win_delt_x;
+        cub.wid_y = win_max_y - ((double)window)*win_delt_y;
+        //Set the dimension along z depending on the particle type
+        cub.hei_z = (particle_type != "CNT_deposit")? win_max_z - ((double)window)*win_delt_z : win_max_z;
+        //hout<<"len_x="<<cub.len_x<<" wid_y="<<cub.wid_y<<" hei_z="<<cub.hei_z<<endl;
+        
+        //These variables are the coordinates of the lower corner of the observation window
+        cub.poi_min.x = sample.poi_min.x + (sample.len_x - cub.len_x)/2.0;
+        cub.poi_min.y = sample.poi_min.y + (sample.wid_y - cub.wid_y)/2.0;
+        cub.poi_min.z = sample.poi_min.z + (sample.hei_z - cub.hei_z)/2.0;
+        //hout<<"poi_min="<<cub.poi_min.str()<<endl;
+        
+        //Boundaries with maximum values of coordinates
+        cub.max_x = cub.poi_min.x + cub.len_x;
+        cub.max_y = cub.poi_min.y + cub.wid_y;
+        cub.max_z = cub.poi_min.z + cub.hei_z;
+        //hout<<"max_x="<<cub.max_x<<" max_y="<<cub.max_y<<" max_z="<<cub.max_z<<endl;
+        
+        return cub;
+    }
+    
 };
 //The nanotube parameters in a network
 struct Nanotube_Geo{
