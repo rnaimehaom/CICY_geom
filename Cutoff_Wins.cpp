@@ -114,10 +114,10 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
         
         //Generate the percolation layer cuboid
         cuboid layer_geom;
-        if (!Get_percolation_layer_cuboid(radii[CNT], window_geo, layer_geom)) {
+        /*if (!Get_percolation_layer_cuboid(radii[CNT], window_geo, layer_geom)) {
             hout<<"Error in Trim_boundary_cnts when calling Get_percolation_layer_cuboid"<<endl;
             return 0;
-        }
+        }*/
         
         //Indices to define the beginning and ending of a segment of a CNT that is inside a sample
         int start = 0;
@@ -169,7 +169,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
             //hout<<"P1="<<P1<<" idx="<<j<<" CNT="<<CNT<<" loc="<<point_location<<endl;
             
             //Check if the point is inside the window
-            if (point_location == "inside") {
+            if (point_location != "outside") {
                 
                 //Update the last inside point
                 last_inside = j;
