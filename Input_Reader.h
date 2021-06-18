@@ -91,7 +91,7 @@ struct Geom_sample{
         cub.len_x = win_max_x - ((double)window)*win_delt_x;
         cub.wid_y = win_max_y - ((double)window)*win_delt_y;
         //Set the dimension along z depending on the particle type
-        cub.hei_z = (particle_type != "CNT_deposit")? win_max_z - ((double)window)*win_delt_z : win_max_z;
+        cub.hei_z = (particle_type != "CNT_deposit")? win_max_z - ((double)window)*win_delt_z : sample.hei_z;
         //hout<<"len_x="<<cub.len_x<<" wid_y="<<cub.wid_y<<" hei_z="<<cub.hei_z<<endl;
         
         //These variables are the coordinates of the lower corner of the observation window
