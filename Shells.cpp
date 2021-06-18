@@ -18,7 +18,7 @@
  
  */
 
-int Shells::Generate_shells(const struct Geom_sample &sample, const vector<Point_3D> &points_cnt, const vector<GNP> &gnps, vector<vector<int> > &shells_cnt, vector<Shell> &shells_gnps)
+int Shells::Generate_shells(const string &particle_type, const struct Geom_sample &sample, const vector<Point_3D> &points_cnt, const vector<GNP> &gnps, vector<vector<int> > &shells_cnt, vector<Shell> &shells_gnps)
 {
     //Calculate the number of shells
     //sample.cut_num is the number of increments from the smallest to the largest observation widows
@@ -52,7 +52,7 @@ int Shells::Generate_shells(const struct Geom_sample &sample, const vector<Point
     
     //Scan all CNT points to determine which shells each CNTs occupies
     for (long int i = 0; i < (long int)points_cnt.size(); i++) {
-        if (!Add_to_cnt_shells(midpoints, boundary_layer, core, half_step, points_cnt[i], n_shells, shells_cnt)) {
+        if (!Add_to_cnt_shells(particle_type, midpoints, boundary_layer, core, half_step, points_cnt[i], n_shells, shells_cnt)) {
             hout << "Error in Generate_shells_and_structure when calling Add_to_cnt_shells."<< endl;
             return 0;
         }
@@ -68,11 +68,11 @@ int Shells::Generate_shells(const struct Geom_sample &sample, const vector<Point
 }
 //This function finds shell sub-region where a point is located.
 //Then it adds the CNT number to the corresponding shell in the 2D vector shells_cnt
-int Shells::Add_to_cnt_shells(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const Point_3D &point, const int &n_shells, vector<vector<int> > &shells_cnt)
+int Shells::Add_to_cnt_shells(const string &particle_type, const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const Point_3D &point, const int &n_shells, vector<vector<int> > &shells_cnt)
 {
     
     //Find the shell that corresponds to the point
-    int shell = Find_minimum_shell(midpoints, boundary_layer, core, half_step, point, n_shells);
+    int shell = Find_minimum_shell(particle_type, midpoints, boundary_layer, core, half_step, point, n_shells);
             
     //Finally add the CNT on the corresponding sectioned domain
     //hout << "shell="<<shell<<endl;
@@ -88,7 +88,7 @@ int Shells::Add_to_cnt_shells(const double midpoints[], const double boundary_la
 }
 //This function finds the shell to which one point belongs to
 //So it uses three times the function that finds the shell to which one coordinate belongs to
-int Shells::Find_minimum_shell(const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const Point_3D &point, const int &n_shells)
+int Shells::Find_minimum_shell(const string &particle_type, const double midpoints[], const double boundary_layer[], const double core[], const double half_step[], const Point_3D &point, const int &n_shells)
 {
     //Find the shell based on the x coordinate
     //hout << "x_in=";
@@ -96,13 +96,23 @@ int Shells::Find_minimum_shell(const double midpoints[], const double boundary_l
     //Find the shell based on the y coordinate
     //hout << "y_in=";
     int shell_y = Find_shell(point.y, midpoints[1], boundary_layer[1], core[1], half_step[1], n_shells);
-    //Find the shell based on the z coordinate
-    //hout << "z_in=";
-    int shell_z = Find_shell(point.z, midpoints[2], boundary_layer[2], core[2], half_step[2], n_shells);
     
     //A CNT belongs to the outer-most shell from the three coordinates, that is,
     //the minimum shell number overall
-    int shell = min(shell_z, min(shell_x, shell_y));
+    //Find the minimum shell based on the x and y coordinates
+    int shell = min(shell_x, shell_y);
+    
+    //Check the particle type
+    if (particle_type != "CNT_deposit") {
+        
+        //If not a CNT deposite, find the shell based on the z coordinate
+        //hout << "z_in=";
+        int shell_z = Find_shell(point.z, midpoints[2], boundary_layer[2], core[2], half_step[2], n_shells);
+        
+        //Find the minimum shell along the three coordinates
+        shell = min(shell, shell_z);
+    }
+    //If a CNT deposit, then the shell based on the z coordinate is ignored
     
     return shell;
 }
@@ -144,14 +154,14 @@ int Shells::Add_to_gnp_shells(const double midpoints[], const double boundary_la
         
         //Variables to store the minimum and maximum shell numbers that the GNP occupies
         //Minimum and maximum shell numbers are initialized with the shell of the first GNP vertex
-        shells_gnp[j].shell_min = Find_minimum_shell(midpoints, boundary_layer, core, half_step, gnps[j].vertices[0], n_shells);
+        shells_gnp[j].shell_min = Find_minimum_shell("", midpoints, boundary_layer, core, half_step, gnps[j].vertices[0], n_shells);
         shells_gnp[j].shell_max = shells_gnp[j].shell_min;
         
         //Iterate over the remaining vertices of the GNP
         for (int i = 1; i < 8; i++) {
             
             //Find the shell that corresponds to vertex i
-            int shell = Find_minimum_shell(midpoints, boundary_layer, core, half_step, gnps[j].vertices[i], n_shells);
+            int shell = Find_minimum_shell("", midpoints, boundary_layer, core, half_step, gnps[j].vertices[i], n_shells);
             
             //Check if shell numbers need to be updated
             if (shell < shells_gnp[j].shell_min) {

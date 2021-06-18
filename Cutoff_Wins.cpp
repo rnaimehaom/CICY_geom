@@ -29,7 +29,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
     if (particle_type != "GNP_cuboids") {
         
         //hout<<"Trim_boundary_cnts"<<endl;
-        if (!Trim_boundary_cnts(window, sample_geo, window_geo, cnts_geo, points_cnt, structure_cnt, shells_cnt, radii)) {
+        if (!Trim_boundary_cnts(window, particle_type, sample_geo, window_geo, cnts_geo, points_cnt, structure_cnt, shells_cnt, radii)) {
             hout << "Error in Extract_observation_window when calling Trim_boundary_cnts" << endl;
             return 0;
         }
@@ -79,7 +79,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
     
     return 1;
 }
-int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample_geo, const cuboid &window_geo, const Nanotube_Geo &cnts, vector<Point_3D> &points_cnt, vector<vector<long int> > &structure_cnt, vector<vector<int> > &shells_cnt, vector<double> &radii)
+int Cutoff_Wins::Trim_boundary_cnts(const int &window, const string &particle_type, const Geom_sample &sample_geo, const cuboid &window_geo, const Nanotube_Geo &cnts, vector<Point_3D> &points_cnt, vector<vector<long int> > &structure_cnt, vector<vector<int> > &shells_cnt, vector<double> &radii)
 {
     //String to save the location of a point (inside the window, outside the window, or at a boundary)
     string point_location;
@@ -197,7 +197,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
                 if (n_points >= cnts.min_points) {
                     
                     //Add the current segment to the structure
-                    if (!Add_cnt_segment_to_structure(window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
+                    if (!Add_cnt_segment_to_structure(particle_type, window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
                         hout<<"Error when adding a CNT segment (Add_cnt_segment_to_structure 1)."<<endl;
                         return 0;
                     }
@@ -221,7 +221,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const Geom_sample &sample
             //This was not done becuase, in the for loop, a segement is added only when it finds a point
             //outside the sample
             //Add the current segment to the structure
-            if (!Add_cnt_segment_to_structure(window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
+            if (!Add_cnt_segment_to_structure(particle_type, window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
                 hout<<"Error when adding a CNT segment (Add_cnt_segment_to_structure 2)."<<endl;
                 return 0;
             }
@@ -278,7 +278,7 @@ int Cutoff_Wins::Get_percolation_layer_cuboid(const double &cnt_rad, const cuboi
     return 1;
 }
 //===========================================================================
-int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const cuboid &layer_geom, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &end_point_loc, vector<Point_3D> &points_cnt, vector<vector<long int> > &structure_cnt, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx)
+int Cutoff_Wins::Add_cnt_segment_to_structure(const string &particle_type, const cuboid &window_geo, const cuboid &layer_geom, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &end_point_loc, vector<Point_3D> &points_cnt, vector<vector<long int> > &structure_cnt, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx)
 {
     //Variable used in case the start index needs to change
     int new_start = start;
@@ -397,7 +397,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const cuboid &window_geo, const cu
             struct_temp.push_back(P);
             
             //Update the shell of the new CNT points
-            shells.Add_to_cnt_shells(var_shells[0], var_shells[1], var_shells[2], var_shells[3], points_cnt[P], (int)shells_cnt.size(), shells_cnt);
+            shells.Add_to_cnt_shells(particle_type, var_shells[0], var_shells[1], var_shells[2], var_shells[3], points_cnt[P], (int)shells_cnt.size(), shells_cnt);
         }
         
         //Update the radii vector

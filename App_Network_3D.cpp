@@ -53,7 +53,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     vector<Shell> shell_gnps(gnps.size());
     ct0 = time(NULL);
     Shells *SH = new Shells;
-    if (!SH->Generate_shells(Init->geom_sample, points_cnt, gnps, shells_cnts, shell_gnps)) {
+    if (!SH->Generate_shells(Init->simu_para.particle_type, Init->geom_sample, points_cnt, gnps, shells_cnts, shell_gnps)) {
         hout << "Error when generating shells" << endl;
         return 0;
     }
