@@ -135,7 +135,8 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
         
         //Iterator for the elements in set
         set<long int>::iterator j = HoKo->elements_cnt[CNT].begin();
-        //hout<<"HoKo->elements_cnt["<<CNT<<"].size="<<HoKo->elements_cnt[CNT].size()<<endl;
+        //hout<<"HoKo->elements_cnt[CNT="<<CNT<<"].size="<<HoKo->elements_cnt[CNT].size()<<endl;
+        //hout<<"P_begin="<<*j<<endl;
         
         //Iterator to find an element in LMM_cnts_boundary
         map<long int, long int>::iterator it;
@@ -173,6 +174,7 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
             global_nodes++;
         }
         
+        //hout<<"P_end="<<*j_end<<endl;
         //Chek if the last point in the CNT element is at a boundary
         if (LMM_cnts.find(*j_end) == LMM_cnts.end()) {
             
@@ -427,6 +429,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const int &n_c
         //Get the first point of the element, i.e., the first point of the CNT
         long int P1 = *it;
         //hout<<"P1="<<P1<<" node="<<LMM_cnts[P1]<<endl;
+        //hout<<"CNT="<<CNT<<endl;
         
         //Check for the case of three points in the element
         if (HoKo->elements_cnt[CNT].size() == 3 &&
@@ -673,6 +676,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
         //hout<<"CNT1="<<CNT1<<endl;
         int CNT2 = junctions_cnt[idx].N2;
         //hout<<"CNT2="<<CNT2<<endl;
+        //hout<<"P1="<<P1<<" CNT1="<<CNT1<<" P2="<<P2<<" CNT2="<<CNT2<<endl;
         //hout<<"idx="<<idx<<" junctions_cnt.size="<<junctions_cnt.size()<<endl;
         
         //Calculate the junction resistance

@@ -462,6 +462,10 @@ int Hoshen_Kopelman::Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoff
                             Pj_junc = Pj1;
                         }
                     }
+                    
+                    //Update the value of Pi0 and Pj0
+                    Pi0 = Pi1;
+                    Pj0 = Pj1;
                 }
                 
                 //"Compress" the last (or only) segment
