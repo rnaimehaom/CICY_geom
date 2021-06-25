@@ -2468,6 +2468,7 @@ int Generate_Network::Find_highest_position_for_new_point_iteratively(const Geom
         
         //Matrix for the new direction
         MathMatrix M_new(2,2);
+        //hout<<"attempts="<<attempts<<endl;
         
         //Randomly generate a direction. This direction is given by the rotation matrix M_new
         if(!Get_direction_2d(nanotube_geo.angle_max, M_new, engine_theta, dist)){
@@ -2476,7 +2477,7 @@ int Generate_Network::Find_highest_position_for_new_point_iteratively(const Geom
         }
         
         //Get a temporary new point
-        if (!Get_temporary_new_point_2d(M, M_new, nanotube_geo.step_length, new_point)) {
+        if (!Get_temporary_new_point_2d(M, M_new, nanotube_geo.step_length, new_cnt.back(), new_point)) {
             hout<<"Error in Find_highest_position_for_new_point_iteratively when calling Get_temporary_new_point_2d"<<endl;
             return -1;
         }
@@ -2526,15 +2527,16 @@ int Generate_Network::Find_highest_position_for_new_point_iteratively(const Geom
 //because of this, the accumulated rotation matix is not calculated nor used to obtain
 //new_point. The accumulated rotation matix is calculated once new_point is determined to
 //have a valid position
-int Generate_Network::Get_temporary_new_point_2d(const MathMatrix &M, const MathMatrix &M_new, const double &step, Point_3D &new_point)const
+int Generate_Network::Get_temporary_new_point_2d(const MathMatrix &M, const MathMatrix &M_new, const double &step, const Point_3D &P0, Point_3D &new_point)const
 {
     //Calculate the x-coordinate of new_point
-    new_point.x = new_point.x + step*(M.element[0][0]*M_new.element[0][0] + M.element[0][1]*M_new.element[0][1]);
+    new_point.x = P0.x + step*(M.element[0][0]*M_new.element[0][0] + M.element[0][1]*M_new.element[1][0]);
     
     //Calculate the y-coordinate of new_point
-    new_point.y = new_point.y + step*(M.element[1][0]*M_new.element[0][0] + M.element[1][1]*M_new.element[0][1]);
+    new_point.y = P0.y + step*(M.element[1][0]*M_new.element[0][0] + M.element[1][1]*M_new.element[1][0]);
     
-    //The z-coordinate of new_point remains unchaged
+    //Set the z-coordinate of new_point to be the same as that of P0
+    new_point.z = P0.z;
     
     return 1;
 }
@@ -2665,6 +2667,9 @@ int Generate_Network::Find_highest_position_for_new_point(const Geom_sample &geo
     
     //Check if penetration was found
     //This happens when the z-coordinate of p_ovrlp is above floor level
+    //hout<<"p_ovrlp="<<p_ovrlp.str()<<endl;
+    //hout<<"p_ovrlp.z="<<p_ovrlp.z<<" floor="<<floor<<endl;
+    //hout<<"p_ovrlp.z - floor="<<p_ovrlp.z - floor<<endl;
     if (p_ovrlp.z - floor > Zero) {
         
         //Penetration was found, so just substitute new_point by p_ovrlp
@@ -2827,13 +2832,15 @@ int Generate_Network::Find_hanging_position(const cuboid &sample, const double &
     //u is the vector of the new segment
     Point_3D u = new_point - new_cnt.back();
     //Point_3D u_hat = u.unit();
-    double u_len = u.length();
+    //double u_len = u.length();
     
     //Check if there is a previous segment, i.e., if there are at least two points in new_cnt
     if (new_cnt.size() >= 2) {
         
         //Calculate rotation vector
         //Point_3D r = u_hat.cross(Point_3D(0.0,0.0,1.0));
+        //hout<<"new_point="<<new_point.str()<<endl;
+        //hout<<"d0="<<new_point.distance_to(new_cnt.back());
         
         //Calculate vector v (the vector of the previous segment) and its length
         Point_3D v = new_cnt.back() - new_cnt[new_cnt.size() - 2];
@@ -2841,7 +2848,7 @@ int Generate_Network::Find_hanging_position(const cuboid &sample, const double &
         
         //Obtain half the angle of v with the xy plane using the arcsine function
         //Using the arcsine helps recover the sign of the angle
-        //According to cplusplus.com, asin reutnr "Principal arc sine of x,
+        //According to cplusplus.com, asin returns "Principal arc sine of x,
         //in the interval [-pi/2,+pi/2] radians."
         //PI/10 is around 0.31415926536
         double theta_half = asin(v.z/v_len)*0.5 - 0.31415926536;
@@ -2850,9 +2857,12 @@ int Generate_Network::Find_hanging_position(const cuboid &sample, const double &
         double sinT = sin(theta_half);
         double cosT = cos(theta_half);
         
+        //Calculate factor that comes from the length of rotation vector
+        double rh_len = sqrt(u.x*u.x + u.y*u.y);
+        
         //Calculate new vector u
         Point_3D u_new = u*cosT;
-        u_new.z = u_new.z + u_len*sinT;
+        u_new.z = u_new.z + rh_len*sinT;
         
         //Update the location of new_point
         new_point = u_new + new_cnt.back();

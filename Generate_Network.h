@@ -97,7 +97,7 @@ public:
     Point_3D Get_new_point_2d(const MathMatrix &M, const double &step)const;
     int Get_direction_2d(const double &omega, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
     int Find_highest_position_for_new_point_iteratively(const Geom_sample &geom_sample_deposit, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const vector<Point_3D> &new_cnt, Point_3D &new_point, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
-    int Get_temporary_new_point_2d(const MathMatrix &M, const MathMatrix &M_new, const double &step, Point_3D &new_point)const;
+    int Get_temporary_new_point_2d(const MathMatrix &M, const MathMatrix &M_new, const double &step, const Point_3D &P0, Point_3D &new_point)const;
     int Find_highest_position_for_new_point(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const double &step, const vector<Point_3D> &new_cnt, Point_3D &new_point)const;
     int Calculate_distance_to_torus(const Point_3D &P0, const double &hdx, const double &hdy, const double &R, const double &r, double &dist)const;
     int Rotate_cnt_segment_around_axis(const Point_3D &u, const Point_3D &prev, Point_3D &new_point)const;
