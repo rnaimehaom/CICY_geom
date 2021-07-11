@@ -1288,8 +1288,8 @@ int Generate_Network::Get_direction_and_point(const Nanotube_Geo &nanotube_geo, 
     //To have the positive Z-axis to be a central axis
     //Then, the radial angle, theta, obeys a normal distribution (theta \in fabs[(-omega,+omega)]) and the zonal angle, phi, obeys a uniform distribution (phi \in (0,2PI))
     double cnt_theta = 0, cnt_phi = 0;
-    if(!Get_normal_direction_mt(nanotube_geo.angle_max, cnt_theta, cnt_phi, engine_theta, engine_phi, dist)){
-        hout<<"Error in Get_direction_and_point when calling Get_normal_direction_mt"<<endl;
+    if(!Get_direction_normal_distribution(nanotube_geo, cnt_theta, cnt_phi, engine_theta, engine_phi, dist)){
+        hout<<"Error in Get_direction_and_point when calling Get_direction_normal_distribution"<<endl;
         return 0;
     }
     
@@ -2901,21 +2901,26 @@ int Generate_Network::Find_hanging_position(const cuboid &sample, const double &
 int Generate_Network::Get_random_value_mt(const string &dist_type, mt19937 &engine, uniform_real_distribution<double> &dist, const double &min, const double &max, double &value)const
 {
     //Check if limits are correctly defined
-    if(min>max) { hout << "Error, the minimum value is larger than the maximum value (Get_random_value)!" << endl; return 0; }
+    if(min > max) {
+        hout<<"Error in Get_random_value_mt. The minimum value is larger than the maximum: min = "<<min<<", max = "<<max<<endl;
+        return 0;
+    }
     
     //Check if the interval has 0 length
-    if (max == min) {
+    if (abs(max - min) < Zero) {
         //In this case, value is either of the limits
         //To be consistent with the formulation below, value is set equal to min
         value = min;
         return 1;
     }
     
-    if(dist_type=="uniform")    //uniform distribution
+    //Check if uniform distribution
+    if(dist_type=="uniform")
     {
         value = (max-min)*dist(engine) + min;
     }
-    else if(dist_type=="normal")    //normal distribution
+    //Check if normal distribution
+    else if(dist_type=="normal")
     {
         double sum=0;
         for(int i=0; i<12; i++)
@@ -2923,6 +2928,11 @@ int Generate_Network::Get_random_value_mt(const string &dist_type, mt19937 &engi
             sum = sum + dist(engine);
         }
         value = (max-min)*sum/12.0 + min;
+    }
+    //Wrong input for distribution type
+    else {
+        hout<<"Error in Get_random_value_mt. The distribution type is not valid. Input was: "<<dist_type<<endl;
+        return 0;
     }
     
     return 1;
@@ -3007,24 +3017,24 @@ int Generate_Network::Get_initial_direction_mt(const string &dir_distrib_type, c
     return 1;
 }
 //---------------------------------------------------------------------------
-int Generate_Network::Get_normal_direction_mt(const double &omega, double &cnt_theta, double &cnt_phi, mt19937 &engine_theta, mt19937 &engine_phi, uniform_real_distribution<double> &dist)const
+//This function generates the angles theta and phi
+//Theta defines the curvature of the CNT, phi defines the growth direction
+int Generate_Network::Get_direction_normal_distribution(const Nanotube_Geo &nanotube_geo, double &cnt_theta, double &cnt_phi, mt19937 &engine_theta, mt19937 &engine_phi, uniform_real_distribution<double> &dist)const
 {
-    
-    //theta centers around 0 and obeys a normal distribution in (-omega, +omega)
-    double sum=0;
-    for(int i=0; i<12; i++)
-    {
-        sum = sum + dist(engine_theta);
+    if (!Get_random_value_mt("normal", engine_theta, dist, nanotube_geo.omega_a, nanotube_geo.omega_b, cnt_theta)) {
+        hout<<"Error in Get_direction_normal_distribution when calling Get_random_value_mt"<<endl;
+        return 0;
     }
-    cnt_theta = fabs(omega*(sum/6 - 1));
+    //angle theta is always positive
+    cnt_theta = abs(cnt_theta);
     
     //phi satisfies a uniform distribution in (0, 2PI)
-    cnt_phi = 2.0*PI*dist(engine_phi);//*/
+    cnt_phi = 2.0*PI*dist(engine_phi);
     
     return 1;
 }
 //---------------------------------------------------------------------------
-//Transform angles into matrix
+//Get rotation matrix from two angles
 MathMatrix Generate_Network::Get_transformation_matrix(const double &theta, const double &phi)const
 {
     //M = M_phi*M_theta
@@ -3032,10 +3042,10 @@ MathMatrix Generate_Network::Get_transformation_matrix(const double &theta, cons
     // M_phi  = |sin(phi)  cos(phi) 0|
     //          |   0         0     1|
     //
-    //          | cos(theta)  0  sin(theta)|
-    // M_theta = |     0      1      0    |
-    //          |-sin(theta)  0  cos(theta)|
-    //Calculate the matrix elements directly, instead of multiplying two matrices
+    //           | cos(theta)  0  sin(theta)|
+    // M_theta = |      0      1      0     |
+    //           |-sin(theta)  0  cos(theta)|
+    //Calculate the matrix elements directly, instead of multiplying two rotation matrices
     MathMatrix M(3,3);
     M.element[0][0] = cos(phi)*cos(theta);
     M.element[0][1] = -sin(phi);

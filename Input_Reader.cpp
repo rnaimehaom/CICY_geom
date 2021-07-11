@@ -666,10 +666,16 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
 
 	//----------------------------------------------------------------------
 	//Read the normal distribution range [-omega, omega] of the growth direction
-    istringstream istr1(Get_Line(infile));
-	istr1 >> nanotube_geo.angle_max;
-	if(nanotube_geo.angle_max>0.5*PI){ hout << "Error: The angle omega is not in the valid range of (-PI/2, PI/2). Input was: "<<nanotube_geo.angle_max << endl;	 return 0; }
-    
+    istringstream istr_omega(Get_Line(infile));
+    istr_omega >> nanotube_geo.omega_a >> nanotube_geo.omega_b;
+    if(nanotube_geo.omega_b > 0.5*PI){
+        hout << "Error: The maximum value of angle omega is PI/2. Input was: "<<nanotube_geo.omega_a << endl;
+        return 0;
+    }
+    if(nanotube_geo.omega_b < -0.5*PI){
+        hout << "Error: The minimum value of angle omega is -PI/2. Input was: "<<nanotube_geo.omega_b << endl;
+        return 0;
+    }
 	//----------------------------------------------------------------------
 	//Read the step length (in microns) of nanotube growth
 	istringstream istr2(Get_Line(infile));

@@ -132,6 +132,8 @@ struct Nanotube_Geo{
     double ini_theta, ini_phi;
     //Angle 'omega' for the normal distribution range [-omega, omega] of growth direction
     double angle_max;
+    //Limits for the normal distribution of angle 'omega' in range [omega_a, omega_b]
+    double omega_a, omega_b;
     //Length range (min, max) of nanotubes
     double len_min, len_max;
     //Radius range (min, max) of nanotubes
