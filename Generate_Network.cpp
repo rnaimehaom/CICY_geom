@@ -2410,7 +2410,7 @@ int Generate_Network::Get_direction_and_point_2d(const Nanotube_Geo &nanotube_ge
     MathMatrix M_new(2,2);
     
     //Randomly generate a direction
-    if(!Get_direction_2d(nanotube_geo.angle_max, M_new, engine_theta, dist)){
+    if(!Get_direction_2d(nanotube_geo, M_new, engine_theta, dist)){
         hout<<"Error in Get_direction_and_point_2d when calling Get_direction_2d"<<endl;
         return 0;
     }
@@ -2436,22 +2436,23 @@ Point_3D Generate_Network::Get_new_point_2d(const MathMatrix &M, const double &s
 //This function generates a 2D rotation matrix for the initial direction
 //The angle theta has a normal distribution in [-omega, +omega]
 // R(theta) = |cos(theta)  -sin(theta)|
-//          |sin(theta)   cos(theta)|
-int Generate_Network::Get_direction_2d(const double &omega, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const
+//            |sin(theta)   cos(theta)|
+int Generate_Network::Get_direction_2d(const Nanotube_Geo &nanotube_geo, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const
 {
-    //theta centers around 0 and obeys a normal distribution in (-omega, +omega)
-    double sum = 0;
-    for(int i=0; i<12; i++)
-    {
-        sum = sum + dist(engine_theta);
+    //Initialize theta with zero
+    double theta = 0.0;
+    
+    //Get a value for theta that follows a normal distribution in (omega_a, omega_b)
+    if (!Get_random_value_mt("normal", engine_theta, dist, nanotube_geo.omega_a, nanotube_geo.omega_b, theta)) {
+        hout<<"Error in Get_direction_2d when calling Get_random_value_mt"<<endl;
+        return 0;
     }
-    double theta = omega*(sum/6 - 1);
     
     //Fill the rotation matrix with a rotation by an anlge theta
     M.element[0][0] = cos(theta);
+    M.element[0][1] = -M.element[1][0];
     M.element[1][0] = sin(theta);
     M.element[1][1] = M.element[0][0];
-    M.element[0][1] = -M.element[1][0];
     
     return 1;
 }
@@ -2471,7 +2472,7 @@ int Generate_Network::Find_highest_position_for_new_point_iteratively(const Geom
         //hout<<"attempts="<<attempts<<endl;
         
         //Randomly generate a direction. This direction is given by the rotation matrix M_new
-        if(!Get_direction_2d(nanotube_geo.angle_max, M_new, engine_theta, dist)){
+        if(!Get_direction_2d(nanotube_geo, M_new, engine_theta, dist)){
             hout<<"Error in Find_highest_position_for_new_point_iteratively when calling Get_direction_2d"<<endl;
             return -1;
         }
@@ -3021,6 +3022,7 @@ int Generate_Network::Get_initial_direction_mt(const string &dir_distrib_type, c
 //Theta defines the curvature of the CNT, phi defines the growth direction
 int Generate_Network::Get_direction_normal_distribution(const Nanotube_Geo &nanotube_geo, double &cnt_theta, double &cnt_phi, mt19937 &engine_theta, mt19937 &engine_phi, uniform_real_distribution<double> &dist)const
 {
+    //Get a value for theta that follows a normal distribution in (omega_a, omega_b)
     if (!Get_random_value_mt("normal", engine_theta, dist, nanotube_geo.omega_a, nanotube_geo.omega_b, cnt_theta)) {
         hout<<"Error in Get_direction_normal_distribution when calling Get_random_value_mt"<<endl;
         return 0;

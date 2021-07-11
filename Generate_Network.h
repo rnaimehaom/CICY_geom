@@ -95,7 +95,7 @@ public:
     int Get_initial_direction_2d(MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
     int Get_direction_and_point_2d(const Nanotube_Geo &nanotube_geo, MathMatrix &M, Point_3D &new_point, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
     Point_3D Get_new_point_2d(const MathMatrix &M, const double &step)const;
-    int Get_direction_2d(const double &omega, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
+    int Get_direction_2d(const Nanotube_Geo &nanotube_geo, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
     int Find_highest_position_for_new_point_iteratively(const Geom_sample &geom_sample_deposit, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const vector<Point_3D> &new_cnt, Point_3D &new_point, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const;
     int Get_temporary_new_point_2d(const MathMatrix &M, const MathMatrix &M_new, const double &step, const Point_3D &P0, Point_3D &new_point)const;
     int Find_highest_position_for_new_point(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const double &step, const vector<Point_3D> &new_cnt, Point_3D &new_point)const;

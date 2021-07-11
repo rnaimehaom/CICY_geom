@@ -170,7 +170,8 @@ int Input::Data_Initialization()
 	nanotube_geo.dir_distrib_type = "random";
 	nanotube_geo.ini_phi = 0.0;
 	nanotube_geo.ini_theta = 0.0;
-	nanotube_geo.angle_max = 1.5707963267948966;
+	nanotube_geo.omega_b = 1.5707963267948966;
+    nanotube_geo.omega_a = - nanotube_geo.omega_b;
 	nanotube_geo.step_length = 0.01;
 	nanotube_geo.len_distrib_type = "uniform";
 	nanotube_geo.len_min = 1.0;
