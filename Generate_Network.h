@@ -117,6 +117,7 @@ public:
     Point_3D Get_new_point(MathMatrix &Matrix, const double &Rad)const;
     //This function checks if a point is inside a cuboid
     int Is_point_inside_cuboid(const cuboid &cub, const Point_3D &point)const;
+    int Check_progress(const string &particle, const int &elapsed_time, const double &target_vol, const double &generated_vol, double &vol_completed, double &vol_completed_acc)const;
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------

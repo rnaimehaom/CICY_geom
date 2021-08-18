@@ -209,8 +209,11 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
     
     //Get the time when generation started
     ct0 = time(NULL);
-    //Check when 10% is completed
+    
+    //Variable used to check when 10% is completed
     double vol_completed = 0.1;
+    //Variable used to store the fraction of CNT volume indicated by vol_completed
+    double vol_completed_acc = vol_completed*nanotube_geo.volume;
     
     //Boolean to terminate the main while loop, initialized to false to start the loop
     bool terminate = false;
@@ -445,17 +448,15 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
             return 0;
         }
         
+        //Get the time to check progress
+        ct1 = time(NULL);
+        
         //Check progress
-        if (vol_sum > vol_completed*nanotube_geo.volume) {
-            //Get the time
-            ct1 = time(NULL);
-            
-            //Output elapsed time
-            hout << "Completed " << vol_completed*100 << " % of target volume. Elapsed time: " << (int)(ct1-ct0) << " secs." <<endl;
-            
-            //When the next 10% is completed send another message
-            vol_completed = vol_completed + 0.1;
+        if (!Check_progress("CNT", (int)(ct1-ct0), nanotube_geo.volume, vol_sum, vol_completed, vol_completed_acc)) {
+            hout<<"Error when calculating the percentage of CNT volume generated"<<endl;
+            return 0;
         }
+        
         //while-loop ends here
     }
     
@@ -2023,8 +2024,11 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
     
     //Get the time when generation started
     ct0 = time(NULL);
+    
     //Check when 10% is completed
     double vol_completed = 0.1;
+    //Variable used to store the fraction of CNT volume indicated by vol_completed
+    double vol_completed_acc = vol_completed*nanotube_geo.volume;
     
     //Boolean to terminate the main while loop, initialized to false to start the loop
     bool terminate = false;
@@ -2164,16 +2168,13 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
             return 0;
         }
         
+        //Get the time to check progress
+        ct1 = time(NULL);
+        
         //Check progress
-        if (vol_sum > vol_completed*nanotube_geo.volume) {
-            //Get the time
-            ct1 = time(NULL);
-            
-            //Output elapsed time
-            hout << "Completed " << vol_completed*100 << " % of target volume. Elapsed time: " << (int)(ct1-ct0) << " secs." <<endl;
-            
-            //When the next 10% is completed send another message
-            vol_completed = vol_completed + 0.1;
+        if (!Check_progress("CNT", (int)(ct1-ct0), nanotube_geo.volume, vol_sum, vol_completed, vol_completed_acc)) {
+            hout<<"Error when calculating the percentage of CNT volume generated"<<endl;
+            return 0;
         }
         
     }
@@ -3085,6 +3086,26 @@ int Generate_Network::Is_point_inside_cuboid(const cuboid &cub, const Point_3D &
     
     return 1;
 }
+//This function is used to display the percentage of generated volume in increments
+//that are multiple of 10%
+int Generate_Network::Check_progress(const string &particle, const int &elapsed_time, const double &target_vol, const double &generated_vol, double &vol_completed, double &vol_completed_acc)const
+{
+    if (generated_vol > vol_completed_acc) {
+        
+        //Find the actual increment
+        while (generated_vol > vol_completed_acc) {
+            
+            //Increase the volume used to check progress
+            vol_completed = vol_completed + 0.1;
+            vol_completed_acc = vol_completed*target_vol;
+        }
+        
+        //Output elapsed time
+        hout << "Completed " << (vol_completed - 0.1)*100 << " % of " << particle << " target volume. Elapsed time: " << elapsed_time << " secs." <<endl;
+    }
+    
+    return 1;
+}
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
@@ -3133,6 +3154,16 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
         hout<<"Error in Initialize_gnp_subregions"<<endl;
         return 1;
     }
+    
+    //Time variables to keep track of generation time
+    time_t ct0, ct1;
+    //Get the time when generation started
+    ct0 = time(NULL);
+    
+    //Variable used to check when 10% is completed
+    double vol_completed = 0.1;
+    //Variable used to store the fraction of CNT volume indicated by vol_completed
+    double vol_completed_acc = vol_completed*gnp_geo.volume;
     
     //---------------------------------------------------------------------------
     while( gnp_vol_tot < gnp_geo.volume )
@@ -3249,6 +3280,17 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
                 gnp_ignored_count++;
             }
         }//End of if for rejected flag
+        
+        //Get the time to check progress
+        ct1 = time(NULL);
+        
+        //Check progress
+        if (!Check_progress("GNP", (int)(ct1-ct0), gnp_geo.volume, gnp_vol_tot, vol_completed, vol_completed_acc)) {
+            hout<<"Error when calculating the percentage of GNP volume generated"<<endl;
+            return 0;
+        }
+        
+        //while-loop ends here
     }
     
     if (simu_para.particle_type == "GNP_cuboids" || simu_para.particle_type == "GNP_CNT_mix") {
@@ -4164,6 +4206,8 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
     ct0 = time(NULL);
     //Check when 10% is completed
     double vol_completed = 0.1;
+    //Variable used to store the fraction of CNT volume indicated by vol_completed
+    double vol_completed_acc = vol_completed*nanotube_geo.volume;
     
     //Boolean to terminate the main while loop, initialized to false to start the loop
     bool terminate = false;
@@ -4374,17 +4418,15 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
             return 0;
         }
         
+        //Get the time to check progress
+        ct1 = time(NULL);
+        
         //Check progress
-        if (vol_sum > vol_completed*nanotube_geo.volume) {
-            //Get the time
-            ct1 = time(NULL);
-            
-            //Output elapsed time
-            hout << "Completed " << vol_completed*100 << " % of target volume. Elapsed time: " << (int)(ct1-ct0) << " secs." <<endl;
-            
-            //When the next 10% is completed send another message
-            vol_completed = vol_completed + 0.1;
+        if (!Check_progress("CNT", (int)(ct1-ct0), nanotube_geo.volume, vol_sum, vol_completed, vol_completed_acc)) {
+            hout<<"Error when calculating the percentage of CNT volume generated"<<endl;
+            return 0;
         }
+        
         //while-loop ends here
     }
     
