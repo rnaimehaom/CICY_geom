@@ -132,7 +132,9 @@ public:
     int Add_gnp_subregions_to_set_for_gnp_point(const Geom_sample &geom_sample, const Point_3D &new_point, const int n_subregions[], set<int> &subregions)const;
     int Get_gnps_in_subregions(const vector<vector<int> > &sectioned_domain, const set<int> &subregions, set<int> &gnp_set)const;
     int Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP &gnp_new, bool &displaced)const;
+    int Add_to_vector_of_displacements(const double &disp, const Point_3D &N, vector<double> &disps, vector<Point_3D> &disps_vec)const;
     int Find_direction_of_touching_gnps(Collision_detection &GJK_EPA, const GNP &gnpA, const GNP &gnpB, Point_3D &N)const;
+    int Move_gnp_two_displacements(const vector<Point_3D> &disps_vec, GNP &gnp)const;
     int Move_gnp(const Point_3D &displacement, GNP &gnp)const;
     int Add_valid_gnp_to_subregions(const int &gnp_new_idx, const set<int> &subregions, vector<vector<int> > &sectioned_domain)const;
     int Check_all_gnp_vertices_are_inside_sample(const Geom_sample &sample_geom, GNP &gnp, bool &is_enough_inside)const;

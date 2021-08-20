@@ -3716,11 +3716,13 @@ int Generate_Network::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vect
     //eachother or not, and their distances if they do not interpenetrate each other
     Collision_detection GJK_EPA;
     
-    //Variable to store the total displacement (if the GNP_new needs to be moved)
-    Point_3D disp_tot = Point_3D(0.0,0.0,0.0);
-    
     //Initialize the displaced flag to false
     displaced = false;
+    
+    //Variable to store the two largest displacements
+    vector<double> disps;
+    //Variable to store the displacement vectors of the two largest displacements
+    vector<Point_3D> disps_vec;
     
     //int el = 0;
     for (set<int>::iterator i = gnp_set.begin(); i!=gnp_set.end(); i++) {
@@ -3764,19 +3766,17 @@ int Generate_Network::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vect
         if (p_flag) {
             //hout<<"Penetration with GNP "<<GNP_i<<endl;
             
-            //There is penetration, so then use EPA to fint the penetration depth PD and direction vector N
+            //There is penetration, so then use EPA to find the penetration depth PD and direction vector N
             if (!GJK_EPA.EPA(gnps[GNP_i].vertices, gnp_new.vertices, simplex, N, PD)) {
                 hout<<"Error in Move_gnps_if_needed when calling EPA"<<endl;
                 return 0;
             }
             //hout<<"PD="<<PD<<" normal="<<N.str()<<endl;
             
-            //Update the total dispacement
-            disp_tot = disp_tot + N*(PD + cutoffs.van_der_Waals_dist);
-            
-            //Change the displaced flag if needed
-            if (!displaced) {
-                displaced =  true;
+            //Add to the vector of displacements
+            if (!Add_to_vector_of_displacements(PD + cutoffs.van_der_Waals_dist, N, disps, disps_vec)) {
+                hout<<"Error in Move_gnps_if_needed when calling Add_to_vector_of_displacements (1)"<<endl;
+                return 0;
             }
         }
         else {
@@ -3794,11 +3794,10 @@ int Generate_Network::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vect
                 
                 //Since the GNPs are touching, then the distance to be moved is just
                 //the van der Waals distance
-                disp_tot = disp_tot + N*cutoffs.van_der_Waals_dist;
-                
-                //Change the displaced flag if needed
-                if (!displaced) {
-                    displaced =  true;
+                //Add to the vector of displacements
+                if (!Add_to_vector_of_displacements(cutoffs.van_der_Waals_dist, N, disps, disps_vec)) {
+                    hout<<"Error in Move_gnps_if_needed when calling Add_to_vector_of_displacements (2)"<<endl;
+                    return 0;
                 }
             }
             else {
@@ -3815,13 +3814,12 @@ int Generate_Network::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vect
                 double new_dist = cutoffs.van_der_Waals_dist - PD;
                 if (new_dist > Zero) {
                     
-                    //If the separation is less than the van der Waals distance, then gnp_new needs
-                    //to be moved, so update the total displacement
-                    disp_tot = disp_tot + N*new_dist;
-                    
-                    //Change the displaced flag if needed
-                    if (!displaced) {
-                        displaced =  true;
+                    //If the separation is less than the van der Waals distance,
+                    //then gnp_new needs to be moved
+                    //Add to the vector of displacements
+                    if (!Add_to_vector_of_displacements(new_dist, N, disps, disps_vec)) {
+                        hout<<"Error in Move_gnps_if_needed when calling Add_to_vector_of_displacements (3)"<<endl;
+                        return 0;
                     }
                 }
             }
@@ -3829,14 +3827,79 @@ int Generate_Network::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vect
     }
     
     //Check if a displacement is needed
-    if (displaced) {
+    if (disps.size()) {
+        
+        //Set the displace flag to true
+        displaced = true;
         
         //hout<<"GNP moved disp_tot="<<disp_tot.str()<<endl;
         //A displacement is needed, then move gnp_new
-        if (!Move_gnp(disp_tot, gnp_new)) {
-            hout<<"Error in Move_gnp."<<endl;
+        if (!Move_gnp_two_displacements(disps_vec, gnp_new)) {
+            hout<<"Error Move_gnps_if_needed in when calling Move_gnp_two_displacements."<<endl;
             return 0;
         }
+    }
+    
+    return 1;
+}
+//This function adds a new displacement to the vector of displacements and makes sure only the
+//two largest displacements are kept
+//Element with index 0 is the largest displacement
+//It also keeps the displaments vector that correspond to the largest displacements
+int Generate_Network::Add_to_vector_of_displacements(const double &disp, const Point_3D &N, vector<double> &disps, vector<Point_3D> &disps_vec)const
+{
+    //Check the size of the vector of diplacements
+    if (disps.size() <= 1) {
+        
+        //Since the vectors have 1 or 0 elements, first just add the displacement
+        disps.push_back(disp);
+        disps_vec.push_back(N);
+        
+        //If the vector has only one element, terminate the function as there is nothing
+        //more to check
+        if (disps.size() == 1)
+            return 1;
+        
+        //If not empty check if the elements need swapping
+        if (disps[0] - disps[1] < Zero) {
+            
+            //Element in index 1 is larger, so swap the elements
+            double tmp = disps[0];
+            disps[0] = disps[1];
+            disps[1] = tmp;
+            
+            //Swap the displacement vectors
+            Point_3D tmp_p = disps_vec[0];
+            disps_vec[0] = disps_vec[1];
+            disps_vec[1] = tmp_p;
+        }
+    }
+    else {
+        
+        //There are already two elements in the vectors, so check if the new displacement
+        //is larger than any of the ones in the vector disps
+        
+        //Check if the new displacement is larger than the largest displacement
+        if (disp > disps[0]) {
+            
+            //Copy element [0] into element [1]
+            disps[1] = disps[0];
+            disps_vec[1] = disps_vec[0];
+            
+            //Save new displament and vector into element [0]
+            disps[0] = disp;
+            disps_vec[0] = N;
+        }
+        //New displacement is not larger than the largest displacement
+        //So check if the new displacement is larger than the second largest displacement
+        else if (disp > disps[1]) {
+            
+            //Substitute element [1] by the new displacement and vector
+            disps[1] = disp;
+            disps_vec[1] = N;
+        }
+        //New displacement is not larger than the second largest displacement
+        //So it is not added to the vectors
     }
     
     return 1;
@@ -3953,6 +4016,40 @@ int Generate_Network::Find_direction_of_touching_gnps(Collision_detection &GJK_E
         
         //No face is touching, in such case gnpB can be moved in the direction from centerA to centerB
         N = (gnpB.center - gnpA.center).unit();
+    }
+    
+    return 1;
+}
+int Generate_Network::Move_gnp_two_displacements(const vector<Point_3D> &disps_vec, GNP &gnp)const
+{
+    //Move the GNP according the the displacement in index [0]
+    if (!Move_gnp(disps_vec[0], gnp)) {
+        hout<<"Error in Move_gnp_two_displacements when calling Move_gnp."<<endl;
+        return 0;
+    }
+    
+    //Check if there is a second displacement
+    if (disps_vec.size() == 2) {
+        
+        //Calculate the orthogonal component of disps_vec[1] with respect to disps_vec[0]
+        
+        //Calculate dot product
+        double dot_p = disps_vec[0].dot(disps_vec[1]);
+        
+        //Calculate the squared length of disps_vec[0]
+        double d0_2 = disps_vec[0].length2();
+        
+        //Calculate projection of disps_vec[1] onto disps_vec[0]
+        Point_3D proj = disps_vec[0]*(dot_p/d0_2);
+        
+        //Calculate the orthoganal component we are looking for
+        Point_3D orth = disps_vec[1] - proj;
+        
+        //Move GNP according the the displacement given by orth
+        if (!Move_gnp(orth, gnp)) {
+            hout<<"Error in Move_gnp_two_displacements when calling Move_gnp (orth)."<<endl;
+            return 0;
+        }
     }
     
     return 1;
