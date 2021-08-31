@@ -1057,6 +1057,51 @@ int Hoshen_Kopelman::Find_point_b_for_edge_in_simplex_a(const vector<int> &simpl
     //Find points A and B depending on the number of vertices in simplexB
     if (simplexB.size() == 2) {
         
+        //Go to the case where both simplexA and simplexB are an edge
+        if (!Find_point_for_edge_edge_contact(GNP_A, GNP_B, edgeA, simplexB, disp, PointA, PointB)) {
+            hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Find_point_for_edge_edge_contact"<<endl;
+            return 0;
+        }
+    }
+    else if (simplexB.size() == 4) {
+        
+        //Go to the case where simplexB is a face
+        if (!Find_point_for_edge_face_contact(face_sum, GNP_A, GNP_B, edgeA, disp, PointA, PointB)) {
+            hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Find_point_for_edge_face_contact"<<endl;
+            return 0;
+        }
+    }
+    else if (simplexB.size() == 3) {
+        
+        //Deal with the case when a set has size three and the other has size two
+        //(which should not happen)
+        if (!Deal_with_simplex_size_3(GNP_A, GNP_B, simplexA, simplexB, PointA, PointB)) {
+            hout<<"Error in Find_closest_simplices_of_gnps_in_contact when calling Deal_with_simplex_size_3"<<endl;
+            return 0;
+        }
+        
+    }
+    else {
+        hout<<"Error in Find_point_b_for_edge_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 2 or 4 (temporarily deals with size 3)"<<endl;
+        return 0;
+    }
+    return 1;
+}
+//This function finds the contact point for an edge-edge contact, which can be:
+//a) The intersection of the two edges
+//b) The midpoint of the overlapping segement of the two edges
+int Hoshen_Kopelman::Find_point_for_edge_edge_contact(const GNP &GNP_A, const GNP &GNP_B, const Point_3D edgeA[], const vector<int> &simplexB, const Point_3D &disp, Point_3D &PointA, Point_3D &PointB)
+{
+    //Get vectors in the direction of each edge
+    Point_3D eA = edgeA[1] - edgeA[0];
+    Point_3D eB = GNP_B.vertices[simplexB[1]] - GNP_B.vertices[simplexB[0]];
+    
+    //Check if edges are colinear
+    Point_3D cr = eA.cross(eB);
+    if (abs(cr.x) < Zero && abs(cr.y) < Zero && abs(cr.z) < Zero) {
+        
+        //Cross product of vectors along the edges is zero, thus edges are colinear
+        
         //Find the midpoint of the intersection of the edges defined by the vertices in
         //simplices A and B
         
@@ -1084,7 +1129,7 @@ int Hoshen_Kopelman::Find_point_b_for_edge_in_simplex_a(const vector<int> &simpl
             //Vertex 0 in simplexB is on the translated edgeA
             
             //Calculate point on translated edgeA
-            Point_3D S0 = edgeA[0] + (edgeA[1] - edgeA[0])*lambda0;
+            Point_3D S0 = edgeA[0] + eA*lambda0;
             
             //Define PointB based on the sign of lambda 1
             PointB = (lambda1 < Zero)? (edgeA[0] + S0)/2 : (edgeA[1] + S0)/2;
@@ -1094,123 +1139,125 @@ int Hoshen_Kopelman::Find_point_b_for_edge_in_simplex_a(const vector<int> &simpl
             //Vertex 1 in simplexB is on the translated edgeA
             
             //Calculate point on translated edgeA
-            Point_3D S1 = edgeA[0] + (edgeA[1] - edgeA[0])*lambda1;
+            Point_3D S1 = edgeA[0] + eA*lambda1;
             
             //Define PointB based on the sign of lambda 1
             PointB = (lambda0 < Zero)? (edgeA[0] + S1)/2 : (edgeA[1] + S1)/2;
         }
-        
-        //Calculate PointA by using the calculated displacement
-        PointA = PointB - disp;
-    }
-    else if (simplexB.size() == 4) {
-        
-        //Find centroid of the intersection of the faces defined by the vertices in
-        //simplices A and B
-        
-        //Get the edges and normals of simplexB
-        vector<Edge> edges(4);
-        vector<int> normals(4);
-        if (!Get_edges_of_face(face_sum, edges, normals)) {
-            hout<<"Error in Find_point_b_for_edge_in_simplex_a when calling Get_edges_of_face"<<endl;
-            return 0;
-        }
-        
-        //Variables to count the negative dot products
-        int countA0 = 0, countA1 = 0;
-        
-        //Arrays to store positive dot products
-        int arrA0[] = {-1,-1};
-        int arrA1[] = {-1,-1};
-        
-        //Go though all edges of faceB and find the one that intersects the edgeA
-        for (int i = 0; i < 4; i++) {
-            
-            //Vertex 1 of current edge
-            int v1i = edges[i].v1;
-            
-            //Current normal
-            int Ni = normals[i];
-            
-            //Check in which side of the edge the two points are
-            int dotA0 = (edgeA[0] - GNP_B.vertices[v1i]).dot(GNP_B.faces[Ni].N) < Zero;
-            int dotA1 = (edgeA[1] - GNP_B.vertices[v1i]).dot(GNP_B.faces[Ni].N) < Zero;
-            
-            //Check if the count of negative dot products for vertex A0 needs to be updated
-            if (dotA0) {
-                //edgeA[0] is likely inside the face
-                countA0++;
-            }
-            else {
-                //Save the edge in B that has results in a positive dot product
-                //There can be at most two positive dot prodects, so this if-statement is enough
-                if (arrA0[0] == -1) {
-                    arrA0[0] = i;
-                }
-                else {
-                    arrA0[1] = i;
-                }
-            }
-            //Check if the count of negative dot products for vertex A0 needs to be updated
-            if (dotA1) {
-                //edgeA[1] is likely inside the face
-                countA1++;
-            }
-            else {
-                //Save the edge in B that has results in a positive dot product
-                //There can be at most two positive dot prodects, so this if-statement is enough
-                if (arrA1[0] == -1) {
-                    arrA1[0] = i;
-                }
-                else {
-                    arrA1[1] = i;
-                }
-            }
-        }
-        
-        //If edgeA is not entirely inside faceB (simplexB), then we need
-        //to get the intersection points. If a vertex is inside faceB then
-        //the intersection point is the same as the vertex
-        //So, according to the count of negative dot products, get the intersection points
-        
-        //Get intersection point from vertex A0
-        Point_3D A0 = Get_intersection_with_face_edge(countA0, arrA0, edgeA[0], edgeA[1], edges, GNP_B);
-        
-        //Check for an error
-        if (A0.flag == -1) {
-            hout<<"Error in Find_point_b_for_edge_in_simplex_a when calculating an intersecting point (1)"<<endl;
-            return 0;
-        }
-        
-        //Get intersection point from vertex A1
-        Point_3D A1 = Get_intersection_with_face_edge(countA1, arrA1, edgeA[1], edgeA[0], edges, GNP_B);
-        
-        //Check for an error
-        if (A1.flag == -1) {
-            hout<<"Error in Find_point_b_for_edge_in_simplex_a when calculating an intersecting point (2)"<<endl;
-            return 0;
-        }
-        
-        //Get the average of the intersection points
-        PointB = (A0 + A1)*0.5;
-        
-        //To calculate PointA, move PointB towards simplexA
-        PointA = PointB - disp;
-    }
-    else if (simplexB.size() == 3) {
-        
-        //Deal with the case when a set has size three and the other has size two
-        //(which should not happen)
-        if (!Deal_with_simplex_size_3(GNP_A, GNP_B, simplexA, simplexB, PointA, PointB)) {
-            hout<<"Error in Find_closest_simplices_of_gnps_in_contact when calling Deal_with_simplex_size_3"<<endl;
-            return 0;
-        }
-        
     }
     else {
-        hout<<"Error in Find_point_b_for_edge_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 2 or 4 (temporarily deals with size 3)"<<endl;
+        
+        //Edges are not colinear, so find the intersection of the edges
+        
+        //Find the lambda value of the intersection using edgeB (simplexB)
+        //Lambda = 0 at GNP_B.vertices[simplexB[0]]
+        //P = GNP_B.vertices[simplexB[0]] +
+        //      (GNP_B.vertices[simplexB[1]] - GNP_B.vertices[simplexB[0]])*lambda
+        double lambda = Lambda_of_two_lines(GNP_B.vertices[simplexB[1]], GNP_B.vertices[simplexB[0]], edgeA[0], edgeA[1]);
+        
+        //Calculate the intersection on edgeB (simplexB)
+        PointB = GNP_B.vertices[simplexB[0]] + eB*lambda;
+    }
+    
+    //Calculate PointA by using the calculated displacement
+    PointA = PointB - disp;
+    
+    return 1;
+}
+//This function finds the contact point for an edge-face contact
+int Hoshen_Kopelman::Find_point_for_edge_face_contact(const int &face_sum, const GNP &GNP_A, const GNP &GNP_B, const Point_3D edgeA[], const Point_3D &disp, Point_3D &PointA, Point_3D &PointB)
+{
+    //Find centroid of the intersection of the faces defined by the vertices in
+    //simplices A and B
+    
+    //Get the edges and normals of simplexB
+    vector<Edge> edges(4);
+    vector<int> normals(4);
+    if (!Get_edges_of_face(face_sum, edges, normals)) {
+        hout<<"Error in Find_point_for_edge_face_contact when calling Get_edges_of_face"<<endl;
         return 0;
     }
+    
+    //Variables to count the negative dot products
+    int countA0 = 0, countA1 = 0;
+    
+    //Arrays to store positive dot products
+    int arrA0[] = {-1,-1};
+    int arrA1[] = {-1,-1};
+    
+    //Go though all edges of faceB and find the one that intersects the edgeA
+    for (int i = 0; i < 4; i++) {
+        
+        //Vertex 1 of current edge
+        int v1i = edges[i].v1;
+        
+        //Current normal
+        int Ni = normals[i];
+        
+        //Check in which side of the edge the two points are
+        int dotA0 = (edgeA[0] - GNP_B.vertices[v1i]).dot(GNP_B.faces[Ni].N) < Zero;
+        int dotA1 = (edgeA[1] - GNP_B.vertices[v1i]).dot(GNP_B.faces[Ni].N) < Zero;
+        
+        //Check if the count of negative dot products for vertex A0 needs to be updated
+        if (dotA0) {
+            //edgeA[0] is likely inside the face
+            countA0++;
+        }
+        else {
+            //Save the edge in B that has results in a positive dot product
+            //There can be at most two positive dot prodects, so this if-statement is enough
+            if (arrA0[0] == -1) {
+                arrA0[0] = i;
+            }
+            else {
+                arrA0[1] = i;
+            }
+        }
+        //Check if the count of negative dot products for vertex A0 needs to be updated
+        if (dotA1) {
+            //edgeA[1] is likely inside the face
+            countA1++;
+        }
+        else {
+            //Save the edge in B that has results in a positive dot product
+            //There can be at most two positive dot prodects, so this if-statement is enough
+            if (arrA1[0] == -1) {
+                arrA1[0] = i;
+            }
+            else {
+                arrA1[1] = i;
+            }
+        }
+    }
+    
+    //If edgeA is not entirely inside faceB (simplexB), then we need
+    //to get the intersection points. If a vertex is inside faceB then
+    //the intersection point is the same as the vertex
+    //So, according to the count of negative dot products, get the intersection points
+    
+    //Get intersection point from vertex A0
+    Point_3D A0 = Get_intersection_with_face_edge(countA0, arrA0, edgeA[0], edgeA[1], edges, GNP_B);
+    
+    //Check for an error
+    if (A0.flag == -1) {
+        hout<<"Error in Find_point_for_edge_face_contact when calculating an intersecting point (1)"<<endl;
+        return 0;
+    }
+    
+    //Get intersection point from vertex A1
+    Point_3D A1 = Get_intersection_with_face_edge(countA1, arrA1, edgeA[1], edgeA[0], edges, GNP_B);
+    
+    //Check for an error
+    if (A1.flag == -1) {
+        hout<<"Error in Find_point_for_edge_face_contact when calculating an intersecting point (2)"<<endl;
+        return 0;
+    }
+    
+    //Get the average of the intersection points
+    PointB = (A0 + A1)*0.5;
+    
+    //To calculate PointA, move PointB towards simplexA
+    PointA = PointB - disp;
     return 1;
 }
 //This function generates the vector of edges and the vector of normals of a given GNP face

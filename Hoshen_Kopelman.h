@@ -74,6 +74,8 @@ public:
     int Find_junction_points_in_gnps(const vector<int> &simplexA, const vector<int> &simplexB, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, const int &face_sumA, const int &face_sumB, Point_3D &PointA, Point_3D &PointB);
     int Find_point_b_for_vertex_in_simplex_a(const vector<int> &simplexB, const GNP &GNP_B, const Point_3D &N, const double &distance, const Point_3D &PointA, Point_3D &PointB);
     int Find_point_b_for_edge_in_simplex_a(const vector<int> &simplexA, const vector<int> &simplexB, const int &face_sum, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, Point_3D &PointA, Point_3D &PointB);
+    int Find_point_for_edge_edge_contact(const GNP &GNP_A, const GNP &GNP_B, const Point_3D edgeA[], const vector<int> &simplexB, const Point_3D &disp, Point_3D &PointA, Point_3D &PointB);
+    int Find_point_for_edge_face_contact(const int &face_sum, const GNP &GNP_A, const GNP &GNP_B, const Point_3D edgeA[], const Point_3D &disp, Point_3D &PointA, Point_3D &PointB);
     int Get_edges_of_face(const int &face_sum, vector<Edge> &edges, vector<int> &normals);
     Point_3D Get_intersection_with_face_edge(const int &countA, const int arrA[], const Point_3D &A0, const Point_3D &A1, const vector<Edge> &edges, const GNP GNP_B);
     double Lambda_of_two_lines(const Point_3D &P_in, const Point_3D &P_out, const Point_3D &edge1, const Point_3D &edge2);
