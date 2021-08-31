@@ -83,12 +83,12 @@ foutstream& foutstream:: operator <<( unsigned int n )
 	return *this;
 }
 //---------------------------------------------------------------------------
-//foutstream& foutstream:: operator <<( size_t n )
-//{
-//	(*out_stream) << n ;
-//	out_stream->flush();
-//	return *this;
-//}
+foutstream& foutstream:: operator <<( size_t n )
+{
+	(*out_stream) << n ;
+	out_stream->flush();
+	return *this;
+}
 //---------------------------------------------------------------------------
 foutstream& foutstream:: operator <<( long n )
 {

@@ -47,7 +47,7 @@ public:
 	foutstream& operator << (unsigned short n);
 	foutstream& operator << (int n);
 	foutstream& operator << (unsigned int n);
-//	foutstream& operator << (size_t n);
+	foutstream& operator << (size_t n);
 	foutstream& operator << (long n);
 	foutstream& operator << (unsigned long n);
 	foutstream& operator << (float f);
