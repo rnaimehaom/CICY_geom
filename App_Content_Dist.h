@@ -28,7 +28,6 @@ public:
     
     //Member Functions
     int Calculate_content_on_each_window(Input *Init)const;
-    int Update_observation_window_geometry(const int &window, const int &window_domain, const Geom_sample &sample_geo, const string particle_type, cuboid &window_geo)const;
     int Calculate_content_in_window(const cuboid &window_geo, const string &particle_type, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure, const vector<int> &cnts_inside, const vector<GNP> &gnps, const vector<int> &gnps_inside)const;
 };
 
