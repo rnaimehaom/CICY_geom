@@ -106,6 +106,16 @@ int main(int argc, char** argv)
         }
         delete ContentDist;
     }
+    else if (Init->app_name.str == "Network_From_Abaqus")
+    {
+        //Create an object to call the application that reads a network from an Abaqus database
+        App_Network_From_Abaqus* NetworkAbqs = new App_Network_From_Abaqus;
+        if (!NetworkAbqs->Nanoparticle_resistor_network_from_odb(Init)) {
+            hout << "Error in Nanoparticle_resistor_network_from_odb" << endl;
+            return 0;
+        }
+        delete NetworkAbqs;
+    }
     else {
         //Delete Init object and terminate with error
         delete Init;

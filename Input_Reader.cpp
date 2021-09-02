@@ -306,9 +306,11 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
     //Read keyword for creating a new network or reading a network from a file
 	istringstream istr2(Get_Line(infile));
 	istr2 >> simu_para.create_read_network;
-    if(simu_para.create_read_network!="Create_Network"&&simu_para.create_read_network!="Read_Network"&&simu_para.create_read_network!="Network_From_Seeds")
+    if(simu_para.create_read_network!="Create_Network"&&simu_para.create_read_network!="Read_Network_Abq"&&simu_para.create_read_network!="Network_From_Seeds")
     {
-        hout << "Error: Invalid keyword. Valid options are 'Create_Network', 'Read_Network', or 'Network_From_Seeds'. Input was: " << simu_para.create_read_network << endl; return 0; }
+        hout << "Error: Invalid keyword. Valid options are 'Create_Network', 'Read_Network_Abq', or 'Network_From_Seeds'. Input was: " << simu_para.create_read_network << endl; 
+        return 0; 
+    }
     
     //----------------------------------------------------------------------
     //If the network is generated from some seeds, then read them
@@ -347,87 +349,96 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
             }
         }
     }
-    
-    //Read the nanoparticle content unless read from file
-    //If the network is generated randomly or from seeds, these parameters need to be read
-    if (simu_para.create_read_network!="Read_Network") {
-        
-        //Read the content
-        istringstream istr_content(Get_Line(infile));
-        istr_content >> simu_para.criterion;
-        //
-        if(simu_para.criterion=="vol") {
-            istr_content >> simu_para.volume_fraction;
+    else if (simu_para.create_read_network != "Read_Network_Abq")
+    {
+        //The network is read from an Abaqus database
 
-            if(simu_para.volume_fraction > 1||simu_para.volume_fraction < Zero){
-                hout << "Error: The volume fraction must be between 0 and 1. Input was: "<<simu_para.volume_fraction<<endl; return 0;
+        //Read the path to the odb file (the database)
+        istringstream istr_odb_file(Get_Line(infile));
+        istr_odb_file >> simu_para.odb_file;
+
+        //Read the name of the step in the Abaqus simulation
+        istringstream istr_step(Get_Line(infile));
+        istr_step >> simu_para.step_name;
+    }
+
+    //Read the nanoparticle content
+    // 
+    //Read the content
+    istringstream istr_content(Get_Line(infile));
+    istr_content >> simu_para.criterion;
+    //
+    if (simu_para.criterion == "vol") {
+        istr_content >> simu_para.volume_fraction;
+
+        if (simu_para.volume_fraction > 1 || simu_para.volume_fraction < Zero) {
+            hout << "Error: The volume fraction must be between 0 and 1. Input was: " << simu_para.volume_fraction << endl; return 0;
+        }
+    }
+    else if (simu_para.criterion == "wt")
+    {
+        istr_content >> simu_para.weight_fraction;
+
+        if (simu_para.weight_fraction > 1 || simu_para.weight_fraction < Zero) {
+            hout << "Error: The weight fraction must be between 0 and 1. Input was:" << simu_para.weight_fraction << endl; return 0;
+        }
+    }
+    else {
+        hout << "Error: The content of nanoparticles can only be specified in volume (vol) or weight (wt) fraction. Input was: " << simu_para.criterion << endl; return 0;
+    }
+
+    //If mixed or hybrid particles were selected, then check if mass ratio or CNT density on GNPs
+    //is specified
+    if (simu_para.particle_type == "Hybrid_particles" || simu_para.particle_type == "GNP_CNT_mix") {
+        istringstream istr_mixed(Get_Line(infile));
+        istr_mixed >> simu_para.mixed;
+
+        //Check if mass ratio is defined
+        if (simu_para.mixed == "mass_ratio") {
+
+            /*if (simu_para.criterion != "wt") {
+                hout << "Error: If nanoparticle content is specified in weight fraction, then CNT/GNP mass ratio must specified, not volume faction"<< endl; return 0;
+            }*/
+
+            //Read the mass ratio
+            istr_mixed >> simu_para.mass_ratio;
+            if (simu_para.mass_ratio < Zero) {
+                hout << "Error: The CNT/GNP mass ratio must be positive. Input was: " << simu_para.mass_ratio << endl; return 0;
             }
         }
-        else if(simu_para.criterion=="wt")
-        {
-            istr_content >> simu_para.weight_fraction;
+        //Check if volume ratio is defined
+        else if (simu_para.mixed == "volume_ratio") {
 
-            if(simu_para.weight_fraction > 1||simu_para.weight_fraction < Zero) {
-                hout << "Error: The weight fraction must be between 0 and 1. Input was:"<<simu_para.weight_fraction<< endl; return 0;
+            if (simu_para.criterion != "vol") {
+                hout << "Error: If nanoparticle content is specified in volume fraction, then CNT/GNP volume ratio must specified, not weight faction" << endl; return 0;
+            }
+
+            //Read the volume ratio
+            istr_mixed >> simu_para.volume_ratio;
+            if (simu_para.volume_ratio < Zero) {
+                hout << "Error: The CNT/GNP volume ratio must be positive. Input was: " << simu_para.volume_ratio << endl; return 0;
+            }
+        }
+        //Check if CNT density on GNPs is defined
+        else if (simu_para.mixed == "density") {
+
+            //This option is only valid for hybrid particles, so double check the particle type
+            if (simu_para.particle_type != "Hybrid_particles") {
+                hout << "Error: The CNT density on GNPs must can only specified for hybrid particles. It was specified for mixed particles." << endl; return 0;
+            }
+            //This option is only valid if content is specified as volume fraction
+            if (simu_para.criterion != "vol") {
+                hout << "Error: If CNT density on GNPs is specified, then the nanoparticle content must be specified in volume fraction." << endl; return 0;
+            }
+
+            //Read the CNT density
+            istr_mixed >> simu_para.cnt_gnp_density;
+            if (simu_para.cnt_gnp_density < Zero) {
+                hout << "Error: The CNT density on GNPs must be positive. Input was: " << simu_para.cnt_gnp_density << endl; return 0;
             }
         }
         else {
-            hout << "Error: The content of nanoparticles can only be specified in volume (vol) or weight (wt) fraction. Input was: "<<simu_para.criterion<< endl; return 0;
-        }
-        
-        //If mixed or hybrid particles were selected, then check if mass ratio or CNT density on GNPs
-        //is specified
-        if (simu_para.particle_type == "Hybrid_particles" || simu_para.particle_type == "GNP_CNT_mix") {
-            istringstream istr_mixed(Get_Line(infile));
-            istr_mixed >> simu_para.mixed;
-            
-            //Check if mass ratio is defined
-            if (simu_para.mixed=="mass_ratio") {
-                
-                /*if (simu_para.criterion != "wt") {
-                    hout << "Error: If nanoparticle content is specified in weight fraction, then CNT/GNP mass ratio must specified, not volume faction"<< endl; return 0;
-                }*/
-                
-                //Read the mass ratio
-                istr_mixed >> simu_para.mass_ratio;
-                if (simu_para.mass_ratio < Zero) {
-                    hout << "Error: The CNT/GNP mass ratio must be positive. Input was: "<<simu_para.mass_ratio<< endl; return 0;
-                }
-            }
-            //Check if volume ratio is defined
-            else if (simu_para.mixed=="volume_ratio") {
-                
-                if (simu_para.criterion != "vol") {
-                    hout << "Error: If nanoparticle content is specified in volume fraction, then CNT/GNP volume ratio must specified, not weight faction"<< endl; return 0;
-                }
-                
-                //Read the volume ratio
-                istr_mixed >> simu_para.volume_ratio;
-                if (simu_para.volume_ratio < Zero) {
-                    hout << "Error: The CNT/GNP volume ratio must be positive. Input was: "<<simu_para.volume_ratio<< endl; return 0;
-                }
-            }
-            //Check if CNT density on GNPs is defined
-            else if (simu_para.mixed=="density") {
-                
-                //This option is only valid for hybrid particles, so double check the particle type
-                if (simu_para.particle_type != "Hybrid_particles") {
-                    hout << "Error: The CNT density on GNPs must can only specified for hybrid particles. It was specified for mixed particles."<< endl; return 0;
-                }
-                //This option is only valid if content is specified as volume fraction
-                if (simu_para.criterion != "vol") {
-                    hout << "Error: If CNT density on GNPs is specified, then the nanoparticle content must be specified in volume fraction."<< endl; return 0;
-                }
-                
-                //Read the CNT density
-                istr_mixed >> simu_para.cnt_gnp_density;
-                if (simu_para.cnt_gnp_density < Zero) {
-                    hout << "Error: The CNT density on GNPs must be positive. Input was: "<<simu_para.cnt_gnp_density<< endl; return 0;
-                }
-            }
-            else {
-                hout << "Error: The relative content of nanoparticles can only be specified in mass ratio (mass_ratio), volume ratio (volume_ratio), or CNT density on GNPs (density). Input was: "<<simu_para.mixed<< endl; return 0;
-            }
+            hout << "Error: The relative content of nanoparticles can only be specified in mass ratio (mass_ratio), volume ratio (volume_ratio), or CNT density on GNPs (density). Input was: " << simu_para.mixed << endl; return 0;
         }
     }
     

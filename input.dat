@@ -1,6 +1,13 @@
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Please input the application name
+%Please define the application
 Application
+%Please input the application name, options are:
+%3D_Electrical_Network: Generate a random network of nanostructures and calculate its 
+%    electrical resistance and resistivity
+%Content_Distribution: Perform a study on the distribution of nanostructures over different
+%    observation windows
+%Network_From_Abaqus: Read a network of nanostructures from an Abaqus database (odb file)
+%    and calculate its electrical resistance and resistivity
 3D_Electrical_Network
 %
 %
@@ -21,11 +28,14 @@ Test
 %GNP_cuboids for GNPs,
 %GNP_CNT_mix for CNTs and GNPs non-hybrid mixed fillers, or
 %Hybrid_particles for GNP-CNT hybrid particles
-Hybrid_particles
+GNP_CNT_mix 
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %This keyword defines if the nanoparticle network is created or read from a file.
 %There are three possible options: 'Read_Network', 'Create_Network', and 'Network_From_Seeds'
-%Read_Network: to read the data of network from a file
+%Read_Network_Abq: to read a network from an Abaqus database
+%    In the following two lines specify the path to the Abaqus database (odb file) and the name of the Step
+%    in Abaqus that performed the deformation. If the database is located in the same directory as the
+%    executable, then only the filename may be specified. 
 %Create_Network: to generate a new structure.
 %Network_From_Seeds: to generate a new structure from specific seeds (positive integers) for the
 %    random number generators. All seeds need to be specified in the next line separated by a space

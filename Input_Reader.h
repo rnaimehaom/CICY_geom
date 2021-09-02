@@ -36,6 +36,10 @@ struct Simu_para{
     bool mark;
     string simu_name;
     string create_read_network;
+    //Path to obd file or name if it is in the same folder as the executable
+    string odb_file;
+    //Name of the simulation step in Abaqus
+    string step_name;
     int sample_num;
     int avoid_resistance;
     int resistances[3];
