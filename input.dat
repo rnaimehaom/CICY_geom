@@ -35,7 +35,8 @@ GNP_CNT_mix
 %Read_Network_Abq: to read a network from an Abaqus database
 %    In the following two lines specify the path to the Abaqus database (odb file) and the name of the Step
 %    in Abaqus that performed the deformation. If the database is located in the same directory as the
-%    executable, then only the filename may be specified. 
+%    executable, then only the filename may be specified. When specifying the fullpath, use double backslashes
+%    for instance: C:\\Users\\username\\Documents\\Job-1.odb 
 %Create_Network: to generate a new structure.
 %Network_From_Seeds: to generate a new structure from specific seeds (positive integers) for the
 %    random number generators. All seeds need to be specified in the next line separated by a space

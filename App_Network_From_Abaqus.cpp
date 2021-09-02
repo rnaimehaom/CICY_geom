@@ -38,11 +38,12 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     odb_initializeAPI();
 
     //Open Abaqus database using the name/path intidated in the input file
-    odb_String odbFilePath = "C:\\Users\\grafenicas\\Documents\\CNTs_embedde_elements\\Job-1.odb";
-    odb_Odb& odb = openOdb(odbFilePath);
+    //Use a C string, since that seems to be equivalent to (or able to be cast as) an odb_String
+    //odb_String odbFilePath = "C:\\Users\\grafenicas\\Documents\\CNTs_embedde_elements\\Job-1.odb";
+    odb_Odb& odb = openOdb(Init->simu_para.odb_file.c_str());
 
     //Get all frames from the steps and save them in a (pointer) variable
-    odb_SequenceFrame& allFramesInStep = odb.steps()["Step-1"].frames();
+    odb_SequenceFrame& allFramesInStep = odb.steps()[Init->simu_para.step_name.c_str()].frames();
     //Get the number of frames in the database
     int n_frames = allFramesInStep.size();
     cout << "There are " << n_frames << " fames in the Abaqus database" << endl;
