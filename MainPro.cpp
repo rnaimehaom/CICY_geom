@@ -69,11 +69,19 @@ int main(int argc, char** argv)
     hout<<"======================================================" << endl;
     hout<<"Reading input file......"<<endl;
     Input *Init = new Input;
+    //Initialize input data with default values
     if(Init->Data_Initialization())
     {
-        if(Init->Read_input_file(infile)==0) return 0;
+        //Read the input file
+        if (!Init->Read_input_file(infile)) {
+            hout << "Error when reading input file." << endl;
+            return 0;
+        }
     }
-    else return 0;
+    else {
+        hout << "Error when initializing input data." << endl;
+        return 0;
+    }
     it_end= time(NULL);
     hout<<"Input file read in "<<(int)(it_end-it_begin)<<" secs."<<endl;
     
@@ -118,8 +126,8 @@ int main(int argc, char** argv)
     }
     else {
         //Delete Init object and terminate with error
-        delete Init;
         hout<<"Error: Invalid application name. Input was:"<<Init->app_name.str<<endl;
+        delete Init;
         return 0;
     }
     
