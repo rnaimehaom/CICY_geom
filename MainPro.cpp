@@ -13,6 +13,7 @@ using namespace hns;
 #include "Input_Reader.h"
 #include "App_Network_3D.h"
 #include "App_Content_Dist.h"
+#include "App_Network_From_Abaqus.h"
 
 int main(int argc, char** argv)
 {
