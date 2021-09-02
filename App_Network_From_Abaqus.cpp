@@ -146,6 +146,9 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     }
 
     //Close Abaqus database
+    odb.close();
+
+    //Finalize usage of Abaqus C++ API
     odb_finalizeAPI();
 
     return 1;
