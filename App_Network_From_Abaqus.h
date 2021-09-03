@@ -18,7 +18,6 @@
 #include "Electrical_analysis.h"
 #include "Hoshen_Kopelman.h"
 #include "Input_Reader.h"
-#include "Network_From_Abaqus.h"
 //Include for Abaqus
 #include <odb_API.h>
 

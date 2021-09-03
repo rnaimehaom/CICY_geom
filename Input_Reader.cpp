@@ -298,8 +298,12 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
     //GNP_CNT_mix for mixed CNT and GNP without hybridizing
     istringstream istr_perticle_type(Get_Line(infile));
     istr_perticle_type >> simu_para.particle_type;
-    if (simu_para.particle_type != "CNT_wires" && simu_para.particle_type != "CNT_deposit" && simu_para.particle_type != "GNP_cuboids" && simu_para.particle_type != "Hybrid_particles" && simu_para.particle_type != "GNP_CNT_mix") {
-        hout << "Error: the type of particles shoud be one of the following: CNT_wires, CNT_deposit, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input was: "<<simu_para.particle_type<< endl;
+    if (simu_para.particle_type == "Hybrid_particles") {
+        hout << "Hybrid particles are not implemented yet" << endl;
+        return 0;
+    }
+    else if (simu_para.particle_type != "CNT_wires" && simu_para.particle_type != "CNT_deposit" && simu_para.particle_type != "GNP_cuboids" && simu_para.particle_type != "GNP_CNT_mix") {
+        hout << "Error: the type of particles shoud be one of the following: CNT_wires, CNT_deposit, GNP_cuboids or GNP_CNT_mix. Input was: "<<simu_para.particle_type<< endl;
         return 0;
     }
     

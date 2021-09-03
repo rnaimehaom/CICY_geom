@@ -84,7 +84,10 @@ int main(int argc, char** argv)
     }
     it_end= time(NULL);
     hout<<"Input file read in "<<(int)(it_end-it_begin)<<" secs."<<endl;
-    
+
+    //Close input file
+    infile.close();
+
     //----------------------------------------------------------------------
     //Check which application is being called
     if(Init->app_name.str=="3D_Electrical_Network")
