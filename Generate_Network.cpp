@@ -3395,21 +3395,11 @@ int Generate_Network::Generate_gnp(const GNP_Geo &gnp_geo, GNP &gnp, mt19937 &en
     //Calculate volume
     gnp.volume = gnp.l*gnp.l*gnp.t;
     
-    //The GNP in local coordinates it is assumed to have its center at the origin, thus its vertices
-    //are at +/- l/2 in x and y, and +/- t in z in local coordinates
-    //After applying the displacement and rotation (that are already in the gnp variable),
-    //vertices are mapped to the global coordinates
-    //
-    //Top surface
-    gnp.vertices[0] = (Point_3D( gnp.l/2, gnp.l/2,  gnp.t/2)).rotation(gnp.rotation, gnp.center);
-    gnp.vertices[1] = (Point_3D(-gnp.l/2, gnp.l/2,  gnp.t/2)).rotation(gnp.rotation, gnp.center);
-    gnp.vertices[2] = (Point_3D(-gnp.l/2,-gnp.l/2,  gnp.t/2)).rotation(gnp.rotation, gnp.center);
-    gnp.vertices[3] = (Point_3D( gnp.l/2,-gnp.l/2,  gnp.t/2)).rotation(gnp.rotation, gnp.center);
-    //Bottom surface
-    gnp.vertices[4] = (Point_3D( gnp.l/2, gnp.l/2, -gnp.t/2)).rotation(gnp.rotation, gnp.center);
-    gnp.vertices[5] = (Point_3D(-gnp.l/2, gnp.l/2, -gnp.t/2)).rotation(gnp.rotation, gnp.center);
-    gnp.vertices[6] = (Point_3D(-gnp.l/2,-gnp.l/2, -gnp.t/2)).rotation(gnp.rotation, gnp.center);
-    gnp.vertices[7] = (Point_3D( gnp.l/2,-gnp.l/2, -gnp.t/2)).rotation(gnp.rotation, gnp.center);
+    //Calcualte the coordinates of the GNP vertices
+    if (!Obtain_gnp_vertex_coordinates(gnp)) {
+        hout << "Error in Generate_gnp when calling Obtain_gnp_vertex_coordinates." << endl;
+        return 0;
+    }
     
     //Get the plane equations for the six faces
     if (!Update_gnp_plane_equations(gnp)) {
@@ -3419,6 +3409,29 @@ int Generate_Network::Generate_gnp(const GNP_Geo &gnp_geo, GNP &gnp, mt19937 &en
     
     return 1;
 }
+//This function calculates the vertex coordinates of a GNP
+//Here, it is assumed that the length, thickness, rotation matrix, and center are known
+int Generate_Network::Obtain_gnp_vertex_coordinates(GNP& gnp)const
+{
+    //The GNP in local coordinates is assumed to have its center at the origin
+    //Thus its vertices are at +/- l/2 in x and y, and +/- t in z in local coordinates
+    //After applying the displacement and rotation (that are already in the gnp variable),
+    //vertices are mapped to the global coordinates
+    //
+    //Top surface
+    gnp.vertices[0] = (Point_3D(gnp.l / 2, gnp.l / 2, gnp.t / 2)).rotation(gnp.rotation, gnp.center);
+    gnp.vertices[1] = (Point_3D(-gnp.l / 2, gnp.l / 2, gnp.t / 2)).rotation(gnp.rotation, gnp.center);
+    gnp.vertices[2] = (Point_3D(-gnp.l / 2, -gnp.l / 2, gnp.t / 2)).rotation(gnp.rotation, gnp.center);
+    gnp.vertices[3] = (Point_3D(gnp.l / 2, -gnp.l / 2, gnp.t / 2)).rotation(gnp.rotation, gnp.center);
+    //Bottom surface
+    gnp.vertices[4] = (Point_3D(gnp.l / 2, gnp.l / 2, -gnp.t / 2)).rotation(gnp.rotation, gnp.center);
+    gnp.vertices[5] = (Point_3D(-gnp.l / 2, gnp.l / 2, -gnp.t / 2)).rotation(gnp.rotation, gnp.center);
+    gnp.vertices[6] = (Point_3D(-gnp.l / 2, -gnp.l / 2, -gnp.t / 2)).rotation(gnp.rotation, gnp.center);
+    gnp.vertices[7] = (Point_3D(gnp.l / 2, -gnp.l / 2, -gnp.t / 2)).rotation(gnp.rotation, gnp.center);
+
+    return 1;
+}
+//This function updates the plane equations for a fully generated GNP
 int Generate_Network::Update_gnp_plane_equations(GNP &gnp)const
 {
     //Calculate the plane normals (as unit vectors) and their equations

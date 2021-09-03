@@ -126,6 +126,7 @@ public:
     int Initialize_gnp_subregions(const Geom_sample &sample_geom, int n_subregion[], vector<vector<int> > &sectioned_domain)const;
     int GNP_seeds(const vector<unsigned int> &GNP_seeds, unsigned int net_seeds[])const;
     int Generate_gnp(const GNP_Geo &gnp_geo, GNP &gnp, mt19937 &engine_l, mt19937 &engine_t, uniform_real_distribution<double> &dist)const;
+    int Obtain_gnp_vertex_coordinates(GNP& gnp)const;
     int Update_gnp_plane_equations(GNP &gnp)const;
     int Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const int n_subregions[], GNP &gnp_new, set<int> &subregions_gnp, vector<vector<int> > &sectioned_domain, bool &rejected)const;
     int Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gnp_new, const int n_subregions[], set<int> &subregions)const;

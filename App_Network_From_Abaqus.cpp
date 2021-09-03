@@ -160,6 +160,13 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
 //This function reads the data from a csv file to generate a nanoparticle network
 int App_Network_From_Abaqus::Generate_nanoparticle_network_from_file(const Simu_para& simu_para, const Visualization_flags& vis_flags, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure, vector<GNP>& gnps)const
 {
+    //Read sample geometry
+    if (!Read_sample_geometry(geom_sample))
+    {
+        hout << "Error in Generate_nanoparticle_network_from_file when reading the sample geometry from file" << endl;
+        return 0;
+    }
+
     //Check the type of nanoparticle 
     if (simu_para.particle_type == "CNT_wires" || simu_para.particle_type == "CNT_deposit" || simu_para.particle_type == "GNP_CNT_mix") {
 
@@ -174,7 +181,7 @@ int App_Network_From_Abaqus::Generate_nanoparticle_network_from_file(const Simu_
     else if (simu_para.particle_type == "GNP_cuboids" || simu_para.particle_type == "GNP_CNT_mix") {
 
         //Read the GNP geometry
-        if (!Read_gnp_data_from_csv(gnps))
+        if (!Read_gnp_data_from_csv(geom_sample.sample, gnps))
         {
             hout << "Error in Generate_nanoparticle_network_from_file when calling Read_gnp_data_from_csv." << endl;
             return 0;
@@ -186,13 +193,6 @@ int App_Network_From_Abaqus::Generate_nanoparticle_network_from_file(const Simu_
     }
     else {
         hout << "Error in Generate_nanoparticle_network_from_file: the type of particles shoud be one of the following: CNT_wires, CNT_deposit, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input value was: " << simu_para.particle_type << endl;
-        return 0;
-    }
-
-    //Read sample geometry
-    if (!Read_sample_geometry(geom_sample))
-    {
-        hout << "Error in Generate_nanoparticle_network_from_file when reading the sample geometry from file" << endl;
         return 0;
     }
 
@@ -333,7 +333,7 @@ int App_Network_From_Abaqus::Read_cnt_data_from_csv(vector<Point_3D>& points_cnt
     return 1;
 }
 //This function reads GNP data from a csv file (gnp_data.csv)
-int App_Network_From_Abaqus::Read_gnp_data_from_csv(vector<GNP>& gnps)const
+int App_Network_From_Abaqus::Read_gnp_data_from_csv(const cuboid& sample_geom, vector<GNP>& gnps)const
 {
     //Open the file with the GNP geometric data
     ifstream gnp_file;
@@ -376,21 +376,37 @@ int App_Network_From_Abaqus::Read_gnp_data_from_csv(vector<GNP>& gnps)const
         //Calculate rotation matrix
         new_gnp.rotation = GN.Get_transformation_matrix(theta, phi);
 
-        //Calculate GNP volume
-        new_gnp.volume = new_gnp.l * new_gnp.l * new_gnp.t;
+        //Calculate (or approximate) GNP volume
+        int i;
+        for (i = 0; i < 8; i++)
+        {
+            if (!GN.Is_point_inside_cuboid(sample_geom, new_gnp.vertices[i])) {
+
+                //GNP is partially outside the sample, so approximate volume
+                double gnp_vol = 0.0;
+                if (!GN.Approximate_gnp_volume_inside_sample(sample_geom, new_gnp, gnp_vol)) {
+                    hout << "Error in Read_gnp_data_from_csv when calling Approximate_gnp_volume_inside_sample." << endl;
+                    return 0;
+                }
+                new_gnp.volume = gnp_vol;
+
+                //Terminate the for loop
+                break;
+            }
+        }
+
+        //Check if all vertices were inside the sample
+        if (i == 7)
+        {
+            //All vertices were inside the sample, thus calcualte the volume of the whole GNP
+            new_gnp.volume = new_gnp.l * new_gnp.l * new_gnp.t;
+        }
 
         //Obtain coordinates of GNP vertices
-        //
-        //Top surface
-        new_gnp.vertices[0] = (Point_3D(new_gnp.l / 2, new_gnp.l / 2, new_gnp.t / 2)).rotation(new_gnp.rotation, new_gnp.center);
-        new_gnp.vertices[1] = (Point_3D(-new_gnp.l / 2, new_gnp.l / 2, new_gnp.t / 2)).rotation(new_gnp.rotation, new_gnp.center);
-        new_gnp.vertices[2] = (Point_3D(-new_gnp.l / 2, -new_gnp.l / 2, new_gnp.t / 2)).rotation(new_gnp.rotation, new_gnp.center);
-        new_gnp.vertices[3] = (Point_3D(new_gnp.l / 2, -new_gnp.l / 2, new_gnp.t / 2)).rotation(new_gnp.rotation, new_gnp.center);
-        //Bottom surface
-        new_gnp.vertices[4] = (Point_3D(new_gnp.l / 2, new_gnp.l / 2, -new_gnp.t / 2)).rotation(new_gnp.rotation, new_gnp.center);
-        new_gnp.vertices[5] = (Point_3D(-new_gnp.l / 2, new_gnp.l / 2, -new_gnp.t / 2)).rotation(new_gnp.rotation, new_gnp.center);
-        new_gnp.vertices[6] = (Point_3D(-new_gnp.l / 2, -new_gnp.l / 2, -new_gnp.t / 2)).rotation(new_gnp.rotation, new_gnp.center);
-        new_gnp.vertices[7] = (Point_3D(new_gnp.l / 2, -new_gnp.l / 2, -new_gnp.t / 2)).rotation(new_gnp.rotation, new_gnp.center);
+        if (!GN.Obtain_gnp_vertex_coordinates(new_gnp)) {
+            hout << "Error in Read_gnp_data_from_csv when calling Obtain_gnp_vertex_coordinates." << endl;
+            return 0;
+        }
 
         //Get the plane equations for the six faces
         if (!GN.Update_gnp_plane_equations(new_gnp)) {
