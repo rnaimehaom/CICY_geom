@@ -371,7 +371,7 @@ int App_Network_From_Abaqus::Read_gnp_data_from_csv(const cuboid& sample_geom, v
         ss >> phi; ss.ignore();
         ss >> new_gnp.center.x; ss.ignore();
         ss >> new_gnp.center.y; ss.ignore();
-        ss >> new_gnp.center.z; ss.ignore();
+        ss >> new_gnp.center.z; 
 
         //Calculate rotation matrix
         new_gnp.rotation = GN.Get_transformation_matrix(theta, phi);
