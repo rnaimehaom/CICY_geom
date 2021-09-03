@@ -10,8 +10,6 @@
 
 #include "time.h"
 #include "Hns.h"
-using namespace hns;
-
 #include "Backbone_Network.h"
 #include "Shells.h"
 #include "Contact_grid.h"
@@ -20,6 +18,11 @@ using namespace hns;
 #include "Electrical_analysis.h"
 #include "Hoshen_Kopelman.h"
 #include "Input_Reader.h"
+#include "Network_From_Abaqus.h"
+//Include for Abaqus
+#include <odb_API.h>
+
+using namespace hns;
 
 //---------------------------------------------------------------------------
 class App_Network_From_Abaqus
@@ -31,6 +34,11 @@ public:
 
     //Member Functions
     int Nanoparticle_resistor_network_from_odb(Input* Init)const;
+    //Generate a network of nanoparticles from the data in the Abaqus database
+    int Generate_nanoparticle_network_from_file(const Simu_para& simu_para, const Visualization_flags& vis_flags, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure, vector<GNP>& gnps)const;
+    int Read_cnt_data_from_csv(vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure)const;
+    int Read_gnp_data_from_csv(vector<GNP>& gnps)const;
+    int Read_sample_geometry(Geom_sample& geom_sample)const;
 };
 //---------------------------------------------------------------------------
 #endif
