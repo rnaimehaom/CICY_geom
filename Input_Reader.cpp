@@ -353,7 +353,7 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
             }
         }
     }
-    else if (simu_para.create_read_network != "Read_Network_Abq")
+    else if (simu_para.create_read_network == "Read_Network_Abq")
     {
         //The network is read from an Abaqus database
 
