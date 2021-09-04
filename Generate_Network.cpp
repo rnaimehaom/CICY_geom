@@ -77,7 +77,7 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         return 0;
     }
     else {
-        hout << "Error: the type of particles shoud be one of the following: CNT_wires, CNT_deposit, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input value was: " << simu_para.particle_type << endl;
+        hout << "Error: the type of particles should be one of the following: CNT_wires, CNT_deposit, GNP_cuboids, or GNP_CNT_mix. Input value was: " << simu_para.particle_type << endl;
         return 0;
     }
     

@@ -26,8 +26,6 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     vector<GNP> gnps;
     //GNP points (only those needed are stored)
     vector<Point_3D> points_gnp;
-    //GNP structure, each structure_gnp[i] referes to the points in GNP_i
-    vector<vector<long int> > structure_gnp;
 
     //Shell vectors (used to remove nanoparticles when reducing observation window size)
     vector<vector<int> > shells_cnts;
@@ -65,6 +63,9 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     //Use a C string, since that seems to be equivalent to (or able to be cast as) an odb_String
     odb_Odb& odb = openOdb(Init->simu_para.odb_file.c_str());
 
+    //Access the root assembly
+    odb_Assembly& root_assy = odb.rootAssembly();
+
     //Get all frames from the steps and save them in a (pointer) variable
     odb_SequenceFrame& allFramesInStep = odb.steps()[Init->simu_para.step_name.c_str()].frames();
     //Get the number of frames in the database
@@ -97,6 +98,9 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
         {
             //
         }
+
+        //GNP structure, each structure_gnp[i] referes to the points in GNP_i
+        vector<vector<long int> > structure_gnp;
 
         //----------------------------------------------------------------------
         //Determine the local networks in cutoff windows
@@ -195,7 +199,7 @@ int App_Network_From_Abaqus::Generate_nanoparticle_network_from_file(const Simu_
         return 0;
     }
     else {
-        hout << "Error in Generate_nanoparticle_network_from_file: the type of particles shoud be one of the following: CNT_wires, CNT_deposit, GNP_cuboids, Hybrid_particles or GNP_CNT_mix. Input value was: " << simu_para.particle_type << endl;
+        hout << "Error in Generate_nanoparticle_network_from_file: the type of particles should be one of the following: CNT_wires, CNT_deposit, GNP_cuboids, or GNP_CNT_mix. Input value was: " << simu_para.particle_type << endl;
         return 0;
     }
 
@@ -494,5 +498,99 @@ int App_Network_From_Abaqus::Read_sample_geometry(Geom_sample& geom_sample)const
     sample_file.close();
 
     return 1;
+}
+//This functions adds the displacements to the CNTs, GNPs and sample
+int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const
+{
+    //Apply displacements to sample
+
+
+    //Check the type of nanoparticle 
+    if (particle_type == "CNT_wires" || particle_type == "CNT_deposit" || particle_type == "GNP_CNT_mix") {
+
+        //Apply displacements to CNT points
+        if (!Apply_displacements_to_cnts(structure, root_assy, current_frame, n_cnts, points_cnt))
+        {
+            hout << "Error in Apply_displacements_from_Abaqus when calling Apply_displacements_to_cnts" << endl;
+            return 0;
+        }
+    }
+    else if (particle_type == "GNP_cuboids" || particle_type == "GNP_CNT_mix") {
+
+        //Apply displacements to GNP vertices
+
+    }
+    else if (particle_type == "Hybrid_particles") {
+        hout << "Hybrid particles not yet implemented" << endl;
+        return 0;
+    }
+    else {
+        hout << "Error in Apply_displacements_from_Abaqus: the type of particles should be one of the following: CNT_wires, CNT_deposit, GNP_cuboids, or GNP_CNT_mix. Input value was: " << particle_type << endl;
+        return 0;
+    }
+
+    return 1;
+}
+//This function applies displacements to CNT points
+int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_Frame& current_frame, const int& n_cnts, vector<Point_3D>& points_cnt)const
+{
+    //Access displacement field ("U") in the current frame
+    odb_FieldOutput& fieldU = current_frame.fieldOutputs()["U"];
+
+    //Iterate over the CNTs in the sample
+    for (size_t i = 0; i < structure.size(); i++)
+    {
+        //Get the name of the set
+        //Numbering of sets starts at 1
+        string set_name = Get_cnt_set_name((int)i+1);
+
+        //Access set from root assembly
+        odb_Set& cnt_set = root_assy.nodeSets()[set_name.c_str()];
+
+        //Get the displacement object of the set
+        odb_FieldOutput cnt_disp = fieldU.getSubset(cnt_set);
+
+        //Get the values of the displacement object
+        const odb_SequenceFieldValue& vals = cnt_disp.values();
+        //Output size of values
+        //cout << "values.size=" << vals.size() << endl;
+
+        //Check there is the same number of points in the CNT and in the set
+        if (structure[i].size() != vals.size())
+        {
+            hout << "Error in Apply_displacements_to_cnts. The number of points in CNT " << i << " (" << structure[i].size() << " points) is different from the number of points in set " << set_name << " ("<< vals.size() << " points)." << endl;
+        }
+
+        //Iterate over the values, i.e., the points in the current CNT
+        for (int j = 0; j < vals.size(); j++)
+        {
+            //Get current point number
+            long int P = structure[i][j];
+            
+            //Get current values
+            const odb_FieldValue val = vals[j];
+            //Output node label
+            //cout << "  Node: " << val.nodeLabel() << endl;
+            //Get the data of the displacements
+            int numComp = 0;
+            const float* const data = val.data(numComp);
+
+            //Displacements are in data, where:
+            //data[0] corresponds to displacement in x
+            //data[1] corresponds to displacement in y
+            //data[2] corresponds to displacement in z            
+            //Add these displacement to point P
+            points_cnt[P].x = (double)data[0];
+            points_cnt[P].y = (double)data[1];
+            points_cnt[P].z = (double)data[2];
+        }
+    }
+
+    return 1;
+}
+//This function generates the set name of CNT i, which follows the convention: CNT-i-NODES
+string App_Network_From_Abaqus::Get_cnt_set_name(const int& cnt_i)const
+{
+    return ("CNT-"+to_string(cnt_i)+"-NODES");
 }
 //===========================================================================

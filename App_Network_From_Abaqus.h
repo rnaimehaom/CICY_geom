@@ -38,6 +38,11 @@ public:
     int Read_cnt_data_from_csv(vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure)const;
     int Read_gnp_data_from_csv(const cuboid& sample_geom, vector<GNP>& gnps)const;
     int Read_sample_geometry(Geom_sample& geom_sample)const;
+    int Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const;
+    int Apply_displacements_to_sample(odb_Assembly& root_assy, odb_Frame& current_frame, Geom_sample& geom_sample)const;
+    int Apply_displacements_to_cnts(const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_Frame& current_frame, const int& n_cnts, vector<Point_3D>& points_cnt)const;
+    string Get_cnt_set_name(const int& cnt_i)const;
+    int Apply_displacements_to_gnps(odb_Assembly& root_assy, odb_Frame& current_frame, vector<GNP>& gnps)const;
 };
 //---------------------------------------------------------------------------
 #endif
