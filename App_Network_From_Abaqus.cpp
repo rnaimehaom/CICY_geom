@@ -71,7 +71,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     int n_frames = allFramesInStep.size();
     hout << endl << "There are " << n_frames << " frames in the Abaqus database" << endl;
 
-    /* /Iterate over the number of frames
+    //Iterate over the number of frames
     for (int i = 0; i < n_frames; i++)
     {
         hout << "============================================================================" << endl;
@@ -150,7 +150,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
 
         it1 = time(NULL);
         hout << "Iteration " << i + 1 << " time: " << (int)(it1 - it0) << " secs." << endl;
-    }*/
+    }
 
     //Close Abaqus database
     odb.close();
@@ -369,7 +369,6 @@ int App_Network_From_Abaqus::Read_gnp_data_from_csv(const cuboid& sample_geom, v
     while (getline(gnp_file, line))
     {
         //Read a line from the file and it in a string stream
-        getline(gnp_file, line);
         stringstream ss(line);
 
         //GNP to store the values read from the file
@@ -378,16 +377,21 @@ int App_Network_From_Abaqus::Read_gnp_data_from_csv(const cuboid& sample_geom, v
         //Variables to store the angles
         double theta, phi;
 
+        //Temporary variable to ignore repetition of GNP side-length
+        //For some reason using ss.ignore() three times in a roll results in an incorrect
+        //reding of the csv file
+        double l_tmp;
+
         //Read the values while ignoring the commas
-        ss >> new_gnp.l;
-        //Ignore the next entry as it is the same as l_GNP (also ignore two commas)
-        ss.ignore(); ss.ignore(); ss.ignore();
+        ss >> new_gnp.l; ss.ignore(); 
+        ss >> l_tmp;  ss.ignore();
         ss >> new_gnp.t; ss.ignore();
         ss >> theta; ss.ignore();
         ss >> phi; ss.ignore();
         ss >> new_gnp.center.x; ss.ignore();
         ss >> new_gnp.center.y; ss.ignore();
         ss >> new_gnp.center.z; 
+        //hout << new_gnp.l << " " << new_gnp.t << " " << theta << " " << phi << " " << new_gnp.center.str() << endl;
 
         //Calculate rotation matrix
         new_gnp.rotation = GN.Get_transformation_matrix(theta, phi);
