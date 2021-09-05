@@ -193,8 +193,30 @@ int App_Network_From_Abaqus::Generate_nanoparticle_network_from_file(const Simu_
         {
             hout << "Error in Generate_nanoparticle_network_from_file when calling Read_cnt_data_from_csv." << endl;
             return 0;
-
         }
+
+        /* /Approximate CNT volume fraction
+        double cnt_vol = 0.0;
+        for (size_t i = 0; i < structure.size(); i++)
+        {
+            //Length of CNT i
+            double l_cnt = 0.0;
+            //Point P0
+            long int P0 = structure[i][0];
+            for (size_t j = 1; j < structure[i].size(); j++)
+            {
+                //Point P1
+                long int P1 = structure[i][j];
+                //Accumulate distance from point j-i (P0) to point j (P1)
+                l_cnt = l_cnt + points_cnt[P0].distance_to(points_cnt[P1]);
+                //Update P0 for the next iteration over j
+                P0 = P1;
+            }
+            //Accumulate CNT volume
+            cnt_vol = cnt_vol + PI * radii[i] * radii[i] * l_cnt;
+        }
+        //Output approximated volume fraction
+        hout << "vol frac=" << cnt_vol / geom_sample.volume << endl;*/
     }
     else if (simu_para.particle_type == "GNP_cuboids" || simu_para.particle_type == "GNP_CNT_mix") {
 
