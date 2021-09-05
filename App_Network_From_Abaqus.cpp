@@ -94,7 +94,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
                 return 0;
             }
             ct1 = time(NULL);
-            hout << "Apply displacements forcurrent frame time: " << (int)(ct1 - ct0) << " secs." << endl;
+            hout << "Apply displacements for current frame time: " << (int)(ct1 - ct0) << " secs." << endl;
         }
 
         //Window geometry is the same as that of the sample
@@ -117,7 +117,8 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
         //From this function I get the internal variables cnts_inside and boundary_cnt
         ct0 = time(NULL);
         //hout<<"Extract_observation_window"<<endl;
-        if (!Cutwins->Extract_observation_window(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, gnps, structure_cnt, radii, points_cnt, shells_cnts, shell_gnps, structure_gnp, points_gnp)) {
+        //For the case of reading data from an Abaqus database, window is always 0
+        if (!Cutwins->Extract_observation_window(0, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, gnps, structure_cnt, radii, points_cnt, shells_cnts, shell_gnps, structure_gnp, points_gnp)) {
             hout << "Error when extracting observation window " << i + 1 << endl;
             return 0;
         }
@@ -128,7 +129,8 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
         //Determine the local networks inside the cutoff windows
         Contact_grid* Contacts = new Contact_grid;
         ct0 = time(NULL);
-        if (!Contacts->Generate_contact_grid(i, Init->simu_para.particle_type, Init->geom_sample, window_geo, Cutwins->cnts_inside, points_cnt, structure_cnt, Cutwins->gnps_inside, gnps)) {
+        //For the case of reading data from an Abaqus database, window is always 0
+        if (!Contacts->Generate_contact_grid(0, Init->simu_para.particle_type, Init->geom_sample, window_geo, Cutwins->cnts_inside, points_cnt, structure_cnt, Cutwins->gnps_inside, gnps)) {
             hout << "Error when generating contact grid" << endl;
             return 0;
         }
@@ -305,7 +307,7 @@ int App_Network_From_Abaqus::Read_cnt_data_from_csv(vector<Point_3D>& points_cnt
         //for the first point of CNT i
         Np++;
 
-        //Iterate overt the remaining points in CNT i to fill the structure[i] vector
+        //Iterate over the remaining points in CNT i to fill the structure[i] vector
         //index i = 0 is ignored since that is the value with which 
         for (int j = 1; j < np; j++)
         {
