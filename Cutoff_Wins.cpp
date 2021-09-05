@@ -27,7 +27,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
     //Trim the CNTs if there are CNTs in the structure
     //Check if the generated structure has CNTs, this happens when the particle type is not GNPs
     if (particle_type != "GNP_cuboids") {
-        
+
         //hout<<"Trim_boundary_cnts"<<endl;
         if (!Trim_boundary_cnts(window, particle_type, sample_geo, window_geo, cnts_geo, points_cnt, structure_cnt, shells_cnt, radii)) {
             hout << "Error in Extract_observation_window when calling Trim_boundary_cnts" << endl;
@@ -111,6 +111,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const string &particle_ty
         
         //Get the current CNT
         int CNT = shells_cnt[window][i];
+        //hout << "CNT=" << CNT << " shell=" << window << " i=" << i << endl;
         
         //Generate the percolation layer cuboid
         cuboid layer_geom;
@@ -135,124 +136,135 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const string &particle_ty
         
         //Number of points in the current CNT
         int cnt_points = (int)structure_cnt[CNT].size();
+        //hout << "cnt_points=" << cnt_points << endl;
         
-        //Initialize the point number with the first point in the CNT
-        long int P1 = structure_cnt[CNT][0];
-        
-        //Check where is the first point of the CNT
-        //flag = 1 because this point is an endpoint
-        //Calculate vector V
-        //Point_3D V = (points_cnt[P1] - points_cnt[structure_cnt[CNT][1]]).unit();
-        //string is_first_inside_sample = Where_is_with_layer(points_cnt[P1], window_geo, layer_geom, 1, radii[CNT], V);
-        string is_first_inside_sample = Where_is(points_cnt[P1], window_geo);
-        //hout<<"P0="<<points_cnt[P1].str()<<endl;
-        //hout<<"P0="<<P1<<" idx=0 CNT="<<CNT<<" loc="<<is_first_inside_sample<<endl;
-        
-        //Scan all remaning points in the current CNT
-        for (int j = 1; j < cnt_points; j++) {
-            
-            //Get the current point number
-            P1 = structure_cnt[CNT][j];
-            
-            //Check if this is the last point
-            /*if (j == cnt_points - 1) {
-                //It is the last point
-                //Recalculate vector V
-                long int P2 = structure_cnt[CNT][j-1];
-                V = (points_cnt[P1] - points_cnt[P2]).unit();
-                //flag = 1 because this point is an endpoint
-                point_location = Where_is_with_layer(points_cnt[P1], window_geo, layer_geom, 1, radii[CNT], V);
-            }
-            else {
-                point_location = Where_is_with_layer(points_cnt[P1], window_geo, layer_geom);
-            }*/
-            point_location = Where_is(points_cnt[P1], window_geo);
-            //hout<<"P1="<<points_cnt[P1].str()<<endl;
-            //hout<<"P1="<<P1<<" idx="<<j<<" CNT="<<CNT<<" loc="<<point_location<<endl;
-            
-            //Check if the point is inside the window
-            if (point_location != "outside") {
-                
-                //Update the last inside point
-                last_inside = j;
-                
-            }
-            //The point is outside the window or at a boundary, then a segment might be added
-            else {
-                
-                //End index is the current looping index
-                end = j;
-                
-                //Count the number of consecutive points inside the sample
-                //If start is zero and it is inside the sample or at the boundary, then the number of
-                //points in the CNT segment is end - start because end is outside (always in this for-loop)
-                //If start is zero and it is outside the sample, then the number of points in
-                //the CNT segment is end - start - 1 because both end and start are outside
-                //If start is not zero, then it is always outside, and since end is also outside, then
-                //the number of points in the CNT segment is end - start - 1
-                //Thus, the number of points in the CNT segment is end - start only when start
-                //is zero and not outside the sample.
-                //Otherwise the number of points is end - start - 1
-                int n_points = (start == 0 && is_first_inside_sample != "outside")? end - start : end - start - 1;
-                
-                //Check if there are enough points to consider this a whole CNT and include it in the analysis
-                if (n_points >= cnts.min_points) {
-                    
-                    //Add the current segment to the structure
-                    if (!Add_cnt_segment_to_structure(particle_type, window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
-                        hout<<"Error when adding a CNT segment (Add_cnt_segment_to_structure 1)."<<endl;
-                        return 0;
+        //Check if there are points in the CNT
+        //Because there a minimum number of points may be specified to determine
+        //if a CNT is inored, a CNT may be in a shell but have size 0
+        if (cnt_points)
+        {
+
+            //Initialize the point number with the first point in the CNT
+            long int P1 = structure_cnt[CNT][0];
+
+            //Check where is the first point of the CNT
+            //flag = 1 because this point is an endpoint
+            //Calculate vector V
+            //Point_3D V = (points_cnt[P1] - points_cnt[structure_cnt[CNT][1]]).unit();
+            //string is_first_inside_sample = Where_is_with_layer(points_cnt[P1], window_geo, layer_geom, 1, radii[CNT], V);
+            //hout<<"P0="<<points_cnt[P1].str()<<endl;
+            string is_first_inside_sample = Where_is(points_cnt[P1], window_geo);
+            //hout<<"P0="<<P1<<" idx=0 CNT="<<CNT<<" loc="<<is_first_inside_sample<<endl;
+
+            //Scan all remaning points in the current CNT
+            for (int j = 1; j < cnt_points; j++) {
+
+                //Get the current point number
+                P1 = structure_cnt[CNT][j];
+
+                //Check if this is the last point
+                /*if (j == cnt_points - 1) {
+                    //It is the last point
+                    //Recalculate vector V
+                    long int P2 = structure_cnt[CNT][j-1];
+                    V = (points_cnt[P1] - points_cnt[P2]).unit();
+                    //flag = 1 because this point is an endpoint
+                    point_location = Where_is_with_layer(points_cnt[P1], window_geo, layer_geom, 1, radii[CNT], V);
+                }
+                else {
+                    point_location = Where_is_with_layer(points_cnt[P1], window_geo, layer_geom);
+                }*/
+                point_location = Where_is(points_cnt[P1], window_geo);
+                //hout << "P1=" << points_cnt[P1].str() << endl;
+                //hout << "P1=" << P1 << " idx=" << j << " CNT=" << CNT << " loc=" << point_location << endl;
+
+                //Check if the point is inside the window
+                if (point_location != "outside") {
+
+                    //Update the last inside point
+                    last_inside = j;
+
+                }
+                //The point is outside the window or at a boundary, then a segment might be added
+                else {
+
+                    //End index is the current looping index
+                    end = j;
+
+                    //Count the number of consecutive points inside the sample
+                    //If start is zero and it is inside the sample or at the boundary, then the number of
+                    //points in the CNT segment is end - start because end is outside (always in this for-loop)
+                    //If start is zero and it is outside the sample, then the number of points in
+                    //the CNT segment is end - start - 1 because both end and start are outside
+                    //If start is not zero, then it is always outside, and since end is also outside, then
+                    //the number of points in the CNT segment is end - start - 1
+                    //Thus, the number of points in the CNT segment is end - start only when start
+                    //is zero and not outside the sample.
+                    //Otherwise the number of points is end - start - 1
+                    int n_points = (start == 0 && is_first_inside_sample != "outside") ? end - start : end - start - 1;
+
+                    //Check if there are enough points to consider this a whole CNT and include it in the analysis
+                    if (n_points >= cnts.min_points) {
+
+                        //Add the current segment to the structure
+                        //hout << "Add_cnt_segment_to_structure loop" << endl;
+                        if (!Add_cnt_segment_to_structure(particle_type, window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
+                            hout << "Error when adding a CNT segment (Add_cnt_segment_to_structure 1)." << endl;
+                            return 0;
+                        }
                     }
+
+                    //Reset the start index
+                    start = j;
                 }
-                
-                //Reset the start index
-                start = j;
             }
-        }
-        
-        //Check if the last index of the vector structure[CNT] was inside the sample
-        //hout<<"last_inside="<<last_inside<<" cnt_points="<<cnt_points<<endl;
-        //Also check that the segment has the minimum number of CNT points required
-        //for it to be consedered a CNT
-        if (last_inside == cnt_points-1 && (last_inside - start + 1) >= cnts.min_points) {
-            
-            //Set end index as the last valid index
-            end = cnt_points - 1;
-            
-            //If the last point of the CNT was inside the sample, then add a new segment
-            //This was not done becuase, in the for loop, a segement is added only when it finds a point
-            //outside the sample
-            //Add the current segment to the structure
-            if (!Add_cnt_segment_to_structure(particle_type, window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
-                hout<<"Error when adding a CNT segment (Add_cnt_segment_to_structure 2)."<<endl;
-                return 0;
-            }
-        }
-        
-        //Check if there is at least one segment
-        //hout<<"Check if there is at least one segment"<<endl;
-        if (segments > 0) {
-            
-            //Move the points to the front of the CNT if the start index of the first segment is not zero
-            if (first_idx != 0) {
-                for (int k = first_idx; k <= last_idx; k++) {
-                    structure_cnt[CNT][k-first_idx] = structure_cnt[CNT][k];
+
+            //Check if the last index of the vector structure[CNT] was inside the sample
+            //hout<<"last_inside="<<last_inside<<" cnt_points="<<cnt_points<<endl;
+            //Also check that the segment has the minimum number of CNT points required
+            //for it to be consedered a CNT
+            if (last_inside == cnt_points - 1 && (last_inside - start + 1) >= cnts.min_points) {
+
+                //Set end index as the last valid index
+                end = cnt_points - 1;
+
+                //If the last point of the CNT was inside the sample, then add a new segment
+                //This was not done becuase, in the for loop, a segement is added only when it finds a point
+                //outside the sample
+                //Add the current segment to the structure
+                //hout << "Add_cnt_segment_to_structure" << endl;
+                if (!Add_cnt_segment_to_structure(particle_type, window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
+                    hout << "Error when adding a CNT segment (Add_cnt_segment_to_structure 2)." << endl;
+                    return 0;
                 }
-                
-                //Update the last idx
-                last_idx = last_idx - first_idx;
+            }
+
+            //Check if there is at least one segment
+            //hout<<"Check if there is at least one segment"<<endl;
+            if (segments > 0) {
+
+                //Move the points to the front of the CNT if the start index of the first segment is not zero
+                if (first_idx != 0) {
+                    for (int k = first_idx; k <= last_idx; k++) {
+                        structure_cnt[CNT][k - first_idx] = structure_cnt[CNT][k];
+                    }
+
+                    //Update the last idx
+                    last_idx = last_idx - first_idx;
+                }
+
+                //If there were multiple segments, then remove the points from the current CNT
+                //that are after the last index of the first segment and now belog to other CNTs
+                for (int k = last_idx + 1; k < cnt_points; k++) {
+                    structure_cnt[CNT].pop_back();
+                }
+            }
+            //If there are no segments clear the points in the structure so that the CNT is not included
+            //in the vector of CNTs inside
+            else if (!segments) {
+                structure_cnt[CNT].clear();
             }
             
-            //If there were multiple segments, then remove the points from the current CNT
-            //that are after the last index of the first segment and now belog to other CNTs
-            for (int k = last_idx+1; k < cnt_points; k++) {
-                structure_cnt[CNT].pop_back();
-            }
-        }
-        //If there are no segments clear the points in the structure so that the CNT is not included
-        //in the vector of CNTs inside
-        else if (!segments) {
-            structure_cnt[CNT].clear();
         }
         
     }
