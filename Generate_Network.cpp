@@ -346,6 +346,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         for(int i=0; i<step_num; i++)
         {
             //Generates a new CNT point such that the new CNT segment has a random orientation
+            //hout << "Get_direction_and_point " << i << endl;
             if (!Get_direction_and_point(nanotube_geo, multiplier, new_point, engine_theta, engine_phi, dist)) {
                 hout<<"Error in generating a new CNT point (not a seed) at iteration i="<<i<<endl;
                 return 0;
@@ -397,6 +398,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                     is_prev_in_sample = is_new_inside_sample;
                     
                     //Add the new_point to the overlapping subregions it belongs to using the map
+                    //hout << "Add_cnt_point_to_overlapping_regions_map" << endl;
                     if (!Add_cnt_point_to_overlapping_regions_map(geom_sample, new_point, (int)new_cnt.size(), is_new_inside_sample, n_subregions, subr_point_map)) {
                         hout<<"Error when adding a point to the map of subregions"<<endl;
                         return 0;
@@ -633,11 +635,13 @@ int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Na
             if (cnt_new.empty()) {
                 
                 //Point is a seed, so then use functions that move the point
+                //hout << "Move_point" << endl;
                 Move_point(cutoffs_p, distances, affected_points, new_point);
             }
             else {
                 
                 //If point is not a seed, use functions that rotate the CNT segment
+                //hout << "Move_point_by_totating_cnt_segment" << endl;
                 if (!Move_point_by_totating_cnt_segment(nanotube_geo.step_length, cnt_new, cutoffs_p, distances, affected_points, new_point)) {
                     hout<<"Error in Check_penetration when calling Move_point_by_totating_cnt_segment"<<endl;
                     return -1;
@@ -655,7 +659,7 @@ int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Na
             }
             
             //Need to update point sub-region as it could be relocated to a new sub-region
-            //hout<<"Get_subregion 1 point="<<point.str()<<endl;
+            //hout<<"Get_subregion 1 point="<< new_point.str()<<endl;
             subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
             //Check if after moving the point it is now in the boundary layer
             if (subregion == -1) {

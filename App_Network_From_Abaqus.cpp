@@ -81,8 +81,24 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
         time_t it0, it1;
         it0 = time(NULL);
 
-        //Update observation window geometry (from current frame)
-        cuboid window_geo;
+        //----------------------------------------------------------------------
+        //Apply displacement to CNTs, GNPs and sample, except for frame 0 (which has no displacement)
+        if (i)
+        {
+            //Read Abaqus database and apply displacements
+            ct0 = time(NULL);
+            //hout<<"Apply_displacements_from_Abaqus"<<endl;
+            if (!Apply_displacements_from_Abaqus(Init->simu_para.particle_type, (int)structure_cnt.size(), structure_cnt, root_assy, allFramesInStep[i], Init->geom_sample, points_cnt, gnps))
+            {
+                hout << "Error when applying displacement to nanoparticles." << endl;
+                return 0;
+            }
+            ct1 = time(NULL);
+            hout << "Apply displacements forcurrent frame time: " << (int)(ct1 - ct0) << " secs." << endl;
+        }
+
+        //Window geometry is the same as that of the sample
+        cuboid window_geo = Init->geom_sample.sample;
         //hout<<"window_geo = "<<window_geo.str()<<endl;
 
         //Export the window geometry if needed
@@ -90,13 +106,6 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
             string str = "window_" + to_string(i) + ".vtk";
             VTK_Export VTK_E;
             VTK_E.Export_cuboid(window_geo, str);
-        }
-
-        //----------------------------------------------------------------------
-        //Apply displacement to CNTs and GNPs, except for frame 0
-        if (i)
-        {
-            //
         }
 
         //GNP structure, each structure_gnp[i] referes to the points in GNP_i
@@ -153,7 +162,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
         delete HoKo;
 
         it1 = time(NULL);
-        hout << "Iteration " << i + 1 << " time: " << (int)(it1 - it0) << " secs." << endl;
+        hout << "Frame " << i << " time: " << (int)(it1 - it0) << " secs." << endl;
     }
 
     //Close Abaqus database
@@ -502,14 +511,24 @@ int App_Network_From_Abaqus::Read_sample_geometry(Geom_sample& geom_sample)const
 //This functions adds the displacements to the CNTs, GNPs and sample
 int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const
 {
-    //Apply displacements to sample
+    //Access displacement field ("U") in the current frame
+    //hout << "fieldU" << endl;
+    odb_FieldOutput& fieldU = current_frame.fieldOutputs()["U"];
 
+    //Apply displacements to sample
+    //hout << "Apply_displacements_to_sample" << endl;
+    if (!Apply_displacements_to_sample(root_assy, fieldU, geom_sample))
+    {
+        hout << "Error in Apply_displacements_from_Abaqus when calling Apply_displacements_to_sample" << endl;
+        return 0;
+    }
 
     //Check the type of nanoparticle 
     if (particle_type == "CNT_wires" || particle_type == "CNT_deposit" || particle_type == "GNP_CNT_mix") {
 
         //Apply displacements to CNT points
-        if (!Apply_displacements_to_cnts(structure, root_assy, current_frame, n_cnts, points_cnt))
+        //hout << "Apply_displacements_to_cnts" << endl;
+        if (!Apply_displacements_to_cnts(structure, root_assy, fieldU, n_cnts, points_cnt))
         {
             hout << "Error in Apply_displacements_from_Abaqus when calling Apply_displacements_to_cnts" << endl;
             return 0;
@@ -531,11 +550,85 @@ int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& parti
 
     return 1;
 }
-//This function applies displacements to CNT points
-int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_Frame& current_frame, const int& n_cnts, vector<Point_3D>& points_cnt)const
+//This function gets the displacements of two of the sample nodes, applies this displacemets
+//to the corresponding vertices and calculates the geometry of the deformed sample
+int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_assy, odb_FieldOutput& fieldU, Geom_sample& geom_sample)const
 {
-    //Access displacement field ("U") in the current frame
-    odb_FieldOutput& fieldU = current_frame.fieldOutputs()["U"];
+    //Name of the set for the lower left corner (it is hard coded in the python scritp too)
+    string set0 = "MATRIX0";
+
+    //Name of the set for the opposite corner (it is hard coded in the python scritp too)
+    string set1 = "MATRIX1";
+
+    //Access set0 from root assembly
+    odb_Set& matrix0 = root_assy.nodeSets()[set0.c_str()];
+
+    //Get the displacement object of the set
+    odb_FieldOutput matrix0_disp = fieldU.getSubset(matrix0);
+
+    //Get the sequence of values of the displacement object for matrix0
+    const odb_SequenceFieldValue& vals0 = matrix0_disp.values();
+
+    //Check the size of vals is 1 (since it contains one node)
+    if (vals0.size() != 1)
+    {
+        hout << "Error in Apply_displacements_to_sample. The number of node set " << set0 << " is not 1. Size is " << vals0.size() << endl;
+        return 0;
+    }
+
+    //Get the acutal values
+    const odb_FieldValue val0 = vals0[0];
+    //Output node label
+    //hout << "  Node: " << val0.nodeLabel() << endl;
+    //Get the data of the displacements
+    int numComp = 0; //This integer is needed to call data() in the line below
+    const float* const data0 = val0.data(numComp);
+
+    //Update lower left corner of sample
+    geom_sample.sample.poi_min = geom_sample.sample.poi_min + Point_3D((double)data0[0], (double)data0[1], (double)data0[2]);
+
+    //Access set1 from root assembly
+    odb_Set& matrix1 = root_assy.nodeSets()[set1.c_str()];
+
+    //Get the displacement object of the set
+    odb_FieldOutput matrix1_disp = fieldU.getSubset(matrix1);
+
+    //Get the sequence of values of the displacement object for matrix1
+    const odb_SequenceFieldValue& vals1 = matrix1_disp.values();
+
+    //Check the size of vals is 1 (since it contains one node)
+    if (vals1.size() != 1)
+    {
+        hout << "Error in Apply_displacements_to_sample. The number of node set " << set1 << " is not 1. Size is " << vals1.size() << endl;
+        return 0;
+    }
+
+    //Get the acutal values
+    const odb_FieldValue val1 = vals1[0];
+    //Output node label
+    //cout << "  Node: " << val1.nodeLabel() << endl;
+    //Get the data of the displacements
+    numComp = 0; //This integer is needed to call data() in the line below
+    const float* const data1 = val1.data(numComp);
+
+    //Update the maximum coordinates of the sample, which are the maximum coordinates of the sample
+    geom_sample.sample.max_x = geom_sample.sample.max_x + (double)data1[0];
+    geom_sample.sample.max_y = geom_sample.sample.max_y + (double)data1[1];
+    geom_sample.sample.max_z = geom_sample.sample.max_z + (double)data1[2];
+
+    //Update the dimensions of the sample along each direction
+    geom_sample.sample.len_x = geom_sample.sample.max_x - geom_sample.sample.poi_min.x;
+    geom_sample.sample.wid_y = geom_sample.sample.max_y - geom_sample.sample.poi_min.y;
+    geom_sample.sample.hei_z = geom_sample.sample.max_z - geom_sample.sample.poi_min.z;
+
+    //Update the sample's volume
+    geom_sample.volume = geom_sample.sample.len_x * geom_sample.sample.wid_y * geom_sample.sample.hei_z;
+
+    return 1;
+}
+//This function applies displacements to CNT points
+int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_FieldOutput& fieldU, const int& n_cnts, vector<Point_3D>& points_cnt)const
+{
 
     //Iterate over the CNTs in the sample
     for (size_t i = 0; i < structure.size(); i++)
@@ -559,10 +652,13 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
         if (structure[i].size() != vals.size())
         {
             hout << "Error in Apply_displacements_to_cnts. The number of points in CNT " << i << " (" << structure[i].size() << " points) is different from the number of points in set " << set_name << " ("<< vals.size() << " points)." << endl;
+            return 0;
         }
 
         //Iterate over the values, i.e., the points in the current CNT
-        for (int j = 0; j < vals.size(); j++)
+        //Note that nodes are actually in reverse order given the way
+        //CNTs are generated (and meshed) in Abaqus
+        for (int j = vals.size() - 1; j >= 0 ; j--)
         {
             //Get current point number
             long int P = structure[i][j];
@@ -572,7 +668,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
             //Output node label
             //cout << "  Node: " << val.nodeLabel() << endl;
             //Get the data of the displacements
-            int numComp = 0;
+            int numComp = 0; //This integer is needed to call data() in the line below
             const float* const data = val.data(numComp);
 
             //Displacements are in data, where:
@@ -580,9 +676,9 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
             //data[1] corresponds to displacement in y
             //data[2] corresponds to displacement in z            
             //Add these displacement to point P
-            points_cnt[P].x = (double)data[0];
-            points_cnt[P].y = (double)data[1];
-            points_cnt[P].z = (double)data[2];
+            points_cnt[P].x = points_cnt[P].x + (double)data[0];
+            points_cnt[P].y = points_cnt[P].y + (double)data[1];
+            points_cnt[P].z = points_cnt[P].z + (double)data[2];
         }
     }
 
