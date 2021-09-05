@@ -15,6 +15,7 @@ int Backbone_Network::Determine_backbone_network(const int &n_cluster, const int
     
     //Find the "Zero" current of the circuit
     double zero_current;
+    //hout << "Find_zero_current" << endl;
     if (!Find_zero_current(n_cluster, R_flag, voltages, LMM_cnts, LMM_gnps, HoKo, cutoffs, points_cnt, radii, points_gnp, gnps, currents_cnt, currents_gnp, zero_current)) {
         hout<<"Error in Determine_backbone_network when calling Find_zero_current"<<endl;
         return 0;
@@ -25,6 +26,7 @@ int Backbone_Network::Determine_backbone_network(const int &n_cluster, const int
     if (HoKo->clusters_cnt.size() && HoKo->clusters_cnt[n_cluster].size()) {
         
         //Find the CNTs in the backbone and dead branches
+        //hout << "Find_backbone_and_fractions_cnts" << endl;
         if (!Find_backbone_and_fractions_cnts(n_cluster, avoid_resistance_flag, vtk_flag, zero_current, currents_cnt, points_cnt, radii, HoKo)) {
             hout<<"Error in Determine_backbone_network when calling Find_backbone_and_fractions_cnts"<<endl;
             return 0;
@@ -36,6 +38,7 @@ int Backbone_Network::Determine_backbone_network(const int &n_cluster, const int
     if (HoKo->clusters_gnp.size() && HoKo->clusters_gnp[n_cluster].size()) {
         
         //Find the GNPs in the backbone and the dead ones
+        //hout << "Find_backbone_and_fractions_gnps" << endl;
         if (!Find_backbone_and_fractions_gnps(n_cluster, avoid_resistance_flag, vtk_flag, zero_current, currents_gnp, structure_gnp, gnps, HoKo)) {
             hout<<"Error in Determine_backbone_network when calling Find_backbone_and_fractions_gnps"<<endl;
             return 0;
@@ -46,18 +49,21 @@ int Backbone_Network::Determine_backbone_network(const int &n_cluster, const int
     if (!avoid_resistance_flag) {
         
         //Remove CNT-CNT junctions with dead particles
+        //hout << "Remove_junctions_with_dead_particles_cnts" << endl;
         if (!Remove_junctions_with_dead_particles_cnts(n_cluster, HoKo)) {
             hout<<"Error in Determine_backbone_network when calling Remove_junctions_with_dead_particles_cnts"<<endl;
             return 0;
         }
         
         //Remove GNP-GNP junctions with dead particles
+        //hout << "Remove_junctions_with_dead_particles_gnps" << endl;
         if (!Remove_junctions_with_dead_particles_gnps(n_cluster, structure_gnp, gnps, HoKo)) {
             hout<<"Error in Determine_backbone_network when calling Remove_junctions_with_dead_particles_gnps"<<endl;
             return 0;
         }
         
         //Remove CNT-GNP junctions with dead particles
+        //hout << "Remove_junctions_with_dead_particles_mixed" << endl;
         if (!Remove_junctions_with_dead_particles_mixed(n_cluster, structure_gnp, gnps, HoKo)) {
             hout<<"Error in Determine_backbone_network when calling Remove_junctions_with_dead_particles_mixed"<<endl;
             return 0;
@@ -323,7 +329,9 @@ int Backbone_Network::Find_backbone_and_fractions_cnts(const int &n_cluster, con
     for (int i = (int)HoKo->clusters_cnt[n_cluster].size()-1; i >= 0 ; i--) {
         
         //Get the current CNT
+        //hout << "n_cluster=" << n_cluster << " HoKo->clusters_cnt.size=" << HoKo->clusters_cnt.size() << endl;
         int CNTi = HoKo->clusters_cnt[n_cluster][i];
+        //hout << "CNTi=" << CNTi << endl;
         
         //Indices that determine the segment of the CNT that belongs to the backbone
         int idx1 = -1;
@@ -333,6 +341,7 @@ int Backbone_Network::Find_backbone_and_fractions_cnts(const int &n_cluster, con
         for (int j = 0; j < (int)currents_cnt[i].size(); j++) {
             
             //Check if the current is above  zero current
+            //hout << "j=" << j << endl;
             if (currents_cnt[i][j] - zero_current > Zero) {
                 
                 //This CNT segment is part of the backbone
@@ -361,13 +370,15 @@ int Backbone_Network::Find_backbone_and_fractions_cnts(const int &n_cluster, con
         //add them to the class variables
         //If needed, add indices to the vectors needed to export VTK files and remove points
         //from the elements vector to calculate electrical resistance in a further step
-        if (!Calculate_cnt_volumes(n_cluster, avoid_resistance_flag, vtk_flag, CNTi, idx1, idx2, points_cnt, radii[CNTi], HoKo, dead_branches_idx[i], backbone_idx[i])) {
+        //hout << "Calculate_cnt_volumes" << endl;
+        if (!Calculate_cnt_volumes(n_cluster, avoid_resistance_flag, vtk_flag, CNTi, idx1, idx2, i, points_cnt, radii[CNTi], HoKo, dead_branches_idx, backbone_idx)) {
             hout<<"Error in Find_backbone_and_fractions_cnts when calling Calculate_cnt_volumes"<<endl;
             return 0;
         }
         
         //Check if the whole CNT is dead and remove it from the cluster in case
         //electrical resistance is to be calculated
+        //hout << "Check if the whole CNT is dead" << endl;
         if (!avoid_resistance_flag && HoKo->elements_cnt[CNTi].empty()) {
             HoKo->clusters_cnt[n_cluster].erase(HoKo->clusters_cnt[n_cluster].begin()+i);
         }
@@ -400,17 +411,20 @@ int Backbone_Network::Find_backbone_and_fractions_cnts(const int &n_cluster, con
 }
 //This function calcualtes the volumes of the segments of a CNT that belong to dead branches
 //and backbone
-int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const int &CNTi, const int &idx1, const int &idx2, const vector<Point_3D> &points_cnt, const double &radius, Hoshen_Kopelman *HoKo, vector<long int> &dead_branches_i, vector<long int> &backbone_i)
+int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const int &CNTi, const int &idx1, const int &idx2, const int& branch_idx, const vector<Point_3D> &points_cnt, const double &radius, Hoshen_Kopelman *HoKo, vector<vector<long int> >& dead_branches_idx, vector<vector<long int> >& backbone_idx)
 {
     //Get the two points at the beginning and end of the elements vector
+    //hout << "HoKo->elements_cnt.size=" << HoKo->elements_cnt.size() << endl;
     long int P_start = *(HoKo->elements_cnt[CNTi].begin());
     long int P_end = *(HoKo->elements_cnt[CNTi].rbegin());
+    //hout << "P_start=" << P_start << " P_end=" << P_end << endl;
     
     //Variables to store the volumes for dead branches and backbone
     double volume_backbone = 0, volume_dead = 0;
     
     //Get the family number
     int family = HoKo->family[n_cluster];
+    //hout << "family=" << family << endl;
     
     //If idx1 is still -1, then all the CNT is dead
     //If idx1 is not -1, then
@@ -419,6 +433,7 @@ int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avo
     if (idx1 == -1) {
         
         //Calculate the volume of the whole CNT
+        //hout << "CNT_volume_between_two_points" << endl;
         if (!CNT_volume_between_two_points(P_start, P_end, radius, points_cnt, volume_dead)) {
             hout<<"Error in Calculate_cnt_volumes when calling CNT_volume_between_two_points"<<endl;
             return 0;
@@ -427,11 +442,12 @@ int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avo
         //Add the volume of the whole CNT to the dead branches of the family the
         //cluster belongs to
         dead_branches[family] = dead_branches[family] + volume_dead;
+        //hout << "dead_branches[fam="<<family<<"]=" << dead_branches[family] << endl;
         
         //If visualization files are needed, add the indices to the vector
         if (vtk_flag) {
-            dead_branches_i.push_back(P_start);
-            dead_branches_i.push_back(P_end);
+            dead_branches_idx[branch_idx].push_back(P_start);
+            dead_branches_idx[branch_idx].push_back(P_end);
         }
         
         //Remove all points in the elements if resistance will be calcualted
@@ -447,6 +463,7 @@ int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avo
         long int P1 = *it1;
         
         //Get the volumes from P_start to P1, which corresponds to the dead brach
+        //hout << "CNT_volume_between_two_points P1=" << P1 << endl;
         if (!CNT_volume_between_two_points(P_start, P1, radius, points_cnt, volume_dead)) {
             hout<<"Error in Calculate_cnt_volumes when calling CNT_volume_between_two_points"<<endl;
             return 0;
@@ -454,17 +471,19 @@ int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avo
         
         //Add the volume of the the dead branch to the corresponding family
         dead_branches[family] = dead_branches[family] + volume_dead;
+        //hout << "dead_branches[fam=" << family << "]=" << dead_branches[family] << endl;
         
         //If visualization files are needed, add the indices to the vector
         if (vtk_flag) {
-            dead_branches_i.push_back(P_start);
-            dead_branches_i.push_back(P1);
+            dead_branches_idx[branch_idx].push_back(P_start);
+            dead_branches_idx[branch_idx].push_back(P1);
         }
         
         //Check the value of idx2
         if (idx2 == -1) {
             
             //Get the volumes from P1 to P_end, which corresponds to the backbone
+            //hout << "CNT_volume_between_two_points idx2=-1" << endl;
             if (!CNT_volume_between_two_points(P1, P_end, radius, points_cnt, volume_backbone)) {
                 hout<<"Error in Calculate_cnt_volumes when calling CNT_volume_between_two_points"<<endl;
                 return 0;
@@ -472,8 +491,8 @@ int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avo
             
             //If visualization files are needed, add the indices to the vector
             if (vtk_flag) {
-                backbone_i.push_back(P1);
-                backbone_i.push_back(P_end);
+                backbone_idx[branch_idx].push_back(P1);
+                backbone_idx[branch_idx].push_back(P_end);
             }
         }
         else {
@@ -484,6 +503,7 @@ int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avo
             long int P2 = *it1;
             
             //Get the volumes from P1 to P2, which corresponds to the backbone
+            //hout << "CNT_volume_between_two_points P2=" << P2 << endl;
             if (!CNT_volume_between_two_points(P1, P2, radius, points_cnt, volume_backbone)) {
                 hout<<"Error in Calculate_cnt_volumes when calling CNT_volume_between_two_points"<<endl;
                 return 0;
@@ -491,11 +511,12 @@ int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avo
             
             //If visualization files are needed, add the indices to the vector
             if (vtk_flag) {
-                backbone_i.push_back(P1);
-                backbone_i.push_back(P2);
+                backbone_idx[branch_idx].push_back(P1);
+                backbone_idx[branch_idx].push_back(P2);
             }
             
             //Get the volumes from P2 to P_end, which corresponds to the second dead brach
+            //hout << "CNT_volume_between_two_points" << endl;
             if (!CNT_volume_between_two_points(P2, P_end, radius, points_cnt, volume_dead)) {
                 hout<<"Error in Calculate_cnt_volumes when calling CNT_volume_between_two_points"<<endl;
                 return 0;
@@ -503,6 +524,7 @@ int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avo
             
             //Add the volume of the the dead branch to the corresponding family
             dead_branches[family] = dead_branches[family] + volume_dead;
+            //hout << "dead_branches[fam=" << family << "]=" << dead_branches[family] << endl;
             
             //Erase the points for dead branches if the resistance will be calculated
             if (!avoid_resistance_flag) {
@@ -514,13 +536,14 @@ int Backbone_Network::Calculate_cnt_volumes(const int &n_cluster, const int &avo
             
             //If visualization files are needed, add the indices to the vector
             if (vtk_flag) {
-                dead_branches_i.push_back(P2);
-                dead_branches_i.push_back(P_end);
+                dead_branches_idx[branch_idx].push_back(P2);
+                dead_branches_idx[branch_idx].push_back(P_end);
             }
         }
         
         //Add the volume to the percolated family
         volumes_cnt[family] = volumes_cnt[family] + volume_backbone;
+        //hout << "volumes_cnt[fam=" << family << "]=" << volumes_cnt[family] << endl;
         
         //Erase the points for dead branches if the resistance will be calculated
         //Remove all points before P1 (idx1) from the elements vector, except when idx1 is zero
@@ -559,12 +582,15 @@ int Backbone_Network::Find_backbone_and_fractions_gnps(const int &n_cluster, con
     vector<int> dead_gnps_idx, backbone_gnps_idx;
     
     //Get the family
+    //hout << "n_cluster=" << n_cluster << " HoKo->family.size=" << HoKo->family.size() << endl;
     int family = HoKo->family[n_cluster];
+    //hout << "family=" << family << endl;
     
     //Iterate over the GNPs in the cluster
     //Iterate from the last GNP to the first in order to be able to delete them
     for (int i = (int)HoKo->clusters_gnp[n_cluster].size()-1; i >= 0 ; i--) {
         
+        //hout << "i=" << i << endl;
         //Get current GNP
         int GNPi = HoKo->clusters_gnp[n_cluster][i];
         
@@ -575,9 +601,11 @@ int Backbone_Network::Find_backbone_and_fractions_gnps(const int &n_cluster, con
         //currents_gnp[i]
         for (int j = 0; j < (int)currents_gnp[i].size(); j++) {
             
+            //hout << "j=" << j << endl;
             //Check if current in triangulation edge is non-zero
             if (currents_gnp[i][j] > zero_current) {
                 
+                //hout << "currents_gnp[i][j]=" << currents_gnp[i][j] << endl;
                 //There is current flowign through GNPi, so it is part of the backbone
                 //Set the non-zero current flag to true
                 nz_flag = true;
@@ -589,6 +617,7 @@ int Backbone_Network::Find_backbone_and_fractions_gnps(const int &n_cluster, con
         }
         
         //Check if the volume of the GNP should be added to the percolated or dead part
+        //hout << "nz_flag=" << endl;
         if (nz_flag) {
             
             //Add GNP volume to percolated part
@@ -611,6 +640,7 @@ int Backbone_Network::Find_backbone_and_fractions_gnps(const int &n_cluster, con
         }
         
         //If the electrical resistance will be calcualted, remove all triangulation edges of GNPi
+        //hout << "avoid_resistance_flag" << endl;
         if (!avoid_resistance_flag) {
             
             //Clear the triangulation
