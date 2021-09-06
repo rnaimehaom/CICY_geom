@@ -242,26 +242,27 @@ void Printer::Print_cnt_points_and_structure(const cuboid &geom_sample, const ve
         int cnt_points = (int)structure[i].size();
         
         //Get the first point of CNT i
-        long int Pj = structure[i][0];
+        //long int Pj = structure[i][0];
         
         //Check if the first point of CNT i is at a boundary
-        Check_if_close_enough_to_boundary(geom_sample, points_cnt[Pj], prec, cnt_points, otec_points);
+        //Check_if_close_enough_to_boundary(geom_sample, points_cnt[Pj], prec, cnt_points, otec_points);
         
         //Iterate over the points in CNT i
-        for (size_t j = 1; j < structure[i].size()-1; j++) {
+        //for (size_t j = 1; j < structure[i].size() - 1; j++) {
+        for (size_t j = 0; j < structure[i].size(); j++) {
             
             //Get the point number
-            Pj = structure[i][j];
+            long int Pj = structure[i][j];
             
             //Output the coordinates of point j in CNT i
             otec_points<<points_cnt[Pj].str(prec)<<endl;
         }
         
         //Get the last point of CNT i
-        Pj = structure[i].back();
+        //Pj = structure[i].back();
         
         //Check if the last point of CNT i is at a boundary
-        Check_if_close_enough_to_boundary(geom_sample, points_cnt[Pj], prec, cnt_points, otec_points);
+        //Check_if_close_enough_to_boundary(geom_sample, points_cnt[Pj], prec, cnt_points, otec_points);
         
         //Output the number of points in CNT i and its radius
         otec_struct<<cnt_points<<", "<<radii[i]<<endl;
