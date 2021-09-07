@@ -55,6 +55,10 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     delete SH;
     ct1 = time(NULL);
     hout << "Generate shells and structure time: " << (int)(ct1 - ct0) << " secs." << endl;
+    /*for (size_t i = 0; i < shells_cnts.size(); i++)
+    {
+        hout << "Shell " << i << ": " << shells_cnts[i].size() << endl;
+    }*/
 
     //Initialize Abaqus C++ API
     odb_initializeAPI();
@@ -353,27 +357,48 @@ int App_Network_From_Abaqus::Read_cnt_data_from_csv(vector<Point_3D>& points_cnt
     //Set the size for the points vector
     points_cnt.assign(Np, Point_3D());
 
+    //Variable to store the CNT number
+    int cnt_i = 0;
+
+    //Variable to count the number of points (again)
+    long int Nq = 0;
+
     //Read the point coordinates
-    for (long int i = 0; i < Np; i++)
-    {
-        //Check if end-of-file has been reached
-        if (coord_file.eof())
-        {
-            hout << "Error in Read_cnt_data_from_csv. The end-of-file of cnt_coordinates.csv has been reached before reading all CNT data." << endl;
-            return 0;
+    //In order to easily update the CNT number, iterate over the structure
+    for (size_t i = 0; i < structure.size(); i++) {
+        for (size_t j = 0; j < structure[i].size(); j++) {
+
+            //Check if end-of-file has been reached
+            if (coord_file.eof())
+            {
+                hout << "Error in Read_cnt_data_from_csv. The end-of-file of cnt_coordinates.csv has been reached before reading all CNT data." << endl;
+                return 0;
+            }
+
+            //Read a line form the file and store it in a string stream
+            getline(coord_file, line);
+            stringstream ss(line);
+
+            //Read the point coordinates from the string stream while ignoring the commas in between
+            ss >> points_cnt[Nq].x;
+            ss.ignore();
+            ss >> points_cnt[Nq].y;
+            ss.ignore();
+            ss >> points_cnt[Nq].z;
+
+            //Set the CNT flag with the CNT number (i is the CNT number)
+            points_cnt[Nq].flag = i;
+
+            //Increase the count of points
+            Nq++;
         }
+    }
 
-        //Read a line form the file and store it in a string stream
-        getline(coord_file, line);
-        stringstream ss(line);
-
-        //Read the point coordinates from the string stream while ignoring the commas in between
-        ss >> points_cnt[i].x;
-        ss.ignore();
-        ss >> points_cnt[i].y;
-        ss.ignore();
-        ss >> points_cnt[i].z;
-        
+    //Check that the two counts of the number of points yield the same result
+    if (Np != Nq)
+    {
+        hout << "Error in Read_cnt_data_from_csv. The two counts of the number of points is different. Np=" << Np << " Nq=" << Nq << endl;
+        return 0;
     }
 
     //Close files
@@ -526,6 +551,24 @@ int App_Network_From_Abaqus::Read_sample_geometry(Geom_sample& geom_sample)const
     geom_sample.sample.max_x = geom_sample.sample.poi_min.x + geom_sample.sample.len_x;
     geom_sample.sample.max_y = geom_sample.sample.poi_min.y + geom_sample.sample.wid_y;
     geom_sample.sample.max_z = geom_sample.sample.poi_min.z + geom_sample.sample.hei_z;
+
+    //Set the maximum and minimum observation windows to be the same as that of the sample
+    geom_sample.win_max_x = geom_sample.sample.len_x;
+    geom_sample.win_max_y = geom_sample.sample.wid_y;
+    geom_sample.win_max_z = geom_sample.sample.hei_z;
+    geom_sample.win_min_x = geom_sample.sample.len_x;
+    geom_sample.win_min_y = geom_sample.sample.wid_y;
+    geom_sample.win_min_z = geom_sample.sample.hei_z;
+
+    //Set the increment of the observation window as half the sample side length
+    //This is an arbitrary choice that guarantees that the increment is smaller than
+    //the maximum and minimum observation windows in each direction
+    geom_sample.win_delt_x = 0.5 * geom_sample.sample.len_x;
+    geom_sample.win_delt_y = 0.5 * geom_sample.sample.wid_y;
+    geom_sample.win_delt_z = 0.5 * geom_sample.sample.hei_z;
+
+    //Set the number of cuts to 0 since there are no observation windows
+    geom_sample.cut_num = 0;
 
     //Close file
     sample_file.close();

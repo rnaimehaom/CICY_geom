@@ -60,6 +60,10 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     delete SH;
     ct1 = time(NULL);
     hout << "Generate shells and structure time: "<<(int)(ct1-ct0)<<" secs."<<endl;
+    /*for (size_t i = 0; i < shells_cnts.size(); i++)
+    {
+        hout << "Shell " << i << ": " << shells_cnts[i].size() << endl;
+    }*/
     
     for(int i=0; i<=Init->geom_sample.cut_num; i++)
     {
