@@ -653,6 +653,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
 
     //Update lower left corner of sample
     geom_sample.sample.poi_min = geom_sample.sample.poi_min + Point_3D((double)data0[0], (double)data0[1], (double)data0[2]);
+    //hout << "disp0=" << data0[0] << " " << data0[1] << " " << data0[2] << endl;
 
     //Access set1 from root assembly
     odb_Set& matrix1 = root_assy.nodeSets()[set1.c_str()];
@@ -677,6 +678,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
     //Get the data of the displacements
     numComp = 0; //This integer is needed to call data() in the line below
     const float* const data1 = val1.data(numComp);
+    //hout << "disp1=" << data1[0] << " " << data1[1] << " " << data1[2] << endl;
 
     //Update the maximum coordinates of the sample, which are the maximum coordinates of the sample
     geom_sample.sample.max_x = geom_sample.sample.max_x + (double)data1[0];
@@ -690,6 +692,19 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
 
     //Update the sample's volume
     geom_sample.volume = geom_sample.sample.len_x * geom_sample.sample.wid_y * geom_sample.sample.hei_z;
+
+    /* /Access set1 from root assembly
+    odb_Set& matrix2 = root_assy.nodeSets()["MATRIX2"];
+    //Get the displacement object of the set
+    odb_FieldOutput matrix2_disp = fieldU.getSubset(matrix2);
+    //Get the sequence of values of the displacement object for matrix1
+    const odb_SequenceFieldValue& vals2 = matrix2_disp.values();
+    //Get the acutal values
+    const odb_FieldValue val2 = vals2[0];
+    //Get the data of the displacements
+    numComp = 0; //This integer is needed to call data() in the line below
+    const float* const data2 = val2.data(numComp);
+    hout << "disp2=" << data2[0] << " " << data2[1] << " " << data2[2] << endl;*/
 
     return 1;
 }
@@ -722,13 +737,34 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
             return 0;
         }
 
+        /* /Get the nodes in the set
+        const odb_SequenceNode& nodeList = root_assy.nodeSets()[set_name.c_str()].nodes();
+        //Compare the coordinates of the first node in the set with the
+        //first and last points in the CNT
+        const float* const coord = nodeList[0].coordinates();
+        hout << "Node[" << nodeList[0].label() <<"]="<< coord[0]<<" "<<coord[1]<<" "<<coord[2] << endl;
+        hout << "P[first]=" << points_cnt[structure[i][0]].str() << endl;
+        hout<<"P[last]="<< points_cnt[structure[i].back()].str() << endl;
+        if (abs(coord[0] - points_cnt[structure[i].back()].x) < 1e-6 && abs(coord[1] - points_cnt[structure[i].back()].y) < 1e-6 && abs(coord[2] - points_cnt[structure[i].back()].z) < 1e-6){
+            hout << "FIRST NODE IS THE LAST POINT" << endl;
+        }
+        else {
+            hout << "DIFS=" << abs(coord[0] - points_cnt[structure[i].back()].x) << " " << abs(coord[1] - points_cnt[structure[i].back()].y) << " " << abs(coord[2] - points_cnt[structure[i].back()].z) << endl;
+        }
+        hout << endl;*/
+
         //Iterate over the values, i.e., the points in the current CNT
-        //Note that nodes are actually in reverse order given the way
-        //CNTs are generated (and meshed) in Abaqus
-        for (int j = vals.size() - 1; j >= 0 ; j--)
+        for (int j = 0; j < vals.size(); j++)
         {
+            //Note that nodes are actually in reverse order given the way
+            //CNTs are generated (and meshed) in Abaqus
+            //Thus, I need to go in reverse order when scanning the structure vcetor
+            //With this definition of idx, I can start at the last element of 
+            //structure[i] and stop at its first element
+            int idx = vals.size() - j - 1;
+
             //Get current point number
-            long int P = structure[i][j];
+            long int P = structure[i][idx];
             
             //Get current values
             const odb_FieldValue val = vals[j];

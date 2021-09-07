@@ -155,8 +155,8 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const string &particle_ty
             //Calculate vector V
             //Point_3D V = (points_cnt[P1] - points_cnt[structure_cnt[CNT][1]]).unit();
             //string is_first_inside_sample = Where_is_with_layer(points_cnt[P1], window_geo, layer_geom, 1, radii[CNT], V);
-            //hout<<"P0="<<points_cnt[P1].str()<<endl;
             string is_first_inside_sample = Where_is(points_cnt[P1], window_geo);
+            //hout << "P0=" << points_cnt[P1].str() << endl;
             //hout<<"P0="<<P1<<" idx=0 CNT="<<CNT<<" loc="<<is_first_inside_sample<<endl;
 
             //Scan all remaning points in the current CNT

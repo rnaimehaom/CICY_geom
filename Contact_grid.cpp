@@ -31,6 +31,7 @@ int Contact_grid::Generate_contact_grid(const int &window, const string &particl
     double max_overlapping = max(sample_geom.gs_overlap_cnt, sample_geom.gs_overlap_gnp);
     
     //Check if the number of regions needs to be adjusted
+    //hout << "Adjust_regions_if_needed" << endl;
     if (!Adjust_regions_if_needed(max_overlapping, sample_geom, window_geom, n_regions, l_regions)) {
         hout << "Error in Generate_contact_grid when calling Adjust_regions_if_needed" << endl;
         return 0;
