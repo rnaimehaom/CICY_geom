@@ -83,6 +83,9 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const string &particle_ty
 {
     //String to save the location of a point (inside the window, outside the window, or at a boundary)
     string point_location;
+
+    //Cutoff for the step length
+    double step_cutoff = cnts.step_length * 0.5;
     
     //Initialize the vectors of CNTs and CNT points at boundaries
     boundary_cnt.assign(6, vector<int>());
@@ -208,7 +211,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const string &particle_ty
 
                         //Add the current segment to the structure
                         //hout << "Add_cnt_segment_to_structure loop" << endl;
-                        if (!Add_cnt_segment_to_structure(particle_type, window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
+                        if (!Add_cnt_segment_to_structure(particle_type, step_cutoff, window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
                             hout << "Error when adding a CNT segment (Add_cnt_segment_to_structure 1)." << endl;
                             return 0;
                         }
@@ -233,7 +236,7 @@ int Cutoff_Wins::Trim_boundary_cnts(const int &window, const string &particle_ty
                 //outside the sample
                 //Add the current segment to the structure
                 //hout << "Add_cnt_segment_to_structure" << endl;
-                if (!Add_cnt_segment_to_structure(particle_type, window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
+                if (!Add_cnt_segment_to_structure(particle_type, step_cutoff, window_geo, layer_geom, vars_shells, start, end, cnts.min_points, CNT, point_location, points_cnt, structure_cnt, shells_cnt, radii, segments, first_idx, last_idx)) {
                     hout << "Error when adding a CNT segment (Add_cnt_segment_to_structure 2)." << endl;
                     return 0;
                 }
@@ -292,10 +295,11 @@ int Cutoff_Wins::Get_percolation_layer_cuboid(const double &cnt_rad, const cuboi
     return 1;
 }
 //===========================================================================
-int Cutoff_Wins::Add_cnt_segment_to_structure(const string &particle_type, const cuboid &window_geo, const cuboid &layer_geom, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &end_point_loc, vector<Point_3D> &points_cnt, vector<vector<long int> > &structure_cnt, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx)
+int Cutoff_Wins::Add_cnt_segment_to_structure(const string &particle_type, const double& step_cutoff, const cuboid &window_geo, const cuboid &layer_geom, const double var_shells[][3], const int &start, const int &end, const int &min_points, const int &CNT, const string &end_point_loc, vector<Point_3D> &points_cnt, vector<vector<long int> > &structure_cnt, vector<vector<int> > &shells_cnt, vector<double> &radii, int &segments, int &first_idx, int &last_idx)
 {
-    //Variable used in case the start index needs to change
+    //Variables used in case the start and end indices need to change
     int new_start = start;
+    int new_end = end;
     
     //Variables for the (possibly) outside and inside points for the start of the segment
     long int p_out_start = structure_cnt[CNT][new_start];
@@ -325,6 +329,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const string &particle_type, const
         if (start_point_loc == "outside") {
             
             //Subtitute the point
+            //The point at the boundary will be stored in points_cnt[p_out_start]
             if (!Substitute_boundary_point(window_geo, points_cnt[p_ins_start], points_cnt[p_out_start])) {
                 hout<<"Error when substituting boundary point (start)"<<endl;
                 return 0;
@@ -333,6 +338,21 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const string &particle_type, const
         
         //Choose the CNT to be added
         int CNT_num = (segments)? (int)structure_cnt.size(): CNT;
+
+        //Check if the length of the segment at the boundary is below the step cutoff
+        if (points_cnt[p_out_start].distance_to(points_cnt[p_out_start + 1]) - step_cutoff < Zero) {
+            //hout << "d_start=" << points_cnt[p_out_start].distance_to(points_cnt[p_out_start + 1]) << endl;
+            //The segment at the boundary is below the step cutoff,
+            //so substitute this point by the following point
+            //recall the boundary point is stored at points_cnt[p_out_start]
+            points_cnt[p_out_start + 1] = points_cnt[p_out_start];
+            //Update the start of the CNT
+            new_start++;
+
+            //Update the index p_out_start that contains the boundary point
+            p_out_start++;
+            //hout << "d_start_new=" << points_cnt[p_out_start].distance_to(points_cnt[p_out_start + 1]) << endl<<endl;
+        }
         
         //Add to the boundary vectors, this happens when the first point is either outside or at a boundary
         if (!Add_cnt_point_to_boundary_vectors(window_geo, points_cnt[p_out_start], p_out_start, CNT_num)) {
@@ -342,8 +362,8 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const string &particle_type, const
     }
     
     //Variables for the (possibly) outside and inside points for the end of the segment
-    long int p_out_end = structure_cnt[CNT][end];
-    long int p_ins_end = structure_cnt[CNT][end-1];
+    long int p_out_end = structure_cnt[CNT][new_end];
+    long int p_ins_end = structure_cnt[CNT][new_end - 1];
     //hout<<"End=("<<points_cnt[p_out_end].x<<", "<<points_cnt[p_out_end].y<<", "<<points_cnt[p_out_end].z<<") CNT="<<CNT<<endl;
     
     //Double check where is the end point of the current segment, if the end point is:
@@ -364,6 +384,22 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const string &particle_type, const
         
         //Choose the CNT to be added
         int CNT_num = (segments)? (int)structure_cnt.size(): CNT;
+
+        //Check if the length of the segment at the boundary is below the step cutoff
+        if (points_cnt[p_out_end - 1].distance_to(points_cnt[p_out_end]) - step_cutoff < Zero) {
+            //hout << "d_end=" << points_cnt[p_out_end - 1].distance_to(points_cnt[p_out_end]) << endl;
+            //The segment at the boundary is below the step cutoff,
+            //so substitute this point by the previous point
+            //recall the boundary point is stored at points_cnt[p_out_end]
+            points_cnt[p_out_end - 1] = points_cnt[p_out_end];
+
+            //Update the end of the CNT
+            new_end--;
+
+            //Update the index p_out_end that contains the boundary point
+            p_out_end--; 
+            //hout << "d_end_new=" << points_cnt[p_out_end - 1].distance_to(points_cnt[p_out_end]) << endl<<endl;
+        }
         
         //Add to the boundary vectors, this happens when the last point is either outside or at a boundary
         if (!Add_cnt_point_to_boundary_vectors(window_geo, points_cnt[p_out_end], p_out_end, CNT_num)) {
@@ -378,7 +414,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const string &particle_type, const
         
         //This is the first segment, so save the two indices of the first segment
         first_idx = new_start;
-        last_idx = end;
+        last_idx = new_end;
         //hout<<"segment 1, new_start="<<new_start<<" end="<<end<<endl;
     }
     else {
@@ -399,7 +435,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const string &particle_type, const
         //Add the CNT points of the new segment to the 1D vector
         //After dealing with the boundary points, ALL CNTs are inside the shell, and thus
         //ALL points are added to the structure
-        for(int j = new_start; j <= end; j++) {
+        for(int j = new_start; j <= new_end; j++) {
             
             //Get the current point number
             long int P = structure_cnt[CNT][j];

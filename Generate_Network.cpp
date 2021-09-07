@@ -235,9 +235,13 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
             hout << "Error in Generate_network_threads_mt when calling Get_length_and_radius" <<endl;
             return 0;
         }
-        
+
         //Calculate the number of CNT growth steps
-        int step_num = (int)(cnt_length/nanotube_geo.step_length) + 1;
+        //Let ns = floor(cnt_length/step_length)
+        //There will be ns segments and ns+1 points
+        //After generating the seed point, the number of steps needed to complete the CNT
+        //are ns, since ns points are left
+        int step_num = (int)(cnt_length / nanotube_geo.step_length);
         
         //---------------------------------------------------------------------------
         //Cross-sectional area of the current CNT. It is used to calculate the CNT volume.
@@ -343,7 +347,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         }
         
         //Start generation of a CNT siven the generated seed
-        for(int i=0; i<step_num; i++)
+        for(int i = 0; i < step_num; i++)
         {
             //Generates a new CNT point such that the new CNT segment has a random orientation
             //hout << "Get_direction_and_point " << i << endl;
@@ -1619,12 +1623,15 @@ int Generate_Network::Transform_points_cnts(const Geom_sample &geom_sample, cons
     
     //Variable to count the generated points
     long int n_points = 0;
+
+    //Cutoff for a small segment
+    double step_cutoff = 0.5 * nano_geo.step_length;
     
     //Choose the way in which the output vectors are generated depending on the particle type
     for(int i=0; i<(int)cnts_points.size(); i++)
     {
         
-        if (!Add_cnts_inside_sample(geom_sample, nano_geo, i, cnts_points[i], cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
+        if (!Add_cnts_inside_sample(geom_sample, nano_geo, step_cutoff, i, cnts_points[i], cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
             hout<<"Error when adding CNTs to structure."<<endl;
             return 0;
         }
@@ -1645,7 +1652,7 @@ int Generate_Network::Transform_points_cnts(const Geom_sample &geom_sample, cons
     return 1;
 }
 //---------------------------------------------------------------------------
-int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, const Nanotube_Geo &nano_geo, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
+int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, const Nanotube_Geo &nano_geo, const double& step_cutoff, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
 {
     //Indices to define the beginning and ending of a segment of a CNT that is inside a sample
     int start = 0;
@@ -1688,7 +1695,7 @@ int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, con
             if (n_points >= min_points) {
                 
                 //Check if there are are enough points and, if so, add the current CNT segment to the data structures
-                if (!Add_cnt_segment(geom_sample, is_first_inside_sample, start, end, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
+                if (!Add_cnt_segment(geom_sample, is_first_inside_sample, step_cutoff, start, end, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
                     hout<<"Error when adding a CNT segment."<<endl;
                     return 0;
                 }
@@ -1713,7 +1720,7 @@ int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, con
         //This was not done becuase, in the for loop, a segement is added only when it finds a point
         //outside the sample
         //Then, check if there are are enough points and, if so, add the current CNT segment to the data structures
-        if (!Add_cnt_segment(geom_sample, is_first_inside_sample, start, end, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
+        if (!Add_cnt_segment(geom_sample, is_first_inside_sample, step_cutoff, start, end, CNT_old, cnt, cpoints, radii_in, radii_out, cstructures, point_count, cnt_count)) {
             hout<<"Error when adding a CNT segment."<<endl;
             return 0;
         }
@@ -1722,7 +1729,7 @@ int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, con
     return 1;
 }
 //---------------------------------------------------------------------------
-int Generate_Network::Add_cnt_segment(const Geom_sample &geom_sample, const bool &is_first_inside_sample, const int &start, const int &end, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
+int Generate_Network::Add_cnt_segment(const Geom_sample &geom_sample, const bool &is_first_inside_sample, const double& step_cutoff, const int &start, const int &end, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const
 {
     
     //Temporary vector to add the point numbers to the structure vector
@@ -1745,11 +1752,26 @@ int Generate_Network::Add_cnt_segment(const Geom_sample &geom_sample, const bool
         //hout<<"P_start = ("<<cnt[start].x<<", "<<cnt[start].y<<", "<<cnt[start].z<<") cnt_count="<<cnt_count<<endl;
         if (!Add_boundary_point(geom_sample, cnt[start], cnt[start+1], cnt_count, cpoints, struct_temp, point_count)) {
             hout<<"Error in Add_boundary_point when adding a point at the start of the segment."<<endl;
+            return 0;
         }
         
-        //Start is outside, so the first inside point is start+1
-        //Thus update start
-        new_start++;
+        //Check if the first segment is above the cutoff
+        //The point at the boundary is the last point added to cpoints
+        //The point cnt[start] is still outside since it was not replaced
+        if (cpoints.back().distance_to(cnt[start + 1]) - step_cutoff < Zero)
+        {
+            //The first segment is too small, so ignore the next point (cnt[start + 1])
+            //Thus, new start is start+2
+            new_start = new_start + 2;
+        }
+        else {
+
+            //The first segment has a proper lenght, so the first inside point is start+1
+            //Recall the point at the boundary is the last point added to cpoints
+            //Thus update start
+            new_start++;
+
+        }
     }
     
     //Add the CNT points of the segment found to the 1D vector
@@ -1770,8 +1792,8 @@ int Generate_Network::Add_cnt_segment(const Geom_sample &geom_sample, const bool
     }
     
     //Check if end index is not the last point of the CNT (since end index is actually one more
-    //than the last index of the segment, then we have to check against the largest posisble index+1
-    //which is the number of points in the CNT)
+    //than the last index of the segment, then we have to check against the largest 
+    //posisble index+1 which is the number of points in the CNT)
     //If the last index is the last point of the CNT, then the CNT segement ends inside the sample.
     //If the last index is not the last point of the CNT, then the CNT segment crosses the boundary
     //In such case, a point at the boundary is added. This is needed to determine percolation
@@ -1781,10 +1803,29 @@ int Generate_Network::Add_cnt_segment(const Geom_sample &geom_sample, const bool
         //hout<<"P_end = ("<<cnt[end].x<<", "<<cnt[end].y<<", "<<cnt[end].z<<") cnt_count="<<cnt_count<<endl;
         if (!Add_boundary_point(geom_sample, cnt[end], cnt[end-1], cnt_count, cpoints, struct_temp, point_count)) {
             hout<<"Error in Add_boundary_point when adding a point at the end of the segment."<<endl;
+            return 0;
+        }
+
+        //Check if the last segment is above the cutoff
+        //The point at the boundary is the last point added to cpoints
+        //The point cntcnt[end] is still outside since it was not replaced
+        if (cpoints.back().distance_to(cnt[end - 1]) - step_cutoff < Zero) {
+
+            //Substitute the penultimate point in cpoints with the last point
+            cpoints[cpoints.size() - 2] = cpoints.back();
+
+            //Remove the last point in cpoints
+            cpoints.pop_back();
+
+            //Also remove the last point in the temporary structure vector
+            struct_temp.pop_back();
+
+            //Reduce the point count in 1
+            point_count--;
         }
     }
     
-    //Add the corresponding radius to the output darii vector
+    //Add the corresponding radius to the output radii vector
     radii_out.push_back(radii_in[CNT_old]);
     
     //Add the temporary structure vector
