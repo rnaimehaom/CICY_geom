@@ -96,7 +96,8 @@ int Contact_grid::Fill_sectioned_domain_cnts(const cuboid &window_geom, const ve
 {
     //There will be n_regions[0]*n_regions[1]*n_regions[2] different regions
     sectioned_domain_cnts.clear();
-    sectioned_domain_cnts.assign(n_regions[0]*n_regions[1]*n_regions[2], vector<long int>());
+    int tot_regions = n_regions[0] * n_regions[1] * n_regions[2];
+    sectioned_domain_cnts.assign(tot_regions, vector<long int>());
     //hout<<"window_geom="<<window_geom.str()<<endl;
     //hout<<"sectioned_domain_cnts.size="<<sectioned_domain_cnts.size()<<endl;
     
@@ -136,7 +137,7 @@ int Contact_grid::Fill_sectioned_domain_cnts(const cuboid &window_geom, const ve
             
             //Assign the point P to the correspoding region or regions
             //hout<<"Assign_point_to_regions_cnts"<<endl;
-            if (!Assign_point_to_regions_cnts(a, b, c, f_regions, n_regions, P)) {
+            if (!Assign_point_to_regions_cnts(a, b, c, f_regions, n_regions, tot_regions, P)) {
                 hout << "Error in Generate_sectioned_domain_cnts when calling Assign_point_to_region" << endl;
                 return 0;
             }
@@ -187,50 +188,85 @@ int Contact_grid::Calculate_overlapping_flags(const cuboid &window_geom, const P
     return 1;
 }
 //
-int Contact_grid::Assign_point_to_regions_cnts(const int &a, const int &b, const int &c, const int f_regions[], const int n_regions[], const long int &P)
+int Contact_grid::Assign_point_to_regions_cnts(const int& a, const int& b, const int& c, const int f_regions[], const int n_regions[], const int& tot_regions, const long int& P)
 {
     //Calculate default rregion
     int t = Calculate_t(a, b, c, n_regions[0], n_regions[1]);
-    
+
     //Assign point to default region
     //hout<<"t="<<t<<endl;
+    if (t >= tot_regions || t < 0)
+    {
+        hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subrigion outside the range of subregions." << endl;
+        hout << "Subregion number (t) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+        hout << "P=" << P << endl;
+        hout << "a=" << a << " b=" << b << " c=" << c << endl;
+        return 0;
+    }
     sectioned_domain_cnts[t].push_back(P);
-    
+
     //Check if P needs to be added to more regions due to their overlapping
     //Check the flag for the subregion's a-coordinate
     if (f_regions[0] != 0) {
-        
+
         //Calculate the region
-        t = Calculate_t(a+f_regions[0], b, c, n_regions[0], n_regions[1]);
+        t = Calculate_t(a + f_regions[0], b, c, n_regions[0], n_regions[1]);
         //hout<<"\tt0="<<t<<endl;
-        
+        if (t >= tot_regions || t < 0)
+        {
+            hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subrigion outside the range of subregions." << endl;
+            hout << "Subregion number (t0) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+            hout << "P=" << P << endl;
+            hout << "a=" << a << " b=" << b << " c=" << c << endl;
+            hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
+            return 0;
+        }
+
         //Assign point to region
         sectioned_domain_cnts[t].push_back(P);
-        
+
     }
     //Check the flag for the subregion's b-coordinate
     if (f_regions[1] != 0) {
-        
+
         //Calculate the region
-        t = Calculate_t(a, b+f_regions[1], c, n_regions[0], n_regions[1]);
         //hout<<"\tt1="<<t<<endl;
-        
+        t = Calculate_t(a, b + f_regions[1], c, n_regions[0], n_regions[1]);
+        if (t >= tot_regions || t < 0)
+        {
+            hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subrigion outside the range of subregions." << endl;
+            hout << "Subregion number (t1) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+            hout << "P=" << P << endl;
+            hout << "a=" << a << " b=" << b << " c=" << c << endl;
+            hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
+            return 0;
+        }
+
         //Assign point to region
         sectioned_domain_cnts[t].push_back(P);
-        
+
     }
     //Check the flag for the subregion's c-coordinate
     if (f_regions[2] != 0) {
-        
+
         //Calculate the region
-        t = Calculate_t(a, b, c+f_regions[2], n_regions[0], n_regions[1]);
         //hout<<"\tt2="<<t<<endl;
-        
+        t = Calculate_t(a, b, c + f_regions[2], n_regions[0], n_regions[1]);
+        if (t >= tot_regions || t < 0)
+        {
+            hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subrigion outside the range of subregions." << endl;
+            hout << "Subregion number (t2) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+            hout << "P=" << P << endl;
+            hout << "a=" << a << " b=" << b << " c=" << c << endl;
+            hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
+            return 0;
+        }
+
         //Assign point to region
         sectioned_domain_cnts[t].push_back(P);
-        
+
     }
-    
+
     return 1;
 }
 //Calculates the region to which a point corresponds

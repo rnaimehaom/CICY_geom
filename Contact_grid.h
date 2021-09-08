@@ -33,7 +33,7 @@ public:
     int Fill_sectioned_domain_cnts(const cuboid &window_geom, const vector<int> &cnts_inside, const vector<vector<long int> > &structure, const vector<Point_3D> &points_cnt, const double &overlapping, const int n_regions[], const double l_regions[]);
     int Calculate_region_coordinates(const cuboid &window_geom, const Point_3D &point, const double l_regions[], int &a, int &b, int &c);
     int Calculate_overlapping_flags(const cuboid &window_geom, const Point_3D &point, const double &overlapping, const int &a, const int &b, const int &c, const int n_regions[], const double l_regions[], int f_regions[]);
-    int Assign_point_to_regions_cnts(const int &a, const int &b, const int &c, const int f_regions[], const int n_regions[], const long int &P);
+    int Assign_point_to_regions_cnts(const int &a, const int &b, const int &c, const int f_regions[], const int n_regions[], const int &tot_regions, const long int &P);
     int Calculate_t(const int &a, const int &b, const int &c, const int &sx, const int &sy);
     int Fill_sectioned_domain_gnps(const cuboid &window_geom, const vector<GNP> &gnps, const vector<int> &gnps_inside, const double &overlapping, const int n_regions[], const double l_regions[]);
     int Fill_sectioned_domain_single_gnp(const cuboid &window_geom, const GNP &gnp, const double &overlapping, const int n_regions[], const double l_regions[]);
