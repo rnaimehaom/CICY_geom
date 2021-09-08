@@ -26,6 +26,8 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     vector<GNP> gnps;
     //GNP points (only those needed are stored)
     vector<Point_3D> points_gnp;
+    //GNP structure, each structure_gnp[i] referes to the points in GNP_i
+    vector<vector<long int> > structure_gnp;
 
     //Shell vectors (used to remove nanoparticles when reducing observation window size)
     vector<vector<int> > shells_cnts;
@@ -59,6 +61,20 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     {
         hout << "Shell " << i << ": " << shells_cnts[i].size() << endl;
     }*/
+
+    //----------------------------------------------------------------------
+    //Determine the local networks in cutoff windows
+    Cutoff_Wins* Cutwins = new Cutoff_Wins;
+    //From this function I get the internal variables cnts_inside and boundary_cnt
+    ct0 = time(NULL);
+    //hout<<"Extract_observation_window"<<endl;
+    //For the case of reading data from an Abaqus database, window is always 0
+    if (!Cutwins->Extract_observation_window(0, Init->simu_para.particle_type, Init->geom_sample, Init->geom_sample.sample, Init->nanotube_geo, gnps, structure_cnt, radii, points_cnt, shells_cnts, shell_gnps, structure_gnp, points_gnp)) {
+        hout << "Error when extracting observation window " << endl;
+        return 0;
+    }
+    ct1 = time(NULL);
+    hout << "Extract observation window time: " << (int)(ct1 - ct0) << " secs." << endl;
 
     //Initialize Abaqus C++ API
     odb_initializeAPI();
@@ -103,7 +119,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
 
         //Window geometry is the same as that of the sample
         cuboid window_geo = Init->geom_sample.sample;
-        //hout<<"window_geo = "<<window_geo.str()<<endl;
+        hout<<"window_geo = "<<window_geo.str()<<endl;
 
         //Export the window geometry if needed
         if (Init->vis_flags.window_domain) {
@@ -111,23 +127,6 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
             VTK_Export VTK_E;
             VTK_E.Export_cuboid(window_geo, str);
         }
-
-        //GNP structure, each structure_gnp[i] referes to the points in GNP_i
-        vector<vector<long int> > structure_gnp;
-
-        //----------------------------------------------------------------------
-        //Determine the local networks in cutoff windows
-        Cutoff_Wins* Cutwins = new Cutoff_Wins;
-        //From this function I get the internal variables cnts_inside and boundary_cnt
-        ct0 = time(NULL);
-        //hout<<"Extract_observation_window"<<endl;
-        //For the case of reading data from an Abaqus database, window is always 0
-        if (!Cutwins->Extract_observation_window(0, Init->simu_para.particle_type, Init->geom_sample, window_geo, Init->nanotube_geo, gnps, structure_cnt, radii, points_cnt, shells_cnts, shell_gnps, structure_gnp, points_gnp)) {
-            hout << "Error when extracting observation window " << i + 1 << endl;
-            return 0;
-        }
-        ct1 = time(NULL);
-        hout << "Extract observation window time: " << (int)(ct1 - ct0) << " secs." << endl;
 
         //----------------------------------------------------------------------
         //Determine the local networks inside the cutoff windows
@@ -164,12 +163,14 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
 
         //Delete objects to free memory
         delete EA;
-        delete Cutwins;
         delete HoKo;
 
         it1 = time(NULL);
         hout << "Frame " << i << " time: " << (int)(it1 - it0) << " secs." << endl;
     }
+
+    //Delete objects to free memory
+    delete Cutwins;
 
     //Close Abaqus database
     odb.close();
@@ -650,6 +651,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
     //Get the data of the displacements
     int numComp = 0; //This integer is needed to call data() in the line below
     const float* const data0 = val0.data(numComp);
+    //hout << "vals0.size=" << vals0.size() << " data0.size=numComp=" << numComp << endl;
 
     //Update lower left corner of sample
     geom_sample.sample.poi_min = geom_sample.sample.poi_min + Point_3D((double)data0[0], (double)data0[1], (double)data0[2]);
