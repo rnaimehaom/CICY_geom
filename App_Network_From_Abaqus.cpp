@@ -108,7 +108,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
             //Read Abaqus database and apply displacements
             ct0 = time(NULL);
             //hout<<"Apply_displacements_from_Abaqus"<<endl;
-            if (!Apply_displacements_from_Abaqus(Init->simu_para.particle_type, (int)structure_cnt.size(), structure_cnt, root_assy, allFramesInStep[i], Init->geom_sample, points_cnt, gnps))
+            if (!Apply_displacements_from_Abaqus(Init->simu_para.particle_type, (int)structure_cnt.size(), structure_cnt, root_assy, allFramesInStep[i-1], allFramesInStep[i], Init->geom_sample, points_cnt, gnps))
             {
                 hout << "Error when applying displacement to nanoparticles." << endl;
                 return 0;
@@ -119,7 +119,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
 
         //Window geometry is the same as that of the sample
         cuboid window_geo = Init->geom_sample.sample;
-        hout<<"window_geo = "<<window_geo.str()<<endl;
+        //hout<<"window_geo = "<<window_geo.str()<<endl;
 
         //Export the window geometry if needed
         if (Init->vis_flags.window_domain) {
@@ -577,15 +577,18 @@ int App_Network_From_Abaqus::Read_sample_geometry(Geom_sample& geom_sample)const
     return 1;
 }
 //This functions adds the displacements to the CNTs, GNPs and sample
-int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const
+int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_Frame& previous_frame, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const
 {
     //Access displacement field ("U") in the current frame
-    //hout << "fieldU" << endl;
-    odb_FieldOutput& fieldU = current_frame.fieldOutputs()["U"];
+    //hout << "current_fieldU" << endl;
+    odb_FieldOutput& current_fieldU = current_frame.fieldOutputs()["U"];
+    //Access displacement field ("U") in the current frame
+    //hout << "previous_fieldU" << endl;
+    odb_FieldOutput& previous_fieldU = previous_frame.fieldOutputs()["U"];
 
     //Apply displacements to sample
     //hout << "Apply_displacements_to_sample" << endl;
-    if (!Apply_displacements_to_sample(root_assy, fieldU, geom_sample))
+    if (!Apply_displacements_to_sample(root_assy, previous_fieldU, current_fieldU, geom_sample))
     {
         hout << "Error in Apply_displacements_from_Abaqus when calling Apply_displacements_to_sample" << endl;
         return 0;
@@ -596,7 +599,7 @@ int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& parti
 
         //Apply displacements to CNT points
         //hout << "Apply_displacements_to_cnts" << endl;
-        if (!Apply_displacements_to_cnts(structure, root_assy, fieldU, n_cnts, points_cnt))
+        if (!Apply_displacements_to_cnts(structure, root_assy, previous_fieldU, current_fieldU, n_cnts, points_cnt))
         {
             hout << "Error in Apply_displacements_from_Abaqus when calling Apply_displacements_to_cnts" << endl;
             return 0;
@@ -620,7 +623,7 @@ int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& parti
 }
 //This function gets the displacements of two of the sample nodes, applies this displacemets
 //to the corresponding vertices and calculates the geometry of the deformed sample
-int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_assy, odb_FieldOutput& fieldU, Geom_sample& geom_sample)const
+int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, Geom_sample& geom_sample)const
 {
     //Name of the set for the lower left corner (it is hard coded in the python scritp too)
     string set0 = "MATRIX0";
@@ -631,11 +634,13 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
     //Access set0 from root assembly
     odb_Set& matrix0 = root_assy.nodeSets()[set0.c_str()];
 
-    //Get the displacement object of the set
-    odb_FieldOutput matrix0_disp = fieldU.getSubset(matrix0);
+    //Get the displacement objects of the set
+    odb_FieldOutput matrix0_disp = current_fieldU.getSubset(matrix0);
+    odb_FieldOutput matrix0_disp_prev = previous_fieldU.getSubset(matrix0);
 
     //Get the sequence of values of the displacement object for matrix0
     const odb_SequenceFieldValue& vals0 = matrix0_disp.values();
+    const odb_SequenceFieldValue& vals0_prev = matrix0_disp_prev.values();
 
     //Check the size of vals is 1 (since it contains one node)
     if (vals0.size() != 1)
@@ -646,25 +651,36 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
 
     //Get the acutal values
     const odb_FieldValue val0 = vals0[0];
+    const odb_FieldValue val0_prev = vals0_prev[0];
     //Output node label
     //hout << "  Node: " << val0.nodeLabel() << endl;
-    //Get the data of the displacements
+    //Get the current data of the displacements
     int numComp = 0; //This integer is needed to call data() in the line below
     const float* const data0 = val0.data(numComp);
+    //Get the previous data of the displacements
+    int numComp_prev = 0; //This integer is needed to call data() in the line below
+    const float* const data0_prev = val0_prev.data(numComp_prev);
     //hout << "vals0.size=" << vals0.size() << " data0.size=numComp=" << numComp << endl;
 
     //Update lower left corner of sample
-    geom_sample.sample.poi_min = geom_sample.sample.poi_min + Point_3D((double)data0[0], (double)data0[1], (double)data0[2]);
+    // 
+    //Note data[i] is the displacement for frame i, no the displacement
+    //with respect to the previous frame
+    //Thus, calculate the increment of displacement with respect to the previous frame
+    //Otherwise I would need the initial geometry of the sample for each frame
+    geom_sample.sample.poi_min = geom_sample.sample.poi_min + Point_3D((double)data0[0] - (double)data0_prev[0], (double)data0[1] - (double)data0_prev[1], (double)data0[2] - (double)data0_prev[2]);
     //hout << "disp0=" << data0[0] << " " << data0[1] << " " << data0[2] << endl;
 
     //Access set1 from root assembly
     odb_Set& matrix1 = root_assy.nodeSets()[set1.c_str()];
 
-    //Get the displacement object of the set
-    odb_FieldOutput matrix1_disp = fieldU.getSubset(matrix1);
+    //Get the displacement objects of the set
+    odb_FieldOutput matrix1_disp = current_fieldU.getSubset(matrix1);
+    odb_FieldOutput matrix1_disp_prev = previous_fieldU.getSubset(matrix1);
 
     //Get the sequence of values of the displacement object for matrix1
     const odb_SequenceFieldValue& vals1 = matrix1_disp.values();
+    const odb_SequenceFieldValue& vals1_prev = matrix1_disp_prev.values();
 
     //Check the size of vals is 1 (since it contains one node)
     if (vals1.size() != 1)
@@ -675,17 +691,25 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
 
     //Get the acutal values
     const odb_FieldValue val1 = vals1[0];
+    const odb_FieldValue val1_prev = vals1_prev[0];
     //Output node label
     //cout << "  Node: " << val1.nodeLabel() << endl;
     //Get the data of the displacements
     numComp = 0; //This integer is needed to call data() in the line below
     const float* const data1 = val1.data(numComp);
+    numComp_prev = 0; //This integer is needed to call data() in the line below
+    const float* const data1_prev = val1_prev.data(numComp_prev);
     //hout << "disp1=" << data1[0] << " " << data1[1] << " " << data1[2] << endl;
 
     //Update the maximum coordinates of the sample, which are the maximum coordinates of the sample
-    geom_sample.sample.max_x = geom_sample.sample.max_x + (double)data1[0];
-    geom_sample.sample.max_y = geom_sample.sample.max_y + (double)data1[1];
-    geom_sample.sample.max_z = geom_sample.sample.max_z + (double)data1[2];
+    // 
+    //Note data[i] is the displacement for frame i, no the displacement
+    //with respect to the previous frame
+    //Thus, calculate the increment of displacement with respect to the previous frame
+    //Otherwise I would need the initial geometry of the sample for each frame
+    geom_sample.sample.max_x = geom_sample.sample.max_x + (double)data1[0] - (double)data1_prev[0];
+    geom_sample.sample.max_y = geom_sample.sample.max_y + (double)data1[1] - (double)data1_prev[1];
+    geom_sample.sample.max_z = geom_sample.sample.max_z + (double)data1[2] - (double)data1_prev[2];
 
     //Update the dimensions of the sample along each direction
     geom_sample.sample.len_x = geom_sample.sample.max_x - geom_sample.sample.poi_min.x;
@@ -698,7 +722,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
     /* /Access set1 from root assembly
     odb_Set& matrix2 = root_assy.nodeSets()["MATRIX2"];
     //Get the displacement object of the set
-    odb_FieldOutput matrix2_disp = fieldU.getSubset(matrix2);
+    odb_FieldOutput matrix2_disp = current_fieldU.getSubset(matrix2);
     //Get the sequence of values of the displacement object for matrix1
     const odb_SequenceFieldValue& vals2 = matrix2_disp.values();
     //Get the acutal values
@@ -711,7 +735,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
     return 1;
 }
 //This function applies displacements to CNT points
-int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_FieldOutput& fieldU, const int& n_cnts, vector<Point_3D>& points_cnt)const
+int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, const int& n_cnts, vector<Point_3D>& points_cnt)const
 {
 
     //Iterate over the CNTs in the sample
@@ -724,11 +748,13 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
         //Access set from root assembly
         odb_Set& cnt_set = root_assy.nodeSets()[set_name.c_str()];
 
-        //Get the displacement object of the set
-        odb_FieldOutput cnt_disp = fieldU.getSubset(cnt_set);
+        //Get the displacement objects of the set
+        odb_FieldOutput cnt_disp = current_fieldU.getSubset(cnt_set);
+        odb_FieldOutput cnt_disp_prev = previous_fieldU.getSubset(cnt_set);
 
         //Get the values of the displacement object
         const odb_SequenceFieldValue& vals = cnt_disp.values();
+        const odb_SequenceFieldValue& vals_prev = cnt_disp_prev.values();
         //Output size of values
         //cout << "values.size=" << vals.size() << endl;
 
@@ -756,6 +782,8 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
         hout << endl;*/
 
         //Iterate over the values, i.e., the points in the current CNT
+        //Number used in the loop
+        int v_size1 = vals.size() - 1;
         for (int j = 0; j < vals.size(); j++)
         {
             //Note that nodes are actually in reverse order given the way
@@ -763,27 +791,37 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
             //Thus, I need to go in reverse order when scanning the structure vcetor
             //With this definition of idx, I can start at the last element of 
             //structure[i] and stop at its first element
-            int idx = vals.size() - j - 1;
+            int idx = v_size1 - j;
 
             //Get current point number
             long int P = structure[i][idx];
             
             //Get current values
             const odb_FieldValue val = vals[j];
+            //Get previous values
+            const odb_FieldValue val_prev = vals_prev[j];
             //Output node label
             //cout << "  Node: " << val.nodeLabel() << endl;
             //Get the data of the displacements
             int numComp = 0; //This integer is needed to call data() in the line below
             const float* const data = val.data(numComp);
+            //Get the data of the previous displacements
+            int numComp_prev = 0; //This integer is needed to call data() in the line below
+            const float* const data_prev = val_prev.data(numComp_prev);
 
             //Displacements are in data, where:
             //data[0] corresponds to displacement in x
             //data[1] corresponds to displacement in y
             //data[2] corresponds to displacement in z            
-            //Add these displacement to point P
-            points_cnt[P].x = points_cnt[P].x + (double)data[0];
-            points_cnt[P].y = points_cnt[P].y + (double)data[1];
-            points_cnt[P].z = points_cnt[P].z + (double)data[2];
+            //Add the incremental displacement to point P
+            // 
+            //Note data[i] is the displacement for frame i, no the displacement
+            //with respect to the previous frame
+            //Thus, calculate the increment of displacement with respect to the previous frame
+            //Otherwise I would need the initial position of the points for each frame
+            points_cnt[P].x = points_cnt[P].x + (double)data[0] - (double)data_prev[0];
+            points_cnt[P].y = points_cnt[P].y + (double)data[1] - (double)data_prev[1];
+            points_cnt[P].z = points_cnt[P].z + (double)data[2] - (double)data_prev[2];
         }
     }
 
