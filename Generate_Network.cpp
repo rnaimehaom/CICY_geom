@@ -97,7 +97,7 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
                     vtk_exp.Export_single_cnt(cnts_points[i], filename);
                 }
             }
-            else {
+            else if (vis_flags.generated_nanoparticles == 1) {
                 
                 //Generate one visualization file with all the CNTs
                 vtk_exp.Export_cnts_2D_vector(cnts_points, "cnts_generated.vtk");
@@ -5427,10 +5427,14 @@ int Generate_Network::Output_data_files(const Geom_sample &geom_sample, const Ou
     }
     
     //Check if output data files were requested for generated CNTs
-    if (out_flags.cnt_data) {
+    if (out_flags.cnt_data == 1) {
         
         //Print the CNT points needed to generated them in Abaqus
         Pr.Print_cnt_points_and_structure(geom_sample.sample, structure, points_cnt, radii_out, out_flags.prec_cnt, "cnt_coordinates.csv", "cnt_struct.csv");
+    }
+    else if (out_flags.cnt_data == 2) {
+        //hout << "Print_cnt_points_and_structure_binary" << endl;
+        Pr.Print_cnt_points_and_structure_binary(geom_sample.sample, structure, points_cnt, radii_out, "cnt_coordinates.dat", "cnt_struct.dat");
     }
     
     return 1;

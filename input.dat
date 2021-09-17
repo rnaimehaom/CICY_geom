@@ -287,11 +287,13 @@ Output_Data_Flags
 % 1: export file
 %If set to 1, the desired precision (number of digits after the decimal point) needs to be specified too
 0
-%Flag to output a text file with the coordinates of all CNT points
-%Two files are exported, one with the coordinates and one with the number of CNTs and
-%the number of points for each CNT
-% 0: do not export file with CNT point coordinates and CNT structure
-% 1: export files
+%Flag to output a file with the coordinates of all CNT points and number of points and radius for each CNT
+%Two files are exported, one with the coordinates and one with the number of CNTs,
+%the number of points for each CNT and the radius of each CNT
+%Files may be exported in ASCII code into a csv file or as a binary file to with extension .dat
+% 0: do not export files with CNT point coordinates and CNT structure
+% 1: export csv files (ASCII)
+% 2: export binary files
 %If set to 1, the desired precision (number of digits after the decimal point) needs to be specified too
 0
 %-------------------------------- End

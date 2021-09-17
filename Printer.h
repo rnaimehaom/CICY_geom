@@ -34,5 +34,6 @@ public:
     double Recover_angle(const double &cos_alpha, const double &sin_alpha, const double &two_PI);
     void Print_cnt_points_and_structure(const cuboid &geom_sample, const vector<vector<long int> > &structure, const vector<Point_3D> &points_cnt, const vector<double> &radii, const int &prec, const string &filename_points, const string &filename_struct);
     void Check_if_close_enough_to_boundary(const cuboid &geom_sample, const Point_3D &P, const int &prec, int &cnt_points, ofstream &otec_points);
+    void Print_cnt_points_and_structure_binary(const cuboid& geom_sample, const vector<vector<long int> >& structure, const vector<Point_3D>& points_cnt, const vector<double>& radii, const string& filename_points, const string& filename_struct);
 };
 #endif

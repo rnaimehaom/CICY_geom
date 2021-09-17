@@ -292,3 +292,52 @@ void Printer::Check_if_close_enough_to_boundary(const cuboid &geom_sample, const
         otec_points<<P.str(prec)<<endl;
     }
 }
+
+//This function prints the coordinates of all CNT points into a binary file
+//Two binary files are exported, one with the coordinates and one with the number of CNTs and
+//the number of points for each CNT
+void Printer::Print_cnt_points_and_structure_binary(const cuboid& geom_sample, const vector<vector<long int> >& structure, const vector<Point_3D>& points_cnt, const vector<double>& radii, const string& filename_points, const string& filename_struct)
+{
+    //Open file for CNT points
+    ofstream otec_points(filename_points.c_str(), ios::binary | ios::out);
+    //Open file for CNT structure
+    ofstream otec_struct(filename_struct.c_str(), ios::binary | ios::out);
+
+    //Get the size of a double
+    streamsize double_size = sizeof(double);
+    //Get the size of an int
+    streamsize int_size = sizeof(int);
+
+    //Get the number of CNTs
+    int n_cnts = (int)structure.size();
+
+    //Output the number of CNTs
+    otec_struct.write((char*)&n_cnts, int_size);
+
+    //Iterate over all points in the structure
+    for (size_t i = 0; i < structure.size(); i++) {
+
+        //Number of points in CNT i
+        int cnt_points = (int)structure[i].size();
+
+        //Output the number of points in CNT i and its radius
+        otec_struct.write((char*)&cnt_points, int_size);
+        otec_struct.write((char*)&radii[i], double_size);
+
+        //Iterate over the points in CNT i
+        for (size_t j = 0; j < structure[i].size(); j++) {
+
+            //Get the point number
+            long int Pj = structure[i][j];
+            
+            //Output the coordinates of point j in CNT i
+            otec_points.write((char*)&points_cnt[Pj].x, double_size);
+            otec_points.write((char*)&points_cnt[Pj].y, double_size);
+            otec_points.write((char*)&points_cnt[Pj].z, double_size);
+        }
+    }
+
+    //Close files
+    otec_points.close();
+    otec_struct.close();
+}
