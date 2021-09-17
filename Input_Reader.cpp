@@ -804,10 +804,11 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
     geom_sample.ex_dom_cnt.poi_min.y = geom_sample.sample.poi_min.y - l_ext_half;
     geom_sample.ex_dom_cnt.len_x = geom_sample.sample.len_x + l_ext;
     geom_sample.ex_dom_cnt.wid_y = geom_sample.sample.wid_y + l_ext;
-    //The z-coordinates will be the same as the sample's coordinates in the case of a CNT deposit
+    //In the case of a CNT deposit, the lowest z-coordinate is tha same as the sample's, 
+    //but the length is only incresaed hald the extended length (compared to the sample's)
     if (simu_para.particle_type=="CNT_deposit") {
         geom_sample.ex_dom_cnt.poi_min.z = geom_sample.sample.poi_min.z;
-        geom_sample.ex_dom_cnt.hei_z = geom_sample.sample.hei_z;
+        geom_sample.ex_dom_cnt.hei_z = geom_sample.sample.hei_z + l_ext_half;
     }
     else {
         geom_sample.ex_dom_cnt.poi_min.z = geom_sample.sample.poi_min.z - l_ext_half;

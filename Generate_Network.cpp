@@ -2144,6 +2144,9 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
         
         //Variable to store the length of the current CNT that is inside the sample
         double cnt_len = 0.0;
+
+        //This variable is used to determine termination criteria of CNT deposit
+        double top = geom_sample.ex_dom_cnt.max_z - cnt_rad;
         
         //Start generation of a CNT given the generated seed
         for (int i = 0; i < step_num; i++) {
@@ -2173,6 +2176,17 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
             
             //Check if new_point is inside the extended domain
             if(Is_point_inside_cuboid(geom_sample.ex_dom_cnt, new_point)) {
+
+                //Check if point is too close to top boundary
+                //This happens when the z-ccordinate of a point is a distance less than a radius
+                //from the top boundary: z - top < radius
+                //Note that top = geom_sample.ex_dom_cnt.max_z - cnt_rad
+                if (top - new_point.z < Zero)
+                {
+                    hout << "CNTs are too close to the top boundary" << endl;
+                    //There are enough points too close to the to boundary to terminate the function
+                    terminate = true;
+                }
                 
                 //Calculate the segment length inside the sample and add it to the total CNT length
                 bool is_new_inside_sample;
@@ -2241,6 +2255,7 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
     } else if(nanotube_geo.criterion == "vol") {
         hout << endl << "The volume fraction of generated CNTs was " << vol_sum/geom_sample.volume;
         hout << ", the target volume fraction was " << nanotube_geo.volume_fraction << endl << endl;
+        //hout << "geom_sample.volume=" << geom_sample.volume << endl;
     }
     
     hout << "There were " << cnt_reject_count << " CNTs rejected." << endl;
