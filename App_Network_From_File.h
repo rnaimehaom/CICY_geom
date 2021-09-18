@@ -18,14 +18,18 @@
 #include "Electrical_analysis.h"
 #include "Hoshen_Kopelman.h"
 #include "Input_Reader.h"
+#include "Read_Network.h"
 
 
 using namespace hns;
 
 //---------------------------------------------------------------------------
-class App_Network_From_Abaqus
+class App_Network_From_File
 {
 public:
+
+	//Constructor
+	App_Network_From_File() {};
 
 	int Generate_nanoparticle_resistor_network_from_file(Input* Init)const;
 };

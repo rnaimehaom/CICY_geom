@@ -8,7 +8,7 @@
 #include "App_Network_From_File.h"
 
 //Generate 3D nanoparticle network, turn it into a resitor network and find its electrical conductivity
-int App_Network_From_Abaqus::Generate_nanoparticle_resistor_network_from_file(Input* Init)const
+int App_Network_From_File::Generate_nanoparticle_resistor_network_from_file(Input* Init)const
 {
     //Time markers for total simulation
     time_t ct0, ct1;
@@ -35,7 +35,15 @@ int App_Network_From_Abaqus::Generate_nanoparticle_resistor_network_from_file(In
     //----------------------------------------------------------------------
     //Network Generation from file
     hout << "Generating nanoparticle network from file......" << endl;
-    
+    ct0 = time(NULL);
+    Read_Network* Reader = new Read_Network;
+    if (!Reader->Generate_nanoparticle_network_from_file(Init->simu_para, Init->vis_flags, Init->out_flags, Init->geom_sample, points_cnt, radii, structure_cnt, gnps)) {
+        hout << "Error in Generate_nanoparticle_network_from_file." << endl;
+        return 0;
+    }
+    delete Reader;
+    ct1 = time(NULL);
+    hout << "Nanoparticle network generation from file time: " << (int)(ct1 - ct0) << " secs." << endl;
 
     //----------------------------------------------------------------------
     //Vector for GNP shells

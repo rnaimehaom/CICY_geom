@@ -18,6 +18,7 @@
 #include "Electrical_analysis.h"
 #include "Hoshen_Kopelman.h"
 #include "Input_Reader.h"
+#include "Read_Network.h"
 //Include for Abaqus
 #include <odb_API.h>
 
@@ -34,10 +35,6 @@ public:
     //Member Functions
     int Nanoparticle_resistor_network_from_odb(Input* Init)const;
     //Generate a network of nanoparticles from the data in the Abaqus database
-    int Generate_nanoparticle_network_from_file(const Simu_para& simu_para, const Visualization_flags& vis_flags, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure, vector<GNP>& gnps)const;
-    int Read_cnt_data_from_csv(vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure)const;
-    int Read_gnp_data_from_csv(const cuboid& sample_geom, vector<GNP>& gnps)const;
-    int Read_sample_geometry(Geom_sample& geom_sample)const;
     int Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_Frame& previous_frame, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const;
     int Apply_displacements_to_sample(odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, Geom_sample& geom_sample)const;
     int Apply_displacements_to_cnts(const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, const int& n_cnts, vector<Point_3D>& points_cnt)const;

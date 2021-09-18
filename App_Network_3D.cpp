@@ -43,7 +43,7 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     }
     delete Generator;
     ct1 = time(NULL);
-    hout << "Nanotube network generation time: " << (int)(ct1-ct0) <<" secs." << endl;
+    hout << "Network generation time: " << (int)(ct1-ct0) <<" secs." << endl;
     //Printer *P = new Printer;
     //P->Print_1d_vec(gnps_point, "gnps_point_00.txt");
     //delete P;
