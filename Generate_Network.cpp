@@ -5421,6 +5421,11 @@ int Generate_Network::Output_data_files(const Geom_sample &geom_sample, const Ou
         Pr.Print_gnp_data(gnps, out_flags.prec_gnp, "gnp_data.csv");
     }
     else if (out_flags.gnp_data == 2) {
+
+        //Print the GNP into a binary file
+        Pr.Print_gnp_data_binary(gnps, "gnp_data.dat");
+    }
+    else if (out_flags.gnp_data == 3) {
         
         //Print the four vertices of a GNP needed to generate them in Abaqus
         Pr.Print_4_vertices_gnps(gnps, out_flags.prec_gnp, "gnp_vertices.csv");

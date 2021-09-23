@@ -90,6 +90,11 @@ int Read_Network::Generate_nanoparticle_network_from_file(const Simu_para& simu_
         else if (out_flags.gnp_data == 2)
         {
             //Read the GNP geometry form a binary file (.dat)
+            if (!Read_gnp_data_from_dat(geom_sample.sample, gnps))
+            {
+                hout << "Error in Generate_nanoparticle_network_from_file when calling Read_gnp_data_from_dat." << endl;
+                return 0;
+            }
         }
     }
 
@@ -542,6 +547,111 @@ int Read_Network::Read_gnp_data_from_csv(const cuboid& sample_geom, vector<GNP>&
 
         //Add GNP to the vector of GNPs
         gnps.push_back(new_gnp);
+    }
+
+    //Close file
+    gnp_file.close();
+
+    //Output a message with the total number of GNPs read
+    hout << endl << "A total of " << gnps.size() << " GNPs were read." << endl;
+
+    return 1;
+}
+//This function reads GNP data from a binary file (gnp_data.dat)
+int Read_Network::Read_gnp_data_from_dat(const cuboid& sample_geom, vector<GNP>& gnps)const
+{
+    //Open the file with the GNP geometric data
+    ifstream gnp_file;
+    gnp_file.open("gnp_data.dat", ios::in | ios::binary);
+    if (!gnp_file) {
+        hout << "Failed to open file with GNP geometric data gnp_data.dat." << endl;
+        return 0;
+    }
+
+    //Generate_Network object to generate the variables needed for each GNP
+    Generate_Network GN;
+
+    //Variable to store the number of points in CNT i
+    int n_gnps;
+
+    //Read the number of GNPs
+    gnp_file.read((char*)&n_gnps, sizeof(int));
+
+    //Set the size of the GNP vector
+    gnps.assign(n_gnps, GNP());
+
+    //Get the size of a double
+    streamsize double_size = sizeof(double);
+
+    //Iterate over the number of GNPs to read the data for each GNP
+    for (int i = 0; i < n_gnps; i++)
+    {
+        //Check if end-of-file has been reached
+        if (gnp_file.eof())
+        {
+            hout << "Error in Read_gnp_data_from_dat. The end-of-file of gnp_data.dat has been reached before reading all GNP data." << endl;
+            return 0;
+        }
+
+        //Set the flag of current GNP
+        gnps[i].flag = i;
+
+        //Read the GNP geometry
+        gnp_file.read((char*)&gnps[i].l, double_size);
+        gnp_file.read((char*)&gnps[i].t, double_size);
+
+        //Variables to store the angles
+        double theta, phi;
+
+        //Read the rotation angles
+        gnp_file.read((char*)&theta, double_size);
+        gnp_file.read((char*)&phi, double_size);
+
+        //Calculate rotation matrix
+        gnps[i].rotation = GN.Get_transformation_matrix(theta, phi);
+
+        //Read the coordinates of the GNP's centroid
+        gnp_file.read((char*)&gnps[i].center.x, double_size);
+        gnp_file.read((char*)&gnps[i].center.y, double_size);
+        gnp_file.read((char*)&gnps[i].center.z, double_size);
+
+        //Calculate (or approximate) GNP volume
+        int j;
+        for (j = 0; j < 8; j++)
+        {
+            if (!GN.Is_point_inside_cuboid(sample_geom, gnps[i].vertices[j])) {
+
+                //GNP is partially outside the sample, so approximate volume
+                double gnp_vol = 0.0;
+                if (!GN.Approximate_gnp_volume_inside_sample(sample_geom, gnps[i], gnp_vol)) {
+                    hout << "Error in Read_gnp_data_from_dat when calling Approximate_gnp_volume_inside_sample." << endl;
+                    return 0;
+                }
+                gnps[i].volume = gnp_vol;
+
+                //Terminate the for loop
+                break;
+            }
+        }
+
+        //Check if all vertices were inside the sample
+        if (j == 7)
+        {
+            //All vertices were inside the sample, thus calcualte the volume of the whole GNP
+            gnps[i].volume = gnps[i].l * gnps[i].l * gnps[i].t;
+        }
+
+        //Obtain coordinates of GNP vertices
+        if (!GN.Obtain_gnp_vertex_coordinates(gnps[i])) {
+            hout << "Error in Read_gnp_data_from_dat when calling Obtain_gnp_vertex_coordinates." << endl;
+            return 0;
+        }
+
+        //Get the plane equations for the six faces
+        if (!GN.Update_gnp_plane_equations(gnps[i])) {
+            hout << "Error in Read_gnp_data_from_dat when calling Update_gnp_plane_equations." << endl;
+            return 0;
+        }
     }
 
     //Close file

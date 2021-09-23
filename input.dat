@@ -282,9 +282,10 @@ Output_Data_Flags
 %Volumes and fractions of GNPs only (fractions respect to the GNP volume)
 %If only CNTs or only GNPs are generated, then this flag is ignored
 0
-%Flag to output a text file with the GNP data required fo them to be generated in Abaqus
+%Flag to output a text file with the GNP data required for them to be generated in Abaqus
 % 0: do not export file with GNP data
-% 1: export file
+% 1: export csv file (ASCII)
+% 2: export binary file
 %If set to 1, the desired precision (number of digits after the decimal point) needs to be specified too
 0
 %Flag to output a file with the coordinates of all CNT points and number of points and radius for each CNT

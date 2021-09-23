@@ -38,6 +38,7 @@ public:
     int Read_cnt_data_from_csv(vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure)const;
     int Read_cnt_data_from_dat(vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure)const;
     int Read_gnp_data_from_csv(const cuboid& sample_geom, vector<GNP>& gnps)const;
+    int Read_gnp_data_from_dat(const cuboid& sample_geom, vector<GNP>& gnps)const;
 };
 //---------------------------------------------------------------------------
 #endif

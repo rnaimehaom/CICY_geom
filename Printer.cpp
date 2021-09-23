@@ -201,6 +201,51 @@ double Printer::Recover_angle(const double &cos_alpha, const double &sin_alpha, 
     }
 }
 
+//Print the GNP data needed to generate them in Abaqus
+void Printer::Print_gnp_data_binary(const vector<GNP>& gnps, const string& filename)
+{
+    //Open file
+    ofstream otec(filename.c_str(), ios::binary | ios::out);
+
+    //Get the size of a double
+    streamsize double_size = sizeof(double);
+
+    //Get the number of GNPs
+    int n_gnps = (int)gnps.size();
+
+    //Output the number of CNTs
+    otec.write((char*)&n_gnps, sizeof(int));
+
+    //Calculate 2PI so the operation is done only once
+    double two_PI = 2 * PI;
+
+    //Iterate over all GNPs
+    for (size_t i = 0; i < gnps.size(); i++) {
+
+        //Output the geometry of the GNP
+        otec.write((char*)&gnps[i].l, double_size);
+        otec.write((char*)&gnps[i].t, double_size);
+
+        //Calculate the rotation angles
+        //Angle phi corresponds to the rotation angle around z
+        double phi = Recover_angle(gnps[i].rotation.element[1][1], -gnps[i].rotation.element[0][1], two_PI);
+        //Angle theta corresponds to the rotation angle around y
+        double theta = Recover_angle(gnps[i].rotation.element[2][2], -gnps[i].rotation.element[2][0], two_PI);
+
+        //Output the rotation angles
+        otec.write((char*)&theta, double_size);
+        otec.write((char*)&phi, double_size);
+
+        //Ouput the coordinates of the GNP's centroid
+        otec.write((char*)&gnps[i].center.x, double_size);
+        otec.write((char*)&gnps[i].center.y, double_size);
+        otec.write((char*)&gnps[i].center.z, double_size);
+    }
+
+    //Close file
+    otec.close();
+}
+
 //Print the four vertices of a GNP needed to generate them in Abaqus
 //The precision (number of digits after the decimal point) is specified as an input
 void Printer::Print_4_vertices_gnps(const vector<GNP> &gnps, const int &prec, const string &filename)
