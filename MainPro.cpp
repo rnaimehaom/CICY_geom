@@ -128,7 +128,7 @@ int main(int argc, char** argv)
         }
         delete NetworkAbqs;
     }
-    else if (Init->app_name.str == "Network_From_Abaqus")
+    else if (Init->app_name.str == "Network_From_File")
     {
         //Create an object to call the application that reads a network from an file
         App_Network_From_File* NetworkFile = new App_Network_From_File;
