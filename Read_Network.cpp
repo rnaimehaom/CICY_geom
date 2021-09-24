@@ -484,6 +484,9 @@ int Read_Network::Read_gnp_data_from_csv(const cuboid& sample_geom, vector<GNP>&
     //String to read lines from file
     string line;
 
+    //Variable to count the GNPs
+    int n_gnps = 0;
+
     //Read the file
     while (getline(gnp_file, line))
     {
@@ -552,6 +555,12 @@ int Read_Network::Read_gnp_data_from_csv(const cuboid& sample_geom, vector<GNP>&
             hout << "Error in Read_gnp_data_from_csv when calling Update_gnp_plane_equations." << endl;
             return 0;
         }
+
+        //Set the GNP flag
+        new_gnp.flag = n_gnps;
+
+        //Increase the count of GNPS
+        n_gnps++;
 
         //Add GNP to the vector of GNPs
         gnps.push_back(new_gnp);
