@@ -95,17 +95,21 @@ int main(int argc, char** argv)
     {
         //----------------------------------------------------------------------
         //Application to create a 3D network of nanotubes
-        App_Network_3D *Network3D = new App_Network_3D;
+        
+        //Get the number of samples to simulate
         int count = Init->simu_para.sample_num;
+        
         //Implement all samples
         for(int i=1; i<=count; i++) {
+
+            //Create an object to call the resistor network application
+            App_Network_3D* Network3D = new App_Network_3D;
             if(!Network3D->Generate_nanoparticle_resistor_network(Init)) {
                 hout<<"Error in Generate_nanoparticle_resistor_network in sample "<<i<<endl;
                 return 0;
             }
-        }
-            
-        delete Network3D;
+            delete Network3D;
+        }   
     }
     else if(Init->app_name.str=="Content_Distribution") {
         
