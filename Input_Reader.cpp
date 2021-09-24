@@ -302,7 +302,10 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
         hout << "Hybrid particles are not implemented yet" << endl;
         return 0;
     }
-    else if (simu_para.particle_type != "CNT_wires" && simu_para.particle_type != "CNT_deposit" && simu_para.particle_type != "GNP_cuboids" && simu_para.particle_type != "GNP_CNT_mix") {
+    else if (simu_para.particle_type != "CNT_wires" && 
+        simu_para.particle_type != "CNT_deposit" && 
+        simu_para.particle_type != "GNP_cuboids" && 
+        simu_para.particle_type != "GNP_CNT_mix") {
         hout << "Error: the type of particles shoud be one of the following: CNT_wires, CNT_deposit, GNP_cuboids or GNP_CNT_mix. Input was: "<<simu_para.particle_type<< endl;
         return 0;
     }
@@ -310,9 +313,12 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
     //Read keyword for creating a new network or reading a network from a file
 	istringstream istr2(Get_Line(infile));
 	istr2 >> simu_para.create_read_network;
-    if(simu_para.create_read_network!="Create_Network"&&simu_para.create_read_network!="Read_Network_Abq"&&simu_para.create_read_network!="Network_From_Seeds")
+    if(simu_para.create_read_network!="Create_Network" && 
+        simu_para.create_read_network != "Read_Network" && 
+        simu_para.create_read_network != "Read_Network_Abq" && 
+        simu_para.create_read_network!="Network_From_Seeds")
     {
-        hout << "Error: Invalid keyword. Valid options are 'Create_Network', 'Read_Network_Abq', or 'Network_From_Seeds'. Input was: " << simu_para.create_read_network << endl; 
+        hout << "Error: Invalid keyword. Valid options are 'Create_Network', 'Read_Network', 'Read_Network_Abq', or 'Network_From_Seeds'. Input was: " << simu_para.create_read_network << endl; 
         return 0; 
     }
     
@@ -355,7 +361,7 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
     }
     else if (simu_para.create_read_network == "Read_Network_Abq")
     {
-        //The network is read from an Abaqus database
+        //The network is read from files and displacements from an Abaqus database
 
         //Read the path to the odb file (the database)
         istringstream istr_odb_file(Get_Line(infile));
@@ -364,6 +370,18 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
         //Read the name of the step in the Abaqus simulation
         istringstream istr_step(Get_Line(infile));
         istr_step >> simu_para.step_name;
+
+        //When displacements are read from Abaqus, the network is read from a csv file
+        //since this is the file that was used to generate the network in Abaqus
+        simu_para.file_type = "csv";
+    }
+    else if (simu_para.create_read_network == "Read_Network")
+    {
+        //The network is read from files
+
+        //Read the type of file to be read
+        istringstream istr_file_type(Get_Line(infile));
+        istr_file_type >> simu_para.file_type;
     }
 
     //Read the nanoparticle content

@@ -33,7 +33,7 @@ public:
     Read_Network() {};
 
     //Member Functions
-    int Generate_nanoparticle_network_from_file(const Simu_para& simu_para, const Visualization_flags& vis_flags, const Output_data_flags& out_flags, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure, vector<GNP>& gnps)const;
+    int Generate_nanoparticle_network_from_file(const Simu_para& simu_para, const Visualization_flags& vis_flags, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure, vector<GNP>& gnps)const;
     int Read_sample_geometry(Geom_sample& geom_sample)const;
     int Read_cnt_data_from_csv(vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure)const;
     int Read_cnt_data_from_dat(vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure)const;

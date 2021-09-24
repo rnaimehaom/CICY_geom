@@ -6,8 +6,9 @@ Application
 %    electrical resistance and resistivity
 %Content_Distribution: Perform a study on the distribution of nanostructures over different
 %    observation windows
-%Network_From_Abaqus: Read a network of nanostructures from an Abaqus database (odb file)
-%    and calculate its electrical resistance and resistivity
+%Network_From_Abaqus: Read a network of nanostructures from files and displacements from
+%    an Abaqus database (odb file) and calculate its electrical resistance and resistivity
+%Network_From_File: Read a network of nanostructures from files (csv or binary)
 3D_Electrical_Network
 %
 %
@@ -31,8 +32,11 @@ Test
 GNP_CNT_mix 
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %This keyword defines if the nanoparticle network is created or read from a file.
-%There are three possible options: 'Read_Network', 'Create_Network', and 'Network_From_Seeds'
-%Read_Network_Abq: to read a network from an Abaqus database
+%Possible options: 
+%Read_Network: to read a network from files (csv or binary)
+%    In the following line indicate the type of file to be read 'csv' for comma separated value file
+%    or 'dat' for a binary file
+%Read_Network_Abq: to read a network from files and displacements from an Abaqus database
 %    In the following two lines specify the path to the Abaqus database (odb file) and the name of the Step
 %    in Abaqus that performed the deformation. If the database is located in the same directory as the
 %    executable, then only the filename may be specified. When specifying the fullpath, use double backslashes

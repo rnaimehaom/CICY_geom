@@ -14,6 +14,7 @@ using namespace hns;
 #include "App_Network_3D.h"
 #include "App_Content_Dist.h"
 #include "App_Network_From_Abaqus.h"
+#include "App_Network_From_File.h"
 
 int main(int argc, char** argv)
 {
@@ -126,6 +127,16 @@ int main(int argc, char** argv)
             return 0;
         }
         delete NetworkAbqs;
+    }
+    else if (Init->app_name.str == "Network_From_Abaqus")
+    {
+        //Create an object to call the application that reads a network from an file
+        App_Network_From_File* NetworkFile = new App_Network_From_File;
+        if (!NetworkFile->Generate_nanoparticle_resistor_network_from_file(Init))
+        {
+            hout << "Error in Generate_nanoparticle_resistor_network_from_file" << endl;
+            return 0;
+        }
     }
     else {
         //Delete Init object and terminate with error

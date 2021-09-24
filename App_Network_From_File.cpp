@@ -37,7 +37,7 @@ int App_Network_From_File::Generate_nanoparticle_resistor_network_from_file(Inpu
     hout << "Generating nanoparticle network from file......" << endl;
     ct0 = time(NULL);
     Read_Network* Reader = new Read_Network;
-    if (!Reader->Generate_nanoparticle_network_from_file(Init->simu_para, Init->vis_flags, Init->out_flags, Init->geom_sample, points_cnt, radii, structure_cnt, gnps)) {
+    if (!Reader->Generate_nanoparticle_network_from_file(Init->simu_para, Init->vis_flags, Init->geom_sample, points_cnt, radii, structure_cnt, gnps)) {
         hout << "Error in Generate_nanoparticle_network_from_file." << endl;
         return 0;
     }

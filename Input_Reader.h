@@ -35,7 +35,12 @@ struct Simu_para{
     string keywords;
     bool mark;
     string simu_name;
+    //String to define whether a network is read from file, 
+    //generated randomly or from seeds
     string create_read_network;
+    //In case file is read from file (withput reading displacements from Abaqus)
+    //this string specifies the type of file to be read: csv or dat (binary)
+    string file_type;
     //Path to obd file or name if it is in the same folder as the executable
     string odb_file;
     //Name of the simulation step in Abaqus

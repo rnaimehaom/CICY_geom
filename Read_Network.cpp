@@ -8,7 +8,7 @@
 #include "Read_Network.h"
 
 //This function reads the data from a csv file to generate a nanoparticle network
-int Read_Network::Generate_nanoparticle_network_from_file(const Simu_para& simu_para, const Visualization_flags& vis_flags, const Output_data_flags& out_flags, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure, vector<GNP>& gnps)const
+int Read_Network::Generate_nanoparticle_network_from_file(const Simu_para& simu_para, const Visualization_flags& vis_flags, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<double>& radii, vector<vector<long int> >& structure, vector<GNP>& gnps)const
 {
     //Check a valid particle is to be read from file
     if (simu_para.particle_type == "Hybrid_particles") {
@@ -31,7 +31,7 @@ int Read_Network::Generate_nanoparticle_network_from_file(const Simu_para& simu_
     if (simu_para.particle_type == "CNT_wires" || simu_para.particle_type == "CNT_deposit" || simu_para.particle_type == "GNP_CNT_mix") {
 
         //Check the type of file to read
-        if (out_flags.cnt_data == 1)
+        if (simu_para.file_type == "csv")
         {
             //Read CNT data from csv file
             if (!Read_cnt_data_from_csv(points_cnt, radii, structure))
@@ -40,7 +40,7 @@ int Read_Network::Generate_nanoparticle_network_from_file(const Simu_para& simu_
                 return 0;
             }
         }
-        else if (out_flags.cnt_data == 2)
+        else if (simu_para.file_type == "dat")
         {
             //Read CNT data from binary file (.dat)
             if (!Read_cnt_data_from_dat(points_cnt, radii, structure))
@@ -48,6 +48,10 @@ int Read_Network::Generate_nanoparticle_network_from_file(const Simu_para& simu_
                 hout << "Error in Generate_nanoparticle_network_from_file when calling Read_cnt_data_from_dat." << endl;
                 return 0;
             }
+        }
+        else {
+            hout << "Error in Generate_nanoparticle_network_from_file. Invalid file type to read CNT network from. Valid options are 'csv' or 'dat' only. Input was:" << simu_para.file_type << endl;
+            return 0;
         }
 
         /* /Approximate CNT volume fraction
@@ -78,7 +82,7 @@ int Read_Network::Generate_nanoparticle_network_from_file(const Simu_para& simu_
     if (simu_para.particle_type == "GNP_cuboids" || simu_para.particle_type == "GNP_CNT_mix") {
 
         //Check the type of file to read
-        if (out_flags.gnp_data == 1)
+        if (simu_para.file_type == "csv")
         {
             //Read the GNP geometry form a csv file
             if (!Read_gnp_data_from_csv(geom_sample.sample, gnps))
@@ -87,7 +91,7 @@ int Read_Network::Generate_nanoparticle_network_from_file(const Simu_para& simu_
                 return 0;
             }
         }
-        else if (out_flags.gnp_data == 2)
+        else if (simu_para.file_type == "dat")
         {
             //Read the GNP geometry form a binary file (.dat)
             if (!Read_gnp_data_from_dat(geom_sample.sample, gnps))
@@ -95,6 +99,10 @@ int Read_Network::Generate_nanoparticle_network_from_file(const Simu_para& simu_
                 hout << "Error in Generate_nanoparticle_network_from_file when calling Read_gnp_data_from_dat." << endl;
                 return 0;
             }
+        }
+        else {
+            hout << "Error in Generate_nanoparticle_network_from_file. Invalid file type to read GNP network from. Valid options are 'csv' or 'dat' only. Input was:" << simu_para.file_type << endl;
+            return 0;
         }
     }
 
