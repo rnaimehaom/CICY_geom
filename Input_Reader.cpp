@@ -831,12 +831,15 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
     //but the length is only incresaed hald the extended length (compared to the sample's)
     if (simu_para.particle_type=="CNT_deposit") {
         geom_sample.ex_dom_cnt.poi_min.z = geom_sample.sample.poi_min.z;
-        geom_sample.ex_dom_cnt.hei_z = geom_sample.sample.hei_z + l_ext_half;
+        //geom_sample.ex_dom_cnt.hei_z = geom_sample.sample.hei_z + l_ext_half;
     }
     else {
         geom_sample.ex_dom_cnt.poi_min.z = geom_sample.sample.poi_min.z - l_ext_half;
-        geom_sample.ex_dom_cnt.hei_z = geom_sample.sample.hei_z + l_ext;
     }
+    //In the case of the z direction, keep the maximum z-coordinate the same
+    geom_sample.ex_dom_cnt.hei_z = geom_sample.sample.hei_z + l_ext;
+
+    //Calculate maximum coordinates
     geom_sample.ex_dom_cnt.max_x = geom_sample.ex_dom_cnt.poi_min.x +  geom_sample.ex_dom_cnt.len_x;
     geom_sample.ex_dom_cnt.max_y = geom_sample.ex_dom_cnt.poi_min.y +  geom_sample.ex_dom_cnt.wid_y;
     geom_sample.ex_dom_cnt.max_z = geom_sample.ex_dom_cnt.poi_min.z +  geom_sample.ex_dom_cnt.hei_z;

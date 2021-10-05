@@ -2183,9 +2183,15 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
                 //Note that top = geom_sample.ex_dom_cnt.max_z - cnt_rad
                 if (top - new_point.z < Zero)
                 {
-                    hout << "CNTs are too close to the top boundary" << endl;
+                    hout << "CNTs are too close to the top boundary of the extended domain" << endl;
+                    //hout << "top=" << top << " P.z=" << new_point.z << " ceiling=" << geom_sample.ex_dom_cnt.max_z << endl;
                     //There are enough points too close to the to boundary to terminate the function
                     terminate = true;
+
+                    //Break the for-loop so that the current CNT stops its growth
+                    //There is no need to check if the segment adds volume to the sample
+                    //as the segment is reaching the upper boundary of the extended domain
+                    break;
                 }
                 
                 //Calculate the segment length inside the sample and add it to the total CNT length
