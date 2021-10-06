@@ -17,6 +17,7 @@ using namespace hns;
 #include "Cutoff_Wins.h"
 #include "Generate_Network.h"
 #include "Input_Reader.h"
+#include "Read_Network.h"
 
 //---------------------------------------------------------------------------
 class App_Content_Dist

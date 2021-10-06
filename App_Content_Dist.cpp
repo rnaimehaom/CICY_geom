@@ -33,20 +33,46 @@ int App_Content_Dist::Calculate_content_on_each_window(Input *Init)const
     vector<vector<int> > shells_cnts;
     
     //----------------------------------------------------------------------
-    //Network Generation with overlapping
-    hout << "Generating nanoparticle network......" << endl;
-    ct0 = time(NULL);
-    Generate_Network *Generator = new Generate_Network;
-    if (!Generator->Generate_nanoparticle_network(Init->simu_para, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, Init->cutoff_dist, Init->vis_flags, Init->out_flags, points_cnt, radii, structure_cnt, gnps)) {
-        hout<<"Error in Generate_nanoparticle_network."<<endl;
+    //Check if network is generated or read from file
+    if (Init->simu_para.create_read_network == "Create_Network" ||
+        Init->simu_para.create_read_network == "Network_From_Seeds") {
+
+        //----------------------------------------------------------------------
+        //Network Generation with overlapping
+        hout << "Generating nanoparticle network......" << endl;
+        ct0 = time(NULL);
+        Generate_Network* Generator = new Generate_Network;
+        if (!Generator->Generate_nanoparticle_network(Init->simu_para, Init->geom_sample, Init->nanotube_geo, Init->gnp_geo, Init->cutoff_dist, Init->vis_flags, Init->out_flags, points_cnt, radii, structure_cnt, gnps)) {
+            hout << "Error in Generate_nanoparticle_network." << endl;
+            return 0;
+        }
+        delete Generator;
+        ct1 = time(NULL);
+        hout << "Network generation time: " << (int)(ct1 - ct0) << " secs." << endl;
+        //Printer *P = new Printer;
+        //P->Print_1d_vec(gnps_point, "gnps_point_00.txt");
+        //delete P;
+    }
+    else if (Init->simu_para.create_read_network == "Read_Network") {
+
+        //----------------------------------------------------------------------
+        //Network Generation from file
+        hout << "Generating nanoparticle network from file......" << endl;
+        ct0 = time(NULL);
+        Read_Network* Reader = new Read_Network;
+        if (!Reader->Generate_nanoparticle_network_from_file(Init->simu_para, Init->vis_flags, Init->geom_sample, points_cnt, radii, structure_cnt, gnps)) {
+            hout << "Error in Generate_nanoparticle_network_from_file." << endl;
+            return 0;
+        }
+        delete Reader;
+        ct1 = time(NULL);
+        hout << "Nanoparticle network generation from file time: " << (int)(ct1 - ct0) << " secs." << endl;
+    }
+    else {
+        hout << "Error in Calculate_content_on_each_window. Invalid keyword for generating nanoparticle network using application " << Init->app_name.str << "." << endl;
+        hout << "Only valid options are 'Create_Network', 'Read_Network' or 'Network_From_Seeds'. Input was:" << Init->simu_para.create_read_network << endl;
         return 0;
     }
-    delete Generator;
-    ct1 = time(NULL);
-    hout << "Nanotube network generation time: " << (int)(ct1-ct0) <<" secs." << endl;
-    //Printer *P = new Printer;
-    //P->Print_1d_vec(gnps_point, "gnps_point_00.txt");
-    //delete P;
     
     //----------------------------------------------------------------------
     //Vector for GNP shells
