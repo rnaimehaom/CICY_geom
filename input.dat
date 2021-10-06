@@ -8,7 +8,6 @@ Application
 %    observation windows
 %Network_From_Abaqus: Read a network of nanostructures from files and displacements from
 %    an Abaqus database (odb file) and calculate its electrical resistance and resistivity
-%Network_From_File: Read a network of nanostructures from files (csv or binary)
 3D_Electrical_Network
 %
 %
@@ -36,17 +35,18 @@ GNP_CNT_mix
 %Read_Network: to read a network from files (csv or binary)
 %    In the following line indicate the type of file to be read 'csv' for comma separated value file
 %    or 'dat' for a binary file
-%Read_Network_Abq: to read a network from files and displacements from an Abaqus database
-%    In the following two lines specify the path to the Abaqus database (odb file) and the name of the Step
-%    in Abaqus that performed the deformation. If the database is located in the same directory as the
-%    executable, then only the filename may be specified. When specifying the fullpath, use double backslashes
-%    for instance: C:\\Users\\username\\Documents\\Job-1.odb 
 %Create_Network: to generate a new structure.
 %Network_From_Seeds: to generate a new structure from specific seeds (positive integers) for the
 %    random number generators. All seeds need to be specified in the next line separated by a space
 %    For CNTs 7 seeds are needed. For GNPs 6 seeds are needed.
 %    If both CNTs and GNPs are generated (GNP_CNT_mix or Hybrid_particles), CNT seeds are input
 %    first in one line and GNP seeds in the next line.
+%Read_Network_Abq: to read a network from files and displacements from an Abaqus database
+%    In the following two lines specify the path to the Abaqus database (odb file) and the name of the Step
+%    in Abaqus that performed the deformation. If the database is located in the same directory as the
+%    executable, then only the filename may be specified. When specifying the fullpath, use double backslashes
+%    for instance: C:\\Users\\username\\Documents\\Job-1.odb 
+%    This option only works with the application Network_From_Abaqus
 Create_Network
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Specify the content of nanoparticles.
