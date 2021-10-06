@@ -3254,7 +3254,10 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
         //Randomly generate a point inside the extended domain, this will be the displacement
         //applied to the GNP, i.e, its random location
         //hout<<"Get_seed_point_mt"<<endl;
-        if(Get_point_in_cuboid_mt(geom_sample.ex_dom_gnp, gnp.center, engine_x, engine_y, engine_z, dist)==0) return 0;
+        if (!Get_point_in_cuboid_mt(geom_sample.ex_dom_gnp, gnp.center, engine_x, engine_y, engine_z, dist)) { 
+            hout << "Error in Generate_gnp_network_mt when calling Get_point_in_cuboid_mt" << endl;
+            return 0; 
+        }
         //hout<<"gnp.center="<<gnp.center.str()<<endl;
         
         //Generate the GNP and all its remaining geometric parameters (vertices, planes, normal vectors)
@@ -3558,7 +3561,7 @@ int Generate_Network::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sa
             
             //Determine if gnp_new needs to be moved and, if so, move it
             //hout<<"Move_gnps_if_needed"<<endl;
-            if (!Move_gnps_if_needed(cutoffs, gnps, gnp_set, gnp_new, displaced)) {
+            if (!Move_gnps_if_needed(attempts, cutoffs, gnps, gnp_set, gnp_new, displaced)) {
                 hout<<"Error in Move_gnps_if_needed."<<endl;
                 return 0;
             }
@@ -3791,7 +3794,7 @@ int Generate_Network::Get_gnps_in_subregions(const vector<vector<int> > &section
     return 1;
 }
 //This function moves a GNP if needed
-int Generate_Network::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP &gnp_new, bool &displaced) const
+int Generate_Network::Move_gnps_if_needed(const int& attempts, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP &gnp_new, bool &displaced) const
 {
     //Create a new Collision_detection object to determine whether two GNPs interpenetrate
     //eachother or not, and their distances if they do not interpenetrate each other
@@ -3846,6 +3849,18 @@ int Generate_Network::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vect
         
         if (p_flag) {
             //hout<<"Penetration with GNP "<<GNP_i<<endl;
+
+            //If the maximum number of iterations has been reached, avoid finding the
+            //PD and direction vector N
+            if (attempts == MAX_ATTEMPTS)
+            {
+                //Set the displaced flag to true and terminate the function
+                //Since this is the last attempt, there is no point in doing the rest
+                //of operations
+                displaced = true;
+
+                return 1;
+            }
             
             //There is penetration, so then use EPA to find the penetration depth PD and direction vector N
             if (!GJK_EPA.EPA(gnps[GNP_i].vertices, gnp_new.vertices, simplex, N, PD)) {
@@ -3862,6 +3877,13 @@ int Generate_Network::Move_gnps_if_needed(const Cutoff_dist &cutoffs, const vect
         }
         else {
             //There is no penetration, so check wether they are touching or not
+
+            //If the maximum number of iterations has been reached, avoid moving the GNPs
+            //Leave them where they are either touching or below the van der Waals distance
+            if (attempts == MAX_ATTEMPTS)
+            {
+                return 1;
+            }
             
             if (t_flag) {
                 //hout<<"Touch with GNP "<<GNP_i<<endl;
