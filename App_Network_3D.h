@@ -21,6 +21,7 @@ using namespace hns;
 #include "Generate_Network.h"
 #include "Hoshen_Kopelman.h"
 #include "Input_Reader.h"
+#include "Read_Network.h"
 
 //---------------------------------------------------------------------------
 class App_Network_3D
