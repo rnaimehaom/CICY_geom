@@ -21,7 +21,6 @@ using namespace hns;
 #include "Geometry_3D.h"
 
 const double PI = 3.1415926535897932384626433832795;
-const int MAX_ATTEMPTS = 5;
 
 //---------------------------------------------------------------------------
 //Name of application case
@@ -66,6 +65,10 @@ struct Simu_para{
     double cnt_gnp_density;
     //Tolerance for error reduction in conjugate gradient
     double tolerance;
+    //Maximum number of iterations for generating a CNT point
+    int MAX_ATTEMPTS_CNT;
+    //Maximum number of iterations for relocating a GNP
+    int MAX_ATTEMPTS_GNP;
 };
 //The geometry of the sample
 struct Geom_sample{

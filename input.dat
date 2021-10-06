@@ -84,6 +84,11 @@ vol 0.001000
 %Tolerance for converge in the conjugate gradient algorithm
 %This value represents the reduction in the initial residual
 1e-10
+%------------------------------------------------------------------------------------------------------------------------------------------------------------
+%Maximum number of attempts for generating a CNT point and for relocating a GNP
+%Input first the number of attempts for CNTs then the ones for GNPs if both are generated
+%If only CNTs or only GNPs are generated, then only indicate the number of attempts for that nanoparticle
+5 1
 %
 %--------------------------------End
 %

@@ -124,6 +124,8 @@ int Input::Data_Initialization()
     simu_para.resistances[1] = 1;
     simu_para.resistances[2] = 1;
     simu_para.tolerance = 1e-10;
+    simu_para.MAX_ATTEMPTS_CNT = 5;
+    simu_para.MAX_ATTEMPTS_GNP = 1;
     
 	//Initialize the geometric parameters of the sample
 	geom_sample.keywords = "Sample_Geometry";
@@ -514,6 +516,26 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
     //This value represents the reduction in the initial residual
     istringstream istr_tol(Get_Line(infile));
     istr_tol >> simu_para.tolerance;
+
+    //Maximum number of iterations:
+    //for generating a CNT point
+    //for relocating a GNP
+    istringstream istr_att(Get_Line(infile));
+    //Check the particle type
+    if (simu_para.particle_type == "CNT_wires" ||
+        simu_para.particle_type == "CNT_deposit" ||
+        simu_para.particle_type == "GNP_CNT_mix")
+    {
+        //There are CNTs, so read the maximum number of attempts for generating a CNT point
+        istr_att >> simu_para.MAX_ATTEMPTS_CNT;
+    }
+    if (simu_para.particle_type == "GNP_cuboids" ||
+        simu_para.particle_type == "GNP_CNT_mix")
+    {
+        //There are GNPs, so read the maximum number of attempts for relocating a GNP
+        istr_att >> simu_para.MAX_ATTEMPTS_GNP;
+    }
+    
     
 	return 1;
 }

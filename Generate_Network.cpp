@@ -281,10 +281,10 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
             int counter = 1;
             
             //Iteratively search for a seed point that does not penetrate other CNTs
-            while (counter <= MAX_ATTEMPTS && penetration_check == 0) {
+            while (counter <= simu_para.MAX_ATTEMPTS_CNT && penetration_check == 0) {
                 
                 //Check if the seed point penetrates other CNTs and move it to a valid position
-                penetration_check = Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, subr_point_map, point_overlap_count, point_overlap_count_unique, new_point);
+                penetration_check = Check_penetration(simu_para.MAX_ATTEMPTS_CNT, geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, subr_point_map, point_overlap_count, point_overlap_count_unique, new_point);
                 
                 //Check for errors
                 if (penetration_check == -1) {
@@ -307,7 +307,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
             }
             
             //hout << "Seed deleted" << endl;
-            if (counter == MAX_ATTEMPTS && penetration_check == 0) {
+            if (counter == simu_para.MAX_ATTEMPTS_CNT && penetration_check == 0) {
                 hout<<"Too many attempts to resolve overlapping of an intial CNT point ("<<counter;
                 hout<<" attempts). Seed point="<<new_point.str()<<endl;
                 return 0;
@@ -368,7 +368,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                     
                     //Penetration model is used, so check for penetrating points
                     //hout<<"penetration_check i="<<i<<endl;
-                    penetration_check = Check_penetration(geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, subr_point_map, point_overlap_count, point_overlap_count_unique, new_point);
+                    penetration_check = Check_penetration(simu_para.MAX_ATTEMPTS_CNT, geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, subr_point_map, point_overlap_count, point_overlap_count_unique, new_point);
                     
                     //Check for error, which in this case is -1
                     if (penetration_check == -1) {
@@ -589,7 +589,7 @@ int Generate_Network::Get_length_and_radius(const Nanotube_Geo &nanotube_geo, mt
 //   b) No need to check for penetration (point is in boundary layer or there are no other points in the same sub-region)
 //   c) There was penetration but it was succesfully resolved
 //0: There was penetration but could not be resolved
-int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const int n_subregions[], const double &rad_p_dvdw, const double &cnt_cutoff, const double &cnt_cutoff2, const map<int, vector<int> > &subr_point_map, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &new_point)const
+int Generate_Network::Check_penetration(const int &MAX_ATTEMPTS_CNT, const Geom_sample &geom_sample, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const vector<double> &radii, const vector<Point_3D> &cnt_new, const int n_subregions[], const double &rad_p_dvdw, const double &cnt_cutoff, const double &cnt_cutoff2, const map<int, vector<int> > &subr_point_map, int &point_overlap_count, int &point_overlap_count_unique, Point_3D &new_point)const
 {
     //Get the sub-region the point belongs to
     //hout<<"Get_subregion 0"<<endl;
@@ -624,7 +624,7 @@ int Generate_Network::Check_penetration(const Geom_sample &geom_sample, const Na
     }
     
     //I move the point up to max_attempts times. If there is still penetration then I delete it
-    for (int attempts = 0; attempts < MAX_ATTEMPTS; attempts++) {
+    for (int attempts = 0; attempts < MAX_ATTEMPTS_CNT; attempts++) {
         
         //--------------------------------------------------------------------------------------------
         //Check if there are any penetrating points
@@ -2153,7 +2153,7 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
             
             //Generate a point in a random direction in the plane xy and find its highest position
             //NOTE: due to the nature of the deposit, the non-penetrating model is always used
-            int status = Find_highest_position_for_new_point_iteratively(geom_sample_deposit, nanotube_geo, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, new_cnt, new_point, mult_2d, engine_theta, dist);
+            int status = Find_highest_position_for_new_point_iteratively(simu_para.MAX_ATTEMPTS_CNT, geom_sample_deposit, nanotube_geo, cnts_points, cnts_radii, global_coordinates, sectioned_domain, n_subregions, cnt_rad, cutoffs.van_der_Waals_dist, new_cnt, new_point, mult_2d, engine_theta, dist);
             
             //Check the value of status
             if (status == -1) {
@@ -2528,13 +2528,13 @@ int Generate_Network::Get_direction_2d(const Nanotube_Geo &nanotube_geo, MathMat
 //This function finds the highest position for a new CNT point (not a seed point)
 //The highest position is found by rotating the segment from the last point in the new_cnt
 //vector to new_point
-int Generate_Network::Find_highest_position_for_new_point_iteratively(const Geom_sample &geom_sample_deposit, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const vector<Point_3D> &new_cnt, Point_3D &new_point, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const
+int Generate_Network::Find_highest_position_for_new_point_iteratively(const int& MAX_ATTEMPTS_CNT, const Geom_sample &geom_sample_deposit, const Nanotube_Geo &nanotube_geo, const vector<vector<Point_3D> > &cnts_points, const vector<double> &cnts_radii, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain, const int n_subregions[], const double &cnt_rad, const double &d_vdW, const vector<Point_3D> &new_cnt, Point_3D &new_point, MathMatrix &M, mt19937 &engine_theta, uniform_real_distribution<double> &dist)const
 {
     //Variable to count the number of attempts to find the highest position of new_point
     int attempts = 0;
     
     //Iterate while the maximum number of attepts is not reached
-    while (attempts < MAX_ATTEMPTS) {
+    while (attempts < MAX_ATTEMPTS_CNT) {
         
         //Matrix for the new direction
         MathMatrix M_new(2,2);
@@ -3279,7 +3279,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
             
             //Check if the GNP penetrates another GNP
             //hout<<"Deal_with_gnp_interpenetrations"<<endl;
-            if (!Deal_with_gnp_interpenetrations(geom_sample, cutoffs, gnps, n_subregion, gnp, subregions_gnp, sectioned_domain, rejected)) {
+            if (!Deal_with_gnp_interpenetrations(simu_para.MAX_ATTEMPTS_GNP, geom_sample, cutoffs, gnps, n_subregion, gnp, subregions_gnp, sectioned_domain, rejected)) {
                 hout<<"Error in Deal_with_gnp_interpenetrations"<<endl;
                 return 0;
             }
@@ -3524,7 +3524,7 @@ int Generate_Network::Update_gnp_plane_equations(GNP &gnp)const
 //This function checks whether the newly generated GNP penetrates another GNP
 //If there is interpenetration, then the GNP is moved
 //If the attempts to relocate the GNP exceed the number of maximum attempts, the GNP is rejected
-int Generate_Network::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const int n_subregions[], GNP &gnp_new, set<int> &subregions_gnp, vector<vector<int> > &sectioned_domain, bool &rejected)const
+int Generate_Network::Deal_with_gnp_interpenetrations(const int& MAX_ATTEMPTS_GNP, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const int n_subregions[], GNP &gnp_new, set<int> &subregions_gnp, vector<vector<int> > &sectioned_domain, bool &rejected)const
 {
     //Variable to count the number of attempts
     int attempts = 0;
@@ -3534,7 +3534,7 @@ int Generate_Network::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sa
     
     //hout<<endl<<"GNP_new ="<<gnps.size()<<" center="<<gnp_new.center.str()<<endl;
     //Keep moving gnp_new as long as the number of attempts does not exceed the maximum allowed
-    while (attempts <= MAX_ATTEMPTS) {
+    while (attempts <= MAX_ATTEMPTS_GNP) {
         
         //Empty the subregions set
         subregions_gnp.clear();
@@ -3561,7 +3561,7 @@ int Generate_Network::Deal_with_gnp_interpenetrations(const Geom_sample &geom_sa
             
             //Determine if gnp_new needs to be moved and, if so, move it
             //hout<<"Move_gnps_if_needed"<<endl;
-            if (!Move_gnps_if_needed(attempts, cutoffs, gnps, gnp_set, gnp_new, displaced)) {
+            if (!Move_gnps_if_needed(MAX_ATTEMPTS_GNP, attempts, cutoffs, gnps, gnp_set, gnp_new, displaced)) {
                 hout<<"Error in Move_gnps_if_needed."<<endl;
                 return 0;
             }
@@ -3794,7 +3794,7 @@ int Generate_Network::Get_gnps_in_subregions(const vector<vector<int> > &section
     return 1;
 }
 //This function moves a GNP if needed
-int Generate_Network::Move_gnps_if_needed(const int& attempts, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP &gnp_new, bool &displaced) const
+int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int& attempts, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP &gnp_new, bool &displaced) const
 {
     //Create a new Collision_detection object to determine whether two GNPs interpenetrate
     //eachother or not, and their distances if they do not interpenetrate each other
@@ -3852,7 +3852,7 @@ int Generate_Network::Move_gnps_if_needed(const int& attempts, const Cutoff_dist
 
             //If the maximum number of iterations has been reached, avoid finding the
             //PD and direction vector N
-            if (attempts == MAX_ATTEMPTS)
+            if (attempts == MAX_ATTEMPTS_GNP)
             {
                 //Set the displaced flag to true and terminate the function
                 //Since this is the last attempt, there is no point in doing the rest
@@ -3880,7 +3880,7 @@ int Generate_Network::Move_gnps_if_needed(const int& attempts, const Cutoff_dist
 
             //If the maximum number of iterations has been reached, avoid moving the GNPs
             //Leave them where they are either touching or below the van der Waals distance
-            if (attempts == MAX_ATTEMPTS)
+            if (attempts == MAX_ATTEMPTS_GNP)
             {
                 return 1;
             }
@@ -4521,7 +4521,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
                     
                     //Get the status on mixed penetration
                     //hout<<"Check_mixed_interpenetration"<<endl;
-                    mixed_interpenetration = Check_mixed_interpenetration(geom_sample, cnts_points, cnts_radius, new_cnt, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, nanotube_geo.step_length, subr_point_map, global_coordinates, sectioned_domain, gnps, sectioned_domain_gnp, n_subregions, new_point);
+                    mixed_interpenetration = Check_mixed_interpenetration(simu_para.MAX_ATTEMPTS_CNT, geom_sample, cnts_points, cnts_radius, new_cnt, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, nanotube_geo.step_length, subr_point_map, global_coordinates, sectioned_domain, gnps, sectioned_domain_gnp, n_subregions, new_point);
                     if (mixed_interpenetration == -1) {
                         hout << "Error in Generate_network_threads_mt when calling Check_mixed_interpenetration (CNT initial point)" <<endl;
                         return 0;
@@ -4661,7 +4661,7 @@ int Generate_Network::Generate_initial_point_of_cnt(const Geom_sample &geom_samp
     //Variable to count the attempts
     int attempts = 0;
     
-    while (attempts <= MAX_ATTEMPTS) {
+    while (attempts <= simu_para.MAX_ATTEMPTS_CNT) {
         
         //Genereta a new seed point
         //hout<<"attempts seed="<<attempts<<endl;
@@ -4675,7 +4675,7 @@ int Generate_Network::Generate_initial_point_of_cnt(const Geom_sample &geom_samp
             //If non-penetrating model is used, then make sure the intial point of the CNT
             //is in a valid position
             //hout<<"Check_mixed_interpenetration"<<endl;
-            int interpenetration = Check_mixed_interpenetration(geom_sample, cnts, radii, new_cnt, rad_plus_dvdw, cnt_cutoff, cnt_cutoff2, step_length, subr_point_map, global_coordinates, sectioned_domain_cnt, gnps, sectioned_domain_gnp, n_subregions, new_point);
+            int interpenetration = Check_mixed_interpenetration(simu_para.MAX_ATTEMPTS_CNT, geom_sample, cnts, radii, new_cnt, rad_plus_dvdw, cnt_cutoff, cnt_cutoff2, step_length, subr_point_map, global_coordinates, sectioned_domain_cnt, gnps, sectioned_domain_gnp, n_subregions, new_point);
             if (interpenetration == -1) {
                 hout << "Error in Generate_network_threads_mt when calling Check_mixed_interpenetration (CNT initial point)" <<endl;
                 return -1;
@@ -4702,7 +4702,7 @@ int Generate_Network::Generate_initial_point_of_cnt(const Geom_sample &geom_samp
     return 0;
 }
 //This function checks if a CNT point is penetrating a CNT or GNP
-int Generate_Network::Check_mixed_interpenetration(const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts, const vector<double> &radii, vector<Point_3D> &new_cnt, const double &rad_plus_dvdw, const double &cnt_cutoff, const double &cnt_cutoff2, const double &step_length, const map<int, vector<int> > &subr_point_map, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, const int n_subregions[], Point_3D &new_point)const
+int Generate_Network::Check_mixed_interpenetration(const int &MAX_ATTEMPTS_CNT, const Geom_sample &geom_sample, const vector<vector<Point_3D> > &cnts, const vector<double> &radii, vector<Point_3D> &new_cnt, const double &rad_plus_dvdw, const double &cnt_cutoff, const double &cnt_cutoff2, const double &step_length, const map<int, vector<int> > &subr_point_map, const vector<vector<int> > &global_coordinates, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, const int n_subregions[], Point_3D &new_point)const
 {
     //Vector that stores the coordintes of the points that the input point "new_point" is penetrating
     vector<Point_3D> affected_points;
@@ -4715,7 +4715,7 @@ int Generate_Network::Check_mixed_interpenetration(const Geom_sample &geom_sampl
     int attempts = 0;
     
     //Loop while the maximum numbe of attempts has not been reached
-    while (attempts <= MAX_ATTEMPTS) {
+    while (attempts <= MAX_ATTEMPTS_CNT) {
         
         //Get the subregion of CNT p, GNP &affected_gnpoint
         //hout<<"attempts="<<attempts<<endl;
