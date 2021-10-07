@@ -45,7 +45,7 @@ struct Simu_para{
     //Name of the simulation step in Abaqus
     string step_name;
     int sample_num;
-    int avoid_resistance;
+    int simulation_scope;
     int resistances[3];
     int penetration_model_flag;
     string particle_type;

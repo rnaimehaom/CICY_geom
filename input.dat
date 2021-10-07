@@ -68,17 +68,20 @@ vol 0.001000
 % 0: Use penetrating model
 1
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
-%Flag to avoid calculating the resistance of the network
-%When set to 1, the backbone networks are found but not the resistance of the cubic sample
-%This can be useful when only a geometric study or visualizations are needed
-%By avoiding calculating the resistance of the network results can be obtained much faster
-% 1: Avoid calculating the resistance of the network
-% 0: Calculate the resistance of the network
-%    When choosing 0, three more flags are needed to calculate the resistance on each direction (x, y, z)
+%Flag to define the scope of the simulation
+% 0: Full simulations, i.e., generate a nanoparticle network and calculate its resistance
+%    When set to 0, three more flags are needed to calculate the resistance on each direction (x, y, z)
 %    One flag per direction, 1 for calculating resistance in that direction or 0 for not calculating it
 %    Example: 0 1 0 1 means calculate resistance of the network (first 0) along directions x and z (first and
 %    second 1) and do not calculate the resistance along y (second 0)
 %    Example: 0 0 0 0 is equivalent to inputting only "1"
+% 1: Avoid calculating the resistance of the network but calculate the fractions of nanoparticles that
+%    belong to the backbone
+% 2: Generate the network and only determine if there is percolation or not
+%    This is sent as a message in the output file
+% 3: Only generate the nanoparticle network
+%    This is useful when a network needs to be generated and then exported into Abaqus
+%    This option can not be used when the network is read from file
 0 1 1 1
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Tolerance for converge in the conjugate gradient algorithm

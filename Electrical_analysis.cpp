@@ -74,7 +74,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
         //Determine the backbone and dead branches
         ct0 = time(NULL);
         //hout<<"BN->Determine_backbone_network"<<endl;
-        if (!BN->Determine_backbone_network(j, R_flag, simu_param.avoid_resistance, vis_flags.backbone, DEA->voltages, DEA->LMM_cnts, DEA->LMM_gnps, electric_param, cutoffs, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps, HoKo)) {
+        if (!BN->Determine_backbone_network(j, R_flag, simu_param.simulation_scope, vis_flags.backbone, DEA->voltages, DEA->LMM_cnts, DEA->LMM_gnps, electric_param, cutoffs, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps, HoKo)) {
             hout<<"Error in Perform_analysis_on_clusters when calling Backbonet->Determine_backbone_network"<<endl;
             return 0;
         }
@@ -85,8 +85,8 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
         delete DEA;
         
         //-----------------------------------------------------------------------------------------------------------------------------------------
-        //Check if it is requested to avoid calculating the resistor network
-        if (!simu_param.avoid_resistance) {
+        //Check if it is needed to calculate the resistor network
+        if (!simu_param.simulation_scope) {
             
             //Set now the R_flag to 1 to indicate that actual resistances will be used
             R_flag = 1;
@@ -122,8 +122,8 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
         }
     }
     
-    //Check if it is requested to avoid calculating the resistor network
-    if (!simu_param.avoid_resistance) {
+    //Check if it is needed to calculate the resistor network
+    if (!simu_param.simulation_scope) {
         
         //Calculate the matrix resistances on each direction
         //hout<<"Calculate_resistances_and_resistivities"<<endl;

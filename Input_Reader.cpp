@@ -119,7 +119,7 @@ int Input::Data_Initialization()
 	simu_para.simu_name = "Test";
 	simu_para.sample_num = 1;
 	simu_para.create_read_network = "Create_Network";
-    simu_para.avoid_resistance = 0;
+    simu_para.simulation_scope = 0;
     simu_para.resistances[0] = 1;
     simu_para.resistances[1] = 1;
     simu_para.resistances[2] = 1;
@@ -482,22 +482,38 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
         simu_para.penetration_model_flag = 1;
     }
     
-    //Flag to avoid calculating the resistance of the network
-    //This can be useful when only a geometric study or visualizations are needed
-    // 1: Avoid calculating the resistance of the network
-    // 0: Calculate the resistance of the network
+    //Flag to define the scope of the simulation
+    // 0: Full simulations, i.e., generate a nanoparticle network and calculate its resistance
+    //    When set to 0, three more flags are needed to calculate the resistance on each direction(x, y, z)
+    //    One flag per direction, 1 for calculating resistance in that direction or 0 for not calculating it
+    //    Example: 0 1 0 1 means calculate resistance of the network(first 0) along directions x and z 
+    //    (first and second 1) and do not calculate the resistance along y(second 0)
+    //    Example : 0 0 0 0 is equivalent to inputting only "1"
+    // 1 : Avoid calculating the resistance of the network but calculate the fractions of 
+    //     nanoparticles that belong to the backbone
+    // 2 : Generate the network and only determine if there is percolation or not
+    //     This is sent as a message in the output file
+    // 3 : Only generate the nanoparticle network
+    //     This is useful when a network needs to be generated and then exported into Abaqus
     istringstream istr3(Get_Line(infile));
-    istr3 >> simu_para.avoid_resistance;
-    if (simu_para.avoid_resistance < 0 || simu_para.avoid_resistance > 1) {
-        hout << "Error: Invalid value for network resistance calculation. Valid options are 0 (avoid calculating network resistance) or 1 (calculate network resistance). Input was: " << simu_para.avoid_resistance << endl; return 0;
+    istr3 >> simu_para.simulation_scope;
+    if (simu_para.simulation_scope < 0 || simu_para.simulation_scope > 3) {
+        hout << "Error: Invalid value for network resistance calculation. Valid options are between 0 and 3. Input was: " << simu_para.simulation_scope << endl; 
+        return 0;
     }
-    //Check if the resistance is required
+    //If only the network is to be generated and the network is read from file, then terminate
+    //with an error as this case is not useful
+    if (simu_para.simulation_scope == 3 && simu_para.create_read_network == "Read_Network") {
+        hout << "Error: Cannot choose 3 (only generate network) as the flag for the simulation scope when the nanoparticle network is read from file." << endl;
+        return 0;
+    }
+    //Check if the network resistance needs to be calculated
     //When choosing 0, three more flags are needed to calculate the resistance on each direction (x, y, z)
     //One flag per direction, 1 for calculating resistance in that direction or 0 for not calculating it
     //Example: 0 1 0 1 means calculate resistance of the network (first 0) along directions x and z (first and
     //second 1) and do not calculate the resistance along y (second 0)
     //Example: 0 0 0 0 is equivalent to inputting only "1"
-    if (!simu_para.avoid_resistance) {
+    if (!simu_para.simulation_scope) {
         //Read the flags for each direction
         istr3 >> simu_para.resistances[0];
         istr3 >> simu_para.resistances[1];
@@ -506,9 +522,9 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
         //Check the case in which the three flags are zero
         if (!(simu_para.resistances[0] + simu_para.resistances[1] + simu_para.resistances[2])) {
             
-            //This is the same case as setting the avoid_resistance flag to 1,
-            //Thus, the avoid_resistance is set to 1 since that case is simpler
-            simu_para.avoid_resistance = 1;
+            //This is the same case as setting the simulation_scope flag to 1,
+            //Thus, the simulation_scope is set to 1 since that case is simpler
+            simu_para.simulation_scope = 1;
         }
     }
     

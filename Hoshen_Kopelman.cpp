@@ -140,6 +140,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const int &iter, const S
         //There is at least one percoalted cluster
         //Group the junctions into the clusters they belong to
         //hout<<"Group_junctions"<<endl;
+        hout << "There are percolated clusters" << endl;
         if (!Group_junctions(points_cnt, points_gnp, labels_cnt, labels_gnp, percolated_labels)) {
             hout<<"Error in Find_percolated_clusters when calling Group_junctions"<<endl;
             return 0;

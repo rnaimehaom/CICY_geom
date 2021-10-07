@@ -52,6 +52,14 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         //Printer *P = new Printer;
         //P->Print_1d_vec(gnps_point, "gnps_point_00.txt");
         //delete P;
+
+        //Check if only the network is needed from the simualtion
+        if (Init->simu_para.simulation_scope == 3)
+        {
+            hout << "Only the nanoparticle netowrk has been generated." << endl;
+            hout << "Finishing simulation..." << endl;
+            return 1;
+        }
     }
     else if (Init->simu_para.create_read_network == "Read_Network") {
 
@@ -73,8 +81,6 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         hout << "Only valid options are 'Create_Network', 'Read_Network' or 'Network_From_Seeds'. Input was:" << Init->simu_para.create_read_network << endl;
         return 0;
     }
-
-    
     
     //----------------------------------------------------------------------
     //Vector for GNP shells
@@ -150,17 +156,22 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         
         //Contacts are not needed anymore, so delete the object
         delete Contacts;
-        
-        //----------------------------------------------------------------------
-        //Perform the direct electrifying algorithm on each percolated cluster (if any)
-        Electrical_analysis *EA = new Electrical_analysis;
-        if (!EA->Perform_analysis_on_clusters(i, window_geo, Init->simu_para, Init->electric_para, Init->cutoff_dist, Init->vis_flags, Init->out_flags, HoKo, Cutwins, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps)) {
-            hout << "Error when performing electrical analysis" << endl;
-            return 0;
+
+        //Perform the electrical analysis only if fractions of percolated nanoparticles
+        //or the network resistances are needed
+        if (Init->simu_para.simulation_scope < 2)
+        {
+            //----------------------------------------------------------------------
+            //Perform the direct electrifying algorithm on each percolated cluster (if any)
+            Electrical_analysis* EA = new Electrical_analysis;
+            if (!EA->Perform_analysis_on_clusters(i, window_geo, Init->simu_para, Init->electric_para, Init->cutoff_dist, Init->vis_flags, Init->out_flags, HoKo, Cutwins, structure_cnt, points_cnt, radii, points_gnp, structure_gnp, gnps)) {
+                hout << "Error when performing electrical analysis" << endl;
+                return 0;
+            }
+            delete EA;
         }
         
         //Delete objects to free memory
-        delete EA;
         delete Cutwins;
         delete HoKo;
         
