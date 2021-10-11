@@ -594,7 +594,7 @@ int Input::Read_sample_geometry(Geom_sample &geom_sample, ifstream &infile)
 	istr3 >> geom_sample.win_min_x >> geom_sample.win_min_y >> geom_sample.win_min_z;
 
 	if(geom_sample.win_max_x<=Zero||geom_sample.win_max_y<=Zero||geom_sample.win_max_z<=Zero||
-	   geom_sample.win_max_x>geom_sample.sample.len_x||geom_sample.win_max_y>geom_sample.sample.wid_y||geom_sample.win_max_y>geom_sample.sample.hei_z)
+	   geom_sample.win_max_x>geom_sample.sample.len_x||geom_sample.win_max_y>geom_sample.sample.wid_y||geom_sample.win_max_z>geom_sample.sample.hei_z)
 	{
 		hout << "Error: the maximum side lenght of the observation window in each direction (win_max) should be positive and smaller than the size of the sample." << endl;
 		return 0;
