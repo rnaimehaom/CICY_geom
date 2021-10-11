@@ -47,6 +47,14 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     ct1 = time(NULL);
     hout << "Network generation from file time: " << (int)(ct1 - ct0) << " secs." << endl;
 
+    //Generate vector with GNPs partially outside the sample
+    vector<int> gnps_outside;
+    if (!Get_gnps_partially_outside_sample(Init->geom_sample, gnps, gnps_outside))
+    {
+        hout << "Error in Get_gnps_partially_outside_sample." << endl;
+        return 0;
+    }
+
     //----------------------------------------------------------------------
     //Vector for GNP shells
     vector<Shell> shell_gnps(gnps.size());
@@ -110,7 +118,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
             //Read Abaqus database and apply displacements
             ct0 = time(NULL);
             //hout<<"Apply_displacements_from_Abaqus"<<endl;
-            if (!Apply_displacements_from_Abaqus(Init->simu_para.particle_type, (int)structure_cnt.size(), structure_cnt, root_assy, allFramesInStep[i-1], allFramesInStep[i], Init->geom_sample, points_cnt, gnps))
+            if (!Apply_displacements_from_Abaqus(Init->simu_para.particle_type, (int)structure_cnt.size(), structure_cnt, gnps_outside, root_assy, allFramesInStep[i-1], allFramesInStep[i], Init->geom_sample, points_cnt, gnps))
             {
                 hout << "Error when applying displacement to nanoparticles." << endl;
                 return 0;
@@ -182,8 +190,34 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
 
     return 1;
 }
+//This function finds the GNPs that are partially outside the sample and stores the 
+//indices of those GNPs in a vector
+int App_Network_From_Abaqus::Get_gnps_partially_outside_sample(const Geom_sample& geom_sample, const vector<GNP>& gnps, vector<int>& gnps_outside)const
+{
+    //Iterate over the GNPs
+    for (int i = 0; i < (int)gnps.size(); i++)
+    {
+        //Check if all eight vertices are inside the sample
+        for (int j = 0; j < 8; j++)
+        {
+            //Check if vertex j of GNP i is outside the sample
+            if (gnps[i].vertices[j].is_outside_cuboid(geom_sample.sample))
+            {
+                //Vertex j is outsied the sample, so add GNP i to the vector
+                //of GNPs partially outside the sample
+                gnps_outside.push_back(i);
+
+                //Break the loop over j as there is no need to check the rest of vertices
+                //to determine that the GNP is partially outside the sample
+                break;
+            }
+        }
+    }
+
+    return 1;
+}
 //This functions adds the displacements to the CNTs, GNPs and sample
-int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_Frame& previous_frame, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const
+int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, const vector<int>& gnps_outside, odb_Assembly& root_assy, odb_Frame& previous_frame, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const
 {
     //Access displacement field ("U") in the current frame
     //hout << "current_fieldU" << endl;
