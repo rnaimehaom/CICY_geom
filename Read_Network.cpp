@@ -172,21 +172,6 @@ int Read_Network::Read_sample_geometry(Geom_sample& geom_sample)const
     geom_sample.sample.max_y = geom_sample.sample.poi_min.y + geom_sample.sample.wid_y;
     geom_sample.sample.max_z = geom_sample.sample.poi_min.z + geom_sample.sample.hei_z;
 
-    //Set the maximum and minimum observation windows to be the same as that of the sample
-    geom_sample.win_max_x = geom_sample.sample.len_x;
-    geom_sample.win_max_y = geom_sample.sample.wid_y;
-    geom_sample.win_max_z = geom_sample.sample.hei_z;
-    geom_sample.win_min_x = geom_sample.sample.len_x;
-    geom_sample.win_min_y = geom_sample.sample.wid_y;
-    geom_sample.win_min_z = geom_sample.sample.hei_z;
-
-    //Set the increment of the observation window as half the sample side length
-    //This is an arbitrary choice that guarantees that the increment is smaller than
-    //the maximum and minimum observation windows in each direction
-    geom_sample.win_delt_x = 0.5 * geom_sample.sample.len_x;
-    geom_sample.win_delt_y = 0.5 * geom_sample.sample.wid_y;
-    geom_sample.win_delt_z = 0.5 * geom_sample.sample.hei_z;
-
     //Close file
     sample_file.close();
 

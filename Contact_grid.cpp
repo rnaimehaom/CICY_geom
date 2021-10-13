@@ -23,6 +23,9 @@ int Contact_grid::Generate_contact_grid(const int &window, const string &particl
     int sy = 1 + (int)(window_geom.wid_y/sample_geom.gs_miny);
     int sz = 1 + (int)(window_geom.hei_z/sample_geom.gs_minz);
     int n_regions[] = {sx,sy,sz};
+    //hout << "sx = " << sx << '\t' << "lx = " << window_geom.len_x << '\t' << "dx = " << sample_geom.gs_minx << "\n";
+    //hout << "sy = " << sy << '\t' << "ly = " << window_geom.wid_y << '\t' << "dy = " << sample_geom.gs_miny << "\n";
+    //hout << "sz = " << sz << '\t' << "lz = " << window_geom.hei_z << '\t' << "dz = " << sample_geom.gs_minz << "\n";
     
     //Variable to store the sizes of the subregions on each direction
     double l_regions[] = {sample_geom.gs_minx, sample_geom.gs_miny, sample_geom.gs_minz};
@@ -36,6 +39,15 @@ int Contact_grid::Generate_contact_grid(const int &window, const string &particl
         hout << "Error in Generate_contact_grid when calling Adjust_regions_if_needed" << endl;
         return 0;
     }
+
+    //Calculate the total number of subregions
+    int tot_regions = n_regions[0] * n_regions[1] * n_regions[2];
+    //hout << "tot_regions=" << tot_regions << endl;
+    if (tot_regions <= 0) {
+        hout << "Error in Fill_sectioned_domain_gnps. Invalid number of subregions: " << tot_regions << endl;
+        return 0;
+    }
+
     //hout<<"There are "<<n_regions[0]*n_regions[1]*n_regions[2]<<" overlapping sub-regions."<<endl;
     //hout<<"\tn_regions[0]="<<n_regions[0]<<" n_regions[1]="<<n_regions[1]<<" n_regions[2]="<<n_regions[2]<<endl;
     //hout<<"\tl_regions[0]="<<l_regions[0]<<" l_regions[1]="<<l_regions[1]<<" l_regions[2]="<<l_regions[2]<<endl;
@@ -45,7 +57,7 @@ int Contact_grid::Generate_contact_grid(const int &window, const string &particl
     if (particle_type != "GNP_cuboids") {
         
         //hout<<"Fill_sectioned_domain_cnts"<<endl;
-        if (!Fill_sectioned_domain_cnts(window_geom, cnts_inside, structure, points_cnt, sample_geom.gs_overlap_cnt, n_regions, l_regions)) {
+        if (!Fill_sectioned_domain_cnts(window_geom, cnts_inside, structure, points_cnt, sample_geom.gs_overlap_cnt, n_regions, l_regions, tot_regions)) {
             hout << "Error in Generate_contact_grid when calling Generate_sectioned_domain_cnts" << endl;
             return 0;
         }
@@ -57,7 +69,7 @@ int Contact_grid::Generate_contact_grid(const int &window, const string &particl
         
         //Fill the sectioned domain corresponding to GNP numbers
         //hout<<"Fill_sectioned_domain_gnps"<<endl;
-        if (!Fill_sectioned_domain_gnps(window_geom, gnps, gnps_inside, sample_geom.gs_overlap_gnp, n_regions, l_regions)) {
+        if (!Fill_sectioned_domain_gnps(window_geom, gnps, gnps_inside, sample_geom.gs_overlap_gnp, n_regions, l_regions, tot_regions)) {
             hout << "Error in Generate_contact_grid when calling Generate_sectioned_domain_cnts" << endl;
             return 0;
         }
@@ -68,10 +80,6 @@ int Contact_grid::Generate_contact_grid(const int &window, const string &particl
 //This function checks if the subregions are too small, and if so, their size is adjusted
 int Contact_grid::Adjust_regions_if_needed(const double &overlapping, const Geom_sample &sample_geom, const cuboid &window_geom, int n_regions[], double l_regions[])
 {
-    //hout << "sx = " << sx << '\t' << "dx = " << window_geom.gs_minx << "\n";
-    //hout << "sy = " << sy << '\t' << "dy = " << window_geom.gs_miny << "\n";
-    //hout << "sz = " << sz << '\t' << "dz = " << window_geom.gs_minz  << "\n";
-    
     //Check that the regions are not too small for the maximum cutoff distance 2r_max+tunnel
     //If they are, then change the number of sections to the maximum possible
     if (sample_geom.gs_minx < 2*overlapping) {
@@ -92,11 +100,10 @@ int Contact_grid::Adjust_regions_if_needed(const double &overlapping, const Geom
     return 1;
 }
 //This function fills the sectioned domain vector for CNTs
-int Contact_grid::Fill_sectioned_domain_cnts(const cuboid &window_geom, const vector<int> &cnts_inside, const vector<vector<long int> > &structure, const vector<Point_3D> &points_cnt, const double &overlapping, const int n_regions[], const double l_regions[])
+int Contact_grid::Fill_sectioned_domain_cnts(const cuboid &window_geom, const vector<int> &cnts_inside, const vector<vector<long int> > &structure, const vector<Point_3D> &points_cnt, const double &overlapping, const int n_regions[], const double l_regions[], const int& tot_regions)
 {
     //There will be n_regions[0]*n_regions[1]*n_regions[2] different regions
     sectioned_domain_cnts.clear();
-    int tot_regions = n_regions[0] * n_regions[1] * n_regions[2];
     sectioned_domain_cnts.assign(tot_regions, vector<long int>());
     //hout<<"window_geom="<<window_geom.str()<<endl;
     //hout<<"sectioned_domain_cnts.size="<<sectioned_domain_cnts.size()<<endl;
@@ -214,7 +221,7 @@ int Contact_grid::Assign_point_to_regions_cnts(const int& a, const int& b, const
         //hout<<"\tt0="<<t<<endl;
         if (t >= tot_regions || t < 0)
         {
-            hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subrigion outside the range of subregions." << endl;
+            hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subregion outside the range of subregions." << endl;
             hout << "Subregion number (t0) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
             hout << "P=" << P << endl;
             hout << "a=" << a << " b=" << b << " c=" << c << endl;
@@ -234,7 +241,7 @@ int Contact_grid::Assign_point_to_regions_cnts(const int& a, const int& b, const
         t = Calculate_t(a, b + f_regions[1], c, n_regions[0], n_regions[1]);
         if (t >= tot_regions || t < 0)
         {
-            hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subrigion outside the range of subregions." << endl;
+            hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subregion outside the range of subregions." << endl;
             hout << "Subregion number (t1) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
             hout << "P=" << P << endl;
             hout << "a=" << a << " b=" << b << " c=" << c << endl;
@@ -254,7 +261,7 @@ int Contact_grid::Assign_point_to_regions_cnts(const int& a, const int& b, const
         t = Calculate_t(a, b, c + f_regions[2], n_regions[0], n_regions[1]);
         if (t >= tot_regions || t < 0)
         {
-            hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subrigion outside the range of subregions." << endl;
+            hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subregion outside the range of subregions." << endl;
             hout << "Subregion number (t2) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
             hout << "P=" << P << endl;
             hout << "a=" << a << " b=" << b << " c=" << c << endl;
@@ -275,11 +282,12 @@ int Contact_grid::Calculate_t(const int &a, const int &b, const int &c, const in
     return a + b*sx + c*sx*sy;
 }
 //
-int Contact_grid::Fill_sectioned_domain_gnps(const cuboid &window_geom, const vector<GNP> &gnps, const vector<int> &gnps_inside, const double &overlapping, const int n_regions[], const double l_regions[])
+int Contact_grid::Fill_sectioned_domain_gnps(const cuboid &window_geom, const vector<GNP> &gnps, const vector<int> &gnps_inside, const double &overlapping, const int n_regions[], const double l_regions[], const int& tot_regions)
 {
-    //There will be n_regions[0]*n_regions[1]*n_regions[2] different regions
+    //Initialize the sectioned domain with the number of regions
     sectioned_domain_gnps.clear();
-    sectioned_domain_gnps.assign(n_regions[0]*n_regions[1]*n_regions[2], vector<int>());
+    sectioned_domain_gnps.assign(tot_regions, vector<int>());
+    hout << "sectioned_domain" << endl;
     
     //First loop over the hybrids inside the box, then loop over the points inside each GNP
     for (int i = 0; i < (int)gnps_inside.size(); i++) {
@@ -289,7 +297,8 @@ int Contact_grid::Fill_sectioned_domain_gnps(const cuboid &window_geom, const ve
         int GNPi = gnps_inside[i];
         
         //Discretize the GNP and add it to all the corresponding subregions
-        if (!Fill_sectioned_domain_single_gnp(window_geom, gnps[GNPi], overlapping, n_regions, l_regions)) {
+        //hout << "Fill_sectioned_domain_single_gnp" << endl;
+        if (!Fill_sectioned_domain_single_gnp(window_geom, gnps[GNPi], overlapping, n_regions, l_regions, tot_regions)) {
             hout<<"Error in Fill_sectioned_domain_gnps when calling Fill_sectioned_domain_single_gnp"<<endl;
             return 0;
         }
@@ -300,7 +309,7 @@ int Contact_grid::Fill_sectioned_domain_gnps(const cuboid &window_geom, const ve
 }
 //This function finds all the subregions the GNP_new occupies and those subregions where there might be
 //close enough GNPs below the van der Waals distance
-int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, const GNP &gnp, const double &overlapping, const int n_regions[], const double l_regions[])
+int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, const GNP &gnp, const double &overlapping, const int n_regions[], const double l_regions[], const int& tot_regions)
 {
     //Number of points to discretize the GNP along the x direction (of the GNP local coordinates)
     int n_points_x = max(2, 1 + (int)(gnp.l/l_regions[0]));
@@ -311,6 +320,8 @@ int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, co
     //Number of points to discretize the GNP along the z direction (of the GNP local coordinates)
     //Make sure there are at least two points in the discretization along z
     int n_points_z = max(2, 1 + (int)(gnp.t/l_regions[2]));
+
+    //Calculate
     
     //Iterate over all points in the discretization
     //Index k moves the point in the discretization along z
@@ -386,7 +397,7 @@ int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, co
                     
                     //Add to the subregion(s) the GNP point occupies
                     //hout<<"Assign_point_to_regions_gnps point="<<point.str()<<endl;
-                    if (!Assign_point_to_regions_gnps(a, b, c, f_regions, n_regions, gnp.flag)) {
+                    if (!Assign_point_to_regions_gnps(a, b, c, f_regions, n_regions, tot_regions, gnp.flag)) {
                         hout<<"Error in Fill_sectioned_domain_single_gnp when calling Assign_point_to_regions_gnps"<<endl;
                         return 0;
                     }
@@ -398,14 +409,18 @@ int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, co
     return 1;
 }
 //
-int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const int &c, const int f_regions[], const int n_regions[], const int &gnp_i)
+int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const int &c, const int f_regions[], const int n_regions[], const int& tot_regions, const int &gnp_i)
 {
     //Calculate default rregion
     int t = Calculate_t(a, b, c, n_regions[0], n_regions[1]);
-    /*if (t > (int)sectioned_domain_gnps.size()) {
-        hout<<"t larger than number of subregions default. t="<<t<<" sectioned_domain_gnps.size()="<<sectioned_domain_gnps.size()<<endl;
+    if (t >= tot_regions || t < 0)
+    {
+        hout << "Error in Assign_point_to_regions_gnps. Point belongs to a subregion outside the range of subregions." << endl;
+        hout << "Subregion number (t) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+        hout << "GNPi=" << gnp_i << endl;
+        hout << "a=" << a << " b=" << b << " c=" << c << endl;
         return 0;
-    }*/
+    }
     
     //Assign GNP number of point to default region if not already added
     if (sectioned_domain_gnps[t].empty() || sectioned_domain_gnps[t].back() != gnp_i) {
@@ -418,10 +433,15 @@ int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const
         
         //Calculate the region
         t = Calculate_t(a+f_regions[0], b, c, n_regions[0], n_regions[1]);
-        /*if (t > (int)sectioned_domain_gnps.size()) {
-            hout<<"t larger than number of subregions 0. t="<<t<<" sectioned_domain_gnps.size()="<<sectioned_domain_gnps.size()<<endl;
+        if (t >= tot_regions || t < 0)
+        {
+            hout << "Error in Assign_point_to_regions_gnps. Point belongs to a subregion outside the range of subregions." << endl;
+            hout << "Subregion number (t0) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+            hout << "GNPi=" << gnp_i << endl;
+            hout << "a=" << a << " b=" << b << " c=" << c << endl;
+            hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
             return 0;
-        }*/
+        }
         
         //Assign GNP number of point to region if not already added
         if (sectioned_domain_gnps[t].empty() || sectioned_domain_gnps[t].back() != gnp_i) {
@@ -434,10 +454,15 @@ int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const
         
         //Calculate the region
         t = Calculate_t(a, b+f_regions[1], c, n_regions[0], n_regions[1]);
-         /*if (t > (int)sectioned_domain_gnps.size()) {
-            hout<<"t larger than number of subregions 1. t="<<t<<" sectioned_domain_gnps.size()="<<sectioned_domain_gnps.size()<<endl;
+        if (t >= tot_regions || t < 0)
+        {
+            hout << "Error in Assign_point_to_regions_gnps. Point belongs to a subregion outside the range of subregions." << endl;
+            hout << "Subregion number (t1) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+            hout << "GNPi=" << gnp_i << endl;
+            hout << "a=" << a << " b=" << b << " c=" << c << endl;
+            hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
             return 0;
-        }*/
+        }
         
         //Assign GNP number of point to region if not already added
         if (sectioned_domain_gnps[t].empty() || sectioned_domain_gnps[t].back() != gnp_i) {
@@ -450,10 +475,15 @@ int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const
         
         //Calculate the region
         t = Calculate_t(a, b, c+f_regions[2], n_regions[0], n_regions[1]);
-         /*if (t > (int)sectioned_domain_gnps.size()) {
-            hout<<"t larger than number of subregions 2. t="<<t<<" sectioned_domain_gnps.size()="<<sectioned_domain_gnps.size()<<endl;
+        if (t >= tot_regions || t < 0)
+        {
+            hout << "Error in Assign_point_to_regions_gnps. Point belongs to a subregion outside the range of subregions." << endl;
+            hout << "Subregion number (t2) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+            hout << "GNPi=" << gnp_i << endl;
+            hout << "a=" << a << " b=" << b << " c=" << c << endl;
+            hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
             return 0;
-        }*/
+        }
         
         //Assign GNP number of point to region if not already added
         if (sectioned_domain_gnps[t].empty() || sectioned_domain_gnps[t].back() != gnp_i) {
