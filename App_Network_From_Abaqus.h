@@ -34,13 +34,16 @@ public:
 
     //Member Functions
     int Nanoparticle_resistor_network_from_odb(Input* Init)const;
-    int Get_gnps_partially_outside_sample(const Geom_sample& geom_sample, const vector<GNP>& gnps, vector<int> &gnps_outside)const;
+    int Get_gnps_partially_outside_sample(const Geom_sample& geom_sample, const vector<GNP>& gnps, vector<int> &gnps_outside, vector<vector<int> >& vertices_gnps_out)const;
     //Generate a network of nanoparticles from the data in the Abaqus database
-    int Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, const vector<int>& gnps_outside, odb_Assembly& root_assy, odb_Frame& previous_frame, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const;
+    int Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, const vector<int>& gnps_outside, const vector<vector<int> >& vertices_gnps_out, odb_Assembly& root_assy, odb_Frame& previous_frame, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const;
     int Apply_displacements_to_sample(odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, Geom_sample& geom_sample)const;
     int Apply_displacements_to_cnts(const vector<vector<long int> >& structure, odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, const int& n_cnts, vector<Point_3D>& points_cnt)const;
     string Get_cnt_set_name(const int& cnt_i)const;
-    int Apply_displacements_to_gnps(odb_Assembly& root_assy, odb_FieldOutput& fieldU, vector<GNP>& gnps)const;
+    int Apply_displacements_to_gnps(const vector<int>& gnps_outside, const vector<vector<int> >& vertices_gnps_out, odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, vector<GNP>& gnps)const;
+    string Get_gnp_set_name(const int& gnp_i, const int& vertex)const;
+    int Apply_displacements_to_GNP_inside(odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, GNP& gnp_i);
+    int Apply_displacements_to_GNP_outside(odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, GNP& gnp_i);
 };
 //---------------------------------------------------------------------------
 #endif
