@@ -385,9 +385,10 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
         istringstream istr_file_type(Get_Line(infile));
         istr_file_type >> simu_para.file_type;
 
-        if (simu_para.file_type != "cvs" && simu_para.file_type != "dat")
+        if (simu_para.file_type != "csv" && simu_para.file_type != "dat")
         {
             hout << "Error when reading simulation parameters: file type for reading the network is invalid. Only options are 'csv' and 'dat'. Input was: " << simu_para.file_type << endl;
+            return 0;
         }
     }
 

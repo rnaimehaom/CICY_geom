@@ -47,6 +47,10 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     ct1 = time(NULL);
     hout << "Network generation from file time: " << (int)(ct1 - ct0) << " secs." << endl;
 
+    //Set the number of cuts to 0 since there are no observation windows when reading
+    //a network from file and applying displacements from abaqus
+    Init->geom_sample.cut_num = 0;
+
     //Vector to store GNPs that lie partially outside the sample
     vector<int> gnps_outside;
     //Vector with vertices inside the sample from the GNPs that lie partially outside the sample

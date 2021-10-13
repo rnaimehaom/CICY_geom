@@ -187,9 +187,6 @@ int Read_Network::Read_sample_geometry(Geom_sample& geom_sample)const
     geom_sample.win_delt_y = 0.5 * geom_sample.sample.wid_y;
     geom_sample.win_delt_z = 0.5 * geom_sample.sample.hei_z;
 
-    //Set the number of cuts to 0 since there are no observation windows
-    geom_sample.cut_num = 0;
-
     //Close file
     sample_file.close();
 
