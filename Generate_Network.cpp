@@ -3848,9 +3848,9 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
         Point_3D N;
         
         if (p_flag) {
-            //hout<<"Penetration with GNP "<<GNP_i<<endl;
+            //hout<<"Penetration of GNP "<<gnps.size()<<" with GNP "<<GNP_i<<endl;
 
-            //If the maximum number of iterations has been reached, avoid finding the
+            /* /If the maximum number of iterations has been reached, avoid finding the
             //PD and direction vector N
             if (attempts == MAX_ATTEMPTS_GNP)
             {
@@ -3858,16 +3858,24 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
                 //Since this is the last attempt, there is no point in doing the rest
                 //of operations
                 displaced = true;
+                hout << "MAX_ATTEMPTS_GNP reached 1" << endl;
 
                 return 1;
-            }
-            
+            }*/
+            /*VTK_Export VTK;
+            vector<GNP> tmp_vec(1, gnp_new);
+            //Export new GNP
+            VTK.Export_gnps(tmp_vec, "gnp_"+to_string(gnps.size())+"_"+to_string(attempts)+"_new.vtk");
+            tmp_vec[0] = gnps[GNP_i];
+            //Expor the GNP that is being penetrated by the new GNP
+            VTK.Export_gnps(tmp_vec, "gnp_" + to_string(gnps.size()) + "_" + to_string(attempts) + "_pen.vtk");*/
+
             //There is penetration, so then use EPA to find the penetration depth PD and direction vector N
             if (!GJK_EPA.EPA(gnps[GNP_i].vertices, gnp_new.vertices, simplex, N, PD)) {
                 hout<<"Error in Move_gnps_if_needed when calling EPA"<<endl;
                 return 0;
             }
-            //hout<<"PD="<<PD<<" normal="<<N.str()<<endl;
+            //hout<<"PD="<<PD<<" normal="<<N.str()<< " length=" << N.length() << endl;
             
             //Add to the vector of displacements
             if (!Add_to_vector_of_displacements(PD + cutoffs.van_der_Waals_dist, N, disps, disps_vec)) {
@@ -3876,14 +3884,15 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
             }
         }
         else {
-            //There is no penetration, so check wether they are touching or not
+            //There is no penetration, so check whether they are touching or not
 
-            //If the maximum number of iterations has been reached, avoid moving the GNPs
+            /* /If the maximum number of iterations has been reached, avoid moving the GNPs
             //Leave them where they are either touching or below the van der Waals distance
             if (attempts == MAX_ATTEMPTS_GNP)
             {
+                hout << "MAX_ATTEMPTS_GNP reached 2" << endl;
                 return 1;
-            }
+            }*/
             
             if (t_flag) {
                 //hout<<"Touch with GNP "<<GNP_i<<endl;
@@ -3936,11 +3945,20 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
         displaced = true;
         
         //hout<<"GNP moved disp_tot="<<disp_tot.str()<<endl;
+        //Point_3D center_new = gnp_new.center;
+        //hout << "center_new=" << center_new.str() << endl;
         //A displacement is needed, then move gnp_new
-        if (!Move_gnp_two_displacements(disps_vec, gnp_new)) {
+        if (!Move_gnp_two_displacements(disps, disps_vec, gnp_new)) {
             hout<<"Error Move_gnps_if_needed in when calling Move_gnp_two_displacements."<<endl;
             return 0;
         }
+        //hout << "center_disp=" << gnp_new.center.str() << endl;
+        //hout << "center displacement = " << center_new.distance_to(gnp_new.center) << endl;
+        //hout << "disps_vec.size()=" << disps_vec.size() << endl;
+        /*VTK_Export VTK;
+        vector<GNP> tmp_vec(1, gnp_new);
+        //Export the new position of the new GNP
+        VTK.Export_gnps(tmp_vec, "gnp_" + to_string(gnps.size()) + "_" + to_string(attempts) + "_moved.vtk");*/
     }
     
     return 1;
@@ -4123,10 +4141,11 @@ int Generate_Network::Find_direction_of_touching_gnps(Collision_detection &GJK_E
     
     return 1;
 }
-int Generate_Network::Move_gnp_two_displacements(const vector<Point_3D> &disps_vec, GNP &gnp)const
+int Generate_Network::Move_gnp_two_displacements(const vector<double>& disps, const vector<Point_3D> &disps_vec, GNP &gnp)const
 {
     //Move the GNP according the the displacement in index [0]
-    if (!Move_gnp(disps_vec[0], gnp)) {
+    Point_3D disp0 = disps_vec[0] * disps[0];
+    if (!Move_gnp(disp0, gnp)) {
         hout<<"Error in Move_gnp_two_displacements when calling Move_gnp."<<endl;
         return 0;
     }
@@ -4134,19 +4153,24 @@ int Generate_Network::Move_gnp_two_displacements(const vector<Point_3D> &disps_v
     //Check if there is a second displacement
     if (disps_vec.size() == 2) {
         
-        //Calculate the orthogonal component of disps_vec[1] with respect to disps_vec[0]
+        //Calculate the orthogonal component of disps_vec[1]*disps[1] with 
+        //respect to disps_vec[0]*disps[0]
         
-        //Calculate dot product
-        double dot_p = disps_vec[0].dot(disps_vec[1]);
+        //Calculate the second displacement (index 1)
+        Point_3D disp1 = disps_vec[1] * disps[1];
+
+        //Calculate dot product of the displacements
+        double dot_p = disp0.dot(disp1);
         
         //Calculate the squared length of disps_vec[0]
-        double d0_2 = disps_vec[0].length2();
+        double d0_2 = disp0.length2();
         
         //Calculate projection of disps_vec[1] onto disps_vec[0]
-        Point_3D proj = disps_vec[0]*(dot_p/d0_2);
+        Point_3D proj = disp0 *(dot_p/d0_2);
         
         //Calculate the orthoganal component we are looking for
-        Point_3D orth = disps_vec[1] - proj;
+        Point_3D orth = disp1 - proj;
+        //hout << "Projection displacement=" << orth.length() << endl;
         
         //Move GNP according the the displacement given by orth
         if (!Move_gnp(orth, gnp)) {

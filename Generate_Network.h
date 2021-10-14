@@ -135,7 +135,7 @@ public:
     int Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int& attempts, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP &gnp_new, bool &displaced)const;
     int Add_to_vector_of_displacements(const double &disp, const Point_3D &N, vector<double> &disps, vector<Point_3D> &disps_vec)const;
     int Find_direction_of_touching_gnps(Collision_detection &GJK_EPA, const GNP &gnpA, const GNP &gnpB, Point_3D &N)const;
-    int Move_gnp_two_displacements(const vector<Point_3D> &disps_vec, GNP &gnp)const;
+    int Move_gnp_two_displacements(const vector<double>& disps, const vector<Point_3D> &disps_vec, GNP &gnp)const;
     int Move_gnp(const Point_3D &displacement, GNP &gnp)const;
     int Add_valid_gnp_to_subregions(const int &gnp_new_idx, const set<int> &subregions, vector<vector<int> > &sectioned_domain)const;
     int Check_all_gnp_vertices_are_inside_sample(const Geom_sample &sample_geom, GNP &gnp, bool &is_enough_inside)const;
