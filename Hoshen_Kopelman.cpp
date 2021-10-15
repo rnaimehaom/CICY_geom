@@ -591,7 +591,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const 
                     
                     //Variables for the GJK
                     vector<Point_3D> simplex;
-                    bool flag1, flag2;
+                    bool flag1 = false, flag2 = false;
                     
                     //Get the simplex closest to the origin from the Minkowski sum of GNP1 and -GNP2
                     //hout<<"CL.GJK"<<endl;

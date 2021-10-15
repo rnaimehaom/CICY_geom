@@ -42,13 +42,12 @@ int Contact_grid::Generate_contact_grid(const int &window, const string &particl
 
     //Calculate the total number of subregions
     int tot_regions = n_regions[0] * n_regions[1] * n_regions[2];
-    //hout << "tot_regions=" << tot_regions << endl;
     if (tot_regions <= 0) {
         hout << "Error in Fill_sectioned_domain_gnps. Invalid number of subregions: " << tot_regions << endl;
         return 0;
     }
 
-    //hout<<"There are "<<n_regions[0]*n_regions[1]*n_regions[2]<<" overlapping sub-regions."<<endl;
+    //hout<<"There are "<< tot_regions <<" overlapping sub-regions."<<endl;
     //hout<<"\tn_regions[0]="<<n_regions[0]<<" n_regions[1]="<<n_regions[1]<<" n_regions[2]="<<n_regions[2]<<endl;
     //hout<<"\tl_regions[0]="<<l_regions[0]<<" l_regions[1]="<<l_regions[1]<<" l_regions[2]="<<l_regions[2]<<endl;
     
@@ -287,9 +286,9 @@ int Contact_grid::Fill_sectioned_domain_gnps(const cuboid &window_geom, const ve
     //Initialize the sectioned domain with the number of regions
     sectioned_domain_gnps.clear();
     sectioned_domain_gnps.assign(tot_regions, vector<int>());
-    hout << "sectioned_domain" << endl;
+    //hout << "sectioned_domain" << endl;
     
-    //First loop over the hybrids inside the box, then loop over the points inside each GNP
+    //First loop over the GNPs inside the sample, then loop over the points inside each GNP
     for (int i = 0; i < (int)gnps_inside.size(); i++) {
         
         //Get the GNP number
@@ -411,7 +410,7 @@ int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, co
 //
 int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const int &c, const int f_regions[], const int n_regions[], const int& tot_regions, const int &gnp_i)
 {
-    //Calculate default rregion
+    //Calculate default region
     int t = Calculate_t(a, b, c, n_regions[0], n_regions[1]);
     if (t >= tot_regions || t < 0)
     {
@@ -424,6 +423,7 @@ int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const
     
     //Assign GNP number of point to default region if not already added
     if (sectioned_domain_gnps[t].empty() || sectioned_domain_gnps[t].back() != gnp_i) {
+        //hout << "GNP " << gnp_i << " in region " << t << endl;
         sectioned_domain_gnps[t].push_back(gnp_i);
     }
     
@@ -445,6 +445,7 @@ int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const
         
         //Assign GNP number of point to region if not already added
         if (sectioned_domain_gnps[t].empty() || sectioned_domain_gnps[t].back() != gnp_i) {
+            //hout << "GNP " << gnp_i << " also in region " << t << endl;
             sectioned_domain_gnps[t].push_back(gnp_i);
         }
         
@@ -466,6 +467,7 @@ int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const
         
         //Assign GNP number of point to region if not already added
         if (sectioned_domain_gnps[t].empty() || sectioned_domain_gnps[t].back() != gnp_i) {
+            //hout << "GNP " << gnp_i << " also in region " << t << endl;
             sectioned_domain_gnps[t].push_back(gnp_i);
         }
         
@@ -487,6 +489,7 @@ int Contact_grid::Assign_point_to_regions_gnps(const int &a, const int &b, const
         
         //Assign GNP number of point to region if not already added
         if (sectioned_domain_gnps[t].empty() || sectioned_domain_gnps[t].back() != gnp_i) {
+            //hout << "GNP " << gnp_i << " also in region " << t << endl;
             sectioned_domain_gnps[t].push_back(gnp_i);
         }
         

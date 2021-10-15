@@ -89,7 +89,7 @@ int Collision_detection::GJK(const GNP &gnp1, const GNP &gnp_new, vector<Point_3
             //hout<<"Case GJK 1: Origin is outside the Minkowski sum"<<endl;
             return 1;
         }
-        
+
         //If this part of the code is reached, then update the simplex and check if it
         //contains the origin
         if (Is_origin_in_simplex(simplex, A, D, t_flag)) {
@@ -985,6 +985,7 @@ int Collision_detection::Distance_and_direction_from_simplex_to_origin(const vec
     //Calculate the distance from simplex to origin depending on the type of simplex (vertex, edge, or face)
     if (simplex.size() == 3) {
         //Simplex is a face
+        //hout << "simplex.size=3" << endl;
         
         //Get the normal vector
         N = (simplex[1] - simplex[0]).cross(simplex[2] - simplex[0]);
@@ -1002,6 +1003,7 @@ int Collision_detection::Distance_and_direction_from_simplex_to_origin(const vec
     }
     else if (simplex.size() == 2) {
         //Simplex is an edge, where simplex = {A,B}
+        //hout << "simplex.size=2" << endl;
         
         //AB = B - A
         Point_3D AB = simplex[1] - simplex[0];
@@ -1021,6 +1023,7 @@ int Collision_detection::Distance_and_direction_from_simplex_to_origin(const vec
     }
     else if (simplex.size() == 1) {
         //Simplex is a vertex
+        //hout << "simplex.size=1" << endl;
         
         //The direction vector goes from the vertex to origin, i.e., along AO
         N = AO.unit();

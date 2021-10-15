@@ -655,10 +655,28 @@ int Input::Read_sample_geometry(Geom_sample &geom_sample, ifstream &infile)
 	istr4 >> geom_sample.gs_minx >> geom_sample.gs_miny >> geom_sample.gs_minz;
 	if(geom_sample.gs_minx<=Zero||geom_sample.gs_miny<=Zero||geom_sample.gs_minz<=Zero)
 	{
-		hout << "Error: the number of divisions for background grids in each direction of the sample should be positive." << endl;
+		hout << "Error: The length of the background grids along each direction should be positive." << endl;
+        if (geom_sample.gs_minx <= Zero) 
+            hout << "Length along x-axis is negative or too close to zero: " << geom_sample.gs_minx << endl;
+        if (geom_sample.gs_miny <= Zero)
+            hout << "Length along y-axis is negative or too close to zero: " << geom_sample.gs_miny << endl;
+        if (geom_sample.gs_minz <= Zero)
+            hout << "Length along z-axis is negative or too close to zero: " << geom_sample.gs_minz << endl;
 		return 0;
 	}
-	else if((int)(geom_sample.win_max_x/geom_sample.gs_minx)>500||
+    if (geom_sample.gs_minx > geom_sample.sample.len_x || 
+        geom_sample.gs_miny > geom_sample.sample.wid_y ||
+        geom_sample.gs_minz > geom_sample.sample.hei_z)
+    {
+        hout << "Error: The size of the background grids cannot be larger than the sample." << endl;
+        if (geom_sample.gs_minx > geom_sample.sample.len_x)
+            hout << "Background grids larger along the x direction. Sample length is" << geom_sample.sample.len_x << " background grid length is " << geom_sample.gs_minx << endl;
+        if (geom_sample.gs_miny > geom_sample.sample.wid_y)
+            hout << "Background grids larger along the y direction. Sample length is" << geom_sample.sample.wid_y << " background grid length is " << geom_sample.gs_miny << endl;
+        if (geom_sample.gs_minz > geom_sample.sample.hei_z)
+            hout << "Background grids larger along the z direction. Sample length is" << geom_sample.sample.hei_z << " background grid length is " << geom_sample.gs_minz << endl;
+    }
+	if((int)(geom_sample.win_max_x/geom_sample.gs_minx)>500||
 			  (int)(geom_sample.win_max_y/geom_sample.gs_miny)>500||
 			  (int)(geom_sample.win_max_z/geom_sample.gs_minz)>500)
 	{
