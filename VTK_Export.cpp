@@ -1171,6 +1171,80 @@ int VTK_Export::Add_all_gnp_vertices_from_cluster(const vector<GNP> &gnps, const
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
+//This function exports all GNPs in a vector in single files, i.e., one GNP per visualization file
+int VTK_Export::Export_gnps_single_files(const vector<GNP>& gnps, const string& base_filename)const
+{
+    //Check that the points vector has points
+    if (gnps.empty()) {
+        hout << "Vector of GNPs is empty. NO visualization file was exported." << endl;
+        return 1;
+    }
+
+    //Iterate over the GNPs in the vector
+    for (size_t i = 0; i < gnps.size(); i++)
+    {
+        //Generate file name
+        string filename = base_filename + "_" + to_string(i) + ".vtk";
+         
+        //Export GNP i
+        if (!Export_single_gnp(gnps[i], filename))
+        {
+            hout << "Error in Export_gnps_single_files when calling Export_single_gnp for iteration " << i << " of " << gnps.size() << endl;
+            return 0;
+        }
+    }
+
+    return 1;
+}
+//This function exports a single GNP into a visualization file
+int VTK_Export::Export_single_gnp(const GNP& gnp_i, const string& filename)const
+{
+    //Open the file
+    ofstream otec(filename.c_str());
+
+    //Add header
+    if (!Add_header(otec)) {
+        hout << "Error in Export_single_gnp when calling Add_header" << endl;
+        return 0;
+    }
+
+    //Add the line with the number of points, which is the case of a single GNP is 8
+    otec << "POINTS " <<  8 << " float" << endl;
+
+    //Add the vertices
+    if (!Add_points_from_array(gnp_i.vertices, 8, otec)) {
+        hout << "Error in Export_single_gnp when calling Add_points_from_array" << endl;
+        return 0;
+    }
+
+    //Add a new line
+    otec << endl;
+
+    //Add the line with the polygons command, with the number of faces+1 and
+    //the number of points in those faces
+    otec << "POLYGONS " << 7 << ' ' << 24 << endl;
+
+    //Add the offsets
+    if (!Add_ofsets_for_gnps(1, otec)) {
+        hout << "Error in Export_single_gnp when calling Add_ofsets_for_gnps" << endl;
+        return 0;
+    }
+
+    //Add the connectivity
+    if (!Add_connectivity_for_gnps(1, otec)) {
+        hout << "Error in Export_single_gnp when calling Add_connectivity_for_gnps" << endl;
+        return 0;
+    }
+
+    //Close the file
+    otec.close();
+
+
+    return 1;
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
 //Cuboid
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
