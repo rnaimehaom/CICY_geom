@@ -14,7 +14,7 @@
  */
 
 //This function groups nanoparticles into clusters
-int Hoshen_Kopelman::Determine_clusters_and_percolation(const int &iter, const Simu_para &simu_para, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
+int Hoshen_Kopelman::Determine_clusters_and_percolation(const int &iter, const cuboid& sample, const Simu_para &simu_para, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
 {
     //Label vectors for CNTs and GNPs
     vector<int> labels_cnt, labels_gnp;
@@ -69,7 +69,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const int &iter, const S
         
         //Make GNP clusters
         //hout<<"Make_gnp_clusters n_total_labels="<<n_total_labels<<endl;
-        if (!Make_gnp_clusters(gnps_inside, sectioned_domain_gnp, gnps, cutoffs.tunneling_dist, n_labels_cnt, n_total_labels, structure_gnp, points_gnp, labels_gnp)) {
+        if (!Make_gnp_clusters(sample, gnps_inside, sectioned_domain_gnp, gnps, cutoffs.tunneling_dist, n_labels_cnt, n_total_labels, structure_gnp, points_gnp, labels_gnp)) {
             hout<<"Error in Determine_clusters when calling Make_gnp_clusters"<<endl;
             return 0;
         }
@@ -506,14 +506,14 @@ int Hoshen_Kopelman::Complete_cnt_elements(const vector<vector<long int> > &stru
     return 1;
 }
 //This function makes the GNP clusters
-int Hoshen_Kopelman::Make_gnp_clusters(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, int &n_total_labels, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp)
+int Hoshen_Kopelman::Make_gnp_clusters(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, int &n_total_labels, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp)
 {
     //Vector of labels of labels
     vector<int> labels_labels_gnp;
     
     //Label the GNPs
     //hout<<"Label_gnps_in_window"<<endl;
-    if (!Label_gnps_in_window(gnps_inside, sectioned_domain_gnp, gnps, tunnel_cutoff, structure_gnp, points_gnp, labels_gnp, labels_labels_gnp)) {
+    if (!Label_gnps_in_window(sample, gnps_inside, sectioned_domain_gnp, gnps, tunnel_cutoff, structure_gnp, points_gnp, labels_gnp, labels_labels_gnp)) {
         hout<<"Error in Make_gnp_clusters when calling Label_gnps_in_window"<<endl;
         return 0;
     }
@@ -543,7 +543,7 @@ int Hoshen_Kopelman::Make_gnp_clusters(const vector<int> &gnps_inside, const vec
     return 1;
 }
 //This function labels the GNPs so that they can be grouped into clusters
-int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp)
+int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp)
 {
     //Initialize the temporary map for determining if a pair of veritces is an edge
     Initialize_edge_map();
@@ -621,27 +621,35 @@ int Hoshen_Kopelman::Label_gnps_in_window(const vector<int> &gnps_inside, const 
                             hout << "Error in Label_gnps_in_window when calling HK76" << endl;
                             return 0;
                         }
+
+                        //Flag that determines if a junction is inside the sample
+                        bool junction_in = false;
                         
                         //Add the points of contact on each GNP
                         //hout<<"Add_junction_points_for_gnps"<<endl;
-                        if (!Add_junction_points_for_gnps(gnps[GNP1], gnps[GNP2], N, dist, points_gnp)) {
+                        if (!Add_junction_points_for_gnps(sample, gnps[GNP1], gnps[GNP2], N, dist, points_gnp, junction_in)) {
                             hout << "Error in Label_gnps_in_window when calling Add_junction_points_for_gnps" << endl;
                             return 0;
                         }
                         
-                        //Get the point numbers
-                        long int Pa = (long int)points_gnp.size()-1;
-                        long int Pb = (long int)points_gnp.size()-2;
-                        
-                        //Create a junction with the GNPs in contact
-                        Junction j(Pa, GNPa, "GNP", Pb, GNPb, "GNP", dist);
-                        
-                        //Add point numbers to structure
-                        structure_gnp[points_gnp[Pa].flag].push_back(Pa);
-                        structure_gnp[points_gnp[Pb].flag].push_back(Pb);
-                        
-                        //Add the junction to the vector of junctions
-                        junctions_gnp.push_back(j);
+                        //Add the junction to the vector of junctions if it is inside the sample
+                        if (junction_in)
+                        {
+                            //Get the point numbers
+                            long int Pa = (long int)points_gnp.size() - 1;
+                            long int Pb = (long int)points_gnp.size() - 2;
+
+                            //Create a junction with the GNPs in contact
+                            Junction j(Pa, GNPa, "GNP", Pb, GNPb, "GNP", dist);
+
+                            //Add point numbers to structure
+                            structure_gnp[points_gnp[Pa].flag].push_back(Pa);
+                            structure_gnp[points_gnp[Pb].flag].push_back(Pb);
+
+                            //Add the junction to the vector of junctions
+                            junctions_gnp.push_back(j);
+
+                        }
                     }
                     
                     //Mark the contact as visited
@@ -837,7 +845,7 @@ int Hoshen_Kopelman::Deal_with_simplex_size_3(const GNP &GNP2, const GNP &GNP3, 
     
     return 1;
 }
-int Hoshen_Kopelman::Add_junction_points_for_gnps(const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<Point_3D> &points_gnp)
+int Hoshen_Kopelman::Add_junction_points_for_gnps(const cuboid &sample, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<Point_3D> &points_gnp, bool & junction_in)
 {
     //Vectors to save the simplices in A and B that are closest to each other
     vector<int> simplexA, simplexB;
@@ -871,10 +879,21 @@ int Hoshen_Kopelman::Add_junction_points_for_gnps(const GNP &GNP_A, const GNP &G
             return 0;
         }
     }
-    
-    //Add the calculated points to the vector of GNPs
-    points_gnp.push_back(PointA);
-    points_gnp.push_back(PointB);
+
+    //Check if the junction points are inside the sample
+    if (PointA.is_outside_cuboid(sample) || PointB.is_outside_cuboid(sample))
+    {
+        //The junction is actually ouside the sample, so it should be ignored
+        //Set to flase the flag that indicates the junction is inside the sample
+        //hout << "Ignore junction between GNP " << GNP_A.flag << " and GNP " << GNP_B.flag << endl;
+        junction_in = false;
+    }
+    else {
+        //The junction is inside the sample, so add the calculated points to 
+        //the vector of GNP points
+        points_gnp.push_back(PointA);
+        points_gnp.push_back(PointB);
+    }
     
     return 1;
 }
