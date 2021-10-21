@@ -3925,10 +3925,23 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
             else {
                 //hout<<"No penetration with GNP "<<GNP_i<<endl;
                 
-                //Find the distance between the two GNPs and make sure they are separated at least the
-                //van der Waals distance
-                if (!GJK_EPA.Distance_and_direction_from_simplex_to_origin(simplex, N, PD)) {
-                    hout<<"Error in Move_gnps_if_needed when calling Distance_and_direction_estimation"<<endl;
+                //Find the distance between the two GNPs and make sure they are separated
+                //at least the van der Waals distance
+                if (!GJK_EPA.GJK_distance(gnps[GNP_i], gnp_new, simplex, PD, N, p_flag)) {
+                    hout << "Error in Move_gnps_if_needed when calling GJK_EPA.GJK_distance" << endl;
+                    return 0;
+                }
+
+                if (p_flag)
+                {
+                    //Filenames for GNPs to be exported
+                    string gnp1_str = "gnp_" + to_string(gnps[GNP_i].flag) + ".vtk";
+                    string gnp2_str = "gnp_" + to_string(gnp_new.flag) + ".vtk";
+                    hout << "Error in Move_gnps_if_needed. GNPs are found to be interpenetrating each other. However, a previous GJK resulted in the same GNPs not interpenetrating each other. GNPs are exported into files " << gnp1_str << " and " << gnp2_str << endl;
+                    VTK_Export VTK;
+                    VTK.Export_single_gnp(gnps[GNP_i], gnp1_str);
+                    VTK.Export_single_gnp(gnp_new, gnp2_str);
+
                     return 0;
                 }
                 
