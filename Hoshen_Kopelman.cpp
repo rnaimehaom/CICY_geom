@@ -592,23 +592,16 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                     
                     //Variables for the GJK
                     vector<Point_3D> simplex;
-                    bool flag1 = false, flag2 = false;
-                    
-                    //Get the simplex closest to the origin from the Minkowski sum of GNP1 and -GNP2
-                    //hout<<"CL.GJK"<<endl;
-                    if (!CL.GJK(gnps[GNP1], gnps[GNP2], simplex, flag1, flag2)) {
-                        hout<<"Error in Label_gnps_in_window when calling CL.GJK"<<endl;
-                        return 0;
-                    }
-                    
+
                     //Variables to store the distance and direction from GNP1 to GNP2
                     Point_3D N;
                     double dist;
                     
-                    //Get the distance between GNP1 and GNP2 using the simplex from GJK
-                    //hout<<"CL.Distance_and_direction_from_simplex_to_origin"<<endl;
-                    if (!CL.Distance_and_direction_from_simplex_to_origin(simplex, N, dist)) {
-                        hout<<"Error in Label_gnps_in_window when calling CL.Distance_and_direction_from_simplex_to_origin"<<endl;
+                    //Use the GJK for distance to calculate the separation between GNPs
+                    //and the direction vector
+                    //hout<<"CL.GJK_distance"<<endl;
+                    if (!CL.GJK_distance(gnps[GNP1], gnps[GNP2], simplex, dist, N)) {
+                        hout<<"Error in Label_gnps_in_window when calling CL.GJK_distance"<<endl;
                         return 0;
                     }
                     
@@ -1011,6 +1004,13 @@ int Hoshen_Kopelman::Find_junction_points_in_gnps(const vector<int> &simplexA, c
         //Find PointB, depending on the size of simplexB
         if (!Find_point_b_for_vertex_in_simplex_a(simplexB, GNP_B, N, distance, PointA, PointB)) {
             hout<<"Error in Find_junction_points_in_gnps when calling Find_point_b_for_vertex_in_simplex_a"<<endl;
+
+            //GNP_A could not be saved within fucntion Find_point_b_for_vertex_in_simplex_a since
+            //it is not one of it arguments
+            //Thus it is saved here
+            VTK_Export VTK;
+            VTK.Export_single_gnp(GNP_A, "gnp_A.vtk");
+
             return 0;
         }
     }
@@ -1032,6 +1032,13 @@ int Hoshen_Kopelman::Find_junction_points_in_gnps(const vector<int> &simplexA, c
     }
     else {
         hout<<"Error in Find_junction_points_in_gnps: simplexA has an invalid size="<<simplexA.size()<<", it size must be 1, 2, or 4"<<endl;
+        hout<<"GNP for simplex of size " << simplexA.size() << " is saved in file gnp_A.vtk." << endl;
+        hout<<"Second GNP is saved in file gnp_B.vtk." << endl;
+
+        VTK_Export VTK;
+        VTK.Export_single_gnp(GNP_A, "gnp_A.vtk");
+        VTK.Export_single_gnp(GNP_B, "gnp_B.vtk");
+
         return 0;
     }
     
@@ -1065,6 +1072,12 @@ int Hoshen_Kopelman::Find_point_b_for_vertex_in_simplex_a(const vector<int> &sim
     }
     else {
         hout<<"Error in Find_point_b_for_vertex_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 1, 2, or 4"<<endl;
+        hout << "GNP for simplex of size 1 is saved in file gnp_A.vtk." << endl;
+        hout << "GNP for simplex of size " << simplexB.size() << " is saved in file gnp_B.vtk." << endl;
+
+        //Export the GNPs for debugging
+        VTK_Export VTK;
+        VTK.Export_single_gnp(GNP_B, "gnp_B.vtk");
         return 0;
     }
     
@@ -1100,7 +1113,7 @@ int Hoshen_Kopelman::Find_point_b_for_edge_in_simplex_a(const vector<int> &simpl
             return 0;
         }
     }
-    else if (simplexB.size() == 3) {
+    /*else if (simplexB.size() == 3) {
         
         //Deal with the case when a set has size three and the other has size two
         //(which should not happen)
@@ -1110,9 +1123,17 @@ int Hoshen_Kopelman::Find_point_b_for_edge_in_simplex_a(const vector<int> &simpl
             return 0;
         }
         
-    }
+    }*/
     else {
-        hout<<"Error in Find_point_b_for_edge_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 2 or 4 (temporarily deals with size 3)"<<endl;
+        hout<<"Error in Find_point_b_for_edge_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 2 or 4."<<endl;
+        hout << "GNP for simplex of size 2 is saved in file gnp_A.vtk." << endl;
+        hout << "GNP for simplex of size "<< simplexB.size() <<" is saved in file gnp_B.vtk." << endl;
+
+        //Export the GNPs for debugging
+        VTK_Export VTK;
+        VTK.Export_single_gnp(GNP_A, "gnp_A.vtk");
+        VTK.Export_single_gnp(GNP_B, "gnp_B.vtk");
+
         return 0;
     }
     return 1;
@@ -1629,6 +1650,14 @@ int Hoshen_Kopelman::Find_point_b_for_face_in_simplex_a(const vector<int> &simpl
     }
     else {
         hout<<"Error in Find_point_b_for_face_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 4"<<endl;
+        hout << "GNP for simplex of size 4 is saved in file gnp_A.vtk." << endl;
+        hout << "GNP for simplex of size " << simplexB.size() << " is saved in file gnp_B.vtk." << endl;
+
+        //Export the GNPs for debugging
+        VTK_Export VTK;
+        VTK.Export_single_gnp(GNP_A, "gnp_A.vtk");
+        VTK.Export_single_gnp(GNP_B, "gnp_B.vtk");
+
         return 0;
     }
     
