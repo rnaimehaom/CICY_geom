@@ -32,6 +32,16 @@ public:
     bool Check_actual_touch(const Point_3D verticesA[], const Point_3D verticesB[], const Point_3D &D, vector<Point_3D> &simplex);
     bool Is_point_in_simplex(const vector<Point_3D> &simplex, const Point_3D &A);
     //---------------------------------------------------------------------------
+    //GJK for distance calculation
+    int GJK_distance(const GNP &gnp1, const GNP &gnp2, vector<Point_3D> &simplex, double &dist, Point_3D &N, bool& p_flag);
+    int Direction_from_simplex_to_origin(const vector<Point_3D>& simplex, Point_3D& N);
+    int Distance_from_simplex_to_origin(vector<Point_3D>& simplex, double& dist);
+    int Find_voroni_region(vector<Point_3D>& simplex);
+    int Voroni_region_case3(vector<Point_3D>& simplex);
+    int Voroni_region_case4(vector<Point_3D>& simplex);
+    int Reduce_simplex_4_to_1(const int& idx, vector<Point_3D>& simplex);
+    int Reduce_simplex_4_to_2(const int& idx1, const int& idx2, vector<Point_3D>& simplex);
+    //---------------------------------------------------------------------------
     //Extended Polytope Algorithm (EPA)
     int EPA(const Point_3D verticesA[], const Point_3D verticesB[], vector<Point_3D> &simplex, Point_3D &normal, double &PD);
     void Normal_and_distance_to_origin(const vector<Point_3D> &simplex, const TrFace &f, Point_3D &normal, double &distance);

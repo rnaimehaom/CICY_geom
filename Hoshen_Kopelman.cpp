@@ -582,6 +582,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                 //Sort the GNP numbers
                 int GNPa = min(GNP1, GNP2);
                 int GNPb = max(GNP2, GNP2);
+                //hout << "i=" << i << " j=" << j << " k=" << k << endl;
                 //hout<<"GNPa="<<GNPa<<" GNPb="<<GNPb<<" GNP1="<<GNP1<<" GNP2="<<GNP2<<endl;
                 
                 //Check if the contact has already been visited
@@ -688,6 +689,10 @@ void Hoshen_Kopelman::Initialize_edge_map()
 //edges in a GNP
 int Hoshen_Kopelman::Deal_with_simplex_size_3(const GNP &GNP2, const GNP &GNP3, const vector<int> &simplex2, const vector<int> &simplex3, Point_3D &Point2, Point_3D &Point3)
 {
+    //hout << "GNP2=" << GNP2.flag << endl;
+    //hout << "Vertices=" << simplex2[0] << ", " << simplex2[1] << endl;
+    //hout << "GNP3=" << GNP3.flag << endl;
+    //hout << "Vertices=" << simplex3[0] << ", " << simplex3[1] << ", " << simplex3[2] << endl;
     //Array for valied edges of simplex3
     int eds[][2] = {{-1,-1},{-1,-1}};
     
@@ -756,6 +761,8 @@ int Hoshen_Kopelman::Deal_with_simplex_size_3(const GNP &GNP2, const GNP &GNP3, 
     //         (GNP2.vertices[simplex2[0]] - GNP2.vertices[simplex2[1]])*lambda1
     //P = GNP2.vertices[simplex2[1]] + E1*lambda1
     double lambda1 = Lambda_of_two_lines(GNP2.vertices[simplex2[0]], GNP2.vertices[simplex2[1]],Q1, Q2);
+    //hout << "GNP2.P1=" << GNP2.vertices[simplex2[0]].str() << " GNP2.P2=" << GNP2.vertices[simplex2[1]].str() << endl;
+    //hout << "lambda1=" << lambda1 << " Q1=" << Q1.str() << " Q2=" << Q2.str() << endl;
     
     //Boolean to decide how to calculate intersection point
     bool b1 = lambda1 - 1.0 <= Zero && lambda1 >= Zero;
@@ -772,7 +779,6 @@ int Hoshen_Kopelman::Deal_with_simplex_size_3(const GNP &GNP2, const GNP &GNP3, 
         N = N*(-1);
         d2 = abs(d2);
     }
-    //hout<<"d1="<<d1<<" d2="<<d2<<endl;
     
     //Calculate points translated from first valid edge to simplex2
     Q1 = GNP3.vertices[eds[0][0]] + N*d2;
@@ -785,6 +791,8 @@ int Hoshen_Kopelman::Deal_with_simplex_size_3(const GNP &GNP2, const GNP &GNP3, 
     //         (GNP2.vertices[simplex2[0]] - GNP2.vertices[simplex2[1]])*lambda2
     //P = GNP2.vertices[simplex2[1]] + E1*lambda2
     double lambda2 = Lambda_of_two_lines(GNP2.vertices[simplex2[0]], GNP2.vertices[simplex2[1]],Q1, Q2);
+    //hout << "lambda2=" << lambda2 << " Q1=" << Q1.str() << " Q2=" << Q2.str() << endl;
+    //hout << "d1=" << d1 << " d2=" << d2 << endl;
     
     //Boolean to decide how to calculate intersection point
     bool b2 = lambda2 - 1.0 <= Zero && lambda2 >= Zero;
@@ -963,9 +971,10 @@ int Hoshen_Kopelman::Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A,
         }
         tmp_vec.push_back(tmp_gnp);
     }*/
-    //vector<GNP> tmp_vec(2);
-    //tmp_vec[0] = GNP_A; tmp_vec[1] = GNP_B;
-    //VTK.Export_gnps(tmp_vec, "gnps_debug.vtk");
+    /*VTK_Export VTK;
+    vector<GNP> tmp_vec(2);
+    tmp_vec[0] = GNP_A; tmp_vec[1] = GNP_B;
+    VTK.Export_gnps(tmp_vec, "gnps_debug.vtk");*/
     //
     //
     //VTK.Export_single_cnt(cnt_tmp, "cnt_tmp.vtk");
@@ -1095,6 +1104,7 @@ int Hoshen_Kopelman::Find_point_b_for_edge_in_simplex_a(const vector<int> &simpl
         
         //Deal with the case when a set has size three and the other has size two
         //(which should not happen)
+        //hout << "d_gjk=" << distance << endl;
         if (!Deal_with_simplex_size_3(GNP_A, GNP_B, simplexA, simplexB, PointA, PointB)) {
             hout<<"Error in Find_closest_simplices_of_gnps_in_contact when calling Deal_with_simplex_size_3"<<endl;
             return 0;

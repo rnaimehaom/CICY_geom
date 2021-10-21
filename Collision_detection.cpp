@@ -44,7 +44,7 @@ int Collision_detection::GJK(const GNP &gnp1, const GNP &gnp_new, vector<Point_3
         
         //Get a new support point
         Point_3D A = Support_AB(D, gnp1.vertices, gnp_new.vertices);
-        //hout<<"A="<<A.str()<<endl;
+        //hout<<"A="<<A.str()<<endl<<"D="<<D.str()<<endl;
         
         //Check if there is no penetration, i.e., the origin is furthest than th support point
         if (A.dot(D) < Zero) {
@@ -731,12 +731,813 @@ bool Collision_detection::Is_point_in_simplex(const vector<Point_3D> &simplex, c
 {
     
     for (size_t i = 0; i < simplex.size(); i++) {
-        if (simplex[i] == A) {
+        if (simplex[i].squared_distance_to(A) < Zero) {
             //hout<<"A is already in the simplex"<<endl;
             return true;
         }
     }
     return false;
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//GJK for distance calculation
+int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<Point_3D>& simplex, double& dist, Point_3D& N, bool& p_flag)
+{
+    //Check if the simplex is empty
+    if (simplex.empty()) {
+
+        //The simplex is empty, this is the case when no previous boolean GJK has been used
+        //Initialize the simplex with a vertex form the Minkowski sum
+        //hout << "simplex is empty" << endl;
+        simplex.push_back(gnp1.vertices[0] - gnp2.vertices[0]);
+    }
+
+    //Iteration count
+    int it = 1;
+
+    //Iterate up to the maximum number of iterations
+    while (it <= 20) {
+
+        //hout << "===it " << it << endl; 
+        it++;
+
+        //Calculate the new direction
+        Point_3D D;
+        if (!Direction_from_simplex_to_origin(simplex, D))
+        {
+            hout << "Error in GJK_distance when callin Direction_from_simplex_to_origin" << endl;
+            return 0;
+        }
+
+        //Get a support point in the Minkowski sum
+        Point_3D A = Support_AB(D, gnp1.vertices, gnp2.vertices);
+        //hout << "A=" << A.str() << " A.dot(D)=" << A.dot(D) << endl;
+
+        //Check if A is already in the simplex
+        //hout << "is_point_in_simplex" << endl;
+        if (Is_point_in_simplex(simplex, A)) {
+
+            //hout << "Case 2: Simplex cannot be updated" << endl;
+            //hout << "dist=" << dist << " |A.dot(D)|=" << abs(A.dot(D)) << endl;
+
+            //Recalculate the distance to simplex
+            if (!Distance_from_simplex_to_origin(simplex, dist))
+            {
+                hout << "Error in GJK_distance when calling Distance_from_simplex_to_origin (1)" << endl;
+                return 0;
+            }
+            //Get the direction
+            N = D;
+
+            return 1;
+        }
+
+        //Add support point A to the simplex
+        simplex.push_back(A);
+        //hout << "updated simplex.size=" << simplex.size() << endl;
+
+        //Find the simplex within the vector simplex that is closest to the origin
+        if (!Find_voroni_region(simplex)) {
+            hout << "Error in GJK_distance when calling Find_voroni_region" << endl;
+            return 0;
+        }
+        //hout << "voroni simplex.size=" << simplex.size() << endl;
+
+        //Calculate the distance from the updated simplex to the origin
+        if (!Distance_from_simplex_to_origin(simplex, dist))
+        {
+            hout << "Error in GJK_distance when calling Distance_from_simplex_to_origin (2)" << endl;
+            return 0;
+        }
+        //hout << "dist=" << dist << endl << endl;
+
+        /*if (dist < Zero) {
+            hout << "Touch" << endl;
+        }*/
+
+        //Check if support point is closer to origin than simplex
+        if (abs(dist - abs(A.dot(D))) < Zero) {
+
+            //hout << "Case 1: Simplex is as close to origin as support point" << endl;
+            //hout << "dist=" << dist << " abs(A.dot(D))=" << abs(A.dot(D)) << " A.length=" << A.length() << " A=" << A.str() << endl;
+            //Calculate direction
+            N = D;
+
+            return 1;
+        }
+
+    }
+
+    hout << "Error in GJK_distance: Maximum number of iterations reached." << endl;
+    return 0;
+}
+//This function calculates the directino vector from a simplex towards the origin
+int Collision_detection::Direction_from_simplex_to_origin(const vector<Point_3D>& simplex, Point_3D &N)
+{
+    //Check the size of the simplex
+    if (simplex.size() == 1) {
+
+        //The direction vector is AO
+        N = (simplex[0] * (-1.0)).unit();
+    }
+    else if (simplex.size() == 2) {
+
+        //Calculate some vectors
+        Point_3D AO = simplex[0] * (-1.0);
+        //AB = B - A
+        Point_3D AB = simplex[1] - simplex[0];
+
+        //The direction vector is the normal from AB going towards O
+        //N = (ABxAO)xAB
+        N = ((AB.cross(AO)).cross(AB)).unit();
+    }
+    //simplex.size() == 3
+    else if (simplex.size() == 3) {
+
+        //Get a unit normal to the plane defined by the three points
+        //This normal is the direction vector
+        N = (simplex[1] - simplex[0]).cross(simplex[2] - simplex[0]);
+        N.make_unit();
+
+        //Check that it goes to the origin
+        if (N.dot(simplex[0]) > Zero) {
+            N = N * (-1.0);
+        }
+    }
+    else {
+        hout << "Error in Direction_from_simplex_to_origin. Invalid size of simplex to calculate direction from simplex towards origin. Elements in simplex: " << simplex.size() << endl;
+        return 0;
+    }
+
+    return 1;
+}
+//This function calculates the distance from 
+int Collision_detection::Distance_from_simplex_to_origin(vector<Point_3D>& simplex, double &dist) 
+{
+    //Check the size of the simplex
+    if (simplex.size() == 1) {
+
+        //hout << "simplex.size=1" << endl;
+        //Just calculate the length of the vector OA
+        dist = simplex[0].length();
+    }
+    else if (simplex.size() == 2) {
+
+        //hout << "simplex.size=2" << endl;
+        //Calculate some vectors
+        Point_3D AO = simplex[0] * (-1.0);
+        //AB = B - A
+        Point_3D AB = simplex[1] - simplex[0];
+
+        //dp^2 = (AO.dot(AB))^2/||AB||^2
+        double dot = AO.dot(AB);
+        double dp_2 = dot * dot / AB.length2();
+
+        dist = sqrt(AO.length2() - dp_2);
+    }
+    //simplex.size() == 3
+    else if (simplex.size() == 3) {
+
+        //hout << "simplex.size=3" << endl;
+        //Get a unit normal to the plane defined by the three points
+        //This normal is the direction vector
+        Point_3D N = (simplex[1] - simplex[0]).cross(simplex[2] - simplex[0]);
+        N.make_unit();
+
+        dist = abs(N.dot(simplex[0]));
+    }
+    else {
+        hout<<"Error in Distance_from_simplex_to_origin. Invalid size of simplex to calculate distance from simplex to origin. Elements in simplex: " << simplex.size() << endl;
+        return 0;
+    }
+
+    return 1;
+}
+//Find the sub-simplex within the simplex that is closest to the origin
+//This is equivalent to find the Voroni region of the simplex in which the origin lies
+int Collision_detection::Find_voroni_region(vector<Point_3D>& simplex) {
+
+    if (simplex.size() == 2) {
+        //hout << "case simplex.size=2" << endl;
+
+        //Calculate a vector along the simplex
+        Point_3D S0S1 = simplex[1] - simplex[0];
+
+        //Calculate some dot products
+        double dot_s0 = -simplex[0].dot(S0S1);
+        double dot_s1 = simplex[1].dot(S0S1);
+
+        //Find the Voroni region
+        if (dot_s0 > Zero && dot_s1 > Zero) {
+            //hout << "Edge itself is closest to the origin" << endl;
+            //Simplex is the closest to the origin, so terminate the function
+            return 1;
+        }
+        else if (dot_s1 < Zero) {
+            //Given that the the edge is not closest to the origin,
+            //if dot product is negative then vertex simplex[1]
+            //is closest to the origin
+            //hout << "Vertex 1 from edge" << endl;
+            simplex[0] = simplex[1];
+
+            //After leaving the if-statement the second vertex will be removed
+        }
+
+        //The remaining option is that vertex simplex[0] is closest
+        //to the origin, which case only remove the second vertex
+        simplex.pop_back();
+        //hout << "Vertex 0 from edge" << endl;
+    }
+    else if (simplex.size() == 3) {
+        return Voroni_region_case3(simplex);
+    }
+    else if (simplex.size() == 4) {
+        return Voroni_region_case4(simplex);
+    }
+    else if (simplex.size() != 1) {
+        hout << "Error. Simplex size is not in the interval [1, 4]. Size: " << simplex.size() << endl;
+        return 0;
+    }
+
+    return 1;
+}
+//This fucntion finds the sub-simplex within the simplex that is closest to the origin when 
+//the simples has size 3
+//This is equivalent to find the Voroni region of the simplex in which the origin lies for
+//the case when the simples has size 3
+int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex) 
+{
+
+    //hout << "case simplex.size=3" << endl;
+    //hout << "simplex0={S0=" << simplex[0].str() << ", S1=" << simplex[1].str() << ", S2=" << simplex[2].str() << "}" << endl;
+
+    //Precompute some vectors
+    Point_3D S0S1 = simplex[1] - simplex[0];
+    Point_3D S0S2 = simplex[2] - simplex[0];
+
+    double s0_s0s1 = -simplex[0].dot(S0S1);
+    double s0_s0s2 = -simplex[0].dot(S0S2);
+
+    //Is origin in Voroni region of veretex 0
+    if (s0_s0s2 < Zero && s0_s0s1 < Zero) {
+        //Update simplex to contain only vertex 0
+        //hout << "Vertex 0 from triangle" << endl;
+        simplex.pop_back();
+        simplex.pop_back();
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Precompute a vector
+    Point_3D S1S2 = simplex[2] - simplex[1];
+
+    //Precompute some dot products
+    //This dot product is equivalent to -S1.dot(S1S0):
+    double s1_s1s0 = simplex[1].dot(S0S1);
+    double s1_s1s2 = -simplex[1].dot(S1S2);
+
+    //Is origin in Voroni region of veretex 1
+    if (s1_s1s0 < Zero && s1_s1s2 < Zero) {
+        //Update simplex to contain only vertex 1
+        //hout << "Vertex 1 from triangle" << endl;
+        simplex[0] = simplex[1];
+        simplex.pop_back();
+        simplex.pop_back();
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Precompute some dot products
+    //This dot product is equivalent to -S2.dot(S2S0):
+    double s2_s2s0 = simplex[2].dot(S0S2);
+    //This dot product is equivalent to -S2.dot(S2S1):
+    double s2_s2s1 = simplex[2].dot(S1S2);
+
+    //Is origin in Voroni region of veretex 2
+    if (s2_s2s0 < Zero && s2_s2s1 < Zero) {
+        //Update simplex to contain only vertex 2
+        //hout << "Vertex 2 from triangle" << endl;
+        simplex[0] = simplex[2];
+        simplex.pop_back();
+        simplex.pop_back();
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Vector normal to the triangle
+    Point_3D NT = S0S1.cross(S0S2);
+
+    //Compute normal to edge S0S1
+    Point_3D N01 = S0S1.cross(NT);
+    //Make sure normal goes outside the triangle
+    if (N01.dot(S1S2) > Zero) {
+        N01 = N01 * (-1.0);
+    }
+
+    //Is origin in Voroni region of edge S0S1
+    if (-simplex[0].dot(N01) > Zero) {
+        //Update simplex to contain only edge S0S1
+        //hout << "Edge 01 from triangle" << endl;
+        simplex.pop_back();
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Compute normal to edge S0S2
+    Point_3D N02 = S0S2.cross(NT);
+    //Make sure normal goes outside the triangle
+    if (N02.dot(S0S1) > Zero) {
+        N02 = N02 * (-1.0);
+    }
+
+    //Is origin in Voroni region of edge S0S2
+    if (-simplex[0].dot(N02) > Zero) {
+        //Update simplex to contain only edge S0S2
+        //hout << "Edge 02 from triangle" << endl;
+        simplex[1] = simplex[2];
+        simplex.pop_back();
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Compute normal to edge S1S2
+    Point_3D N12 = S1S2.cross(NT);
+    //Make sure normal goes outside the triangle
+    if (N12.dot(S0S1) < Zero) { //This is equivalent to if (N12.dot(S1S0) > Zero) {
+        N12 = N12 * (-1.0);
+    }
+
+    //Is origin in Voroni region of edge S1S2
+    if (-simplex[1].dot(N12) > Zero) {
+        //Update simplex to contain only edge S1S2
+        //hout << "Edge 12 from triangle" << endl;
+        simplex[0] = simplex[1];
+        simplex[1] = simplex[2];
+        simplex.pop_back();
+
+        //Terminate the function
+        return 1;
+    }
+
+    //If the function reaches this point, then the simplex closest to the origin
+    //is the original simplex
+
+    return 1;
+}
+//This fucntion finds the sub-simplex within the simplex that is closest to the origin when 
+//the simples has size 4
+//This is equivalent to find the Voroni region of the simplex in which the origin lies for
+//the case when the simples has size 4
+int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
+
+    //hout << "case simplex.size=4" << endl;
+    //hout << "simplex0={S0=" << simplex[0].str() << ", S1=" << simplex[1].str() << ", S2=" << simplex[2].str() << ", S3=" << simplex[3].str() << "}" << endl;
+
+    //Precompute some vectors
+    Point_3D S0S1 = simplex[1] - simplex[0];
+    Point_3D S0S2 = simplex[2] - simplex[0];
+    Point_3D S0S3 = simplex[3] - simplex[0];
+
+    //Precompute some dot products
+    double s0_s0s1 = -simplex[0].dot(S0S1);
+    double s0_s0s2 = -simplex[0].dot(S0S2);
+    double s0_s0s3 = -simplex[0].dot(S0S3);
+
+    //=============================
+    //Vertices
+
+    //=============================
+    //Is origin in Voroni region of veretex 0
+    if (s0_s0s2 < Zero && s0_s0s1 < Zero && s0_s0s3 < Zero) {
+
+        //Update simplex to cotain only vertex 0
+        //hout << "Vertex 0 from tetrahedron" << endl;
+        if (!Reduce_simplex_4_to_1(0, simplex)) {
+            hout << "Error when reducing simplex from 4 to 1. Vertex 0." << endl;
+            return 0;
+        }
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Precompute some vectors
+    Point_3D S1S2 = simplex[2] - simplex[1];
+    Point_3D S1S3 = simplex[3] - simplex[1];
+
+    //Precompute some dot products
+    //This dot product is equivalent to -S1.dot(S1S0):
+    double s1_s1s0 = simplex[1].dot(S0S1);
+    double s1_s1s2 = -simplex[1].dot(S1S2);
+    double s1_s1s3 = -simplex[1].dot(S1S3);
+
+    //=============================
+    //Is origin in Voroni region of veretex 1
+    if (s1_s1s0 < Zero && s1_s1s2 < Zero && s1_s1s3 < Zero) {
+
+        //Update simplex to cotain only vertex 1
+        //hout << "Vertex 1 from tetrahedron" << endl;
+        if (!Reduce_simplex_4_to_1(1, simplex)) {
+            hout << "Error when reducing simplex from 4 to 1. Vertex 1." << endl;
+            return 0;
+        }
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Precompute a vector
+    Point_3D S2S3 = simplex[3] - simplex[2];
+
+    //Precompute some dot products
+    //This dot product is equivalent to -S2.dot(S2S0):
+    double s2_s2s0 = simplex[2].dot(S0S2);
+    //This dot product is equivalent to -S2.dot(S2S1):
+    double s2_s2s1 = simplex[2].dot(S1S2);
+    double s2_s2s3 = -simplex[2].dot(S2S3);
+
+    //=============================
+    //Is origin in Voroni region of veretex 2
+    if (s2_s2s0 < Zero && s2_s2s1 < Zero && s2_s2s3 < Zero) {
+
+        //Update simplex to cotain only vertex 2
+        //hout << "Vertex 2 from tetrahedron" << endl;
+        if (!Reduce_simplex_4_to_1(2, simplex)) {
+            hout << "Error when reducing simplex from 4 to 1. Vertex 2." << endl;
+            return 0;
+        }
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Precompute some dot products
+    //This dot product is equivalent to -S3.dot(S3S0):
+    double s3_s3s0 = simplex[3].dot(S0S3);
+    //This dot product is equivalent to -S3.dot(S3S1):
+    double s3_s3s1 = simplex[3].dot(S1S3);
+    //This dot product is equivalent to -S3.dot(S3S2):
+    double s3_s3s2 = simplex[3].dot(S2S3);
+
+    //=============================
+    //Is origin in Voroni region of veretex 3
+    if (s3_s3s0 < Zero && s3_s3s1 < Zero && s3_s3s2 < Zero) {
+
+        //Update simplex to cotain only vertex 3
+        //hout << "Vertex 3 from tetrahedron" << endl;
+        if (!Reduce_simplex_4_to_1(3, simplex)) {
+            hout << "Error when reducing simplex from 4 to 1. Vertex 3." << endl;
+            return 0;
+        }
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Precompute some normal vectors to the faces of the tetrahedron
+    //The last point in Normal_to_face_ouside_tetrahedron is not in
+    //the face composed by the first three points
+    Point_3D N013 = Normal_to_face_ouside_tetrahedron(simplex[0], simplex[1], simplex[3], simplex[2]);
+    Point_3D N012 = Normal_to_face_ouside_tetrahedron(simplex[0], simplex[1], simplex[2], simplex[3]);
+
+    //Vector normal to edge S0S1 on the plane of face S0S1S2
+    Point_3D N01_012 = S0S1.cross(N012);
+    //Make sure it goes in the direction opposite to vertex S2
+    if (N01_012.dot(S0S2) > Zero) {
+        //Normal vector goes towards S2, so reverse it
+        N01_012 = N01_012 * (-1.0);
+    }
+
+    //Vector normal to edge S0S1 on the plane of face S0S1S3
+    Point_3D N01_013 = S0S1.cross(N013);
+    //Make sure it goes in the direction opposite to vertex S3
+    if (N01_013.dot(S0S3) > Zero) {
+        //Normal vector goes towards S3, so reverse it
+        N01_013 = N01_013 * (-1.0);
+    }
+
+    //Precompute some dot products
+    double s0_n01_012 = -simplex[0].dot(N01_012);
+    double s0_n01_013 = -simplex[0].dot(N01_013);
+
+    //=============================
+    //Edges
+
+    //=============================
+    //Is origin in Voroni region of edge S0S1
+    if (s0_s0s1 > Zero && s1_s1s0 > Zero && s0_n01_012 > Zero && s0_n01_013 > Zero) {
+
+        //Update simplex to contain only S0S1
+        //hout << "Edge 01 from tetrahedron" << endl;
+        if (!Reduce_simplex_4_to_2(0, 1, simplex)) {
+            hout << "Error when reducing simplex from 4 to 2. Edge 01." << endl;
+            return 0;
+        }
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Precompute some normal vectors to the faces of the tetrahedron
+    //The last point in Normal_to_face_ouside_tetrahedron is not in
+    //the face composed by the first three points
+    Point_3D N023 = Normal_to_face_ouside_tetrahedron(simplex[0], simplex[2], simplex[3], simplex[1]);
+
+    //Vector normal to edge S0S2 on the plane of face S0S1S2
+    Point_3D N02_012 = S0S2.cross(N012);
+    //Make sure it goes in the direction opposite to vertex S1
+    if (N02_012.dot(S0S1) > Zero) {
+        //Normal vector goes towards S1, so reverse it
+        N02_012 = N02_012 * (-1.0);
+    }
+
+    //Vector normal to edge S0S2 on the plane of face S0S2S3
+    Point_3D N02_023 = S0S2.cross(N023);
+    //Make sure it goes in the direction opposite to vertex S3
+    if (N02_023.dot(S0S3) > Zero) {
+        //Normal vector goes towards S3, so reverse it
+        N02_023 = N02_023 * (-1.0);
+    }
+
+    //Precompute some dot products
+    double s0_n02_012 = -simplex[0].dot(N02_012);
+    double s0_n02_023 = -simplex[0].dot(N02_023);
+
+    //=============================
+    //Is origin in Voroni region of edge S0S2
+    if (s0_s0s2 > Zero && s2_s2s0 > Zero && s0_n02_012 > Zero && s0_n02_023 > Zero) {
+
+        //Update simplex to contain only S0S2
+        //hout << "Edge 02 from tetrahedron" << endl;
+        if (!Reduce_simplex_4_to_2(0, 2, simplex)) {
+            hout << "Error when reducing simplex from 4 to 2. Edge 02." << endl;
+            return 0;
+        }
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Vector normal to edge S0S3 on the plane of face S0S1S3
+    Point_3D N03_013 = S0S3.cross(N013);
+    //Make sure it goes in the direction opposite to vertex S1
+    if (N03_013.dot(S0S1) > Zero) {
+        //Normal vector goes towards S1, so reverse it
+        N03_013 = N03_013 * (-1.0);
+    }
+
+    //Vector normal to edge S0S3 on the plane of face S0S2S3
+    Point_3D N03_023 = S0S3.cross(N023);
+    //Make sure it goes in the direction opposite to vertex S2
+    if (N03_023.dot(S0S2) > Zero) {
+        //Normal vector goes towards S2, so reverse it
+        N03_023 = N03_023 * (-1.0);
+    }
+
+    //Precompute some dot products
+    double s0_n03_013 = -simplex[0].dot(N03_013);
+    double s0_n03_023 = -simplex[0].dot(N03_023);
+
+    //=============================
+    //Is origin in Voroni region of edge S0S3
+    if (s0_s0s3 > Zero && s3_s3s0 > Zero && s0_n03_013 > Zero && s0_n03_023 > Zero) {
+
+        //Update simplex to contain only S0S3
+        //hout << "Edge 03 from tetrahedron" << endl;
+        if (!Reduce_simplex_4_to_2(0, 3, simplex)) {
+            hout << "Error when reducing simplex from 4 to 2. Edge 03." << endl;
+            return 0;
+        }
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Precompute a normal vector to a face of the tetrahedron
+    //The last point in Normal_to_face_ouside_tetrahedron is not in
+    //the face composed by the first three points
+    Point_3D N123 = Normal_to_face_ouside_tetrahedron(simplex[1], simplex[2], simplex[3], simplex[0]);
+
+    //Vector normal to edge S1S2 on the plane of face S0S1S2
+    Point_3D N12_012 = S1S2.cross(N012);
+    //Make sure it goes in the direction opposite to vertex S0
+    if (N12_012.dot(S0S1) < Zero) { //This is equivalent to N12_012.dot(S1S0) > Zero
+        //Normal vector goes towards S0, so reverse it
+        N12_012 = N12_012 * (-1.0);
+    }
+
+    //Vector normal to edge S1S2 on the plane of face S1S2S3
+    Point_3D N12_123 = S1S2.cross(N123);
+    //Make sure it goes in the direction opposite to vertex S3
+    if (N12_123.dot(S1S3) > Zero) {
+        //Normal vector goes towards S3, so reverse it
+        N12_123 = N12_123 * (-1.0);
+    }
+
+    //Precompute some dot products
+    double s1_n12_012 = -simplex[1].dot(N12_012);
+    double s1_n12_123 = -simplex[1].dot(N12_123);
+
+    //=============================
+    //Is origin in Voroni region of edge S1S2
+    if (s1_s1s2 > Zero && s2_s2s1 > Zero && s1_n12_012 > Zero && s1_n12_123 > Zero) {
+
+        //Update simplex to contain only S1S2
+        //hout << "Edge 12 from tetrahedron" << endl;
+        if (!Reduce_simplex_4_to_2(1, 2, simplex)) {
+            hout << "Error when reducing simplex from 4 to 2. Edge 12." << endl;
+            return 0;
+        }
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Vector normal to edge S1S3 on the plane of face S0S1S3
+    Point_3D N13_013 = S1S3.cross(N013);
+    //Make sure it goes in the direction opposite to vertex S0
+    if (N13_013.dot(S0S1) < Zero) { //This is equivalent to N13_013.dot(S1S0) > Zero
+        //Normal vector goes towards S0, so reverse it
+        N13_013 = N13_013 * (-1.0);
+    }
+
+    //Vector normal to edge S1S3 on the plane of face S1S2S3
+    Point_3D N13_123 = S1S3.cross(N123);
+    //Make sure it goes in the direction opposite to vertex S2
+    if (N13_123.dot(S1S2) > Zero) {
+        //Normal vector goes towards S2, so reverse it
+        N13_123 = N13_123 * (-1.0);
+    }
+
+    //Precompute some dot products
+    double s1_n13_013 = -simplex[1].dot(N13_013);
+    double s1_n13_123 = -simplex[1].dot(N13_123);
+
+    //=============================
+    //Is origin in Voroni region of edge S1S3
+    if (s1_s1s3 > Zero && s3_s3s1 > Zero && s1_n13_013 > Zero && s1_n13_123 > Zero) {
+
+        //Update simplex to contain only S1S3
+        //hout << "Edge 13 from tetrahedron" << endl;
+        if (!Reduce_simplex_4_to_2(1, 3, simplex)) {
+            hout << "Error when reducing simplex from 4 to 2. Edge 13." << endl;
+            return 0;
+        }
+
+        //Terminate the function
+        return 1;
+    }
+
+    //Vector normal to edge S2S3 on the plane of face S0S2S3
+    Point_3D N23_023 = S2S3.cross(N023);
+    //Make sure it goes in the direction opposite to vertex S0
+    if (N23_023.dot(S0S2) < Zero) { //This is equivalent to N23_023.dot(S2S0) > Zero
+        //Normal vector goes towards S0, so reverse it
+        N23_023 = N23_023 * (-1.0);
+    }
+
+    //Vector normal to edge S2S3 on the plane of face S1S2S3
+    Point_3D N23_123 = S2S3.cross(N123);
+    //Make sure it goes in the direction opposite to vertex S1
+    if (N23_123.dot(S1S2) < Zero) { //This is equivalent to N23_123.dot(S2S1) > Zero
+        //Normal vector goes towards S1, so reverse it
+        N23_123 = N23_123 * (-1.0);
+    }
+
+    //Precompute some dot products
+    double s2_n23_023 = -simplex[2].dot(N23_023);
+    double s2_n23_123 = -simplex[2].dot(N23_123);
+
+    //=============================
+    //Is origin in Voroni region of edge S2S3
+    if (s2_s2s3 > Zero && s3_s3s2 > Zero && s2_n23_023 > Zero && s2_n23_123 > Zero) {
+
+        //Update simplex to contain only S2S3
+        //hout << "Edge 23 from tetrahedron" << endl;
+        if (!Reduce_simplex_4_to_2(2, 3, simplex)) {
+            hout << "Error when reducing simplex from 4 to 2. Edge 23." << endl;
+            return 0;
+        }
+
+        //Terminate the function
+        return 1;
+    }
+
+    //=============================
+    //Faces
+
+    //=============================
+    //Is origin in Voroni region of face S0S1S2
+    //Since normal vectors are ensured to go towards the origin,
+    //only check dot product with the corresponding normal vector
+    if (-simplex[0].dot(N012) > Zero) {
+
+        //Update simplex to contain only S0S1S2
+        //hout << "Face 012 from tetrahedron" << endl;
+        simplex.pop_back();
+
+        return 1;
+    }
+
+    //=============================
+    //Is origin in Voroni region of face S0S2S3
+    //Since normal vectors are ensured to go towards the origin,
+    //only check dot product with the corresponding normal vector
+    if (-simplex[0].dot(N023) > Zero) {
+
+        //Update simplex to contain only S0S2S3
+        //hout << "Face 023 from tetrahedron" << endl;
+        simplex[1] = simplex[3];
+        simplex.pop_back();
+
+        return 1;
+    }
+
+    //=============================
+    //Is origin in Voroni region of face S0S1S3
+    //Since normal vectors are ensured to go towards the origin,
+    //only check dot product with the corresponding normal vector
+    if (-simplex[0].dot(N013) > Zero) {
+
+        //Update simplex to contain only S0S1S3
+        //hout << "Face 013 from tetrahedron" << endl;
+        simplex[2] = simplex[3];
+        simplex.pop_back();
+
+        return 1;
+    }
+
+    //=============================
+    //Is origin in Voroni region of face S1S2S3
+    //Since normal vectors are ensured to go towards the origin,
+    //only check dot product with the corresponding normal vector
+    if (-simplex[1].dot(N123) > Zero) {
+
+        //Update simplex to contain only S1S2S3
+        //hout << "Face 123 from tetrahedron" << endl;
+        simplex[0] = simplex[3];
+        simplex.pop_back();
+
+        return 1;
+    }
+
+    //If this part of the code is reached, then the origin is inside the tetrahedron
+    //This part of the code should not be reached, since this function should
+    //only be used when it is known that there is no intersection of polyhedra
+    hout << "Origin is inside tetrahedron" << endl;
+
+    return 0;
+}
+//This function removes all elements from a simplex except for one, which is indicated by an index
+int Collision_detection::Reduce_simplex_4_to_1(const int& idx, vector<Point_3D>& simplex) 
+{
+    //Check for valid index
+    if (idx < 0 || idx > 3) {
+        hout << "Error in reduce_simplex_4_to_1. Invalid index. Index can be any integer in [0, 3]. Input was: " << idx << endl;
+        return 0;
+    }
+
+    //Temporary point to store point in index idx
+    Point_3D tmp = simplex[idx];
+
+    //Empty simplex
+    simplex.clear();
+
+    //Add vertex stored in tmp
+    simplex.push_back(tmp);
+
+    return 1;
+}
+//This function removes all elements from a simplex except for two, which are indicated by indices
+int Collision_detection::Reduce_simplex_4_to_2(const int& idx1, const int& idx2, vector<Point_3D>& simplex) 
+{
+    //Check for valid indices
+    if (idx1 < 0 || idx1 > 3) {
+        hout << "Error in reduce_simplex_4_to_2. Invalid index1. Index can be any integer in [0, 3]. Input was: " << idx1 << endl;
+        return 0;
+    }
+    if (idx2 < 0 || idx2 > 3) {
+        hout << "Error in reduce_simplex_4_to_2. Invalid index2. Index can be any integer in [0, 3]. Input was: " << idx2 << endl;
+        return 0;
+    }
+
+    //Temporary points
+    Point_3D tmp1 = simplex[idx1];
+    Point_3D tmp2 = simplex[idx2];
+
+    //Empty simplex
+    simplex.clear();
+
+    //Add stored vertices in temporary variables
+    simplex.push_back(tmp1);
+    simplex.push_back(tmp2);
+
+    return 1;
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
