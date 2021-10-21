@@ -596,15 +596,27 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                     //Variables to store the distance and direction from GNP1 to GNP2
                     Point_3D N;
                     double dist;
+
+                    //Penetration flag initialized with false
+                    bool p_flag = false;
                     
                     //Use the GJK for distance to calculate the separation between GNPs
                     //and the direction vector
                     //hout<<"CL.GJK_distance"<<endl;
-                    if (!CL.GJK_distance(gnps[GNP1], gnps[GNP2], simplex, dist, N)) {
+                    if (!CL.GJK_distance(gnps[GNP1], gnps[GNP2], simplex, dist, N, p_flag)) {
                         hout<<"Error in Label_gnps_in_window when calling CL.GJK_distance"<<endl;
                         return 0;
                     }
                     
+                    if (p_flag) {
+                        hout << "Error in Label_gnps_in_window. There are penetrating GNPs but at this point there should not be any. \nPenetrating GNPs: " << GNPa << " and " << GNPb << endl;
+                        VTK_Export VTK;
+                        VTK.Export_single_gnp(gnps[GNPa], "gnp_" + to_string(GNPa) + ".vtk");
+                        VTK.Export_single_gnp(gnps[GNPb], "gnp_" + to_string(GNPb) + ".vtk");
+
+                        return 0;
+                    }
+
                     //Check if the separation between GNPs is below the cutoff for tunneling
                     //hout<<"GNPa="<<GNPa<<" GNPb="<<GNPb<<" dist="<<dist<<endl;
                     //hout<<"dist <= tunnel_cutoff = "<<(dist <= tunnel_cutoff)<<endl;

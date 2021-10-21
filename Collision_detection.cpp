@@ -124,7 +124,7 @@ int Collision_detection::GJK(const GNP &gnp1, const GNP &gnp_new, vector<Point_3
 //Function to obtain the support point in a given direction in the Minkowski sum
 Point_3D Collision_detection::Support_AB(const Point_3D &D, const Point_3D verticesA[], const Point_3D verticesB[])
 {
-    return (Support_map(D, verticesA) - Support_map(D*(-1), verticesB) );
+    return (Support_map(D, verticesA) - Support_map(D*(-1.0), verticesB) );
 }
 //Function for the suport point in a given direction
 Point_3D Collision_detection::Support_map(const Point_3D &D, const Point_3D vertices[])
@@ -141,16 +141,17 @@ Point_3D Collision_detection::Support_map(const Point_3D &D, const Point_3D vert
     for (int i = 1; i < 8; i++) {
         
         //Calculate the new distance
-        double new_dist =  D.dot(vertices[i]);
+        double new_dist = D.dot(vertices[i]);
         
         //Check if update is needed
-        if (new_dist > dist) {
+        if (new_dist - dist > Zero) {
             //Update variables
             dist = new_dist;
             idx = i;
         }
     }
-    
+    //hout << "support idx=" << idx << " dist="<< D.dot(vertices[idx]) <<endl;
+
     //Return the vertex with the maximum distance, which is the one with index idx
     return vertices[idx];
 }
@@ -731,6 +732,7 @@ bool Collision_detection::Is_point_in_simplex(const vector<Point_3D> &simplex, c
 {
     
     for (size_t i = 0; i < simplex.size(); i++) {
+        //hout << "simplex[" << i << "]=" << simplex[i].str() << endl;
         if (simplex[i].squared_distance_to(A) < Zero) {
             //hout<<"A is already in the simplex"<<endl;
             return true;
@@ -741,8 +743,10 @@ bool Collision_detection::Is_point_in_simplex(const vector<Point_3D> &simplex, c
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //GJK for distance calculation
-int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<Point_3D>& simplex, double& dist, Point_3D& N)
+int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<Point_3D>& simplex, double& dist, Point_3D& N, bool& p_flag)
 {
+    //hout << "=========================================" << endl;
+    //hout << "GNP1=" << gnp1.flag << " GNP2=" << gnp2.flag << endl;
     //Check if the simplex is empty
     if (simplex.empty()) {
 
@@ -770,7 +774,7 @@ int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<P
 
         //Get a support point in the Minkowski sum
         Point_3D A = Support_AB(D, gnp1.vertices, gnp2.vertices);
-        //hout << "A=" << A.str() << " A.dot(D)=" << A.dot(D) << endl;
+        //hout << "A=" << A.str() << " D=" << D.str() << " A.dot(D)=" << A.dot(D) << endl;
 
         //Check if A is already in the simplex
         //hout << "is_point_in_simplex" << endl;
@@ -796,7 +800,15 @@ int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<P
         //hout << "updated simplex.size=" << simplex.size() << endl;
 
         //Find the simplex within the vector simplex that is closest to the origin
-        if (!Find_voroni_region(simplex)) {
+        int vr = Find_voroni_region(simplex);
+        //Check if there is penetration
+        if (vr == 0) {
+            //Set the penetration flag to true and terminate the function
+            p_flag = true;
+            return 1;
+        }
+        //Check for error
+        if (vr == -1) {
             hout << "Error in GJK_distance when calling Find_voroni_region" << endl;
             return 0;
         }
@@ -916,8 +928,8 @@ int Collision_detection::Distance_from_simplex_to_origin(vector<Point_3D>& simpl
 }
 //Find the sub-simplex within the simplex that is closest to the origin
 //This is equivalent to find the Voroni region of the simplex in which the origin lies
-int Collision_detection::Find_voroni_region(vector<Point_3D>& simplex) {
-
+int Collision_detection::Find_voroni_region(vector<Point_3D>& simplex) 
+{
     if (simplex.size() == 2) {
         //hout << "case simplex.size=2" << endl;
 
@@ -950,14 +962,18 @@ int Collision_detection::Find_voroni_region(vector<Point_3D>& simplex) {
         //hout << "Vertex 0 from edge" << endl;
     }
     else if (simplex.size() == 3) {
+
+        //hout << "case simplex.size=3" << endl;
         return Voroni_region_case3(simplex);
     }
     else if (simplex.size() == 4) {
+
+        //hout << "case simplex.size=4" << endl;
         return Voroni_region_case4(simplex);
     }
     else if (simplex.size() != 1) {
         hout << "Error. Simplex size is not in the interval [1, 4]. Size: " << simplex.size() << endl;
-        return 0;
+        return -1;
     }
 
     return 1;
@@ -968,8 +984,6 @@ int Collision_detection::Find_voroni_region(vector<Point_3D>& simplex) {
 //the case when the simples has size 3
 int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex) 
 {
-
-    //hout << "case simplex.size=3" << endl;
     //hout << "simplex0={S0=" << simplex[0].str() << ", S1=" << simplex[1].str() << ", S2=" << simplex[2].str() << "}" << endl;
 
     //Precompute some vectors
@@ -1094,9 +1108,8 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
 //the simples has size 4
 //This is equivalent to find the Voroni region of the simplex in which the origin lies for
 //the case when the simples has size 4
-int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
-
-    //hout << "case simplex.size=4" << endl;
+int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) 
+{
     //hout << "simplex0={S0=" << simplex[0].str() << ", S1=" << simplex[1].str() << ", S2=" << simplex[2].str() << ", S3=" << simplex[3].str() << "}" << endl;
 
     //Precompute some vectors
@@ -1120,7 +1133,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
         //hout << "Vertex 0 from tetrahedron" << endl;
         if (!Reduce_simplex_4_to_1(0, simplex)) {
             hout << "Error when reducing simplex from 4 to 1. Vertex 0." << endl;
-            return 0;
+            return -1;
         }
 
         //Terminate the function
@@ -1145,7 +1158,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
         //hout << "Vertex 1 from tetrahedron" << endl;
         if (!Reduce_simplex_4_to_1(1, simplex)) {
             hout << "Error when reducing simplex from 4 to 1. Vertex 1." << endl;
-            return 0;
+            return -1;
         }
 
         //Terminate the function
@@ -1170,7 +1183,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
         //hout << "Vertex 2 from tetrahedron" << endl;
         if (!Reduce_simplex_4_to_1(2, simplex)) {
             hout << "Error when reducing simplex from 4 to 1. Vertex 2." << endl;
-            return 0;
+            return -1;
         }
 
         //Terminate the function
@@ -1193,7 +1206,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
         //hout << "Vertex 3 from tetrahedron" << endl;
         if (!Reduce_simplex_4_to_1(3, simplex)) {
             hout << "Error when reducing simplex from 4 to 1. Vertex 3." << endl;
-            return 0;
+            return -1;
         }
 
         //Terminate the function
@@ -1237,7 +1250,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
         //hout << "Edge 01 from tetrahedron" << endl;
         if (!Reduce_simplex_4_to_2(0, 1, simplex)) {
             hout << "Error when reducing simplex from 4 to 2. Edge 01." << endl;
-            return 0;
+            return -1;
         }
 
         //Terminate the function
@@ -1277,7 +1290,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
         //hout << "Edge 02 from tetrahedron" << endl;
         if (!Reduce_simplex_4_to_2(0, 2, simplex)) {
             hout << "Error when reducing simplex from 4 to 2. Edge 02." << endl;
-            return 0;
+            return -1;
         }
 
         //Terminate the function
@@ -1312,7 +1325,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
         //hout << "Edge 03 from tetrahedron" << endl;
         if (!Reduce_simplex_4_to_2(0, 3, simplex)) {
             hout << "Error when reducing simplex from 4 to 2. Edge 03." << endl;
-            return 0;
+            return -1;
         }
 
         //Terminate the function
@@ -1352,7 +1365,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
         //hout << "Edge 12 from tetrahedron" << endl;
         if (!Reduce_simplex_4_to_2(1, 2, simplex)) {
             hout << "Error when reducing simplex from 4 to 2. Edge 12." << endl;
-            return 0;
+            return -1;
         }
 
         //Terminate the function
@@ -1387,7 +1400,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
         //hout << "Edge 13 from tetrahedron" << endl;
         if (!Reduce_simplex_4_to_2(1, 3, simplex)) {
             hout << "Error when reducing simplex from 4 to 2. Edge 13." << endl;
-            return 0;
+            return -1;
         }
 
         //Terminate the function
@@ -1422,7 +1435,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
         //hout << "Edge 23 from tetrahedron" << endl;
         if (!Reduce_simplex_4_to_2(2, 3, simplex)) {
             hout << "Error when reducing simplex from 4 to 2. Edge 23." << endl;
-            return 0;
+            return -1;
         }
 
         //Terminate the function
@@ -1490,7 +1503,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) {
     //If this part of the code is reached, then the origin is inside the tetrahedron
     //This part of the code should not be reached, since this function should
     //only be used when it is known that there is no intersection of polyhedra
-    hout << "Origin is inside tetrahedron" << endl;
+    //hout << "Origin is inside tetrahedron" << endl;
 
     return 0;
 }
