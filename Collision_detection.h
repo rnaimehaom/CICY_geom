@@ -33,7 +33,7 @@ public:
     bool Is_point_in_simplex(const vector<Point_3D> &simplex, const Point_3D &A);
     //---------------------------------------------------------------------------
     //GJK for distance calculation
-    int GJK_distance(const GNP &gnp1, const GNP &gnp2, vector<Point_3D> &simplex, double &dist, Point_3D &N, bool& p_flag);
+    int GJK_distance(const GNP &gnp1, const GNP &gnp2, vector<Point_3D> &simplex, double &dist, Point_3D &N);
     int Direction_from_simplex_to_origin(const vector<Point_3D>& simplex, Point_3D& N);
     int Distance_from_simplex_to_origin(vector<Point_3D>& simplex, double& dist);
     int Find_voroni_region(vector<Point_3D>& simplex);

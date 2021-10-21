@@ -741,7 +741,7 @@ bool Collision_detection::Is_point_in_simplex(const vector<Point_3D> &simplex, c
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //GJK for distance calculation
-int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<Point_3D>& simplex, double& dist, Point_3D& N, bool& p_flag)
+int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<Point_3D>& simplex, double& dist, Point_3D& N)
 {
     //Check if the simplex is empty
     if (simplex.empty()) {
@@ -759,7 +759,6 @@ int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<P
     while (it <= 20) {
 
         //hout << "===it " << it << endl; 
-        it++;
 
         //Calculate the new direction
         Point_3D D;
@@ -826,6 +825,8 @@ int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<P
             return 1;
         }
 
+        //Increase the number of iterations
+        it++;
     }
 
     hout << "Error in GJK_distance: Maximum number of iterations reached." << endl;
