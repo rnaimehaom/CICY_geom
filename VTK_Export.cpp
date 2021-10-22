@@ -1020,6 +1020,7 @@ int VTK_Export::Add_points_from_array(const Point_3D points[], const int &arr_si
 {
     //Add the point coordinates, separated by spaces and in groups of four points
     //(12 coordinates) per line
+    otec.precision(15);
     
     //Add the first point
     otec<<points[0].x<<' '<<points[0].y<<' '<<points[0].z<<' ';

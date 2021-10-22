@@ -3842,20 +3842,28 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
         
         //Flags for penetration (p_flag) and touching (t_flag)
         bool p_flag = false;
-        bool t_flag = false;
-        
-        //Check if GNP and GNP_new penetrate each other
-        //hout<<"GJK_EPA.GJK"<<endl;
-        if (!GJK_EPA.GJK(gnps[GNP_i], gnp_new, simplex, p_flag, t_flag)) {
-            hout<<"Error in Move_gnps_if_needed when calling GJK"<<endl;
-            return 0;
-        }
-        //hout<<"GJK_EPA.GJK end"<<endl;
 
         //Variables to store the penetration depth (PD) and direction vector (N) along which
         //gnp_new needs to move
         double PD;
         Point_3D N;
+        
+        //Check if GNP and GNP_new penetrate each other
+        //hout<<"GJK_EPA.GJK end"<<endl;
+        if (!GJK_EPA.GJK_distance(gnps[GNP_i], gnp_new, simplex, PD, N, p_flag)) {
+            //Filenames for GNPs to be exported
+            string gnp1_str = "gnp_" + to_string(gnps[GNP_i].flag) + ".vtk";
+            string gnp2_str = "gnp_" + to_string(gnp_new.flag) + ".vtk";
+            hout << "Error in Move_gnps_if_needed when calling GJK_EPA.GJK_distance" << endl;
+            hout << "GNPs are exported into files " << gnp1_str << " and " << gnp2_str << endl;
+
+            //Export GNPs thta caused the error
+            VTK_Export VTK;
+            VTK.Export_single_gnp(gnps[GNP_i], gnp1_str);
+            VTK.Export_single_gnp(gnp_new, gnp2_str);
+
+            return 0;
+        }
         
         if (p_flag) {
             //hout<<"Penetration of GNP "<<gnps.size()<<" with GNP "<<GNP_i<<endl;
@@ -3873,19 +3881,17 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
                 return 1;
             }*/
             /*VTK_Export VTK;
-            vector<GNP> tmp_vec(1, gnp_new);
             //Export new GNP
-            VTK.Export_gnps(tmp_vec, "gnp_"+to_string(gnps.size())+"_"+to_string(attempts)+"_new.vtk");
-            tmp_vec[0] = gnps[GNP_i];
+            VTK.Export_single_gnp(gnp_new, "gnp_new.vtk");
             //Expor the GNP that is being penetrated by the new GNP
-            VTK.Export_gnps(tmp_vec, "gnp_" + to_string(gnps.size()) + "_" + to_string(attempts) + "_pen.vtk");*/
+            VTK.Export_single_gnp(gnps[GNP_i], "gnp_old.vtk");*/
 
             //There is penetration, so then use EPA to find the penetration depth PD and direction vector N
             if (!GJK_EPA.EPA(gnps[GNP_i].vertices, gnp_new.vertices, simplex, N, PD)) {
                 hout<<"Error in Move_gnps_if_needed when calling EPA"<<endl;
                 return 0;
             }
-            //hout<<"PD="<<PD<<" normal="<<N.str()<< " length=" << N.length() << endl;
+            //hout<<"EPA PD="<<PD<<" normal="<<N.str()<< " length=" << N.length() << endl;
             
             //Add to the vector of displacements
             if (!Add_to_vector_of_displacements(PD + cutoffs.van_der_Waals_dist, N, disps, disps_vec)) {
@@ -3904,7 +3910,9 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
                 return 1;
             }*/
             
-            if (t_flag) {
+            //GNPs are touching each other if their separation (penetration depth)
+            //is close to zero
+            if (PD < Zero) {
                 //hout<<"Touch with GNP "<<GNP_i<<endl;
                 
                 //Find the simpleces that share the same plane/line/vertex and the direction in which
@@ -3924,26 +3932,6 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
             }
             else {
                 //hout<<"No penetration with GNP "<<GNP_i<<endl;
-                
-                //Find the distance between the two GNPs and make sure they are separated
-                //at least the van der Waals distance
-                if (!GJK_EPA.GJK_distance(gnps[GNP_i], gnp_new, simplex, PD, N, p_flag)) {
-                    hout << "Error in Move_gnps_if_needed when calling GJK_EPA.GJK_distance" << endl;
-                    return 0;
-                }
-
-                if (p_flag)
-                {
-                    //Filenames for GNPs to be exported
-                    string gnp1_str = "gnp_" + to_string(gnps[GNP_i].flag) + ".vtk";
-                    string gnp2_str = "gnp_" + to_string(gnp_new.flag) + ".vtk";
-                    hout << "Error in Move_gnps_if_needed. GNPs are found to be interpenetrating each other. However, a previous GJK resulted in the same GNPs not interpenetrating each other. GNPs are exported into files " << gnp1_str << " and " << gnp2_str << endl;
-                    VTK_Export VTK;
-                    VTK.Export_single_gnp(gnps[GNP_i], gnp1_str);
-                    VTK.Export_single_gnp(gnp_new, gnp2_str);
-
-                    return 0;
-                }
                 
                 //Check that the separation is at least the van der Waals distance
                 double new_dist = cutoffs.van_der_Waals_dist - PD;

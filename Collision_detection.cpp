@@ -21,7 +21,7 @@ int Collision_detection::GJK(const GNP &gnp1, const GNP &gnp_new, vector<Point_3
     simplex.push_back(S);
     
     //Initialize the search direction with the vector from S to the origin
-    D = S*(-1);
+    D = S*(-1.0);
     //hout<<"D="<<D.str()<<endl;
     
     //If the first vertex is zero, then there is a vertex to vertex touch
@@ -134,6 +134,8 @@ Point_3D Collision_detection::Support_map(const Point_3D &D, const Point_3D vert
     
     //Initialize index of maximum dot product with 0 (first index)
     int idx = 0;
+    //hout.precision(17);
+    //hout << "i=" << idx << " D=" << D.str() << " v[i]=" << vertices[0].str() << " dist=" << dist << endl;
     
     //Find the maximum distance in the rest of the vertices
     //The array of vertices has a fixed size of 8, so that value is used here
@@ -142,6 +144,7 @@ Point_3D Collision_detection::Support_map(const Point_3D &D, const Point_3D vert
         
         //Calculate the new distance
         double new_dist = D.dot(vertices[i]);
+        //hout << "i=" << i << " D=" << D.str() << " v[i]=" << vertices[i].str() << " dist=" << new_dist <<" new_dist-dist="<< new_dist - dist << endl;
         
         //Check if update is needed
         if (new_dist - dist > Zero) {
@@ -150,7 +153,7 @@ Point_3D Collision_detection::Support_map(const Point_3D &D, const Point_3D vert
             idx = i;
         }
     }
-    //hout << "support idx=" << idx << " dist="<< D.dot(vertices[idx]) <<endl;
+    //hout << "support idx=" << idx << " dist="<< D.dot(vertices[idx]) << endl;
 
     //Return the vertex with the maximum distance, which is the one with index idx
     return vertices[idx];
@@ -165,7 +168,7 @@ bool Collision_detection::Is_origin_in_simplex(vector<Point_3D> &simplex, Point_
         Point_3D AB = simplex[0] - A;
         
         //Calculate the vector from A to the origin
-        Point_3D AO = A*(-1);
+        Point_3D AO = A*(-1.0);
         
         //hout<<"simplex0={B="<<simplex[0].str()<<"}"<<endl;
         //Check if there is intersection
@@ -222,7 +225,7 @@ bool Collision_detection::Update_simplex_case2(vector<Point_3D> &simplex, Point_
     //Precompute some vectors
     Point_3D AB = simplex[0]-A;
     Point_3D AC = simplex[1]-A;
-    Point_3D AO = A*(-1);
+    Point_3D AO = A*(-1.0);
     
     //ABC = ACxAB
     Point_3D ABC = AC.cross(AB);
@@ -241,7 +244,7 @@ bool Collision_detection::Update_simplex_case2(vector<Point_3D> &simplex, Point_
         
         //Check if the origin is on the region closest to edge AC
         //hout<<"AC.dot(AO)="<<AC.dot(AO)<<endl;
-        if (AC.dot(AO) > 0) {
+        if (AC.dot(AO) > Zero) {
             
             //Update simplex as {A, C}
             //Just substitute B with A
@@ -356,7 +359,7 @@ bool Collision_detection::Update_simplex_case3(vector<Point_3D> &simplex, Point_
     //hout<<"case simplex 3"<<endl;
     
     //Get a vector from tetrahedron to origin
-    Point_3D AO = A*(-1);
+    Point_3D AO = A*(-1.0);
     
     //Rename points for simplicity
     //Recall that simplex = {B, C, E}
@@ -480,7 +483,7 @@ bool Collision_detection::Update_simplex_case3(vector<Point_3D> &simplex, Point_
 Point_3D Collision_detection::Normal_to_face_ouside_tetrahedron(const Point_3D &A, const Point_3D &B, const Point_3D &C, const Point_3D &not_in_face)
 {
     //Get a normal to face ABC
-    Point_3D ABC = (C - A).cross(B - A);
+    Point_3D ABC = (B - A).cross(C - A);
     
     //Make sure ABC goes outside the tetrahedron, e.g., in the oposite direction of AD,
     //where D is not_in_face
@@ -491,7 +494,7 @@ Point_3D Collision_detection::Normal_to_face_ouside_tetrahedron(const Point_3D &
     if (dot_tmp > Zero) {
         //Reverse the direction is ABC and AD go in the same direction, i.e.,
         //ABC goes inside the tetrahedron
-        ABC = ABC*(-1);
+        ABC = ABC*(-1.0);
     }
     
     return ABC;
@@ -508,7 +511,7 @@ bool Collision_detection::Update_simplex_case2_tetrahedron(vector<Point_3D> &sim
     //Note that simplex = {B, C}
     Point_3D AB = simplex[0]-A;
     Point_3D AC = simplex[1]-A;
-    Point_3D AO = A*(-1);
+    Point_3D AO = A*(-1.0);
     
     //ABC = ACxAB
     //hout<<"ABC="<<ABC.str()<<endl;
@@ -530,13 +533,13 @@ bool Collision_detection::Update_simplex_case2_tetrahedron(vector<Point_3D> &sim
         
         //Check if the origin is outside the triangle, on the side of edge AC
         //hout<<"AC.dot(AO)="<<AC.dot(AO)<<endl;
-        if (AC.dot(AO) > 0) {
+        if (AC.dot(AO) > Zero) {
             
             //Get the Normal to edge AC on the plane of face ACE
             Point_3D N_AC_ACE = AC.cross(ACE);
             //Make sure it goes outside the triangle ACE
             if (N_AC_ACE.dot(E-A) > Zero) {
-                N_AC_ACE = N_AC_ACE*(-1);
+                N_AC_ACE = N_AC_ACE*(-1.0);
             }
             //hout<<"N_AC_ACE="<<N_AC_ACE.str()<<endl;
             
@@ -594,7 +597,7 @@ bool Collision_detection::Update_simplex_case2_tetrahedron(vector<Point_3D> &sim
         Point_3D N_AB = ABC.cross(AB);
         //Make sure it goes outside te triangle
         if (N_AB.dot(AC) > Zero) {
-            N_AB = N_AB*(-1);
+            N_AB = N_AB*(-1.0);
         }
         //hout<<"N_AB="<<N_AB.str()<<endl;
         
@@ -613,7 +616,7 @@ bool Collision_detection::Update_simplex_case2_tetrahedron(vector<Point_3D> &sim
                 //hout<<"N_AB_AEB="<<N_AB_AEB.str()<<endl;
                 //Make sure it goes outside the triangle AEB
                 if (N_AB_AEB.dot(E-A) > Zero) {
-                    N_AB_AEB = N_AB_AEB*(-1);
+                    N_AB_AEB = N_AB_AEB*(-1.0);
                 }
                 
                 //Check if origin is closest to edge AB or face shared with edge AB (face AEB)
@@ -747,6 +750,9 @@ int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<P
 {
     //hout << "=========================================" << endl;
     //hout << "GNP1=" << gnp1.flag << " GNP2=" << gnp2.flag << endl;
+    //for (size_t i = 0; i < simplex.size(); i++)
+    //    hout << "simplex[" << i << "]=" << simplex[i].str() << endl;
+
     //Check if the simplex is empty
     if (simplex.empty()) {
 
@@ -756,18 +762,23 @@ int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<P
         simplex.push_back(gnp1.vertices[0] - gnp2.vertices[0]);
     }
 
+    //Calculate initial distance from simplex to origin
+    if (!Distance_from_simplex_to_origin(simplex, dist)) {
+        hout << "Error in GJK_distance when calling Distance_from_simplex_to_origin (0)" << endl;
+        return 0;
+    }
+
     //Iteration count
     int it = 1;
 
     //Iterate up to the maximum number of iterations
-    while (it <= 20) {
+    while (it <= 50) {
 
         //hout << "===it " << it << endl; 
 
         //Calculate the new direction
         Point_3D D;
-        if (!Direction_from_simplex_to_origin(simplex, D))
-        {
+        if (!Direction_from_simplex_to_origin(simplex, D)) {
             hout << "Error in GJK_distance when callin Direction_from_simplex_to_origin" << endl;
             return 0;
         }
@@ -778,21 +789,30 @@ int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<P
 
         //Check if A is already in the simplex
         //hout << "is_point_in_simplex" << endl;
-        if (Is_point_in_simplex(simplex, A)) {
+        int s_flag = Is_point_contained_in_simplex(simplex, A);
+        if (s_flag == 1) {
 
-            //hout << "Case 2: Simplex cannot be updated" << endl;
             //hout << "dist=" << dist << " |A.dot(D)|=" << abs(A.dot(D)) << endl;
+            //Check if simplex and support point are at the same distance to the origin
+            if (abs(dist - abs(A.dot(D))) < Zero) {
 
-            //Recalculate the distance to simplex
-            if (!Distance_from_simplex_to_origin(simplex, dist))
-            {
-                hout << "Error in GJK_distance when calling Distance_from_simplex_to_origin (1)" << endl;
-                return 0;
+                //hout << "Case 2: Simplex cannot be updated as support point is contained in simplex" << endl;
+                //Distance from simplex to origin is not calculated again because it has
+                //not changed as the simplex has not changed since this distance was calculated
+                //Get the direction
+                N = D;
+
+
+                return 1;
             }
-            //Get the direction
-            N = D;
+            //If the simplex and support point are not at the same distance, 
+            //then continue with the next iteration
+            //hout << "Support point in simplex but termination criteria not met" << endl;
 
-            return 1;
+        }
+        else if (s_flag == -1) {
+            hout << "Error in GJK_distance_from_simplex_revised when calling is_point_contained_in_simplex" << endl;
+            return 0;
         }
 
         //Add support point A to the simplex
@@ -801,6 +821,7 @@ int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<P
 
         //Find the simplex within the vector simplex that is closest to the origin
         int vr = Find_voroni_region(simplex);
+
         //Check if there is penetration
         if (vr == 0) {
             //Set the penetration flag to true and terminate the function
@@ -815,9 +836,8 @@ int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<P
         //hout << "voroni simplex.size=" << simplex.size() << endl;
 
         //Calculate the distance from the updated simplex to the origin
-        if (!Distance_from_simplex_to_origin(simplex, dist))
-        {
-            hout << "Error in GJK_distance when calling Distance_from_simplex_to_origin (2)" << endl;
+        if (!Distance_from_simplex_to_origin(simplex, dist)) {
+            hout << "Error in GJK_distance when calling Distance_from_simplex_to_origin (1)" << endl;
             return 0;
         }
         //hout << "dist=" << dist << endl << endl;
@@ -884,6 +904,61 @@ int Collision_detection::Direction_from_simplex_to_origin(const vector<Point_3D>
 
     return 1;
 }
+//This function determines if a point is conteined in the simplex
+//This is done by calculating the distance from the point to the simplex, in this way not
+//only it is considered the case when one vertex in the simples is the point A, but also
+//the case when the point A is in the same plane or line as the simplex
+int Collision_detection::Is_point_contained_in_simplex(const vector<Point_3D>& simplex, const Point_3D& A)
+{
+    if (simplex.size() == 1) {
+
+        //Simplex is a single point, so calculate the distance between points
+        if (simplex[0].distance_to(A) < Zero) {
+
+            //Points are practically the same, so terminate with true
+            //hout << "Dist from simplex1=" << simplex[0].distance_to(A) << endl;
+            return 1;
+        }
+    }
+    else if (simplex.size() == 2) {
+
+        //Get the normal to the plane defined by the two vertices in the simplex and A
+        //S0S1xS0A
+        Point_3D S0A = A - simplex[0];
+        Point_3D N_SA = (simplex[1] - simplex[0]).cross(S0A);
+
+        //Get the normal to the simplex that goes towards A
+        Point_3D N = N_SA.cross(S0A);
+
+        //Distance from simplex to point A is the dot product of S0A with N
+        if (N.dot(S0A) < Zero) {
+
+            //Distance from simplex to point A is zero, so A is contained in the simplex
+            //hout << "Dist from simplex2=" << N.dot(S0A) << endl;
+            return 1;
+        }
+    }
+    else if (simplex.size() == 3) {
+
+        //Get the normal to the plane defined by the simplex
+        Point_3D N = (simplex[1] - simplex[0]).cross(simplex[2] - simplex[0]);
+
+        //Distance from simplex to point A is the dot product of S0A with N
+        if (abs(N.dot(A - simplex[0])) < Zero) {
+
+            //Distance from simplex to point A is zero, so A is contained in the simplex
+            //hout << "Dist from simplex3=" << abs(N.dot(A - simplex[0])) << endl;
+            return 1;
+        }
+    }
+    else {
+        //hout << "Error in is_point_contained_in_simplex. Invalid size of simplex. Size: " << simplex.size() << endl;
+        return -1;
+    }
+
+    //If this part of the code is reached, then point A is not contained in the simplex
+    return 0;
+}
 //This function calculates the distance from 
 int Collision_detection::Distance_from_simplex_to_origin(vector<Point_3D>& simplex, double &dist) 
 {
@@ -931,7 +1006,7 @@ int Collision_detection::Distance_from_simplex_to_origin(vector<Point_3D>& simpl
 int Collision_detection::Find_voroni_region(vector<Point_3D>& simplex) 
 {
     if (simplex.size() == 2) {
-        //hout << "case simplex.size=2" << endl;
+        //hout << "Voroni case simplex.size=2" << endl;
 
         //Calculate a vector along the simplex
         Point_3D S0S1 = simplex[1] - simplex[0];
@@ -963,12 +1038,12 @@ int Collision_detection::Find_voroni_region(vector<Point_3D>& simplex)
     }
     else if (simplex.size() == 3) {
 
-        //hout << "case simplex.size=3" << endl;
+        //hout << "Voroni case simplex.size=3" << endl;
         return Voroni_region_case3(simplex);
     }
     else if (simplex.size() == 4) {
 
-        //hout << "case simplex.size=4" << endl;
+        //hout << "Voroni case simplex.size=4" << endl;
         return Voroni_region_case4(simplex);
     }
     else if (simplex.size() != 1) {
@@ -1449,7 +1524,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Is origin in Voroni region of face S0S1S2
     //Since normal vectors are ensured to go towards the origin,
     //only check dot product with the corresponding normal vector
-    if (-simplex[0].dot(N012) > Zero) {
+    //hout << "Face 012 from tetrahedron dot=" << -simplex[0].dot(N012) <<" S0=" << simplex[0].str() << " N012="<<N012.str()<<endl;
+    if (-simplex[0].dot(N012) > Zero && s0_n01_012 < Zero && s0_n01_012 < Zero && s1_n12_012 < Zero) {
 
         //Update simplex to contain only S0S1S2
         //hout << "Face 012 from tetrahedron" << endl;
@@ -1462,7 +1538,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Is origin in Voroni region of face S0S2S3
     //Since normal vectors are ensured to go towards the origin,
     //only check dot product with the corresponding normal vector
-    if (-simplex[0].dot(N023) > Zero) {
+    if (-simplex[0].dot(N023) > Zero && s0_n02_023 < Zero && s0_n03_023 < Zero && s2_n23_023 < Zero) {
 
         //Update simplex to contain only S0S2S3
         //hout << "Face 023 from tetrahedron" << endl;
@@ -1476,7 +1552,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Is origin in Voroni region of face S0S1S3
     //Since normal vectors are ensured to go towards the origin,
     //only check dot product with the corresponding normal vector
-    if (-simplex[0].dot(N013) > Zero) {
+    if (-simplex[0].dot(N013) > Zero && s0_n01_013 < Zero && s1_n13_013 < Zero && s0_n03_013 < Zero) {
 
         //Update simplex to contain only S0S1S3
         //hout << "Face 013 from tetrahedron" << endl;
@@ -1490,7 +1566,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Is origin in Voroni region of face S1S2S3
     //Since normal vectors are ensured to go towards the origin,
     //only check dot product with the corresponding normal vector
-    if (-simplex[1].dot(N123) > Zero) {
+    if (-simplex[1].dot(N123) > Zero && s1_n12_123 < Zero && s1_n13_123 < Zero && s2_n23_123 < Zero) {
 
         //Update simplex to contain only S1S2S3
         //hout << "Face 123 from tetrahedron" << endl;
@@ -1570,11 +1646,11 @@ int Collision_detection::EPA(const Point_3D verticesA[], const Point_3D vertices
     vector<Point_3D> Normals(4);
     vector<double> distances(4);
     
-    //cout<<"normal_and_distance_to_origin"<<endl;
+    //hout<<"normal_and_distance_to_origin"<<endl;
     for (int i = 0; i < (int)Faces.size(); i++) {
         
         Normal_and_distance_to_origin(simplex, Faces[i], Normals[i], distances[i]);
-        //cout<<"dist="<<distances[i]<<endl;
+        //hout<<"dist="<<distances[i]<<endl;
     }
     
     //Enter the loop to expand the polytope
@@ -1657,9 +1733,8 @@ void Collision_detection::Normal_and_distance_to_origin(const vector<Point_3D> &
 void Collision_detection::Find_closest_face(const vector<TrFace> &Faces, const vector<Point_3D> &Normals, const vector<double> &distances, Point_3D &normal, double &PD) {
     
     //Initialize the minimum distance (i.e., the penetration depth PD) with the first face
+    //hout << "Faces.size=" << Faces.size() << " Normals.size=" << Normals.size() << " distances.size=" << distances.size() << endl;
     PD = distances[0];
-    
-    //cout<<"Faces.size="<<Faces.size()<<" Normals.size="<<Normals.size()<<" distances.size="<<distances.size()<<endl;
     
     //Set the normal equal to the first element in the vector of normals to keep
     //consistency as the distance was initialized with the first element in the
@@ -1677,7 +1752,7 @@ void Collision_detection::Find_closest_face(const vector<TrFace> &Faces, const v
             idx = i;
         }
     }
-    //cout<<"Closest Face="<<Faces[idx].str()<<endl;
+    //hout<<"Closest Face="<<Faces[idx].str()<<endl;
 }
 //Reconstruct the polyhedron
 void Collision_detection::Reconstruct_simplex(const vector<Point_3D> &simplex, const int &S, vector<TrFace> &Faces, vector<Point_3D> &Normals, vector<double> &distances) {
