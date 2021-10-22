@@ -3899,16 +3899,15 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
                 return 0;
             }
         }
-        else {
+        /*else {
             //There is no penetration, so check whether they are touching or not
 
-            /* /If the maximum number of iterations has been reached, avoid moving the GNPs
+            //If the maximum number of iterations has been reached, avoid moving the GNPs
             //Leave them where they are either touching or below the van der Waals distance
-            if (attempts == MAX_ATTEMPTS_GNP)
-            {
-                hout << "MAX_ATTEMPTS_GNP reached 2" << endl;
-                return 1;
-            }*/
+            //if (attempts == MAX_ATTEMPTS_GNP) {
+                //hout << "MAX_ATTEMPTS_GNP reached 2" << endl;
+            //    return 1;
+            //}
             
             //GNPs are touching each other if their separation (penetration depth)
             //is close to zero
@@ -3946,7 +3945,7 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
                     }
                 }
             }
-        }
+        }*/
     }
     
     //Check if a displacement is needed
