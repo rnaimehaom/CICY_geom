@@ -621,6 +621,12 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                     //hout<<"GNPa="<<GNPa<<" GNPb="<<GNPb<<" dist="<<dist<<endl;
                     //hout<<"dist <= tunnel_cutoff = "<<(dist <= tunnel_cutoff)<<endl;
                     if (dist <= tunnel_cutoff) {
+
+                        /* /Export GNPs that are found to be in contact for manually testing percolation
+                        hout << "Contact: GNPa=" << GNPa << " GNPb=" << GNPb << " dist=" << dist << endl;
+                        VTK_Export VTK;
+                        VTK.Export_single_gnp(gnps[GNPa], "gnp_" + to_string(GNPa) + ".vtk");
+                        VTK.Export_single_gnp(gnps[GNPb], "gnp_" + to_string(GNPb) + ".vtk");*/
                         
                         //Here is where the actual HK76 algorithm takes place
                         if (!HK76(GNP1, GNP2, new_label, labels_gnp, labels_labels_gnp)) {
@@ -641,6 +647,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                         //Add the junction to the vector of junctions if it is inside the sample
                         if (junction_in)
                         {
+
                             //Get the point numbers
                             long int Pa = (long int)points_gnp.size() - 1;
                             long int Pb = (long int)points_gnp.size() - 2;
@@ -894,19 +901,19 @@ int Hoshen_Kopelman::Add_junction_points_for_gnps(const cuboid &sample, const GN
     }
 
     //Check if the junction points are inside the sample
-    if (PointA.is_outside_cuboid(sample) || PointB.is_outside_cuboid(sample))
+    if (!PointA.is_outside_cuboid(sample) && !PointB.is_outside_cuboid(sample))
     {
-        //The junction is actually ouside the sample, so it should be ignored
-        //Set to flase the flag that indicates the junction is inside the sample
-        //hout << "Ignore junction between GNP " << GNP_A.flag << " and GNP " << GNP_B.flag << endl;
-        junction_in = false;
-    }
-    else {
         //The junction is inside the sample, so add the calculated points to 
         //the vector of GNP points
         points_gnp.push_back(PointA);
         points_gnp.push_back(PointB);
+        junction_in = true;
     }
+    //else {
+        //The junction is actually ouside the sample, so it should be ignored
+        //Set to flase the flag that indicates the junction is inside the sample
+        //hout << "Ignore junction between GNP " << GNP_A.flag << " and GNP " << GNP_B.flag << endl;
+    //}
     
     return 1;
 }
