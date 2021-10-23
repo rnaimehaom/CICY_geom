@@ -794,7 +794,7 @@ int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<P
 
             //hout << "dist=" << dist << " |A.dot(D)|=" << abs(A.dot(D)) << endl;
             //Check if simplex and support point are at the same distance to the origin
-            if (abs(dist - abs(A.dot(D))) < Zero) {
+            //if (abs(dist - abs(A.dot(D))) < Zero) {
 
                 //hout << "Case 2: Simplex cannot be updated as support point is contained in simplex" << endl;
                 //Distance from simplex to origin is not calculated again because it has
@@ -804,20 +804,22 @@ int Collision_detection::GJK_distance(const GNP& gnp1, const GNP& gnp2, vector<P
 
 
                 return 1;
-            }
+            //}
             //If the simplex and support point are not at the same distance, 
             //then continue with the next iteration
             //hout << "Support point in simplex but termination criteria not met" << endl;
 
         }
+        else if (s_flag == 0) {
+
+            //Add support point A to the simplex if not contained in it
+            simplex.push_back(A);
+            //hout << "updated simplex.size=" << simplex.size() << endl;
+        }
         else if (s_flag == -1) {
             hout << "Error in GJK_distance_from_simplex_revised when calling is_point_contained_in_simplex" << endl;
             return 0;
         }
-
-        //Add support point A to the simplex
-        simplex.push_back(A);
-        //hout << "updated simplex.size=" << simplex.size() << endl;
 
         //Find the simplex within the vector simplex that is closest to the origin
         int vr = Find_voroni_region(simplex);
@@ -915,8 +917,8 @@ int Collision_detection::Is_point_contained_in_simplex(const vector<Point_3D>& s
         //Simplex is a single point, so calculate the distance between points
         if (simplex[0].distance_to(A) < Zero) {
 
-            //Points are practically the same, so terminate with true
             //hout << "Dist from simplex1=" << simplex[0].distance_to(A) << endl;
+            //Points are practically the same, so terminate with true
             return 1;
         }
     }
@@ -925,16 +927,17 @@ int Collision_detection::Is_point_contained_in_simplex(const vector<Point_3D>& s
         //Get the normal to the plane defined by the two vertices in the simplex and A
         //S0S1xS0A
         Point_3D S0A = A - simplex[0];
-        Point_3D N_SA = (simplex[1] - simplex[0]).cross(S0A);
+        Point_3D S0S1 = simplex[1] - simplex[0];
+        Point_3D N_SA = S0S1.cross(S0A);
 
         //Get the normal to the simplex that goes towards A
-        Point_3D N = N_SA.cross(S0A);
+        Point_3D N = N_SA.cross(S0S1);
 
-        //Distance from simplex to point A is the dot product of S0A with N
+        //Distance from simplex to point A is the dot product of S0A with N (where N is a unit vector)
+        //hout << "Dist from simplex2=" << N.dot(S0A) << endl;
         if (N.dot(S0A) < Zero) {
 
             //Distance from simplex to point A is zero, so A is contained in the simplex
-            //hout << "Dist from simplex2=" << N.dot(S0A) << endl;
             return 1;
         }
     }
@@ -944,10 +947,10 @@ int Collision_detection::Is_point_contained_in_simplex(const vector<Point_3D>& s
         Point_3D N = (simplex[1] - simplex[0]).cross(simplex[2] - simplex[0]);
 
         //Distance from simplex to point A is the dot product of S0A with N
+        //hout << "Dist from simplex3=" << abs(N.dot(A - simplex[0])) << endl;
         if (abs(N.dot(A - simplex[0])) < Zero) {
 
             //Distance from simplex to point A is zero, so A is contained in the simplex
-            //hout << "Dist from simplex3=" << abs(N.dot(A - simplex[0])) << endl;
             return 1;
         }
     }
@@ -1185,6 +1188,8 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
 //the case when the simples has size 4
 int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex) 
 {
+
+    //hout << "case simplex.size=4" << endl;
     //hout << "simplex0={S0=" << simplex[0].str() << ", S1=" << simplex[1].str() << ", S2=" << simplex[2].str() << ", S3=" << simplex[3].str() << "}" << endl;
 
     //Precompute some vectors
@@ -1199,9 +1204,11 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Vertices
+    //hout << "Vertices - - -" << endl;
 
     //=============================
     //Is origin in Voroni region of veretex 0
+    //hout << "Vertex 0: s0_s0s2=" << s0_s0s2 << " s0_s0s1=" << s0_s0s1 << " s0_s0s3=" << s0_s0s3 << endl;
     if (s0_s0s2 < Zero && s0_s0s1 < Zero && s0_s0s3 < Zero) {
 
         //Update simplex to cotain only vertex 0
@@ -1227,6 +1234,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Is origin in Voroni region of veretex 1
+    //hout << "Vertex 1: s1_s1s0=" << s1_s1s0 << " s1_s1s2=" << s1_s1s2 << " s1_s1s3=" << s1_s1s3 << endl;
     if (s1_s1s0 < Zero && s1_s1s2 < Zero && s1_s1s3 < Zero) {
 
         //Update simplex to cotain only vertex 1
@@ -1252,6 +1260,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Is origin in Voroni region of veretex 2
+    //hout << "Vertex 2: s2_s2s0=" << s2_s2s0 << " s2_s2s1=" << s2_s2s1 << " s2_s2s3=" << s2_s2s3 << endl;
     if (s2_s2s0 < Zero && s2_s2s1 < Zero && s2_s2s3 < Zero) {
 
         //Update simplex to cotain only vertex 2
@@ -1275,6 +1284,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Is origin in Voroni region of veretex 3
+    //hout << "Vertex 2: s3_s3s0=" << s3_s3s0 << " s3_s3s1=" << s3_s3s1 << " s3_s3s2=" << s3_s3s2 << endl;
     if (s3_s3s0 < Zero && s3_s3s1 < Zero && s3_s3s2 < Zero) {
 
         //Update simplex to cotain only vertex 3
@@ -1288,11 +1298,17 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
         return 1;
     }
 
+    //=============================
+    //Edges
+    //hout << "Edges + + + +" << endl;
+
     //Precompute some normal vectors to the faces of the tetrahedron
     //The last point in Normal_to_face_ouside_tetrahedron is not in
     //the face composed by the first three points
     Point_3D N013 = Normal_to_face_ouside_tetrahedron(simplex[0], simplex[1], simplex[3], simplex[2]);
+    //hout << "N013=" << N013.str() << endl;
     Point_3D N012 = Normal_to_face_ouside_tetrahedron(simplex[0], simplex[1], simplex[2], simplex[3]);
+    //hout << "N012=" << N012.str() << endl;
 
     //Vector normal to edge S0S1 on the plane of face S0S1S2
     Point_3D N01_012 = S0S1.cross(N012);
@@ -1315,10 +1331,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     double s0_n01_013 = -simplex[0].dot(N01_013);
 
     //=============================
-    //Edges
-
-    //=============================
     //Is origin in Voroni region of edge S0S1
+    //hout << "Edge 01: s0_s0s1=" << s0_s0s1 << " s1_s1s0=" << s1_s1s0 << " s0_n01_012=" << s0_n01_012 << " s0_n01_013=" << s0_n01_013 << endl;
     if (s0_s0s1 > Zero && s1_s1s0 > Zero && s0_n01_012 > Zero && s0_n01_013 > Zero) {
 
         //Update simplex to contain only S0S1
@@ -1336,6 +1350,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //The last point in Normal_to_face_ouside_tetrahedron is not in
     //the face composed by the first three points
     Point_3D N023 = Normal_to_face_ouside_tetrahedron(simplex[0], simplex[2], simplex[3], simplex[1]);
+    //hout << "N023=" << N023.str() << endl;
 
     //Vector normal to edge S0S2 on the plane of face S0S1S2
     Point_3D N02_012 = S0S2.cross(N012);
@@ -1359,6 +1374,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Is origin in Voroni region of edge S0S2
+    //hout << "Edge 02: s0_s0s2=" << s0_s0s2 << " s2_s2s0=" << s2_s2s0 << " s0_n02_012=" << s0_n02_012 << " s0_n02_023=" << s0_n02_023 << endl;
     if (s0_s0s2 > Zero && s2_s2s0 > Zero && s0_n02_012 > Zero && s0_n02_023 > Zero) {
 
         //Update simplex to contain only S0S2
@@ -1394,6 +1410,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Is origin in Voroni region of edge S0S3
+    //hout << "Edge 03: s0_s0s3=" << s0_s0s3 << " s3_s3s0=" << s3_s3s0 << " s0_n03_013=" << s0_n03_013 << " s0_n03_023=" << s0_n03_023 << endl;
     if (s0_s0s3 > Zero && s3_s3s0 > Zero && s0_n03_013 > Zero && s0_n03_023 > Zero) {
 
         //Update simplex to contain only S0S3
@@ -1411,6 +1428,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //The last point in Normal_to_face_ouside_tetrahedron is not in
     //the face composed by the first three points
     Point_3D N123 = Normal_to_face_ouside_tetrahedron(simplex[1], simplex[2], simplex[3], simplex[0]);
+    //hout << "N123=" << N123.str() << endl;
 
     //Vector normal to edge S1S2 on the plane of face S0S1S2
     Point_3D N12_012 = S1S2.cross(N012);
@@ -1434,6 +1452,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Is origin in Voroni region of edge S1S2
+    //hout << "Edge 12: s1_s1s2=" << s1_s1s2 << " s2_s2s1=" << s2_s2s1 << " s1_n12_012=" << s1_n12_012 << " s1_n12_123=" << s1_n12_123 << endl;
     if (s1_s1s2 > Zero && s2_s2s1 > Zero && s1_n12_012 > Zero && s1_n12_123 > Zero) {
 
         //Update simplex to contain only S1S2
@@ -1469,6 +1488,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Is origin in Voroni region of edge S1S3
+    //hout << "Edge 13: s1_s1s3=" << s1_s1s3 << " s3_s3s1=" << s3_s3s1 << " s1_n13_013=" << s1_n13_013 << " s1_n13_123=" << s1_n13_123 << endl;
     if (s1_s1s3 > Zero && s3_s3s1 > Zero && s1_n13_013 > Zero && s1_n13_123 > Zero) {
 
         //Update simplex to contain only S1S3
@@ -1504,6 +1524,7 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Is origin in Voroni region of edge S2S3
+    //hout << "Edge 23: s2_s2s3=" << s2_s2s3 << " s3_s3s2=" << s3_s3s2 << " s2_n23_023=" << s2_n23_023 << " s2_n23_123=" << s2_n23_123 << endl;
     if (s2_s2s3 > Zero && s3_s3s2 > Zero && s2_n23_023 > Zero && s2_n23_123 > Zero) {
 
         //Update simplex to contain only S2S3
@@ -1519,13 +1540,13 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Faces
+    //hout << "Faces + - - -" << endl;
 
     //=============================
     //Is origin in Voroni region of face S0S1S2
-    //Since normal vectors are ensured to go towards the origin,
-    //only check dot product with the corresponding normal vector
-    //hout << "Face 012 from tetrahedron dot=" << -simplex[0].dot(N012) <<" S0=" << simplex[0].str() << " N012="<<N012.str()<<endl;
-    if (-simplex[0].dot(N012) > Zero && s0_n01_012 < Zero && s0_n01_012 < Zero && s1_n12_012 < Zero) {
+    //hout << "Face 012: -simplex[0].dot(N012)=" << -simplex[0].dot(N012);
+    //hout << " s0_n01_012=" << s0_n01_012 << " s0_n02_012=" << s0_n02_012 << " s1_n12_012=" << s1_n12_012 << endl;
+    if (-simplex[0].dot(N012) > Zero && s0_n01_012 < Zero && s0_n02_012 < Zero && s1_n12_012 < Zero) {
 
         //Update simplex to contain only S0S1S2
         //hout << "Face 012 from tetrahedron" << endl;
@@ -1536,8 +1557,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Is origin in Voroni region of face S0S2S3
-    //Since normal vectors are ensured to go towards the origin,
-    //only check dot product with the corresponding normal vector
+    //hout << "Face 012: -simplex[0].dot(N023)=" << -simplex[0].dot(N023);
+    //hout << " s0_n02_023=" << s0_n02_023 << " s0_n03_023=" << s0_n03_023 << " s2_n23_023=" << s2_n23_023 << endl;
     if (-simplex[0].dot(N023) > Zero && s0_n02_023 < Zero && s0_n03_023 < Zero && s2_n23_023 < Zero) {
 
         //Update simplex to contain only S0S2S3
@@ -1550,8 +1571,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Is origin in Voroni region of face S0S1S3
-    //Since normal vectors are ensured to go towards the origin,
-    //only check dot product with the corresponding normal vector
+    //hout << "Face 012: -simplex[0].dot(N013)=" << -simplex[0].dot(N013);
+    //hout << " s0_n01_013=" << s0_n01_013 << " s1_n13_013=" << s1_n13_013 << " s0_n03_013=" << s0_n03_013 << endl;
     if (-simplex[0].dot(N013) > Zero && s0_n01_013 < Zero && s1_n13_013 < Zero && s0_n03_013 < Zero) {
 
         //Update simplex to contain only S0S1S3
@@ -1564,8 +1585,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
 
     //=============================
     //Is origin in Voroni region of face S1S2S3
-    //Since normal vectors are ensured to go towards the origin,
-    //only check dot product with the corresponding normal vector
+    //hout << "Face 012: -simplex[1].dot(N123)=" << -simplex[1].dot(N123);
+    //hout << " s1_n12_123=" << s1_n12_123 << " s1_n13_123=" << s1_n13_123 << " s2_n23_123=" << s2_n23_123 << endl;
     if (-simplex[1].dot(N123) > Zero && s1_n12_123 < Zero && s1_n13_123 < Zero && s2_n23_123 < Zero) {
 
         //Update simplex to contain only S1S2S3
@@ -1705,18 +1726,18 @@ void Collision_detection::Normal_and_distance_to_origin(const vector<Point_3D> &
     
     //Get vector normal to face
     Point_3D N = (simplex[f.v2] - simplex[f.v1]).cross(simplex[f.v3] - simplex[f.v1]);
-    //cout<<"r1="<<(simplex[f.v2] - simplex[f.v1]).str()<<" r2="<<(simplex[f.v3] - simplex[f.v1]).str()<<endl;
-    //cout<<"N cross="<<N.str();
+    //hout<<"r1="<<(simplex[f.v2] - simplex[f.v1]).str()<<" r2="<<(simplex[f.v3] - simplex[f.v1]).str()<<endl;
+    //hout<<"N cross="<<N.str();
     //Make unit
     N.make_unit();
-    //cout<<"N unit="<<N.str()<<endl;
+    //hout<<"N unit="<<N.str()<<endl;
     
     //Update the normal going from the origin towards the face
     //The vector v1 goes from the origin towards the face f,
     //then, the vector -v1 goes from the face towards the origin
     //If the dot product is positive, then both vectors "go towards the same direction"
     //So if the dot product of N and -v1 is positive, then N needs to be reversed
-    //cout<<"dir check="<<dot(N, simplex[f.v1]*(-1.0))<<endl;
+    //hout<<"dir check="<<dot(N, simplex[f.v1]*(-1.0))<<endl;
     //Also, save the value of the dot procduct as it is used to calculate the distance
     //from the origin to the face f
     double signed_dist = N.dot(simplex[f.v1]*(-1.0));
@@ -1726,7 +1747,7 @@ void Collision_detection::Normal_and_distance_to_origin(const vector<Point_3D> &
     //distance = abs(dot(normal, simplex[f.v1]));
     distance = abs(signed_dist);
     
-    //cout<<"Face="<<f.str()<<" N="<<normal.str()<<" dist="<<distance<<endl;
+    //hout<<"Face="<<f.str()<<" N="<<normal.str()<<" dist="<<distance<<endl;
 }
 //This function finds the face that is closest to the origin
 //The output of this function is actually the normal vector and distance to origin of the closest face
@@ -1765,14 +1786,14 @@ void Collision_detection::Reconstruct_simplex(const vector<Point_3D> &simplex, c
         
         //The face is seen by the support point, S, if the vector that goes from the face to S
         //is in the same direction as the normal of the face
-        //cout<<"Faces["<<i<<"]="<<Faces[i].str()<<" dot(S-v1,N)="<<dot(simplex[S]-simplex[Faces[i].v1], Normals[i])<<endl;
+        //hout<<"Faces["<<i<<"]="<<Faces[i].str()<<" dot(S-v1,N)="<<dot(simplex[S]-simplex[Faces[i].v1], Normals[i])<<endl;
         if (Normals[i].dot(simplex[S]-simplex[Faces[i].v1]) > Zero ) {
             
             //Add the index of faces to remove
             idxs.push_back(i);
         }
     }
-    //cout<<"idxs.size="<<idxs.size()<<endl;
+    //hout<<"idxs.size="<<idxs.size()<<endl;
     
     //Vector of edges to store non-shared edges, initialied with the edges of the first face
     vector<Edge> edges(3);
@@ -1826,7 +1847,7 @@ void Collision_detection::Reconstruct_simplex(const vector<Point_3D> &simplex, c
     //Loop goes in rever order in order to avoid deleting the wrong faces
     //as deleting an element will change the index of all elements after the one deleted
     for (int i = (int)idxs.size()-1; i >= 0; i--) {
-        //cout<<"Deleted Face="<<Faces[idxs[i]].str()<<endl;
+        //hout<<"Deleted Face="<<Faces[idxs[i]].str()<<endl;
         Faces.erase(Faces.begin()+idxs[i]);
         //Also erase the same elements from the vectors of normals and distances
         Normals.erase(Normals.begin()+idxs[i]);
@@ -1848,7 +1869,7 @@ void Collision_detection::Reconstruct_simplex(const vector<Point_3D> &simplex, c
         //Add the distance to the origin and normal to the corresponding vectors
         Normals.push_back(N);
         distances.push_back(dist);
-        //cout<<"New Face="<<Faces.back().str()<<" new_dist="<<distances.back()<<endl;
+        //hout<<"New Face="<<Faces.back().str()<<" new_dist="<<distances.back()<<endl;
     }
     
 }

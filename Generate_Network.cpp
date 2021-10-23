@@ -3880,7 +3880,8 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
 
                 return 1;
             }*/
-            /*VTK_Export VTK;
+            /* /Export penetrating GNPs
+            VTK_Export VTK;
             //Export new GNP
             VTK.Export_single_gnp(gnp_new, "gnp_new.vtk");
             //Expor the GNP that is being penetrated by the new GNP
