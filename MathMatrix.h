@@ -15,7 +15,7 @@
 #include<cstdlib>
 using namespace std;
 
-const double Zero = 1.0E-10;
+const double Zero = 1.0E-12;
 
 //---------------------------------------------------------------------------
 class MathMatrix

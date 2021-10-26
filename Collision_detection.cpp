@@ -1064,6 +1064,10 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
 {
     //hout << "simplex0={S0=" << simplex[0].str() << ", S1=" << simplex[1].str() << ", S2=" << simplex[2].str() << "}" << endl;
 
+    //=============================
+    //Vertices
+    //hout << endl << "Vertices - -" << endl;
+
     //Precompute some vectors
     Point_3D S0S1 = simplex[1] - simplex[0];
     Point_3D S0S2 = simplex[2] - simplex[0];
@@ -1120,6 +1124,10 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
         return 1;
     }
 
+    //=============================
+    //Edges
+    //hout << endl << "Edges + + +" << endl;
+
     //Vector normal to the triangle
     Point_3D NT = S0S1.cross(S0S2);
 
@@ -1131,7 +1139,7 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
     }
 
     //Is origin in Voroni region of edge S0S1
-    if (-simplex[0].dot(N01) > Zero) {
+    if (-simplex[0].dot(N01) > Zero && s0_s0s1 > Zero && s1_s1s0 > Zero) {
         //Update simplex to contain only edge S0S1
         //hout << "Edge 01 from triangle" << endl;
         simplex.pop_back();
@@ -1148,7 +1156,7 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
     }
 
     //Is origin in Voroni region of edge S0S2
-    if (-simplex[0].dot(N02) > Zero) {
+    if (-simplex[0].dot(N02) > Zero && s0_s0s2 > Zero && s2_s2s0 > Zero) {
         //Update simplex to contain only edge S0S2
         //hout << "Edge 02 from triangle" << endl;
         simplex[1] = simplex[2];
@@ -1166,7 +1174,7 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
     }
 
     //Is origin in Voroni region of edge S1S2
-    if (-simplex[1].dot(N12) > Zero) {
+    if (-simplex[1].dot(N12) > Zero && s1_s1s2 > Zero && s2_s2s1 > Zero) {
         //Update simplex to contain only edge S1S2
         //hout << "Edge 12 from triangle" << endl;
         simplex[0] = simplex[1];
