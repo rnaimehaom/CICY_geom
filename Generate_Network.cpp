@@ -3261,10 +3261,10 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
         }
         
         //---------------------------------------------------------------------------
-        //Randomly generate a point inside the extended domain, this will be the displacement
+        //Randomly generate a point inside the sample, this will be the displacement
         //applied to the GNP, i.e, its random location
         //hout<<"Get_seed_point_mt"<<endl;
-        if (!Get_point_in_cuboid_mt(geom_sample.ex_dom_gnp, gnp.center, engine_x, engine_y, engine_z, dist)) { 
+        if (!Get_point_in_cuboid_mt(geom_sample.sample, gnp.center, engine_x, engine_y, engine_z, dist)) { 
             hout << "Error in Generate_gnp_network_mt when calling Get_point_in_cuboid_mt" << endl;
             return 0; 
         }
@@ -4254,56 +4254,56 @@ int Generate_Network::Calculate_generated_gnp_vol(const GNP_Geo gnp_geom, const 
     //---------------------------------------------------------------------------
     //Add the volume and weight corresponding to the GNP
     double gnp_vol = gnp.volume;
-    
-    //Get the location of the first vertex
-    int loc_0 = Is_point_inside_cuboid(sample_geom.sample, gnp.vertices[0]);
-    
-    //Iterate over the eight vertices of the GNP and check if all of them have the same
-    //location as the first vertex
-    int i = 0;
-    for (i = 1; i < 8; i++) {
-        
-        //Check if current vertex has the same location as the first vertex
-        if (loc_0 != Is_point_inside_cuboid(sample_geom.sample, gnp.vertices[i])) {
-            
-            //Vertex i has a different location than vertex 0
-            //This means that the GNP is partially inside the sample
-            //Thus, approximate the GNP volume inside the sample
-            if (!Approximate_gnp_volume_inside_sample(sample_geom.sample, gnp, gnp_vol)) {
-                hout << "Error in Calculate_generated_gnp_vol when calling Approximate_gnp_volume_inside_sample." << endl;
-                return 0;
+
+    //Variable to count the GNP vertices
+    int v_in = 0;
+
+    //Iterate over the eight vertices of the GNP and check whether they are inside or
+    //outside the sample
+    //Count the number of vertices inside the sample
+    for (int i = 0; i < 8; i++) {
+
+        //Check if vertex i is inside the sample
+        if (Is_point_inside_cuboid(sample_geom.sample, gnp.vertices[i])) {
+
+            //Increase the number of vertices inside the sample
+            v_in++;
+
+            //Check if a third vertex inside the sample has been found
+            //Three vertices are needed to update the location of GNPs when 
+            //applying deformation to a sample using Abaqus
+            if (v_in == 3)
+            {
+                //There are at least three vertices inside the sample, 
+                //so calculate/approximate the volume of the GNP inside the sample
+                if (!Approximate_gnp_volume_inside_sample(sample_geom.sample, gnp, gnp_vol)) {
+                    hout << "Error in Calculate_generated_gnp_vol when calling Approximate_gnp_volume_inside_sample." << endl;
+                    return 0;
+                }
+
+                //Check the criterion for the minimum GNP volume inside the sample
+                if (gnp_geom.vol_in == "no_min" || gnp_vol / gnp.volume - gnp_geom.min_vol_in >= Zero) {
+
+                    //If no minimum volume is specified there is at least some volume inside the sample
+                    //If a minimum volume is specified, the minimum required GNP volume is acutually inside the sample
+
+                    //Thus, update the flag that indicates that the minimun required GNP volume
+                    //is actually inside the sample
+                    is_enough_inside = true;
+
+                    //Update the GNP's volume
+                    gnp.volume = gnp_vol;
+                }
+
+                //Terminate the function as it is not necessary to continue
+                //cheking the rest of the vertices
+                return 1;
             }
-            
-            //Check the criterion for the minimum GNP volume inside the sample
-            if (gnp_geom.vol_in == "no_min" || gnp_vol/gnp.volume - gnp_geom.min_vol_in >= Zero) {
-                
-                //If no minimum specified there is at least some volume inside the sample
-                //If specified, the minimum required GNP volume is acutually inside the sample
-                
-                //Thus, update the flag that indicates that the minimun required GNP volume
-                //is actually inside the sample
-                is_enough_inside = true;
-                
-                //Update the GNP's volume
-                gnp.volume = gnp_vol;
-            }
-            
-            //Terminate the function as it is not necessary to continue
-            //cheking the rest of the vertices
-            return 1;
         }
     }
-    
-    //If all vertices had the same location as the first one, this means that the GNP is
-    //either completely inside or completely outside the sample
-    //Check if the GNP is completely inside the sample
-    if (loc_0) {
-        
-        //Update the flag that indicates that the minimun required GNP volume is acutually
-        //inside the sample
-        //No need to update GNP volume as the variable already has the volume of the GNP
-        is_enough_inside = true;
-    }
+
+    //If this part of the code is reached, then there are not enough GNP vertices inside the sample
+    //Thus, keep the boolen variable is_enough_inside as false so that the GNP is ignored
     
     return 1;
 }
