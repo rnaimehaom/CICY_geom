@@ -1690,7 +1690,11 @@ int Collision_detection::EPA(const Point_3D verticesA[], const Point_3D vertices
         Point_3D N;
         double PD_;
         //hout<<"find_closest_face"<<endl;
-        Find_closest_face(Faces, Normals, distances, N, PD_);
+        if (!Find_closest_face(Faces, Normals, distances, N, PD_))
+        {
+            hout << "Error in Extended Polytope Algorithm (EPA) when calling Find_closest_face." << endl;
+            return 0;
+        }
         
         //Get new support point in direction opposite to normal
         Point_3D S = Support_AB(N, verticesA, verticesB);
@@ -1759,8 +1763,16 @@ void Collision_detection::Normal_and_distance_to_origin(const vector<Point_3D> &
 }
 //This function finds the face that is closest to the origin
 //The output of this function is actually the normal vector and distance to origin of the closest face
-void Collision_detection::Find_closest_face(const vector<TrFace> &Faces, const vector<Point_3D> &Normals, const vector<double> &distances, Point_3D &normal, double &PD) {
-    
+int Collision_detection::Find_closest_face(const vector<TrFace> &Faces, const vector<Point_3D> &Normals, const vector<double> &distances, Point_3D &normal, double &PD) {
+
+    //Check if there are any faces
+    if (Faces.empty())
+    {
+        hout << "Error in Find_closest_face. No faces were found." << endl;
+        hout << "Faces.size=" << Faces.size() << " Normals.size=" << Normals.size() << " distances.size=" << distances.size() << endl;
+        return 0;
+    }
+
     //Initialize the minimum distance (i.e., the penetration depth PD) with the first face
     //hout << "Faces.size=" << Faces.size() << " Normals.size=" << Normals.size() << " distances.size=" << distances.size() << endl;
     PD = distances[0];
@@ -1782,6 +1794,8 @@ void Collision_detection::Find_closest_face(const vector<TrFace> &Faces, const v
         }
     }
     //hout<<"Closest Face="<<Faces[idx].str()<<endl;
+
+    return 1;
 }
 //Reconstruct the polyhedron
 void Collision_detection::Reconstruct_simplex(const vector<Point_3D> &simplex, const int &S, vector<TrFace> &Faces, vector<Point_3D> &Normals, vector<double> &distances) {
