@@ -292,88 +292,42 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
     //Name of the set for the lower left corner (it is hard coded in the python scritp too)
     string set0 = "MATRIX0";
 
-    //Name of the set for the opposite corner (it is hard coded in the python scritp too)
-    string set1 = "MATRIX1";
+    //Variables to store displacement vector of the current frame 
+    //with respect to the previous frame 
+    Point_3D disp;
 
-    //Access set0 from root assembly
-    odb_Set& matrix0 = root_assy.nodeSets()[set0.c_str()];
-
-    //Get the displacement objects of the set
-    odb_FieldOutput matrix0_disp = current_fieldU.getSubset(matrix0);
-    odb_FieldOutput matrix0_disp_prev = previous_fieldU.getSubset(matrix0);
-
-    //Get the sequence of values of the displacement object for matrix0
-    const odb_SequenceFieldValue& vals0 = matrix0_disp.values();
-    const odb_SequenceFieldValue& vals0_prev = matrix0_disp_prev.values();
-
-    //Check the size of vals is 1 (since it contains one node)
-    if (vals0.size() != 1)
-    {
-        hout << "Error in Apply_displacements_to_sample. The number of node set " << set0 << " is not 1. Size is " << vals0.size() << endl;
+    //Get the displacement for set0
+    if (!Get_displacement_change_from_single_node_set(set0, root_assy, previous_fieldU, current_fieldU, disp)) {
+        hout << "Error in Apply_displacements_to_sample when calling Get_displacement_change_from_single_node_set (set: "<<set0<<")" << endl;
         return 0;
     }
-
-    //Get the acutal values
-    const odb_FieldValue val0 = vals0[0];
-    const odb_FieldValue val0_prev = vals0_prev[0];
-    //Output node label
-    //hout << "  Node: " << val0.nodeLabel() << endl;
-    //Get the current data of the displacements
-    int numComp = 0; //This integer is needed to call data() in the line below
-    const float* const data0 = val0.data(numComp);
-    //Get the previous data of the displacements
-    int numComp_prev = 0; //This integer is needed to call data() in the line below
-    const float* const data0_prev = val0_prev.data(numComp_prev);
-    //hout << "vals0.size=" << vals0.size() << " data0.size=numComp=" << numComp << endl;
 
     //Update lower left corner of sample
     // 
-    //Note data[i] is the displacement for frame i, no the displacement
-    //with respect to the previous frame
+    //Note current_disp contains the displacement for current frame i, no the displacement
+    //of the current frame with respect to the previous frame
     //Thus, calculate the increment of displacement with respect to the previous frame
     //Otherwise I would need the initial geometry of the sample for each frame
-    geom_sample.sample.poi_min = geom_sample.sample.poi_min + Point_3D((double)data0[0] - (double)data0_prev[0], (double)data0[1] - (double)data0_prev[1], (double)data0[2] - (double)data0_prev[2]);
-    //hout << "disp0=" << data0[0] << " " << data0[1] << " " << data0[2] << endl;
+    geom_sample.sample.poi_min = geom_sample.sample.poi_min + disp;
 
-    //Access set1 from root assembly
-    odb_Set& matrix1 = root_assy.nodeSets()[set1.c_str()];
+    //Name of the set for the opposite corner (it is hard coded in the python scritp too)
+    string set1 = "MATRIX1";
 
-    //Get the displacement objects of the set
-    odb_FieldOutput matrix1_disp = current_fieldU.getSubset(matrix1);
-    odb_FieldOutput matrix1_disp_prev = previous_fieldU.getSubset(matrix1);
-
-    //Get the sequence of values of the displacement object for matrix1
-    const odb_SequenceFieldValue& vals1 = matrix1_disp.values();
-    const odb_SequenceFieldValue& vals1_prev = matrix1_disp_prev.values();
-
-    //Check the size of vals is 1 (since it contains one node)
-    if (vals1.size() != 1)
-    {
-        hout << "Error in Apply_displacements_to_sample. The number of node set " << set1 << " is not 1. Size is " << vals1.size() << endl;
+    //Get the displacement for set1
+    if (!Get_displacement_change_from_single_node_set(set1, root_assy, previous_fieldU, current_fieldU, disp)) {
+        hout << "Error in Apply_displacements_to_sample when calling Get_displacement_change_from_single_node_set (set: " << set1 << ")" << endl;
         return 0;
     }
 
-    //Get the acutal values
-    const odb_FieldValue val1 = vals1[0];
-    const odb_FieldValue val1_prev = vals1_prev[0];
-    //Output node label
-    //cout << "  Node: " << val1.nodeLabel() << endl;
-    //Get the data of the displacements
-    numComp = 0; //This integer is needed to call data() in the line below
-    const float* const data1 = val1.data(numComp);
-    numComp_prev = 0; //This integer is needed to call data() in the line below
-    const float* const data1_prev = val1_prev.data(numComp_prev);
-    //hout << "disp1=" << data1[0] << " " << data1[1] << " " << data1[2] << endl;
-
     //Update the maximum coordinates of the sample, which are the maximum coordinates of the sample
     // 
-    //Note data[i] is the displacement for frame i, no the displacement
-    //with respect to the previous frame
+    //Note current_disp contains the displacement for current frame i, no the displacement
+    //of the current frame with respect to the previous frame
     //Thus, calculate the increment of displacement with respect to the previous frame
     //Otherwise I would need the initial geometry of the sample for each frame
-    geom_sample.sample.max_x = geom_sample.sample.max_x + (double)data1[0] - (double)data1_prev[0];
-    geom_sample.sample.max_y = geom_sample.sample.max_y + (double)data1[1] - (double)data1_prev[1];
-    geom_sample.sample.max_z = geom_sample.sample.max_z + (double)data1[2] - (double)data1_prev[2];
+    geom_sample.sample.max_x = geom_sample.sample.max_x + disp.x;
+    geom_sample.sample.max_y = geom_sample.sample.max_y + disp.y;
+    geom_sample.sample.max_z = geom_sample.sample.max_z + disp.z;
 
     //Update the dimensions of the sample along each direction
     geom_sample.sample.len_x = geom_sample.sample.max_x - geom_sample.sample.poi_min.x;
@@ -383,18 +337,64 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
     //Update the sample's volume
     geom_sample.volume = geom_sample.sample.len_x * geom_sample.sample.wid_y * geom_sample.sample.hei_z;
 
-    /* /Access set1 from root assembly
-    odb_Set& matrix2 = root_assy.nodeSets()["MATRIX2"];
-    //Get the displacement object of the set
-    odb_FieldOutput matrix2_disp = current_fieldU.getSubset(matrix2);
+    return 1;
+}
+//For the case of a set that contains a single node, this function obtaines the displacement
+//at that node with respect to the previous frame
+int App_Network_From_Abaqus::Get_displacement_change_from_single_node_set(const string& setname, odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, Point_3D& disp)const
+{
+
+    //Variables to store current and previous displacements
+    Point_3D current_disp, previous_disp;
+
+    //Get the displacement for the current frame for set1
+    if (!Get_displacement_from_single_node_set(setname, root_assy, current_fieldU, current_disp)) {
+        hout << "Error in Get_displacement_change_from_single_node_set when calling Get_displacement_from_single_node_set (current_disp)" << endl;
+        return 0;
+    }
+
+    //Get the displacement for the previous frame for set1
+    if (!Get_displacement_from_single_node_set(setname, root_assy, previous_fieldU, previous_disp)) {
+        hout << "Error in Get_displacement_change_from_single_node_set when calling Get_displacement_from_single_node_set (previous_disp)" << endl;
+        return 0;
+    }
+
+    //Calculate the displacement with respect to the previous frame
+    disp = current_disp - previous_disp;
+
+    return 1;
+}
+//For the case of a set that contains a single node, this function obtaines the displacement
+//at that node
+int App_Network_From_Abaqus::Get_displacement_from_single_node_set(const string& setname, odb_Assembly& root_assy, odb_FieldOutput& fieldU, Point_3D& disp)const
+{
+    //Access set from root assembly
+    odb_Set& sub_set = root_assy.nodeSets()[setname.c_str()];
+
+    //Get the displacement objects of the set
+    odb_FieldOutput set_disp = fieldU.getSubset(sub_set);
+
     //Get the sequence of values of the displacement object for matrix1
-    const odb_SequenceFieldValue& vals2 = matrix2_disp.values();
+    const odb_SequenceFieldValue& vals = set_disp.values();
+
+    //Check the size of vals is 1 (since it contains one node)
+    if (vals.size() != 1)
+    {
+        hout << "Error in Get_displacement_from_single_node_set. The number of node set " << setname << " is not 1. Size is " << vals.size() << endl;
+        return 0;
+    }
+
     //Get the acutal values
-    const odb_FieldValue val2 = vals2[0];
+    const odb_FieldValue val1 = vals[0];
+    //Output node label
+    //cout << "  Node: " << val1.nodeLabel() << endl;
     //Get the data of the displacements
-    numComp = 0; //This integer is needed to call data() in the line below
-    const float* const data2 = val2.data(numComp);
-    hout << "disp2=" << data2[0] << " " << data2[1] << " " << data2[2] << endl;*/
+    int numComp = 0; //This integer is needed to call data() in the line below
+    const float* const data1 = val1.data(numComp);
+    //hout << "disp1=" << data1[0] << " " << data1[1] << " " << data1[2] << endl;
+
+    //Use the values stored in data1 as the components of the point disp
+    disp.set((double)data1[0], (double)data1[1], (double)data1[2]);
 
     return 1;
 }
@@ -509,14 +509,22 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
     //Get the number of GNPs partially inside the sample
     int n_gnps_out = (int)gnps_outside.size();
 
+    //Variable to store integers 0 to 7 to loop over all vertices of a GNP
+    vector<int> all_vertices = All_gnp_vertices();
+
     //Iterate over the GNPs
     for (int i = 0; i < n_gnps; i++)
     {
         //Check if the GNP is partially inside or completely inside
         if (i == gnps_outside[idx_gnp_out])
         {
-            //GNP is partially inside the sample, so deal with that special case
-
+            //GNP is partially inside the sample, so use the vector that contains
+            //the vertices that are inside the sample
+            if (!Apply_displacements_to_gnp_vertices(vertices_gnps_out[idx_gnp_out], root_assy, previous_fieldU, current_fieldU, gnps[i]))
+            {
+                hout << "Error in Apply_displacements_to_gnps when calling Apply_displacements_to_gnp_vertices (1)" << endl;
+                return 0;
+            }
 
             //Increase the index of the next available GNP in vector gnps_outside
             //Ensure that the value of the index does not exceed the number of
@@ -525,9 +533,67 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
         }
         else 
         {
-            //GNP is competely inside the sample, so deal with that special case
-
+            //GNP is competely inside the sample, so use the vector that contains
+            //all the GNP vertices
+            if (!Apply_displacements_to_gnp_vertices(all_vertices, root_assy, previous_fieldU, current_fieldU, gnps[i]))
+            {
+                hout << "Error in Apply_displacements_to_gnps when calling Apply_displacements_to_gnp_vertices (2)" << endl;
+                return 0;
+            }
         }
+
+        //Adjust GNP to displaced vertices
+    }
+
+    return 1;
+}
+//This function fills a vector with integers 0 to 7 to loop over all vertices of a GNP that
+//lies completely inside the sample
+//However, integers are not in order. The vector starts with 0, 3, and 4 since these
+//vertices are used to initialize the GNP in its deformed position
+vector<int> App_Network_From_Abaqus::All_gnp_vertices()const
+{
+    vector<int> idxs(8, 0);
+
+    //First three vertices are 0, 3, 4
+    idxs[1] = 3;
+    idxs[2] = 4;
+
+    //Add vertices 1, 2
+    idxs[3] = 1;
+    idxs[4] = 2;
+
+    //Add vertices 5 to 7
+    idxs[5] = 5;
+    idxs[6] = 6;
+    idxs[7] = 7;
+
+    return idxs;
+}
+//This function adds displacements to GNP vertices for the case when all vertices
+//are inside the sample
+int App_Network_From_Abaqus::Apply_displacements_to_gnp_vertices(const vector<int>& all_vertices, odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, GNP& gnp_i)const
+{
+    //Iterate over the vertices of the GNP
+    for (size_t j = 0; j < all_vertices.size(); j++)
+    {
+        //Get vertex number
+        int v = all_vertices[j];
+
+        //Get the set name for the node v in GNP i
+        string setname = Get_gnp_set_name(gnp_i.flag, v);
+
+        //Point to store the displacement vector with respect to the previous frame
+        Point_3D disp;
+
+        //Get the displacement for node v in the current frame
+        if (!Get_displacement_change_from_single_node_set(setname, root_assy, previous_fieldU, current_fieldU, disp)) {
+            hout << "Error in Apply_displacements_to_gnp_vertices when calling Get_displacement_change_from_single_node_set (GNP "<<gnp_i.flag<<", node "<<v<< ")" << endl;
+            return 0;
+        }
+
+        //Update location of vertex v in GNP i
+        gnp_i.vertices[v] = gnp_i.vertices[v] + disp;
     }
 
     return 1;
@@ -537,5 +603,18 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
 string App_Network_From_Abaqus::Get_gnp_set_name(const int& gnp_i, const int& vertex)const
 {
     return ("GS-" + to_string(gnp_i) + "_N-" + to_string(vertex));
+}
+//This function finds the cuboid that contains all GNP vertices that are inside the sample 
+//after it has been deformed
+int App_Network_From_Abaqus::Generate_gnp_cuboid(const vector<int>& vertices_idx, const GNP& gnp_i, cuboid& gnp_def)const
+{
+    //Copy the vertex indices in case the vector needs to be modified
+    vector<int> idx = vertices_idx;
+
+    //Make sure the first three vertices in vector idx can be used to initialize a cuboid 
+
+    //Initialize a cuboid using the first three vertices
+
+    return 1;
 }
 //===========================================================================
