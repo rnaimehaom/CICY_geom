@@ -3890,6 +3890,16 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
             //There is penetration, so then use EPA to find the penetration depth PD and direction vector N
             if (!GJK_EPA.EPA(gnps[GNP_i].vertices, gnp_new.vertices, simplex, N, PD)) {
                 hout<<"Error in Move_gnps_if_needed when calling EPA"<<endl;
+
+                string gnp1_str = "gnp_" + to_string(gnps[GNP_i].flag) + ".vtk";
+                string gnp2_str = "gnp_" + to_string(gnp_new.flag) + ".vtk";
+                hout << "GNPs are exported into files " << gnp1_str << " and " << gnp2_str << endl;
+
+                //Export GNPs thta caused the error
+                VTK_Export VTK;
+                VTK.Export_single_gnp(gnps[GNP_i], gnp1_str);
+                VTK.Export_single_gnp(gnp_new, gnp2_str);
+
                 return 0;
             }
             //hout<<"EPA PD="<<PD<<" normal="<<N.str()<< " length=" << N.length() << endl;
