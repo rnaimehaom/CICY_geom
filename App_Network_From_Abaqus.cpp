@@ -55,9 +55,12 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     vector<int> gnps_outside;
     //Vector with vertices inside the sample from the GNPs that lie partially outside the sample
     vector<vector<int> > vertices_gnps_out;
+    //Vector with flags that indicate which vertices are inside the sample (true)
+    //and which are outside the sample (false)
+    vector<vector<bool> > vertex_flags;
 
     //Generate vector with GNPs partially outside the sample
-    if (!Get_gnps_partially_outside_sample(Init->geom_sample, gnps, gnps_outside, vertices_gnps_out))
+    if (!Get_gnps_partially_outside_sample(Init->geom_sample, gnps, gnps_outside, vertices_gnps_out, vertex_flags))
     {
         hout << "Error in Get_gnps_partially_outside_sample." << endl;
         return 0;
@@ -127,7 +130,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
             //Read Abaqus database and apply displacements
             ct0 = time(NULL);
             //hout<<"Apply_displacements_from_Abaqus"<<endl;
-            if (!Apply_displacements_from_Abaqus(Init->simu_para.particle_type, (int)structure_cnt.size(), structure_cnt, gnps_outside, vertices_gnps_out, root_assy, allFramesInStep[i-1], allFramesInStep[i], Init->geom_sample, points_cnt, gnps))
+            if (!Apply_displacements_from_Abaqus(Init->simu_para.particle_type, (int)structure_cnt.size(), structure_cnt, gnps_outside, vertices_gnps_out, vertex_flags, root_assy, allFramesInStep[i-1], allFramesInStep[i], Init->geom_sample, points_cnt, gnps))
             {
                 hout << "Error when applying displacement to nanoparticles." << endl;
                 return 0;
@@ -201,13 +204,16 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
 }
 //This function finds the GNPs that are partially outside the sample and stores the 
 //indices of those GNPs in a vector
-int App_Network_From_Abaqus::Get_gnps_partially_outside_sample(const Geom_sample& geom_sample, const vector<GNP>& gnps, vector<int>& gnps_outside, vector<vector<int> >& vertices_gnps_out)const
+int App_Network_From_Abaqus::Get_gnps_partially_outside_sample(const Geom_sample& geom_sample, const vector<GNP>& gnps, vector<int>& gnps_outside, vector<vector<int> >& vertices_gnps_out, vector<vector<bool> > &vertex_flags)const
 {
     //Iterate over the GNPs
     for (int i = 0; i < (int)gnps.size(); i++)
     {
         //Vector to store vertices inside the sample
         vector<int> vertices_tmp;
+
+        //Vector to store the vertex flags of current GNP
+        vector<bool> vf_tmp(8, false);
 
         //Check if all eight vertices are inside the sample
         for (int j = 0; j < 8; j++)
@@ -217,6 +223,9 @@ int App_Network_From_Abaqus::Get_gnps_partially_outside_sample(const Geom_sample
             {
                 //Add vertex number to temporary vector
                 vertices_tmp.push_back(j);
+
+                //Set the vertex flag as true
+                vf_tmp[j] = true;
             }
         }
 
@@ -230,6 +239,9 @@ int App_Network_From_Abaqus::Get_gnps_partially_outside_sample(const Geom_sample
             //Add the vertices of GNP i that are inside the sample to the vector vertices_gnps_out
             vertices_gnps_out.push_back(vertices_tmp);
 
+            //Add vertex flags of GNP i to the vector vertex_flags
+            vertex_flags.push_back(vf_tmp);
+
             hout << "Inside vertices of GNP " << i << endl << "\t";
             for (size_t k = 0; k < vertices_tmp.size(); k++) {
                 hout << vertices_tmp[k] << ' ';
@@ -241,7 +253,7 @@ int App_Network_From_Abaqus::Get_gnps_partially_outside_sample(const Geom_sample
     return 1;
 }
 //This functions adds the displacements to the CNTs, GNPs and sample
-int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, const vector<int>& gnps_outside, const vector<vector<int> >& vertices_gnps_out, odb_Assembly& root_assy, odb_Frame& previous_frame, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const
+int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, const vector<int>& gnps_outside, const vector<vector<int> >& vertices_gnps_out, const vector<vector<bool> >& vertex_flags, odb_Assembly& root_assy, odb_Frame& previous_frame, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const
 {
     //Access displacement field ("U") in the current frame
     //hout << "current_fieldU" << endl;
@@ -497,7 +509,7 @@ string App_Network_From_Abaqus::Get_cnt_set_name(const int& cnt_i)const
     return ("CNT-"+to_string(cnt_i)+"-NODES");
 }
 //This fucntion pplies displacements to GNPs
-int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps_outside, const vector<vector<int> >& vertices_gnps_out, odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, vector<GNP>& gnps)const
+int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps_outside, const vector<vector<int> >& vertices_gnps_out, const vector<vector<bool> >& vertex_flags, odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, vector<GNP>& gnps)const
 {
     //Variable to store the index within vector gnps_outside 
     //of next GNP that is partially outside the sample
@@ -509,8 +521,12 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
     //Get the number of GNPs partially inside the sample
     int n_gnps_out = (int)gnps_outside.size();
 
-    //Variable to store integers 0 to 7 to loop over all vertices of a GNP
+    //Variable to store integers 0 to 7 to loop over all vertices of a GNP that
+    //is completely inside the sample
     vector<int> all_vertices = All_gnp_vertices();
+
+    //Variable to store flags set to true for a GNP that is completely inside the sample
+    vector<bool> vtx_all_true(8, true);
 
     //Iterate over the GNPs
     for (int i = 0; i < n_gnps; i++)
@@ -606,7 +622,7 @@ string App_Network_From_Abaqus::Get_gnp_set_name(const int& gnp_i, const int& ve
 }
 //This function finds the cuboid that contains all GNP vertices that are inside the sample 
 //after it has been deformed
-int App_Network_From_Abaqus::Generate_gnp_cuboid(const vector<int>& vertices_idx, const GNP& gnp_i, cuboid& gnp_def)const
+int App_Network_From_Abaqus::Generate_gnp_cuboid(const vector<int>& vertices_idx, const vector<bool>& vertex_flags, const GNP& gnp_i, cuboid& gnp_def)const
 {
     //Copy the vertex indices in case the vector needs to be modified
     vector<int> idx = vertices_idx;
