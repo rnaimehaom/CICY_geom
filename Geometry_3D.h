@@ -295,10 +295,10 @@ struct EdgeL {
         v1=e.v1;v2=e.v2;
     }
     string str(){
-        return ("("+to_string(v1)+", "+to_string(v2)+")");
+        return (to_string(v1)+"-"+to_string(v2));
     }
     string str()const{
-        return ("("+to_string(v1)+", "+to_string(v2)+")");
+        return (to_string(v1) + "-" + to_string(v2));
     }
     //Comparing two edges, here edges are not directed so AB and BA are the same edge
     bool operator==(const EdgeL &e) const {

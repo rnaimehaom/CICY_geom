@@ -45,7 +45,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
         }
     }
 
-    //hout << "global_nodes="<<global_nodes<<endl;
+    hout << "global_nodes="<<global_nodes<<" reserved_nodes="<<reserved_nodes << endl;
     //Variables for using the SSS for the sparse matrix
     vector<long int> col_ind, row_ptr;
     vector<double> values, diagonal(global_nodes, 0);
@@ -378,7 +378,7 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         }
         
         //Add contributions from GNP-GNP junctions, if any
-        //hout<<"Fill_2d_matrices_cnts"<<endl;
+        //hout<<"Fill_2d_matrices_gnp_junctions"<<endl;
         if (HoKo->cluster_gnp_junctions.size() && HoKo->cluster_gnp_junctions[n_cluster].size()) {
             if (!Fill_2d_matrices_gnp_junctions(R_flag, d_vdw, electric_param, HoKo->cluster_gnp_junctions[n_cluster], HoKo->junctions_gnp, points_gnp, gnps, LMM_gnps, col_values, diagonal)) {
                 hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_gnp_junctions" << endl;
@@ -404,13 +404,14 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         return 0;
     }
     
-    /*/Print some vectors
+    //Print some vectors
     Printer Pr;
-    Pr.Print_1d_vec(diagonal, "diagonal.txt");
-    Pr.Print_1d_vec(row_ptr, "row_ptr.txt");
-    Pr.Print_1d_vec(col_ind, "col_ind.txt");
-    Pr.Print_1d_vec(values, "values.txt");
-    Pr.Print_1d_vec(R, "R.txt");// */
+    string str = "-" + to_string(R_flag) + "-" + to_string(HoKo->family[n_cluster]);
+    Pr.Print_1d_vec(diagonal, "diagonal" + str + ".txt");
+    Pr.Print_1d_vec(row_ptr, "row_ptr" + str + ".txt");
+    Pr.Print_1d_vec(col_ind, "col_ind" + str + ".txt");
+    Pr.Print_1d_vec(values, "values" + str + ".txt");
+    Pr.Print_1d_vec(R, "R" + str + ".txt");// */
     
     return 1;
 }
@@ -857,9 +858,9 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
     //Scan every GNP, perform the triangulations and add the elements to the stiffness matrix
     for (long int i = 0; i < (long int)cluster_gnp.size(); i++) {
         
-        //current hybrid particle
+        //current GNP
         int gnp_i = cluster_gnp[i];
-        //hout<<endl<<"gnp_i="<<gnp_i<<endl;
+        //hout<<endl<<"gnp_i="<<gnp_i<<" structure_gnp[gnp_i].size="<< structure_gnp[gnp_i].size() << endl;
         
         //Check if the triangulation needs to be performed
         //Triangulation is performed when calculating the backbone (R_flag == 0)
@@ -872,11 +873,18 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
                 return 0;
             }
             //hout << "Triangulation " << i << ", " << structure_gnp[gnp_i].size() << " points in GNP " << gnp_i<<", " << gnps[gnp_i].triangulation.size() << " edges"<< endl;
+            if (structure_gnp[gnp_i].size() > 4 && !gnps[gnp_i].triangulation.size())
+            {
+                hout << "Error in Fill_2d_matrices_gnp when calling Generate_3d_trangulation. Bowyer-Watson algorithm is not generating a triangulation for more than 4 points." << endl;
+                return 0;
+            }
         }
         
         //Add elements from the triangulation
         //Scan triangulation edges in reverse order since some edges might need to be deleted
         for (int j = (int)gnps[gnp_i].triangulation.size() - 1; j >= 0 ; j--) {
+
+            //hout << "Edge " << j << endl;
             
             //Get the two vertices of the triangulation
             long int v1 = gnps[gnp_i].triangulation[j].v1;
@@ -935,6 +943,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
                 return 0;
             }
             
+            //hout << "Add_new_elements_to_2d_sparse_matrix" << endl;
             if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
                 hout << "Error in Fill_2d_matrices_gnp when calling Add_elements_to_2d_sparse_matrix" << endl;
                 return 0;
@@ -1338,6 +1347,7 @@ int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const
             hout<<"Error in Solve_DEA_equations_CG_SSS when calling V_dot_v (3)"<<endl;
             return 0;
         }
+        //hout << "\trr=" << rr << endl;
         
         //Status update: print every test iterations
         if ( k == test){
@@ -1358,7 +1368,9 @@ int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const
             hout<<"Error in Solve_DEA_equations_CG_SSS when calling V_dot_v (4)"<<endl;
             return 0;
         }
+        //hout << "\tbeta=" << beta;
         beta = beta/rr0;
+        //hout << " beta/rr0=" << beta << endl;
         
         //Search direction
         //P = Y + P*beta;

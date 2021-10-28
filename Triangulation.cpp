@@ -60,13 +60,17 @@ int Triangulation::Generate_trivial_triangulation(const vector<long int> &struct
 //adding each vertex to triangulate
 int Triangulation::Bowyer_watson(const vector<Point_3D> &points_gnp, const vector<long int> &structure_i, GNP &gnp_i)
 {
-    //Generate SUPERTETRAHEDRON
-    vector<Point_3D> vertices(4, Point_3D(0,0,0));
-    vector<TrFaceL> triangles(4);
-    if (!Generate_supertetrahedron(gnp_i, vertices, triangles)) {
+    //Generate SUPERTRIANGLE
+    vector<Point_3D> vertices(3, Point_3D(0,0,0));
+    vector<TrFaceL> triangles(1);
+    if (!Generate_supertriangle(gnp_i, vertices, triangles)) {
         hout<<"Error in Generate_3d_trangulation when calling Generate_supertetrahedron"<<endl;
         return 0;
     }
+    /* /Export supertetrahedron and GNP
+    VTK_Export VTK;
+    VTK.Export_single_gnp(gnp_i, "gnp_" + to_string(gnp_i.flag) + ".vtk");
+    VTK.Export_supertetrahedron(vertices, triangles,"supertetrahedron.vtk");// */
     
     //Add each point in the GNP (in structure_i) to the triangulation
     for (int i = 0; i < (int)structure_i.size(); i++) {
@@ -90,6 +94,8 @@ int Triangulation::Bowyer_watson(const vector<Point_3D> &points_gnp, const vecto
             return 0;
         }
     }
+
+    //hout << "Triangles generated " << triangles.size() << endl;
     
     //Triangulation is finished, so find the edges that make up the final triangulation:
     // -Remove those edges that contain a vertex of the supertriangle
@@ -102,7 +108,44 @@ int Triangulation::Bowyer_watson(const vector<Point_3D> &points_gnp, const vecto
     
     return 1;
 }
-//This function generates a tetrahedron, which is the initial triangulation
+//This function generates a supertriangle, which is the initial triangulation
+int Triangulation::Generate_supertriangle(const GNP& gnp_i, vector<Point_3D>& vertices, vector<TrFaceL>& triangles)
+{
+    //Calculate the vertices of the equilateral triangle that will serve as the supertriangle
+    //This supertriangle is such that the GNP' squared (or rectangular) face is 
+    //completely contained inside the supertriangle
+
+    //Squared root of 3 is used a couple of times
+    double sqrt3 = sqrt(3.0);
+
+    //Calculate y-coordinate of vertex 0
+    //The other two coordinates are zero
+    vertices[0].y = ((0.75*sqrt3) + 0.5)*gnp_i.l;
+
+    //Calculate x- and y-coordinates of vertex 1
+    //z-coordinate is zero
+    vertices[1].x = (0.75 + (0.5*sqrt3))*gnp_i.l;
+    vertices[1].y = -gnp_i.l;
+
+    //Calculate x- and y-coordinates of vertex 2
+    //z-coordinate is zero
+    vertices[2].x = -vertices[1].x;
+    vertices[2].y = vertices[1].y;
+
+    //Iterate over all vertices to apply the GNP's translation and rotation
+    for (size_t i = 0; i < vertices.size(); i++) {
+
+        //Translate and rotate vertex i towards the GNP's location
+        vertices[i] = vertices[i].rotation(gnp_i.rotation, gnp_i.center);
+    }
+
+    //Generate the triangle for the triangulation that consists
+    //of only the supertriangle's vertices
+    triangles[0] = TrFaceL(-1, -2, -3);
+
+    return 1;
+}
+//This function generates a supertetrahedron, which is the initial triangulation
 int Triangulation::Generate_supertetrahedron(const GNP &gnp_i, vector<Point_3D> &vertices, vector<TrFaceL> &triangles)
 {
     //Calculate the edge length of the regular tetrahedron
@@ -121,7 +164,7 @@ int Triangulation::Generate_supertetrahedron(const GNP &gnp_i, vector<Point_3D> 
     //
     vertices[1].set(-0.5*tmp1, 0.5*a, tmp2);
     //
-    vertices[2].set(vertices[1].x, -vertices[1].y, vertices[2].z);
+    vertices[2].set(vertices[1].x, -vertices[1].y, vertices[1].z);
     //
     vertices[3].z = a*sqrt(6)/4;
     
@@ -159,6 +202,7 @@ int Triangulation::Find_bad_triangles(const Point_3D &vertex, const vector<Point
             }
             
             //Remove triangle from triangulation
+            //hout << "Remove triangle " << j << endl;
             triangles.erase(triangles.begin()+j);
         }
     }
@@ -181,6 +225,7 @@ bool Triangulation::Is_in_circumcircle(const Point_3D &vertex_i, const vector<Po
     
     //If the squared distance between the point and C is smaller or equal than the squared radius,
     //then the point is inside the circumcircle so return 1
+    //hout << "dist2=" << dist << " rad2=" << rad2 << " dist2-rad2=" << dist - rad2 << endl;
     return ( dist - rad2 <= Zero);
 }
 //Given a triangle, this function calculates its circumcenter
@@ -279,33 +324,39 @@ int Triangulation::Final_triangulation_edges(const vector<TrFaceL> &triangles, G
     for (int i = 0; i < (int)triangles.size(); i++) {
         
         //Check if there are any valid edges and add them to the vector of edges
+        //hout << "Triangle " << i << " " << triangles[i].str() << endl;
         if (triangles[i].v1 >= 0 && triangles[i].v2 >= 0) {
             
             //Add the edge v1-v2
             edges.push_back(EdgeL(triangles[i].v1, triangles[i].v2));
+            //hout << "    edge " << edges.back().str() << endl;
         }
         if (triangles[i].v2 >= 0 && triangles[i].v3 >= 0) {
             
             //Add the edge v2-v3
             edges.push_back(EdgeL(triangles[i].v2, triangles[i].v3));
+            //hout << "    edge " << edges.back().str() << endl;
         }
         if (triangles[i].v3 >= 0 && triangles[i].v1 >= 0) {
             
             //Add the edge v3-v1
             edges.push_back(EdgeL(triangles[i].v3, triangles[i].v1));
+            //hout << "    edge " << edges.back().str() << endl;
         }
     }
     
     //Vector that counts the repetitions of each edge
     vector<int> repetitions_count(edges.size(), 0);
     
-    //Scan each edge in bad triangles and compare it with the rest
+    //Scan each valid edge and compare it with the rest searching for repeated edges
     for (int i = 0; i < (int)edges.size()-1; i++) {
         for (int j = i+1; j < (int)edges.size(); j++) {
             
-            //If the edge is repeated, then increase the count
+            //If the edge is repeated, then increase the count on the edge
+            //with largest index
+            //An edge cannot be shared by more than to triangles, so marking one
+            //of the repeated edges is enough
             if (edges[i] == edges[j]) {
-                repetitions_count[i]++;
                 repetitions_count[j]++;
             }
         }
@@ -313,6 +364,8 @@ int Triangulation::Final_triangulation_edges(const vector<TrFaceL> &triangles, G
     
     //Add only those edges that have count 0
     for (int i = 0; i < (int)edges.size(); i++) {
+
+        //hout << "edge" << edges[i].str() << " count=" << repetitions_count[i] << endl;
         
         //Check the count of edge i
         if (!repetitions_count[i]) {

@@ -80,6 +80,12 @@ public:
     int Add_points_from_triangulation_edges(const vector<Point_3D> &points, const vector<EdgeL> &triangulation, ofstream &otec)const;
     int Add_offsets_for_trinagulation(const vector<EdgeL> &triangulation, ofstream &otec)const;
     int Add_connectivity_for_trinagulation(const vector<EdgeL> &triangulation, ofstream &otec)const;
+    //---------------------------------------------------------------------------
+    //Tetrahedron/Triangles
+    int Export_triangles(const vector<Point_3D>& vertices, const vector<TrFaceL>& triangles, const string& filename)const;
+    int Add_ofsets_for_triangles(const int& n_tri, ofstream& otec)const;
+    int Add_connectivity_for_triangles(const vector<TrFaceL>& triangles, ofstream& otec)const;
+    int Export_supertetrahedron(const vector<Point_3D>& vertices, const vector<TrFaceL>& triangles, const string& filename)const;
 };
 
 #endif /* VTK_Export_hpp */

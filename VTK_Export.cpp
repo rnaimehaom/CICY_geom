@@ -1526,3 +1526,145 @@ int VTK_Export::Add_connectivity_for_trinagulation(const vector<EdgeL> &triangul
     
     return 1;
 }
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//Triangulations
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+int VTK_Export::Export_triangles(const vector<Point_3D>& vertices, const vector<TrFaceL>& triangles, const string& filename)const
+{
+    //Check that the traingulation has edges
+    if (triangles.empty()) {
+        hout << "Vector of triangles edges is empty. NO visualization file was exported." << endl;
+        return 1;
+    }
+
+    //Open the file
+    ofstream otec(filename.c_str());
+
+    //Add header
+    if (!Add_header(otec)) {
+        hout << "Error in Export_triangles when calling Add_header" << endl;
+        return 0;
+    }
+
+    //Add the line with the number of points, which is twice the number of vertices
+    otec << "POINTS " << vertices.size() << " float" << endl;
+
+    //Add all the points
+    if (!Add_points_from_vector(vertices, otec)) {
+        hout << "Error in Export_triangles when calling Add_points_from_vector" << endl;
+        return 0;
+    }
+
+    //Get the number of triangles
+    int n_tri = (int)triangles.size();
+
+    //Add the line with the polygons command, with the number of faces+1 and
+    //the number of points in those faces
+    otec << "POLYGONS " << (n_tri + 1) << ' ' << 3*n_tri << endl;
+
+    //Add the offsets
+    if (!Add_ofsets_for_triangles(n_tri, otec)) {
+        hout << "Error in Export_triangles when calling Add_ofsets_for_triangles" << endl;
+        return 0;
+    }
+
+    //Add the connectivity
+    if (!Add_connectivity_for_triangles(triangles, otec)) {
+        hout << "Error in Export_single_gnp when calling Add_connectivity_for_triangles" << endl;
+        return 0;
+    }
+
+    //Close the file
+    otec.close();
+
+    return 1;
+}
+//
+int VTK_Export::Add_ofsets_for_triangles(const int& n_tri, ofstream& otec)const
+{
+    //Add the line with the OFFSETS command
+    otec << "OFFSETS vtktypeint64" << endl;
+
+    //Output a zero, which is required
+    otec << "0 ";
+
+    //Variable to store the accumulated number of points
+    //Initialized with 3, which is the number of points (vertices) in a triangle
+    int acc_pts = 3;
+
+    //Iterate over the number of triangles
+    for (int i = 1; i <= n_tri; i++)
+    {
+        //Output the number of accumulated points
+        otec << acc_pts << " ";
+
+        //Increase the accumulated number of points
+        acc_pts = acc_pts + 3;
+
+        //Check if a new line is added
+        if (!(i%20))
+        {
+            otec << endl;
+        }
+    }
+
+    //Add a new line
+    otec << endl;
+
+    return 1;
+}
+int VTK_Export::Add_connectivity_for_triangles(const vector<TrFaceL>& triangles, ofstream& otec)const
+{
+    //Add the line with the CONNECTIVITY command
+    otec << "CONNECTIVITY vtktypeint64" << endl;
+
+    //Iterate over the triangles
+    for (size_t i = 0; i < triangles.size(); i++)
+    {
+        //Export vertices of triangle i
+        otec << triangles[i].v1 << " " << triangles[i].v2 << " " << triangles[i].v3 << " ";
+
+        //Check if a new line is added
+        if (!(i % 10))
+        {
+            otec << endl;
+        }
+    }
+
+    //Add a new line
+    otec << endl;
+
+    return 1;
+}
+int VTK_Export::Export_supertetrahedron(const vector<Point_3D>& vertices, const vector<TrFaceL>& triangles, const string& filename)const
+{
+    //Check that the traingulation has edges
+    if (triangles.empty()) {
+        hout << "Vector of supertetrahedron triangles edges is empty. NO visualization file was exported." << endl;
+        return 1;
+    }
+
+    //Generate a new vector of triangles the same size as triangles
+    vector<TrFaceL> new_triangles(triangles.size());
+
+    //Transform all vertices of the supertetrahedron into valid indices
+    for (size_t i = 0; i < triangles.size(); i++)
+    {
+        new_triangles[i].v1 = -triangles[i].v1 - 1;
+        new_triangles[i].v2 = -triangles[i].v2 - 1;
+        new_triangles[i].v3 = -triangles[i].v3 - 1;
+    }
+
+    //Export triangles using the new vector of triangles
+    if (!Export_triangles(vertices, new_triangles, filename))
+    {
+        hout << "Error in Export_supertetrahedron when calling Export_triangles" << endl;
+        return 0;
+    }
+
+    return 1;
+}
