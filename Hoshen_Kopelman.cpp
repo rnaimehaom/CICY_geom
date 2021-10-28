@@ -627,17 +627,12 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                         VTK_Export VTK;
                         VTK.Export_single_gnp(gnps[GNPa], "gnp_" + to_string(GNPa) + ".vtk");
                         VTK.Export_single_gnp(gnps[GNPb], "gnp_" + to_string(GNPb) + ".vtk");*/
-                        
-                        //Here is where the actual HK76 algorithm takes place
-                        if (!HK76(GNP1, GNP2, new_label, labels_gnp, labels_labels_gnp)) {
-                            hout << "Error in Label_gnps_in_window when calling HK76" << endl;
-                            return 0;
-                        }
 
                         //Flag that determines if a junction is inside the sample
                         bool junction_in = false;
                         
-                        //Add the points of contact on each GNP
+                        //Find the points of contact on each GNP, and add them if both
+                        //are inside the sample
                         //hout<<"Add_junction_points_for_gnps"<<endl;
                         if (!Add_junction_points_for_gnps(sample, gnps[GNP1], gnps[GNP2], N, dist, points_gnp, junction_in)) {
                             hout << "Error in Label_gnps_in_window when calling Add_junction_points_for_gnps" << endl;
@@ -647,6 +642,13 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                         //Add the junction to the vector of junctions if it is inside the sample
                         if (junction_in)
                         {
+
+                            //Here is where the actual HK76 algorithm takes place
+                            //Only perform the HK76 when the junctions are inside the sample
+                            if (!HK76(GNP1, GNP2, new_label, labels_gnp, labels_labels_gnp)) {
+                                hout << "Error in Label_gnps_in_window when calling HK76" << endl;
+                                return 0;
+                            }
 
                             //Get the point numbers
                             long int Pa = (long int)points_gnp.size() - 1;

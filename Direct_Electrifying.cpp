@@ -45,7 +45,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
         }
     }
 
-    hout << "global_nodes="<<global_nodes<<" reserved_nodes="<<reserved_nodes << endl;
+    //hout << "global_nodes="<<global_nodes<<" reserved_nodes="<<reserved_nodes << endl;
     //Variables for using the SSS for the sparse matrix
     vector<long int> col_ind, row_ptr;
     vector<double> values, diagonal(global_nodes, 0);
@@ -83,12 +83,12 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
         return 0;
     }
     
-    //Print the voltages
-    /*Printer Pr;
+    /*/Print the voltages
+    Printer Pr;
     if (R_flag) {
         Pr.Print_1d_vec(voltages, "voltages_R_"+ to_string(HoKo->family[n_cluster])+ ".txt");
     } else {
-        Pr.Print_1d_vec(voltages, "voltages_unit.txt");
+        Pr.Print_1d_vec(voltages, "voltages_unit_" + to_string(HoKo->family[n_cluster]) + ".txt");
     }//*/
     
     return 1;
@@ -310,7 +310,7 @@ int Direct_Electrifying::LM_matrix_for_gnps(const int &n_cluster, Hoshen_Kopelma
                 
                 //Add the mapping of the current GNP point to a node number
                 LMM_gnps[P] = global_nodes;
-                //hout<<"LMM_gnps[P="<<P<<"] = "<<global_nodes<<endl;
+                //hout << "LMM_gnps[P=" << P << "] = " << global_nodes << endl;
                 
                 //Update the next available node
                 global_nodes++;
@@ -380,6 +380,7 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         //Add contributions from GNP-GNP junctions, if any
         //hout<<"Fill_2d_matrices_gnp_junctions"<<endl;
         if (HoKo->cluster_gnp_junctions.size() && HoKo->cluster_gnp_junctions[n_cluster].size()) {
+            //hout << "junctions="<<HoKo->cluster_gnp_junctions[n_cluster].size() << endl;
             if (!Fill_2d_matrices_gnp_junctions(R_flag, d_vdw, electric_param, HoKo->cluster_gnp_junctions[n_cluster], HoKo->junctions_gnp, points_gnp, gnps, LMM_gnps, col_values, diagonal)) {
                 hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_gnp_junctions" << endl;
                 return 0;
@@ -412,7 +413,28 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     Pr.Print_1d_vec(col_ind, "col_ind" + str + ".txt");
     Pr.Print_1d_vec(values, "values" + str + ".txt");
     Pr.Print_1d_vec(R, "R" + str + ".txt");// */
+
+    //Check there are no zeros in the diagonal
+    //At this point, the diagonal vector is in its final form
+    vector<int> zero_idx;
+    for (size_t i = 0; i < diagonal.size(); i++) {
+        if (abs(diagonal[i]) < Zero) {
+            //Add the reserved nodes, since at this points those have been removed
+            //from the diagonal vector
+            zero_idx.push_back(i + reserved_nodes);
+        }
+    }
     
+    if (zero_idx.size()) {
+        hout << "Error in Fill_sparse_stiffness_matrix. There are zero elements in the diagonal of the sitffness matrix. \nThis means that there are nodes not connected no any other node." << endl;
+        hout << "Nodes with zero on the diagonal: ";
+        for (size_t i = 0; i < zero_idx.size(); i++) {
+            hout << zero_idx[i] << " ";
+        }
+        hout << endl;
+        return 0;
+    }
+
     return 1;
 }
 //This function adds the contributions of the CNT and junction resistors to the stiffness matrix
@@ -1143,6 +1165,7 @@ int Direct_Electrifying::From_2d_to_1d_vectors(const long int &reserved_nodes, c
                 //where x0 is the initial guess. If we use x0 = 0 as initial guess then R = b
                 //From the matrix equations b = - KEFT*VEF
                 //Thus, the KEFT matrix is used to initialize the residual vector as follows:
+                //hout << "\tR[" << i - reserved_nodes << "]=" << R[i - reserved_nodes] << " - " << Kij << "*" << VEF[col] << endl;
                 R[i-reserved_nodes] = R[i-reserved_nodes] - (Kij*VEF[col]);
             }
         }
