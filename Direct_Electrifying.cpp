@@ -45,7 +45,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
         }
     }
 
-    hout << "global_nodes="<<global_nodes<<" reserved_nodes="<<reserved_nodes << endl;
+    //hout << "global_nodes="<<global_nodes<<" reserved_nodes="<<reserved_nodes << endl;
     //Variables for using the SSS for the sparse matrix
     vector<long int> col_ind, row_ptr;
     vector<double> values, diagonal(global_nodes, 0);
@@ -70,28 +70,28 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     if (R_flag && reserved_nodes == 2) {
         
         //Calculate an initial guess for the conjugate gradient
-        hout << "Initial_guess_for_CG" << endl;
+        //hout << "Initial_guess_for_CG" << endl;
         if (!Initial_guess_for_CG(n_cluster, reserved_nodes, HoKo->family[n_cluster], window, electric_param.applied_voltage, HoKo->clusters_cnt, HoKo->elements_cnt, points_cnt, HoKo->clusters_gnp, points_gnp, R, V_guess)) {
             hout<<"Error in Compute_voltage_field when calling Initial_guess_for_CG"<<endl;
             return 0;
         }
 
         //Update residual vector R
-        hout << "Update_residual_vector" << endl;
+        //hout << "Update_residual_vector" << endl;
         if (!Update_residual_vector(col_ind, row_ptr, values, diagonal, V_guess, R)) {
             hout << "Error in Compute_voltage_field when calling Update_residual_vector" << endl;
             return 0;
         }
     }//
     
-    hout << "Solve_DEA_equations_CG_SSS"<<endl;
+    //hout << "Solve_DEA_equations_CG_SSS"<<endl;
     //This is where the actual direct electrifying algorithm (DEA) takes place
     if (!Solve_DEA_equations_CG_SSS(global_nodes, reserved_nodes, simu_para.tolerance, col_ind, row_ptr, values, diagonal, R, VEF, V_guess)) {
         hout<<"Error in Compute_voltage_field when calling Solve_DEA_equations_CG_SSS"<<endl;
         return 0;
     }
     
-    //Print the voltages
+    /*/Print the voltages
     Printer Pr;
     if (R_flag) {
         Pr.Print_1d_vec(voltages, "voltages_R_"+ to_string(HoKo->family[n_cluster])+ ".txt");

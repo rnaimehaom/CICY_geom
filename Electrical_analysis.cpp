@@ -18,15 +18,12 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
     vector<vector<double> > parallel_resistors(3, vector<double>());
     
     //Get the number of clusters
-    int n_clusters = 0;
-    //hout<<"clusters_cnt.size()="<<HoKo->clusters_cnt.size()<<endl;
-    //hout<<"clusters_gnp()="<<HoKo->clusters_gnp.size()<<endl;
-    if (HoKo->clusters_cnt.size()) {
-        n_clusters = (int)HoKo->clusters_cnt.size();
-        
-    }
-    else if (HoKo->clusters_gnp.size()) {
-        n_clusters = (int)HoKo->clusters_gnp.size();
+    int n_clusters = Get_number_of_clusters(HoKo->clusters_cnt, HoKo->clusters_gnp);
+
+    //Clear GNP triangulations (if needed)
+    if (!Clear_triangulations(iter, HoKo->clusters_gnp, gnps)) {
+        hout << "Error in Perform_analysis_on_clusters when calling Clear_triangulations" << endl;
+        return 0;
     }
     
     //Create a Backbone_Network object so that the vectors for nanoparticle volumes
@@ -135,6 +132,47 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
     
     return 1;
 }
+//This function gets the number of clusters
+int Electrical_analysis::Get_number_of_clusters(const vector<vector<int> >& clusters_cnt, const vector<vector<int> >& clusters_gnp)
+{
+    //hout<<"clusters_cnt.size()="<<HoKo->clusters_cnt.size()<<endl;
+    //hout<<"clusters_gnp()="<<HoKo->clusters_gnp.size()<<endl;
+    if (clusters_cnt.size()) {
+        return (int)clusters_cnt.size();
+
+    }
+    else if (clusters_gnp.size()) {
+        return (int)clusters_gnp.size();
+    }
+
+    //If both vectors of clusters are empty, then there are no clusters, so return 0
+    return 0;
+}
+//This function clears the triangulations stored in the GNP objects
+int Electrical_analysis::Clear_triangulations(const int& iter, const vector<vector<int> >& clusters_gnp, vector<GNP>& gnps)
+{
+    //Clear the triangulations only if this is not iteration 0 (i.e., not the first iteration) 
+    //and if there are GNP clusters
+    if (iter && clusters_gnp.size()) 
+    {
+        //Iterate over all clusters
+        for (size_t i = 0; i < clusters_gnp.size(); i++)
+        {
+            //Iterate over all GNPs in cluster i
+            for (size_t j = 0; j < clusters_gnp[i].size(); j++)
+            {
+                //Get GNP number
+                int gnp_j = clusters_gnp[i][j];
+                
+                //Check if there is a triangulation stored in gnp_j and, if so, clear it
+                if (gnps[gnp_j].triangulation.size())
+                    gnps[gnp_j].triangulation.clear();
+            }
+        }
+    }
+
+    return 1;
+}
 //This function exports the tirangulation edges of a GNP cluster
 int Electrical_analysis::Export_triangulations(const int &iter, const vector<int> &cluster_gnp, const vector<GNP> &gnps, const vector<Point_3D> &points_gnp)
 {
@@ -206,7 +244,7 @@ int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(c
             return 0;
         }
         ct1 = time(NULL);
-        hout << "Calculate voltage field on backbone network time: "<<(int)(ct1-ct0)<<" secs."<<endl;
+        hout << "Voltage field on backbone time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         
         //With the new voltage field calculate the current going through a face and calculate the resistance along that direction
         if (!Calculate_parallel_resistor(directions[k], n_cluster, electric_param, DEA_Re, points_cnt, radii, HoKo->elements_cnt, HoKo->clusters_cnt, Cutwins->boundary_cnt, points_gnp, gnps, HoKo->clusters_gnp, Cutwins->boundary_gnp, paralel_resistors)) {
@@ -357,7 +395,7 @@ int Electrical_analysis::Calculate_parallel_resistor(const int &direction, const
             return 0;
         }
         
-        //hout << "Current GNP" << endl;
+        //hout << "//=========================== CURRENT GNP" << endl;
         //Calculate the current passing through boundary b1, which is node 0
         if (!Currents_through_boundary_gnps(0, electric_param, DEA, points_gnp, gnps, boundary_gnp[b1], I_total_gnp)) {
             hout<<"Error in Calculate_parallel_resistor when calling Currents_through_boundary_gnps (b1)"<<endl;
