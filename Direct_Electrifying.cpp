@@ -45,7 +45,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
         }
     }
 
-    //hout << "global_nodes="<<global_nodes<<" reserved_nodes="<<reserved_nodes << endl;
+    hout << "global_nodes="<<global_nodes<<" reserved_nodes="<<reserved_nodes << endl;
     //Variables for using the SSS for the sparse matrix
     vector<long int> col_ind, row_ptr;
     vector<double> values, diagonal(global_nodes, 0);
@@ -70,20 +70,28 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     if (R_flag && reserved_nodes == 2) {
         
         //Calculate an initial guess for the conjugate gradient
-        if (!Initial_guess_for_CG(n_cluster, reserved_nodes, HoKo->family[n_cluster], window, electric_param.applied_voltage, HoKo->clusters_cnt, HoKo->elements_cnt, points_cnt, HoKo->clusters_gnp, points_gnp, col_ind, row_ptr, values, diagonal, R, V_guess)) {
+        hout << "Initial_guess_for_CG" << endl;
+        if (!Initial_guess_for_CG(n_cluster, reserved_nodes, HoKo->family[n_cluster], window, electric_param.applied_voltage, HoKo->clusters_cnt, HoKo->elements_cnt, points_cnt, HoKo->clusters_gnp, points_gnp, R, V_guess)) {
             hout<<"Error in Compute_voltage_field when calling Initial_guess_for_CG"<<endl;
+            return 0;
+        }
+
+        //Update residual vector R
+        hout << "Update_residual_vector" << endl;
+        if (!Update_residual_vector(col_ind, row_ptr, values, diagonal, V_guess, R)) {
+            hout << "Error in Compute_voltage_field when calling Update_residual_vector" << endl;
             return 0;
         }
     }//
     
-    //hout << "Solve_DEA_equations_CG_SSS"<<endl;
+    hout << "Solve_DEA_equations_CG_SSS"<<endl;
     //This is where the actual direct electrifying algorithm (DEA) takes place
     if (!Solve_DEA_equations_CG_SSS(global_nodes, reserved_nodes, simu_para.tolerance, col_ind, row_ptr, values, diagonal, R, VEF, V_guess)) {
         hout<<"Error in Compute_voltage_field when calling Solve_DEA_equations_CG_SSS"<<endl;
         return 0;
     }
     
-    /*/Print the voltages
+    //Print the voltages
     Printer Pr;
     if (R_flag) {
         Pr.Print_1d_vec(voltages, "voltages_R_"+ to_string(HoKo->family[n_cluster])+ ".txt");
@@ -405,7 +413,7 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         return 0;
     }
     
-    //Print some vectors
+    /* /Print some vectors
     Printer Pr;
     string str = "-" + to_string(R_flag) + "-" + to_string(HoKo->family[n_cluster]);
     Pr.Print_1d_vec(diagonal, "diagonal" + str + ".txt");
@@ -1183,86 +1191,78 @@ int Direct_Electrifying::From_2d_to_1d_vectors(const long int &reserved_nodes, c
     return 1;
 }
 //This function calculates the initial guess for the Conjugate Gradien (CG)
-int Direct_Electrifying::Initial_guess_for_CG(const int &n_cluster, const long int &reserved_nodes, const int &family, const cuboid &window_geom, const double &V_app, const vector<vector<int> > &clusters_cnt, const vector<set<long int> > &elements_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &clusters_gnp, const vector<Point_3D> &points_gnp, const vector<long int> &col_ind, const vector<long int> &row_ptr, const vector<double> &values, const vector<double> &diagonal, vector<double> &R, vector<double> &V_guess)
+int Direct_Electrifying::Initial_guess_for_CG(const int &n_cluster, const long int &reserved_nodes, const int &family, const cuboid &window_geom, const double &V_app, const vector<vector<int> > &clusters_cnt, const vector<set<long int> > &elements_cnt, const vector<Point_3D> &points_cnt, const vector<vector<int> > &clusters_gnp, const vector<Point_3D> &points_gnp, vector<double> &R, vector<double> &V_guess)
 {
     
     //Select the length of the window along the direction indicated by the family
-    double L_window = (family == 0)? window_geom.len_x: (family == 1)? window_geom.wid_y: window_geom.hei_z;
+    double L_window = Select_coordinate(family, Point_3D(window_geom.len_x, window_geom.wid_y, window_geom.hei_z));
     
     //Select the maximum coordinate of the window along the direction indicated by the family
-    double max_coord = (family == 0)? window_geom.max_x: (family == 1)? window_geom.max_y : window_geom.max_z;
+    double max_coord = Select_coordinate(family, Point_3D(window_geom.max_x, window_geom.max_y, window_geom.max_z));
     
     //Precalculate V_app/L_window
     double V_P_coord = V_app/L_window;
-    
-    //Scan every CNT in the cluster
-    for (int i = 0; i < (long int)clusters_cnt[n_cluster].size(); i++) {
-        
-        //Current CNT in cluster
-        int CNT = clusters_cnt[n_cluster][i];
-        
-        //Iterate over the points in the elements vector of CNT
-        for (set<long int>::const_iterator it = elements_cnt[CNT].begin();
-             it != elements_cnt[CNT].end(); it++) {
-            
-            //Get the current point of the element
-            long int Pi = *it;
-            
-            //Get the node number of the point
-            long int node_i = LMM_cnts.at(Pi);
-            
-            //Check if node_i is not a reserved node
-            if (node_i >= 2) {
-                
-                //Select the proper coordinate
-                double P_coord = (family == 0)? points_cnt[Pi].x: (family == 1)? points_cnt[Pi].y: points_cnt[Pi].z;
-                
-                //Set the voltage at node_i porportional to the coordinate P_coord
-                //The vector used in CG does not have the reserved nodes, thus these
-                //are subtracted from the index
-                V_guess[node_i-reserved_nodes] = V_P_coord*(max_coord - P_coord);
-                
-            }
-            //Voltages for nodes 0 and 1 have already been assigned, so there is nothing
-            //to do if those nodes are found in this function
+
+    //Add the initial guess for the nodes tha correspond to CNT points (if any)
+    if (clusters_cnt.size() && clusters_cnt[n_cluster].size()) {
+        hout << "Initial_guess_for_cnt_nodes" << endl;
+        if (!Initial_guess_for_cnt_nodes(n_cluster, reserved_nodes, family, V_P_coord, max_coord, clusters_cnt, elements_cnt, points_cnt, V_guess))
+        {
+            hout << "Error in Initial_guess_for_CG when calling Initial_guess_for_cnt_nodes" << endl;
+            return 0;
         }
-    }
-    
-    //========================================================================
-    //Calculate A*x0 needed to calculate the residual
-    //The matrix-vector multiplication is done using the SSS format
-    
-    //Size of the system
-    long int N = (long int)V_guess.size();
-    
-    //Initialize result vector
-    vector<double> Ax0(N, 1.0);
-    //SSS
-    //hout<<"SSS, N="<<N<<" col_ind.size="<<col_ind.size()<<" row_ptr.size="<<row_ptr.size()<<endl;
-    for (long int r = 0; r < N; r++) {
-        Ax0[r] = diagonal[r]*V_guess[r];
-        //hout<<"r="<<r<<endl;
-        for (long int j = row_ptr[r]; j < row_ptr[r+1]; j++) {
-            
-            //Get the column index c
-            long int c = col_ind[j];
-            //hout<<" c="<<c<<endl;
-            Ax0[r] = Ax0[r] + values[j]*V_guess[c];
-            Ax0[c] = Ax0[c] + values[j]*V_guess[r];
-        }
-    }
-    
-    //========================================================================
-    //Calculate the residual R = b - A*x0
-    //Variable R already has stored the value of b so I just need to do: R <- b - A*x0
-    for (size_t i = 0; i < N; i++) {
-        R[i] = R[i] - Ax0[i];
     }
     
     //Print the initial guess for the voltages
     /*Printer Pr;
     string filename = "V_guess_" + to_string(family) + ".txt";
     Pr.Print_1d_vec(V_guess, filename);*/
+
+    return 1;
+}
+//This function selects the coordinate corresponding to a family:
+//family 0 = x-coordinate
+//family 1 = y-coordinate
+//family 2 = z-coordinate
+double Direct_Electrifying::Select_coordinate(const double& family, const Point_3D& P)
+{
+    return ( (family==0)? P.x: (family==1)? P.y: P.z);
+}
+//Calculate the initial guess for the nodes that correspond to CNT points
+int Direct_Electrifying::Initial_guess_for_cnt_nodes(const int& n_cluster, const long int& reserved_nodes, const int& family, const double& V_P_coord, const double& max_coord, const vector<vector<int> >& clusters_cnt, const vector<set<long int> >& elements_cnt, const vector<Point_3D>& points_cnt, vector<double>& V_guess)
+{
+    //Scan every CNT in the cluster
+    for (int i = 0; i < (long int)clusters_cnt[n_cluster].size(); i++) {
+
+        //Current CNT in cluster
+        int CNT = clusters_cnt[n_cluster][i];
+
+        //Iterate over the points in the elements vector of CNT
+        for (set<long int>::const_iterator it = elements_cnt[CNT].begin();
+            it != elements_cnt[CNT].end(); it++) {
+
+            //Get the current point of the element
+            long int Pi = *it;
+
+            //Get the node number of the point
+            long int node_i = LMM_cnts.at(Pi);
+
+            //Check if node_i is not a reserved node
+            if (node_i >= 2) {
+
+                //Select the proper coordinate
+                double P_coord = Select_coordinate(family, points_cnt[Pi]);
+
+                //Set the voltage at node_i porportional to the coordinate P_coord
+                //The vector used in CG does not have the reserved nodes, thus these
+                //are subtracted from the index
+                V_guess[node_i - reserved_nodes] = V_P_coord * (max_coord - P_coord);
+
+            }
+            //Voltages for nodes 0 and 1 have already been assigned, so there is nothing
+            //to do if those nodes are found in this function
+        }
+    }
 
     return 1;
 }
@@ -1294,6 +1294,41 @@ int Direct_Electrifying::Get_voltage_vector(const long int &reserved_nodes, cons
     }
     hout << setwp(1,20) << "Maximum and minimum voltages = " << VEF.front() << ", " << VEF.back() << endl;
     
+    return 1;
+}
+//After calculating an initial guess, this function updates the residual vector R
+int Direct_Electrifying::Update_residual_vector(const vector<long int>& col_ind, const vector<long int>& row_ptr, const vector<double>& values, const vector<double>& diagonal, const vector<double>& V_guess, vector<double>& R)
+{
+    //Calculate A*x0 needed to calculate the residual
+    //The matrix-vector multiplication is done using the SSS format
+
+    //Size of the system
+    long int N = (long int)V_guess.size();
+
+    //Initialize result vector
+    vector<double> Ax0(N, 1.0);
+    //SSS
+    //hout<<"SSS, N="<<N<<" col_ind.size="<<col_ind.size()<<" row_ptr.size="<<row_ptr.size()<<endl;
+    for (long int r = 0; r < N; r++) {
+
+        Ax0[r] = diagonal[r] * V_guess[r];
+        //hout<<"r="<<r<<endl;
+        for (long int j = row_ptr[r]; j < row_ptr[r + 1]; j++) {
+
+            //Get the column index c
+            long int c = col_ind[j];
+            //hout<<" c="<<c<<endl;
+            Ax0[r] = Ax0[r] + values[j] * V_guess[c];
+            Ax0[c] = Ax0[c] + values[j] * V_guess[r];
+        }
+    }
+
+    //Calculate the residual R = b - A*x0
+    //Variable R already has stored the value of b so I just need to do: R <- b - A*x0
+    for (size_t i = 0; i < N; i++) {
+        R[i] = R[i] - Ax0[i];
+    }
+
     return 1;
 }
 //This function solves the equation of the electric circuit using the
