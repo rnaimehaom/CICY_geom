@@ -87,6 +87,15 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
             
             //Set now the R_flag to 1 to indicate that actual resistances will be used
             R_flag = 1;
+
+            //If there is more than one cluster (i.e., j > 0), clear the triangulations
+            //of the previous cluster so that it does not interfere with the current cluster
+            if (j) {
+                if (!Clear_triangulations_of_cluster(HoKo->clusters_gnp[j-1], gnps)) {
+                    hout << "Error in Perform_analysis_on_clusters when calling Clear_triangulations_of_cluster" << endl;
+                    return 0;
+                }
+            }
             
             //DEA with actual resistors along each percolated direction for current cluster
             ct0 = time(NULL);
@@ -156,18 +165,10 @@ int Electrical_analysis::Clear_triangulations(const int& iter, const vector<vect
     if (iter && clusters_gnp.size()) 
     {
         //Iterate over all clusters
-        for (size_t i = 0; i < clusters_gnp.size(); i++)
+        for (size_t i = 0; i < gnps.size(); i++)
         {
-            //Iterate over all GNPs in cluster i
-            for (size_t j = 0; j < clusters_gnp[i].size(); j++)
-            {
-                //Get GNP number
-                int gnp_j = clusters_gnp[i][j];
-                
-                //Check if there is a triangulation stored in gnp_j and, if so, clear it
-                if (gnps[gnp_j].triangulation.size())
-                    gnps[gnp_j].triangulation.clear();
-            }
+            //Clear the triangulation of GNP i
+            gnps[i].triangulation.clear();
         }
     }
 
@@ -206,6 +207,21 @@ int Electrical_analysis::Export_triangulations(const int &iter, const vector<int
     sprintf(command, "mv Triangulation_*.vtk triangulations_%.4d", iter);
     system(command);
     
+    return 1;
+}
+//This function clears the triangulations of a given cluster
+int Electrical_analysis::Clear_triangulations_of_cluster(const vector<int>& cluster_gnp, vector<GNP>& gnps)
+{
+    //Iterate over the GNPs in the cluster
+    for (size_t i = 0; i < cluster_gnp.size(); i++)
+    {
+        //Get GNP number
+        int gnp_i = cluster_gnp[i];
+
+        //Clear triangulation of GNP i
+        gnps[gnp_i].triangulation.clear();
+    }
+
     return 1;
 }
 //This function calculates the electrical resistance along each percolated direction of a cluster
@@ -394,6 +410,12 @@ int Electrical_analysis::Calculate_parallel_resistor(const int &direction, const
             hout << "\t boundary_gnp[" << b2 << "].size() = " << boundary_gnp[b2].size() << endl;
             return 0;
         }
+        /*hout << "boundary_gnp[b1=" << b1 << "] = ";
+        for (size_t i = 0; i < boundary_gnp[b1].size(); i++)
+            hout << boundary_gnp[b1][i] << " ";
+        hout << endl << "boundary_gnp[b2=" << b2 << "]=";
+        for (size_t i = 0; i < boundary_gnp[b2].size(); i++)
+            hout << boundary_gnp[b2][i] << " ";*/
         
         //hout << "//=========================== CURRENT GNP" << endl;
         //Calculate the current passing through boundary b1, which is node 0
@@ -580,6 +602,7 @@ int Electrical_analysis::Currents_through_boundary_gnps(const long int &node, co
         
         //Current GNP
         int GNPi = boundary_gnp[i];
+        //hout << "GNPi=" << GNPi << " triangulation.size=" << gnps[GNPi].triangulation.size() << endl;
         
         //Some GNPs on the boundary might not be part of the backbone or the geometric cluster
         //First check if there are any triangulation edges on the GNP,
@@ -592,11 +615,12 @@ int Electrical_analysis::Currents_through_boundary_gnps(const long int &node, co
                 //Get the vertices of the triangulation
                 long int v1 = gnps[GNPi].triangulation[j].v1;
                 long int v2 = gnps[GNPi].triangulation[j].v2;
+                //hout << "v1=" << v1 << " v2=" << v2 << endl;
                 
                 //Get the nodes of the vertices of the triangulation
                 long int nodeA = DEA->LMM_gnps.at(v1);
-                long int nodeB = DEA->LMM_gnps.at(v2);
                 //hout<<"nodeA="<<nodeA<<" v1="<<v1<<" P(v1)="<<points_gnp[v1].str()<<endl;
+                long int nodeB = DEA->LMM_gnps.at(v2);
                 //hout<<"nodeB="<<nodeB<<" v2="<<v2<<" P(v2)="<<points_gnp[v2].str()<<endl;
                 
                 //Check if any node is at a boundary
