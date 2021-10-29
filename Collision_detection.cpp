@@ -147,7 +147,8 @@ Point_3D Collision_detection::Support_map(const Point_3D &D, const Point_3D vert
         //hout << "i=" << i << " D=" << D.str() << " v[i]=" << vertices[i].str() << " dist=" << new_dist <<" new_dist-dist="<< new_dist - dist << endl;
         
         //Check if update is needed
-        if (new_dist - dist > Zero) {
+        //Using 0.0 since only sign is tested
+        if (new_dist - dist > 0.0) {
             //Update variables
             dist = new_dist;
             idx = i;
@@ -491,7 +492,8 @@ Point_3D Collision_detection::Normal_to_face_ouside_tetrahedron(const Point_3D &
     
     //Calculate dot product
     double dot_tmp = ABC.dot(AD);
-    if (dot_tmp > Zero) {
+    //Using 0.0 since only sign is tested
+    if (dot_tmp > 0.0) {
         //Reverse the direction is ABC and AD go in the same direction, i.e.,
         //ABC goes inside the tetrahedron
         ABC = ABC*(-1.0);
@@ -894,8 +896,9 @@ int Collision_detection::Direction_from_simplex_to_origin(const vector<Point_3D>
         N = (simplex[1] - simplex[0]).cross(simplex[2] - simplex[0]);
         N.make_unit();
 
-        //Check that it goes to the origin
-        if (N.dot(simplex[0]) > Zero) {
+        //Check that it goes towards the origin
+        //Using 0.0 since only sign is tested
+        if (N.dot(simplex[0]) > 0.0) {
             N = N * (-1.0);
         }
     }
@@ -1019,12 +1022,14 @@ int Collision_detection::Find_voroni_region(vector<Point_3D>& simplex)
         double dot_s1 = simplex[1].dot(S0S1);
 
         //Find the Voroni region
-        if (dot_s0 > Zero && dot_s1 > Zero) {
+        //Using 0.0 since only sign is tested
+        if (dot_s0 > 0.0 && dot_s1 > 0.0) {
             //hout << "Edge itself is closest to the origin" << endl;
             //Simplex is the closest to the origin, so terminate the function
             return 1;
         }
-        else if (dot_s1 < Zero) {
+        //Using 0.0 since only sign is tested
+        else if (dot_s1 < 0.0) {
             //Given that the the edge is not closest to the origin,
             //if dot product is negative then vertex simplex[1]
             //is closest to the origin
@@ -1076,7 +1081,8 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
     double s0_s0s2 = -simplex[0].dot(S0S2);
 
     //Is origin in Voroni region of veretex 0
-    if (s0_s0s2 < Zero && s0_s0s1 < Zero) {
+    //Using 0.0 since only sign is tested
+    if (s0_s0s2 < 0.0 && s0_s0s1 < 0.0) {
         //Update simplex to contain only vertex 0
         //hout << "Vertex 0 from triangle" << endl;
         simplex.pop_back();
@@ -1095,7 +1101,8 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
     double s1_s1s2 = -simplex[1].dot(S1S2);
 
     //Is origin in Voroni region of veretex 1
-    if (s1_s1s0 < Zero && s1_s1s2 < Zero) {
+    //Using 0.0 since only sign is tested
+    if (s1_s1s0 < 0.0 && s1_s1s2 < 0.0) {
         //Update simplex to contain only vertex 1
         //hout << "Vertex 1 from triangle" << endl;
         simplex[0] = simplex[1];
@@ -1113,7 +1120,8 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
     double s2_s2s1 = simplex[2].dot(S1S2);
 
     //Is origin in Voroni region of veretex 2
-    if (s2_s2s0 < Zero && s2_s2s1 < Zero) {
+    //Using 0.0 since only sign is tested
+    if (s2_s2s0 < 0.0 && s2_s2s1 < 0.0) {
         //Update simplex to contain only vertex 2
         //hout << "Vertex 2 from triangle" << endl;
         simplex[0] = simplex[2];
@@ -1134,12 +1142,14 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
     //Compute normal to edge S0S1
     Point_3D N01 = S0S1.cross(NT);
     //Make sure normal goes outside the triangle
-    if (N01.dot(S1S2) > Zero) {
+    //Using 0.0 since only sign is tested
+    if (N01.dot(S1S2) > 0.0) {
         N01 = N01 * (-1.0);
     }
 
     //Is origin in Voroni region of edge S0S1
-    if (-simplex[0].dot(N01) > Zero && s0_s0s1 > Zero && s1_s1s0 > Zero) {
+    //Using 0.0 since only sign is tested
+    if (-simplex[0].dot(N01) > 0.0 && s0_s0s1 > 0.0 && s1_s1s0 > 0.0) {
         //Update simplex to contain only edge S0S1
         //hout << "Edge 01 from triangle" << endl;
         simplex.pop_back();
@@ -1151,12 +1161,14 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
     //Compute normal to edge S0S2
     Point_3D N02 = S0S2.cross(NT);
     //Make sure normal goes outside the triangle
-    if (N02.dot(S0S1) > Zero) {
+    //Using 0.0 since only sign is tested
+    if (N02.dot(S0S1) > 0.0) {
         N02 = N02 * (-1.0);
     }
 
     //Is origin in Voroni region of edge S0S2
-    if (-simplex[0].dot(N02) > Zero && s0_s0s2 > Zero && s2_s2s0 > Zero) {
+    //Using 0.0 since only sign is tested
+    if (-simplex[0].dot(N02) > 0.0 && s0_s0s2 > 0.0 && s2_s2s0 > 0.0) {
         //Update simplex to contain only edge S0S2
         //hout << "Edge 02 from triangle" << endl;
         simplex[1] = simplex[2];
@@ -1169,12 +1181,14 @@ int Collision_detection::Voroni_region_case3(vector<Point_3D>& simplex)
     //Compute normal to edge S1S2
     Point_3D N12 = S1S2.cross(NT);
     //Make sure normal goes outside the triangle
-    if (N12.dot(S0S1) < Zero) { //This is equivalent to if (N12.dot(S1S0) > Zero) {
+    //Using 0.0 since only sign is tested
+    if (N12.dot(S0S1) < 0.0) { //This is equivalent to if (N12.dot(S1S0) > Zero) {
         N12 = N12 * (-1.0);
     }
 
     //Is origin in Voroni region of edge S1S2
-    if (-simplex[1].dot(N12) > Zero && s1_s1s2 > Zero && s2_s2s1 > Zero) {
+    //Using 0.0 since only sign is tested
+    if (-simplex[1].dot(N12) > 0.0 && s1_s1s2 > 0.0 && s2_s2s1 > 0.0) {
         //Update simplex to contain only edge S1S2
         //hout << "Edge 12 from triangle" << endl;
         simplex[0] = simplex[1];
@@ -1217,7 +1231,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //=============================
     //Is origin in Voroni region of veretex 0
     //hout << "Vertex 0: s0_s0s2=" << s0_s0s2 << " s0_s0s1=" << s0_s0s1 << " s0_s0s3=" << s0_s0s3 << endl;
-    if (s0_s0s2 < Zero && s0_s0s1 < Zero && s0_s0s3 < Zero) {
+    //Using 0.0 since only sign is tested
+    if (s0_s0s2 < 0.0 && s0_s0s1 < 0.0 && s0_s0s3 < 0.0) {
 
         //Update simplex to cotain only vertex 0
         //hout << "Vertex 0 from tetrahedron" << endl;
@@ -1243,7 +1258,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //=============================
     //Is origin in Voroni region of veretex 1
     //hout << "Vertex 1: s1_s1s0=" << s1_s1s0 << " s1_s1s2=" << s1_s1s2 << " s1_s1s3=" << s1_s1s3 << endl;
-    if (s1_s1s0 < Zero && s1_s1s2 < Zero && s1_s1s3 < Zero) {
+    //Using 0.0 since only sign is tested
+    if (s1_s1s0 < 0.0 && s1_s1s2 < 0.0 && s1_s1s3 < 0.0) {
 
         //Update simplex to cotain only vertex 1
         //hout << "Vertex 1 from tetrahedron" << endl;
@@ -1269,7 +1285,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //=============================
     //Is origin in Voroni region of veretex 2
     //hout << "Vertex 2: s2_s2s0=" << s2_s2s0 << " s2_s2s1=" << s2_s2s1 << " s2_s2s3=" << s2_s2s3 << endl;
-    if (s2_s2s0 < Zero && s2_s2s1 < Zero && s2_s2s3 < Zero) {
+    //Using 0.0 since only sign is tested
+    if (s2_s2s0 < 0.0 && s2_s2s1 < 0.0 && s2_s2s3 < 0.0) {
 
         //Update simplex to cotain only vertex 2
         //hout << "Vertex 2 from tetrahedron" << endl;
@@ -1293,7 +1310,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //=============================
     //Is origin in Voroni region of veretex 3
     //hout << "Vertex 2: s3_s3s0=" << s3_s3s0 << " s3_s3s1=" << s3_s3s1 << " s3_s3s2=" << s3_s3s2 << endl;
-    if (s3_s3s0 < Zero && s3_s3s1 < Zero && s3_s3s2 < Zero) {
+    //Using 0.0 since only sign is tested
+    if (s3_s3s0 < 0.0 && s3_s3s1 < 0.0 && s3_s3s2 < 0.0) {
 
         //Update simplex to cotain only vertex 3
         //hout << "Vertex 3 from tetrahedron" << endl;
@@ -1321,7 +1339,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Vector normal to edge S0S1 on the plane of face S0S1S2
     Point_3D N01_012 = S0S1.cross(N012);
     //Make sure it goes in the direction opposite to vertex S2
-    if (N01_012.dot(S0S2) > Zero) {
+    //Using 0.0 since only sign is tested
+    if (N01_012.dot(S0S2) > 0.0) {
         //Normal vector goes towards S2, so reverse it
         N01_012 = N01_012 * (-1.0);
     }
@@ -1329,7 +1348,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Vector normal to edge S0S1 on the plane of face S0S1S3
     Point_3D N01_013 = S0S1.cross(N013);
     //Make sure it goes in the direction opposite to vertex S3
-    if (N01_013.dot(S0S3) > Zero) {
+    //Using 0.0 since only sign is tested
+    if (N01_013.dot(S0S3) > 0.0) {
         //Normal vector goes towards S3, so reverse it
         N01_013 = N01_013 * (-1.0);
     }
@@ -1341,7 +1361,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //=============================
     //Is origin in Voroni region of edge S0S1
     //hout << "Edge 01: s0_s0s1=" << s0_s0s1 << " s1_s1s0=" << s1_s1s0 << " s0_n01_012=" << s0_n01_012 << " s0_n01_013=" << s0_n01_013 << endl;
-    if (s0_s0s1 > Zero && s1_s1s0 > Zero && s0_n01_012 > Zero && s0_n01_013 > Zero) {
+    //Using 0.0 since only sign is tested
+    if (s0_s0s1 > 0.0 && s1_s1s0 > 0.0 && s0_n01_012 > 0.0 && s0_n01_013 > 0.0) {
 
         //Update simplex to contain only S0S1
         //hout << "Edge 01 from tetrahedron" << endl;
@@ -1363,7 +1384,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Vector normal to edge S0S2 on the plane of face S0S1S2
     Point_3D N02_012 = S0S2.cross(N012);
     //Make sure it goes in the direction opposite to vertex S1
-    if (N02_012.dot(S0S1) > Zero) {
+    //Using 0.0 since only sign is tested
+    if (N02_012.dot(S0S1) > 0.0) {
         //Normal vector goes towards S1, so reverse it
         N02_012 = N02_012 * (-1.0);
     }
@@ -1371,7 +1393,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Vector normal to edge S0S2 on the plane of face S0S2S3
     Point_3D N02_023 = S0S2.cross(N023);
     //Make sure it goes in the direction opposite to vertex S3
-    if (N02_023.dot(S0S3) > Zero) {
+    //Using 0.0 since only sign is tested
+    if (N02_023.dot(S0S3) > 0.0) {
         //Normal vector goes towards S3, so reverse it
         N02_023 = N02_023 * (-1.0);
     }
@@ -1383,7 +1406,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //=============================
     //Is origin in Voroni region of edge S0S2
     //hout << "Edge 02: s0_s0s2=" << s0_s0s2 << " s2_s2s0=" << s2_s2s0 << " s0_n02_012=" << s0_n02_012 << " s0_n02_023=" << s0_n02_023 << endl;
-    if (s0_s0s2 > Zero && s2_s2s0 > Zero && s0_n02_012 > Zero && s0_n02_023 > Zero) {
+    //Using 0.0 since only sign is tested
+    if (s0_s0s2 > 0.0 && s2_s2s0 > 0.0 && s0_n02_012 > 0.0 && s0_n02_023 > 0.0) {
 
         //Update simplex to contain only S0S2
         //hout << "Edge 02 from tetrahedron" << endl;
@@ -1399,7 +1423,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Vector normal to edge S0S3 on the plane of face S0S1S3
     Point_3D N03_013 = S0S3.cross(N013);
     //Make sure it goes in the direction opposite to vertex S1
-    if (N03_013.dot(S0S1) > Zero) {
+    //Using 0.0 since only sign is tested
+    if (N03_013.dot(S0S1) > 0.0) {
         //Normal vector goes towards S1, so reverse it
         N03_013 = N03_013 * (-1.0);
     }
@@ -1407,7 +1432,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Vector normal to edge S0S3 on the plane of face S0S2S3
     Point_3D N03_023 = S0S3.cross(N023);
     //Make sure it goes in the direction opposite to vertex S2
-    if (N03_023.dot(S0S2) > Zero) {
+    //Using 0.0 since only sign is tested
+    if (N03_023.dot(S0S2) > 0.0) {
         //Normal vector goes towards S2, so reverse it
         N03_023 = N03_023 * (-1.0);
     }
@@ -1419,7 +1445,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //=============================
     //Is origin in Voroni region of edge S0S3
     //hout << "Edge 03: s0_s0s3=" << s0_s0s3 << " s3_s3s0=" << s3_s3s0 << " s0_n03_013=" << s0_n03_013 << " s0_n03_023=" << s0_n03_023 << endl;
-    if (s0_s0s3 > Zero && s3_s3s0 > Zero && s0_n03_013 > Zero && s0_n03_023 > Zero) {
+    //Using 0.0 since only sign is tested
+    if (s0_s0s3 > 0.0 && s3_s3s0 > 0.0 && s0_n03_013 > 0.0 && s0_n03_023 > 0.0) {
 
         //Update simplex to contain only S0S3
         //hout << "Edge 03 from tetrahedron" << endl;
@@ -1441,7 +1468,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Vector normal to edge S1S2 on the plane of face S0S1S2
     Point_3D N12_012 = S1S2.cross(N012);
     //Make sure it goes in the direction opposite to vertex S0
-    if (N12_012.dot(S0S1) < Zero) { //This is equivalent to N12_012.dot(S1S0) > Zero
+    //Using 0.0 since only sign is tested
+    if (N12_012.dot(S0S1) < 0.0) { //This is equivalent to N12_012.dot(S1S0) > Zero
         //Normal vector goes towards S0, so reverse it
         N12_012 = N12_012 * (-1.0);
     }
@@ -1449,7 +1477,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Vector normal to edge S1S2 on the plane of face S1S2S3
     Point_3D N12_123 = S1S2.cross(N123);
     //Make sure it goes in the direction opposite to vertex S3
-    if (N12_123.dot(S1S3) > Zero) {
+    //Using 0.0 since only sign is tested
+    if (N12_123.dot(S1S3) > 0.0) {
         //Normal vector goes towards S3, so reverse it
         N12_123 = N12_123 * (-1.0);
     }
@@ -1461,7 +1490,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //=============================
     //Is origin in Voroni region of edge S1S2
     //hout << "Edge 12: s1_s1s2=" << s1_s1s2 << " s2_s2s1=" << s2_s2s1 << " s1_n12_012=" << s1_n12_012 << " s1_n12_123=" << s1_n12_123 << endl;
-    if (s1_s1s2 > Zero && s2_s2s1 > Zero && s1_n12_012 > Zero && s1_n12_123 > Zero) {
+    //Using 0.0 since only sign is tested
+    if (s1_s1s2 > 0.0 && s2_s2s1 > 0.0 && s1_n12_012 > 0.0 && s1_n12_123 > 0.0) {
 
         //Update simplex to contain only S1S2
         //hout << "Edge 12 from tetrahedron" << endl;
@@ -1477,7 +1507,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Vector normal to edge S1S3 on the plane of face S0S1S3
     Point_3D N13_013 = S1S3.cross(N013);
     //Make sure it goes in the direction opposite to vertex S0
-    if (N13_013.dot(S0S1) < Zero) { //This is equivalent to N13_013.dot(S1S0) > Zero
+    //Using 0.0 since only sign is tested
+    if (N13_013.dot(S0S1) < 0.0) { //This is equivalent to N13_013.dot(S1S0) > Zero
         //Normal vector goes towards S0, so reverse it
         N13_013 = N13_013 * (-1.0);
     }
@@ -1485,7 +1516,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Vector normal to edge S1S3 on the plane of face S1S2S3
     Point_3D N13_123 = S1S3.cross(N123);
     //Make sure it goes in the direction opposite to vertex S2
-    if (N13_123.dot(S1S2) > Zero) {
+    //Using 0.0 since only sign is tested
+    if (N13_123.dot(S1S2) > 0.0) {
         //Normal vector goes towards S2, so reverse it
         N13_123 = N13_123 * (-1.0);
     }
@@ -1497,7 +1529,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //=============================
     //Is origin in Voroni region of edge S1S3
     //hout << "Edge 13: s1_s1s3=" << s1_s1s3 << " s3_s3s1=" << s3_s3s1 << " s1_n13_013=" << s1_n13_013 << " s1_n13_123=" << s1_n13_123 << endl;
-    if (s1_s1s3 > Zero && s3_s3s1 > Zero && s1_n13_013 > Zero && s1_n13_123 > Zero) {
+    //Using 0.0 since only sign is tested
+    if (s1_s1s3 > 0.0 && s3_s3s1 > 0.0 && s1_n13_013 > 0.0 && s1_n13_123 > 0.0) {
 
         //Update simplex to contain only S1S3
         //hout << "Edge 13 from tetrahedron" << endl;
@@ -1513,7 +1546,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Vector normal to edge S2S3 on the plane of face S0S2S3
     Point_3D N23_023 = S2S3.cross(N023);
     //Make sure it goes in the direction opposite to vertex S0
-    if (N23_023.dot(S0S2) < Zero) { //This is equivalent to N23_023.dot(S2S0) > Zero
+    //Using 0.0 since only sign is tested
+    if (N23_023.dot(S0S2) < 0.0) { //This is equivalent to N23_023.dot(S2S0) > Zero
         //Normal vector goes towards S0, so reverse it
         N23_023 = N23_023 * (-1.0);
     }
@@ -1521,7 +1555,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Vector normal to edge S2S3 on the plane of face S1S2S3
     Point_3D N23_123 = S2S3.cross(N123);
     //Make sure it goes in the direction opposite to vertex S1
-    if (N23_123.dot(S1S2) < Zero) { //This is equivalent to N23_123.dot(S2S1) > Zero
+    //Using 0.0 since only sign is tested
+    if (N23_123.dot(S1S2) < 0.0) { //This is equivalent to N23_123.dot(S2S1) > Zero
         //Normal vector goes towards S1, so reverse it
         N23_123 = N23_123 * (-1.0);
     }
@@ -1533,7 +1568,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //=============================
     //Is origin in Voroni region of edge S2S3
     //hout << "Edge 23: s2_s2s3=" << s2_s2s3 << " s3_s3s2=" << s3_s3s2 << " s2_n23_023=" << s2_n23_023 << " s2_n23_123=" << s2_n23_123 << endl;
-    if (s2_s2s3 > Zero && s3_s3s2 > Zero && s2_n23_023 > Zero && s2_n23_123 > Zero) {
+    //Using 0.0 since only sign is tested
+    if (s2_s2s3 > 0.0 && s3_s3s2 > 0.0 && s2_n23_023 > 0.0 && s2_n23_123 > 0.0) {
 
         //Update simplex to contain only S2S3
         //hout << "Edge 23 from tetrahedron" << endl;
@@ -1554,7 +1590,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Is origin in Voroni region of face S0S1S2
     //hout << "Face 012: -simplex[0].dot(N012)=" << -simplex[0].dot(N012);
     //hout << " s0_n01_012=" << s0_n01_012 << " s0_n02_012=" << s0_n02_012 << " s1_n12_012=" << s1_n12_012 << endl;
-    if (-simplex[0].dot(N012) > Zero && s0_n01_012 < Zero && s0_n02_012 < Zero && s1_n12_012 < Zero) {
+    //Using 0.0 since only sign is tested
+    if (-simplex[0].dot(N012) > 0.0 && s0_n01_012 < 0.0 && s0_n02_012 < 0.0 && s1_n12_012 < 0.0) {
 
         //Update simplex to contain only S0S1S2
         //hout << "Face 012 from tetrahedron" << endl;
@@ -1567,7 +1604,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Is origin in Voroni region of face S0S2S3
     //hout << "Face 012: -simplex[0].dot(N023)=" << -simplex[0].dot(N023);
     //hout << " s0_n02_023=" << s0_n02_023 << " s0_n03_023=" << s0_n03_023 << " s2_n23_023=" << s2_n23_023 << endl;
-    if (-simplex[0].dot(N023) > Zero && s0_n02_023 < Zero && s0_n03_023 < Zero && s2_n23_023 < Zero) {
+    //Using 0.0 since only sign is tested
+    if (-simplex[0].dot(N023) > 0.0 && s0_n02_023 < 0.0 && s0_n03_023 < 0.0 && s2_n23_023 < 0.0) {
 
         //Update simplex to contain only S0S2S3
         //hout << "Face 023 from tetrahedron" << endl;
@@ -1581,7 +1619,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Is origin in Voroni region of face S0S1S3
     //hout << "Face 012: -simplex[0].dot(N013)=" << -simplex[0].dot(N013);
     //hout << " s0_n01_013=" << s0_n01_013 << " s1_n13_013=" << s1_n13_013 << " s0_n03_013=" << s0_n03_013 << endl;
-    if (-simplex[0].dot(N013) > Zero && s0_n01_013 < Zero && s1_n13_013 < Zero && s0_n03_013 < Zero) {
+    //Using 0.0 since only sign is tested
+    if (-simplex[0].dot(N013) > 0.0 && s0_n01_013 < 0.0 && s1_n13_013 < 0.0 && s0_n03_013 < 0.0) {
 
         //Update simplex to contain only S0S1S3
         //hout << "Face 013 from tetrahedron" << endl;
@@ -1595,7 +1634,8 @@ int Collision_detection::Voroni_region_case4(vector<Point_3D>& simplex)
     //Is origin in Voroni region of face S1S2S3
     //hout << "Face 012: -simplex[1].dot(N123)=" << -simplex[1].dot(N123);
     //hout << " s1_n12_123=" << s1_n12_123 << " s1_n13_123=" << s1_n13_123 << " s2_n23_123=" << s2_n23_123 << endl;
-    if (-simplex[1].dot(N123) > Zero && s1_n12_123 < Zero && s1_n13_123 < Zero && s2_n23_123 < Zero) {
+    //Using 0.0 since only sign is tested
+    if (-simplex[1].dot(N123) > 0.0 && s1_n12_123 < 0.0 && s1_n13_123 < 0.0 && s2_n23_123 < 0.0) {
 
         //Update simplex to contain only S1S2S3
         //hout << "Face 123 from tetrahedron" << endl;
