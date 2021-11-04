@@ -28,7 +28,10 @@ public:
     int flag;
 
     //Constructors
-    Point_3D(){};
+    Point_3D(){
+        //Default constructor creates a point at the origin
+        x = 0.0; y = 0.0; z = 0.0; flag = 0;
+    };
     Point_3D( double px, double py, double pz );
 
     //Operations with points
@@ -102,12 +105,16 @@ public:
     Point_3D N;
     
     //flag to define if it is a virtual (false) plane
-    //false: for virtual plane, its normal vector is (0,0,0)
-    //true: for real plane
+    //true: for virtual plane, its normal vector is (0,0,0)
+    //false: for real plane
     bool virtual_plane;
 
     //Constructor
-    Plane_3D(){};
+    Plane_3D(){
+        //Default constructor creates the xy-plane
+        coef[0] = 0.0; coef[1] = 0.0; coef[2] = 1.0; coef[3] = 0.0;
+        virtual_plane = false;
+    };
     Plane_3D(double para[]);
     Plane_3D(double a, double b, double c, double d);
     Plane_3D(const Point_3D &P1, const Point_3D &P2, const Point_3D &P3);

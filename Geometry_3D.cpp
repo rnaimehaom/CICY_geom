@@ -224,8 +224,8 @@ Line_3D::Line_3D(Point_3D p0, Point_3D p1)
 	yn = p1.y - p0.y;
 	zl = p1.z - p0.z;
 	len = length();
-	if(len==0) virtual_line = false;
-	else virtual_line = true;
+    if (len < Zero) virtual_line = false;
+    else virtual_line = true;
 }
 //---------------------------------------------------------------------------   
 //Get length of the line segment
@@ -241,7 +241,7 @@ double Line_3D::length()
 double Line_3D::distance_point_to_line(const Point_3D *point_temp)const
 {
 	double dis = 0;
-	if(xm==0&&yn==0&&zl==0)
+    if (abs(xm) < Zero && abs(yn) < Zero && abs(zl) < Zero)
 	{
 		hout << "Warning: this segment is reduced to a point!" <<endl;
 		double X = point_temp->x-point[0].x;
@@ -261,7 +261,7 @@ double Line_3D::distance_point_to_line(const Point_3D *point_temp)const
 double Line_3D::distance_point_to_line(const Point_3D &point_temp)const
 {
 	double dis = 0;
-	if(xm==0&&yn==0&&zl==0)
+    if (abs(xm) < Zero && abs(yn) < Zero && abs(zl) < Zero)
 	{
 		hout << "Warning: this segment is reduced to a point!" <<endl;
 		double X = point_temp.x-point[0].x;
@@ -280,7 +280,7 @@ double Line_3D::distance_point_to_line(const Point_3D &point_temp)const
 double Line_3D::distance_point_to_line(const double dx, const double dy, const double dz)const
 {
 	double dis = 0;
-	if(xm==0&&yn==0&&zl==0)
+    if (abs(xm) < Zero && abs(yn) < Zero && abs(zl) < Zero)
 	{
 		hout << "Warning: this segment is reduced to a point!" <<endl;
 		double X = dx-point[0].x;
@@ -317,8 +317,8 @@ Plane_3D::Plane_3D(double para[])
     N.set(coef[0],coef[1],coef[2]);
     N.make_unit();
     
-	if(coef[0]==0.0&&coef[1]==0.0&&coef[2]==0.0) virtual_plane = false;
-	else virtual_plane = true;
+    if (abs(coef[0]) < Zero && abs(coef[1]) < Zero && abs(coef[2]) < Zero) virtual_plane = true;
+	else virtual_plane = false;
 }
 //---------------------------------------------------------------------------
 //Constructor
@@ -333,8 +333,8 @@ Plane_3D::Plane_3D(double a, double b, double c, double d)
     N.set(coef[0],coef[1],coef[2]);
     N.make_unit();
     
-    if(coef[0]==0.0&&coef[1]==0.0&&coef[2]==0.0) virtual_plane = false;
-    else virtual_plane = true;
+    if (abs(coef[0]) < Zero && abs(coef[1]) < Zero && abs(coef[2]) < Zero) virtual_plane = true;
+    else virtual_plane = false;
 }
 //---------------------------------------------------------------------------
 //Constructor with three points
@@ -350,14 +350,14 @@ Plane_3D::Plane_3D(const Point_3D &P1, const Point_3D &P2, const Point_3D &P3)
     coef[2] = N.z;
     coef[3] = N.dot(P1)*(-1);
     
-    if(coef[0]==0.0&&coef[1]==0.0&&coef[2]==0.0) virtual_plane = false;
-    else virtual_plane = true;
+    if (abs(coef[0]) < Zero && abs(coef[1]) < Zero && abs(coef[2]) < Zero) virtual_plane = true;
+    else virtual_plane = false;
 }
 //---------------------------------------------------------------------------
 //Determine if a point is on in this plane, where the point is given as a Point_3D object
 int Plane_3D::contain(const Point_3D &point_temp)const
 {
-    if( coef[0]*point_temp.x+coef[1]*point_temp.y+coef[2]*point_temp.z+coef[3]==0 ) {
+    if( abs(coef[0]*point_temp.x + coef[1]*point_temp.y + coef[2]*point_temp.z + coef[3]) < Zero) {
         //in the plane
         return 1;
     }
@@ -368,7 +368,7 @@ int Plane_3D::contain(const Point_3D &point_temp)const
 //Determine if a point is on in this plane, where the point is given by its three components
 int Plane_3D::contain(const double &dx, const double &dy, const double &dz)const
 {
-    if( coef[0]*dx+coef[1]*dy+coef[2]*dz+coef[3]==0 ) {
+    if( abs(coef[0]*dx + coef[1]*dy + coef[2]*dz + coef[3]) < Zero ) {
         //in the plane
         return 1;
     }
