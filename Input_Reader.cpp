@@ -1351,18 +1351,18 @@ int Input::Read_output_data_flags(Output_data_flags &out_flags, ifstream &infile
     //The coice of four points depends entirely in the way the GNPs are generated in Abaqus:
     //Three points define a plane which is used to draw the squared base of the GNP
     //The fourth point is used to define the thickness of the GNP
-    istringstream istr_4_points(Get_Line(infile));
-    istr_4_points >> out_flags.gnp_data;
+    istringstream istr_gnp_data(Get_Line(infile));
+    istr_gnp_data >> out_flags.gnp_data;
     //Check it is a valid flag
-    if (out_flags.gnp_data<0||out_flags.gnp_data>1) {
-        hout<<"Error: Flag to export four vertices of a GNP can only be 0 or 1. Input was: "<<out_flags.gnp_data<<endl;
+    if (out_flags.gnp_data<0||out_flags.gnp_data>3) {
+        hout<<"Error: Flag to export GNP data should be an integer between 0 and 3. Input was: "<<out_flags.gnp_data<<endl;
         return 0;
     }
-    //Check if flag is not zero
-    if (out_flags.gnp_data) {
+    //Check if precision is needed
+    if (out_flags.gnp_data == 1) {
         
         //Flag was set to 1, so read the precision
-        istr_4_points >> out_flags.prec_gnp;
+        istr_gnp_data >> out_flags.prec_gnp;
         
         //Check the precision is a positive integer
         if (out_flags.prec_gnp <= 0) {
