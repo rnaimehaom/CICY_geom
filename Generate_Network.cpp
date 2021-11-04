@@ -3052,30 +3052,13 @@ int Generate_Network::Get_initial_direction_mt(const string &dir_distrib_type, c
             b = 1.0;
             c = 1.0;
         }
-        
-        //Calculate the length of the vector v = (a,b,c)
-        double v_length = sqrt(a*a + b*b + c*c);
-        
-        //This quantity is used three times:
-        double quantity = sqrt(a*a + b*b);
-        
-        //Calculate the trigonometric functions of the angles theta and phi
-        double cos_phi = a/quantity;
-        double sin_phi = b/quantity;
-        double cos_theta = c/v_length;
-        double sin_theta = quantity/v_length;
-        
-        //Fill the elements of the rotation matrix
-        rotation.element[0][0] = cos_phi*cos_theta;
-        rotation.element[0][1] = -sin_phi;
-        rotation.element[0][2] = cos_phi*sin_theta;
-        
-        rotation.element[1][0] = sin_phi*cos_theta;
-        rotation.element[1][1] = cos_phi;
-        rotation.element[1][2] = sin_phi*sin_theta;
-        
-        rotation.element[2][0] = -sin_theta;
-        rotation.element[2][2] = cos_theta;
+
+        //Get the rotation matrix for the given direction
+        if (!Rotation_matrix_from_direction(a, b, c, rotation))
+        {
+            hout << "Error in Get_initial_direction_mt when calling Rotation_matrix_from_direction" << endl;
+            return 0;
+        }
     }
     else if(dir_distrib_type=="specific")
     {
@@ -3094,6 +3077,37 @@ int Generate_Network::Get_initial_direction_mt(const string &dir_distrib_type, c
         rotation = Get_transformation_matrix(cnt_theta, cnt_phi);
     }
     
+    return 1;
+}
+//---------------------------------------------------------------------------
+//This function obtains a rotation matrix from a given direction
+//The direction is given as three coordinates of the direction vector
+int Generate_Network::Rotation_matrix_from_direction(const double& a, const double& b, const double& c, MathMatrix& rotation)const
+{
+    //Calculate the length of the vector v = (a,b,c)
+    double v_length = sqrt(a * a + b * b + c * c);
+
+    //This quantity is used three times:
+    double quantity = sqrt(a * a + b * b);
+
+    //Calculate the trigonometric functions of the angles theta and phi
+    double cos_phi = a / quantity;
+    double sin_phi = b / quantity;
+    double cos_theta = c / v_length;
+    double sin_theta = quantity / v_length;
+
+    //Fill the elements of the rotation matrix
+    rotation.element[0][0] = cos_phi * cos_theta;
+    rotation.element[0][1] = -sin_phi;
+    rotation.element[0][2] = cos_phi * sin_theta;
+
+    rotation.element[1][0] = sin_phi * cos_theta;
+    rotation.element[1][1] = cos_phi;
+    rotation.element[1][2] = sin_phi * sin_theta;
+
+    rotation.element[2][0] = -sin_theta;
+    rotation.element[2][2] = cos_theta;
+
     return 1;
 }
 //---------------------------------------------------------------------------
