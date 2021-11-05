@@ -1354,12 +1354,13 @@ int Input::Read_output_data_flags(Output_data_flags &out_flags, ifstream &infile
     istringstream istr_gnp_data(Get_Line(infile));
     istr_gnp_data >> out_flags.gnp_data;
     //Check it is a valid flag
-    if (out_flags.gnp_data<0||out_flags.gnp_data>3) {
-        hout<<"Error: Flag to export GNP data should be an integer between 0 and 3. Input was: "<<out_flags.gnp_data<<endl;
+    if (out_flags.gnp_data<0||out_flags.gnp_data>4) {
+        hout<<"Error: Flag to export GNP data should be an integer between 0 and 4. Input was: "<<out_flags.gnp_data<<endl;
         return 0;
     }
     //Check if precision is needed
-    if (out_flags.gnp_data == 1) {
+    //Only csv files require a precision for exporting into a file
+    if (out_flags.gnp_data == 1 || out_flags.gnp_data == 3) {
         
         //Flag was set to 1, so read the precision
         istr_gnp_data >> out_flags.prec_gnp;
@@ -1377,13 +1378,13 @@ int Input::Read_output_data_flags(Output_data_flags &out_flags, ifstream &infile
     istringstream istr_cnt_data(Get_Line(infile));
     istr_cnt_data >> out_flags.cnt_data;
     //Check it is a valid flag
-    if (out_flags.cnt_data<0||out_flags.cnt_data>2) {
-        hout<<"Error: Flag to export CNT points can only be 0, 1 or 2. Input was: "<<out_flags.cnt_data<<endl;
+    if (out_flags.cnt_data<0||out_flags.cnt_data>3) {
+        hout<<"Error: Flag to export CNT data should be an integer between 0 and 3. Input was: "<<out_flags.cnt_data<<endl;
         return 0;
     }
-    //Check if flag is 1, i.e., csv files are to be exported
+    //Check if precision is needed
     //Only csv files require a precision for exporting into a file
-    if (out_flags.cnt_data == 1) {
+    if (out_flags.cnt_data == 1 || out_flags.cnt_data == 3) {
         
         //Flag was set to 1, so read the precision
         istr_cnt_data >> out_flags.prec_cnt;

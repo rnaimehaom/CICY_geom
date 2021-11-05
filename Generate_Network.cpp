@@ -5500,32 +5500,39 @@ int Generate_Network::Output_data_files(const Geom_sample &geom_sample, const Ou
         //Close file
         otec.close();
     }
+    else { 
+        //If no data was requested, terminate the function
+        return 1; 
+    }
+        
     
     //Check if output data files were requested for generated GNPs
-    if (out_flags.gnp_data == 1) {
+    if (out_flags.gnp_data == 1 || out_flags.gnp_data == 3) {
         
-        //Print the GNP needed to generate them in Abaqus
+        //Print the GNP data needed to generate them in Abaqus
         Pr.Print_gnp_data(gnps, out_flags.prec_gnp, "gnp_data.csv");
     }
-    else if (out_flags.gnp_data == 2) {
+    else if (out_flags.gnp_data == 2 || out_flags.gnp_data == 3) {
 
-        //Print the GNP into a binary file
+        //Print the GNP data into a binary file
         Pr.Print_gnp_data_binary(gnps, "gnp_data.dat");
     }
-    else if (out_flags.gnp_data == 3) {
+    else if (out_flags.gnp_data == 4) {
         
         //Print the four vertices of a GNP needed to generate them in Abaqus
         Pr.Print_4_vertices_gnps(gnps, out_flags.prec_gnp, "gnp_vertices.csv");
     }
     
     //Check if output data files were requested for generated CNTs
-    if (out_flags.cnt_data == 1) {
+    if (out_flags.cnt_data == 1 || out_flags.cnt_data == 3) {
         
-        //Print the CNT points needed to generated them in Abaqus
+        //Print the CNT data needed to generated them in Abaqus
         Pr.Print_cnt_points_and_structure(geom_sample.sample, structure, points_cnt, radii_out, out_flags.prec_cnt, "cnt_coordinates.csv", "cnt_struct.csv");
     }
-    else if (out_flags.cnt_data == 2) {
+    else if (out_flags.cnt_data == 2 || out_flags.cnt_data == 3) {
+
         //hout << "Print_cnt_points_and_structure_binary" << endl;
+        //Print the CNT data into binary files
         Pr.Print_cnt_points_and_structure_binary(geom_sample.sample, structure, points_cnt, radii_out, "cnt_coordinates.dat", "cnt_struct.dat");
     }
     

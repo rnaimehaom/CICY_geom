@@ -298,7 +298,8 @@ Output_Data_Flags
 % 0: do not export file with GNP data
 % 1: export csv file (ASCII)
 % 2: export binary file
-%If set to 1, the desired precision (number of digits after the decimal point) needs to be specified too
+% 3: export both csv and binary files
+%If set to 1 or 3, the desired precision (number of digits after the decimal point) needs to be specified too
 0
 %Flag to output a file with the coordinates of all CNT points and number of points and radius for each CNT
 %Two files are exported, one with the coordinates and one with the number of CNTs,
@@ -307,6 +308,7 @@ Output_Data_Flags
 % 0: do not export files with CNT point coordinates and CNT structure
 % 1: export csv files (ASCII)
 % 2: export binary files
-%If set to 1, the desired precision (number of digits after the decimal point) needs to be specified too
+% 3: export both csv and binary files
+%If set to 1 or 3, the desired precision (number of digits after the decimal point) needs to be specified too
 0
 %-------------------------------- End
