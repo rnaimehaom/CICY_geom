@@ -82,11 +82,11 @@ public:
     //Get segment length
     double length();
     //Distance from line segment to a Point (different functions depending how the point is defined)
-    double distance_point_to_line(const Point_3D *point_temp)const;
-    double distance_point_to_line(const Point_3D &point_temp)const;
-    double distance_point_to_line(const double dx, const double dy, const double dz)const;
+    double distance_to(const Point_3D *T)const;
+    double distance_to(const Point_3D &T)const;
+    double distance_to(const double dx, const double dy, const double dz)const;
     //Determine is a Point is on the line segment
-    int contain(const Point_3D &point_temp)const;
+    int contains(const Point_3D &T)const;
 
 private:
     //Coefficients from the equation of a line such that: (x-x0)/xm=(y-y0)/yn=(z-z0)/zl

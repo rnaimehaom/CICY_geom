@@ -63,24 +63,34 @@ bool Point_3D::operator!=( Point_3D &pt )const
 //---------------------------------------------------------------------------
 double Point_3D::distance_to(const Point_3D &pt )const
 {
-	double rv2 = (x-pt.x)*(x-pt.x)+(y-pt.y)*(y-pt.y)+(z-pt.z)*(z-pt.z);
-	return sqrt(rv2);
+    double dx = x - pt.x;
+    double dy = y - pt.y;
+    double dz = z - pt.z;
+	return sqrt(dx*dx + dy*dy + dz*dz);
 }
 //---------------------------------------------------------------------------
 double Point_3D::distance_to(const double &px, const double &py, const double &pz)const
 {
-	double rv2 = (x-px)*(x-px)+(y-py)*(y-py)+(z-pz)*(z-pz);
-	return sqrt(rv2);
+    double dx = x - px;
+    double dy = y - py;
+    double dz = z - pz;
+    return sqrt(dx * dx + dy * dy + dz * dz);
 }
 //---------------------------------------------------------------------------
 double Point_3D::squared_distance_to(const Point_3D &pt )const
 {
-    return (x-pt.x)*(x-pt.x)+(y-pt.y)*(y-pt.y)+(z-pt.z)*(z-pt.z);
+    double dx = x - pt.x;
+    double dy = y - pt.y;
+    double dz = z - pt.z;
+    return (dx * dx + dy * dy + dz * dz);
 }
 //---------------------------------------------------------------------------
 double Point_3D::squared_distance_to(const double &px, const double &py, const double &pz)const
 {
-    return (x-px)*(x-px)+(y-py)*(y-py)+(z-pz)*(z-pz);
+    double dx = x - px;
+    double dy = y - py;
+    double dz = z - pz;
+    return (dx * dx + dy * dy + dz * dz);
 }
 //---------------------------------------------------------------------------
 //Length of the vector from the origin to Point_3D
@@ -238,56 +248,55 @@ double Line_3D::length()
 }
 //---------------------------------------------------------------------------
 //Calculate the distance from the line segment to the specified point 
-double Line_3D::distance_point_to_line(const Point_3D *point_temp)const
+double Line_3D::distance_to(const Point_3D *T)const
 {
 	double dis = 0;
     if (abs(xm) < Zero && abs(yn) < Zero && abs(zl) < Zero)
 	{
 		hout << "Warning: this segment is reduced to a point!" <<endl;
-		double X = point_temp->x-point[0].x;
-		double Y = point_temp->y-point[0].y;
-		double Z = point_temp->z-point[0].z;
-		dis = sqrt(X*X+Y*Y+Z*Z);
+        //Since the line is a point, just calculate the distance from point T to 
+        //any of the line vertices (since both line vertices are the same point)
+        dis = T->distance_to(point[0]);
 	}
 	else
 	{
-		double X = yn*(point_temp->y-point[0].y)-zl*(point_temp->z-point[0].z);
-		double Y = zl*(point_temp->z-point[0].z)-xm*(point_temp->x-point[0].x);
-		double Z = xm*(point_temp->x-point[0].x)-yn*(point_temp->y-point[0].y);
+		double X = yn*(T->y-point[0].y)-zl*(T->z-point[0].z);
+		double Y = zl*(T->z-point[0].z)-xm*(T->x-point[0].x);
+		double Z = xm*(T->x-point[0].x)-yn*(T->y-point[0].y);
 		dis = sqrt(X*X+Y*Y+Z*Z)/sqrt(xm*xm+yn*yn+zl*zl);
 	}
 	return dis;
 }
-double Line_3D::distance_point_to_line(const Point_3D &point_temp)const
+double Line_3D::distance_to(const Point_3D &T)const
 {
 	double dis = 0;
     if (abs(xm) < Zero && abs(yn) < Zero && abs(zl) < Zero)
 	{
 		hout << "Warning: this segment is reduced to a point!" <<endl;
-		double X = point_temp.x-point[0].x;
-		double Y = point_temp.y-point[0].y;
-		double Z = point_temp.z-point[0].z;
-		dis = sqrt(X*X+Y*Y+Z*Z);
+        //Since the line is a point, just calculate the distance from point T to 
+        //any of the line vertices (since both line vertices are the same point)
+		dis = T.distance_to(point[0]);
 	}
+    else
 	{
-		double X = yn*(point_temp.y-point[0].y)-zl*(point_temp.z-point[0].z);
-		double Y = zl*(point_temp.z-point[0].z)-xm*(point_temp.x-point[0].x);
-		double Z = xm*(point_temp.x-point[0].x)-yn*(point_temp.y-point[0].y);
+		double X = yn*(T.y-point[0].y)-zl*(T.z-point[0].z);
+		double Y = zl*(T.z-point[0].z)-xm*(T.x-point[0].x);
+		double Z = xm*(T.x-point[0].x)-yn*(T.y-point[0].y);
 		dis = sqrt(X*X+Y*Y+Z*Z)/sqrt(xm*xm+yn*yn+zl*zl);
 	}
 	return dis;
 }
-double Line_3D::distance_point_to_line(const double dx, const double dy, const double dz)const
+double Line_3D::distance_to(const double dx, const double dy, const double dz)const
 {
 	double dis = 0;
     if (abs(xm) < Zero && abs(yn) < Zero && abs(zl) < Zero)
 	{
 		hout << "Warning: this segment is reduced to a point!" <<endl;
-		double X = dx-point[0].x;
-		double Y = dy-point[0].y;
-		double Z = dz-point[0].z;
-		dis = sqrt(X*X+Y*Y+Z*Z);
+        //Since the line is a point, just calculate the distance from point (dx, dy, dz) to 
+        //any of the line vertices (since both line vertices are the same point)
+		dis = point[0].distance_to(dx, dy, dz);
 	}
+    else
 	{
 		double X = yn*(dy-point[0].y)-zl*(dz-point[0].z);
 		double Y = zl*(dz-point[0].z)-xm*(dx-point[0].x);
@@ -298,10 +307,13 @@ double Line_3D::distance_point_to_line(const double dx, const double dy, const d
 }
 //---------------------------------------------------------------------------
 //Determine is a Point is on the line segment
-int Line_3D::contain(const Point_3D &point_temp)const
+int Line_3D::contains(const Point_3D &T)const
 {
-	//to judge if the distance from a point to two endpoints is larger than the distance between endpoints
-	if( fabs(point_temp.distance_to(point[0])+point_temp.distance_to(point[1])-point[0].distance_to(point[1]))>Zero ) return 0; 
+	//Check if the point is on the line by checking the triangle inequality
+    //If the segments from the line vertices to the point T have the same length
+    //as the line segment formed by the line vertices, then the triangle inequality
+    //does not hold and the tree points lie in a line
+	if( fabs(T.distance_to(point[0])+T.distance_to(point[1])-point[0].distance_to(point[1]))>Zero ) return 0; 
 	return 1;
 }
 //===========================================================================
