@@ -542,6 +542,8 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
                 return 0;
             }
 
+            //Reconstruct partial GNP
+
             //Increase the index of the next available GNP in vector gnps_outside
             //Ensure that the value of the index does not exceed the number of
             //GNPs partially inside the sampe (n_gnps_out)
@@ -970,6 +972,87 @@ int App_Network_From_Abaqus::Update_gnp_center(GNP& gnp_i)const
 
     //The average of C is the centroid of the GNP center
     gnp_i.center = C / 8.0;
+
+    return 1;
+}
+//This function reconstructs a partial GNP
+//This is done in a case by case basis to facilitate reconstruction of the GNP
+int App_Network_From_Abaqus::Reconstruct_partial_gnp(const vector<bool>& vertex_flags, GNP& gnp_i)const
+{
+    //Variable to store the case for GNP reconstruction
+    int gnp_case = -1;
+
+    //Find the case
+    if (!Find_reconstruction_case(vertex_flags, gnp_case))
+    {
+        hout << "Error in Reconstruct_partial_gnp when calling Find_reconstruction_case" << endl;
+        return 0;
+    }
+
+    //Reconstruct depending on the case
+    switch (gnp_case)
+    {
+    case 3:
+        //3 consecutive short edges
+        break;
+    case 2:
+        //2 consecutive short edges
+        break;
+    case 1:
+        //1 short edge
+        break;
+    case 0:
+        //0 short edges
+        break;
+    case 4:
+        //2 non-consecutive short edges
+        break;
+    default:
+        break;
+    }
+
+    return 1;
+}
+//This function finds the case of the GNP reconstruction
+int App_Network_From_Abaqus::Find_reconstruction_case(const vector<bool>& vertex_flags, int& gnp_case)const
+{
+    //Variable to count the number of edges present
+    int n_edges = 0;
+
+    //Variables for the case of two non-consecutive edges
+    bool e1 = false, e2 = false;
+
+    //Check which short edges are present and count them
+    if (vertex_flags[0] && vertex_flags[4])
+    {
+        n_edges++;
+        e1 = true;
+    }
+    if (vertex_flags[1] && vertex_flags[5])
+    {
+        n_edges++;
+        e2 = true;
+    }
+    if (vertex_flags[2] && vertex_flags[6])
+    {
+        n_edges++;
+    }
+    if (vertex_flags[3] && vertex_flags[7])
+    {
+        n_edges++;
+    }
+
+    //Set the variable gnp_case with the corresponding case
+    if (n_edges == 2 && e1 != e2)
+    {
+        //Case 4
+        gnp_case = 4;
+    }
+    else 
+    {
+        //Case is the same as n_edges
+        gnp_case = n_edges;
+    }
 
     return 1;
 }

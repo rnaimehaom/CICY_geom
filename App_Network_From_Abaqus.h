@@ -54,6 +54,8 @@ public:
     int Get_gnp_side_length(const GNP& gnp_i, const Point_3D&M, const Point_3D& R1R2_hat, const Point_3D& N_r1r2, double& l_gnp)const;
     int Recalculate_gnp_vertices(const Point_3D& M, const Point_3D& R1R2_hat, const Point_3D& N_r1r2, const Point_3D& N_bot, const double& l_gnp, const double& d_planes, GNP& gnp_i)const;
     int Update_gnp_center(GNP& gnp_i)const;
+    int Reconstruct_partial_gnp(const vector<bool>& vertex_flags, GNP& gnp_i)const;
+    int Find_reconstruction_case(const vector<bool>& vertex_flags, int& gnp_case)const;
 };
 //---------------------------------------------------------------------------
 #endif
