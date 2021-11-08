@@ -82,18 +82,18 @@ int Contact_grid::Adjust_regions_if_needed(const double &overlapping, const Geom
     //Check that the regions are not too small for the maximum cutoff distance 2r_max+tunnel
     //If they are, then change the number of sections to the maximum possible
     if (sample_geom.gs_minx < 2*overlapping) {
-        n_regions[0] = (int)(window_geom.len_x/(2*(overlapping+Zero)));
-        l_regions[0] = window_geom.len_x/(double)n_regions[0];
+        l_regions[0] = 2.0 * (overlapping + Zero);
+        n_regions[0] = 1 + (int)(window_geom.len_x/l_regions[0]);
         hout << "Modified the number of sections along x. " << "sx = " << n_regions[0] << '\t' << "dx = " << l_regions[0] << endl;
     }
     if (sample_geom.gs_miny < 2*overlapping) {
-        n_regions[1] = (int)(window_geom.wid_y/(2*(overlapping+Zero)));
-        l_regions[1] = window_geom.wid_y/(double)n_regions[1];
+        l_regions[1] = 2.0 * (overlapping + Zero);
+        n_regions[1] = 1 + (int)(window_geom.wid_y/ l_regions[1]);
         hout << "Modified the number of sections along y. " << "sy = " << n_regions[1] << '\t' << "dy = " << l_regions[1] << endl;
     }
     if (sample_geom.gs_minz < 2*overlapping) {
-        n_regions[2] = (int)(window_geom.hei_z/(2*(overlapping+Zero)));
-        l_regions[2] = window_geom.hei_z/(double)n_regions[2];
+        l_regions[2] = 2.0 * (overlapping + Zero);
+        n_regions[2] = 1 + (int)(window_geom.hei_z/ l_regions[2]);
         hout << "Modified the number of sections along z. " << "sz = " << n_regions[2] << '\t' << "dz = " << l_regions[2] << endl;
     }
     return 1;
@@ -145,6 +145,8 @@ int Contact_grid::Fill_sectioned_domain_cnts(const cuboid &window_geom, const ve
             //hout<<"Assign_point_to_regions_cnts"<<endl;
             if (!Assign_point_to_regions_cnts(a, b, c, f_regions, n_regions, tot_regions, P)) {
                 hout << "Error in Generate_sectioned_domain_cnts when calling Assign_point_to_region" << endl;
+                hout << "P=" << points_cnt[P].str() << endl;
+                hout << "CNT=" << CNT << " P#=" << P << endl;
                 return 0;
             }
             //hout<<"for-j"<<endl;
@@ -205,7 +207,6 @@ int Contact_grid::Assign_point_to_regions_cnts(const int& a, const int& b, const
     {
         hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subrigion outside the range of subregions." << endl;
         hout << "Subregion number (t) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
-        hout << "P=" << P << endl;
         hout << "a=" << a << " b=" << b << " c=" << c << endl;
         return 0;
     }
@@ -222,7 +223,6 @@ int Contact_grid::Assign_point_to_regions_cnts(const int& a, const int& b, const
         {
             hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subregion outside the range of subregions." << endl;
             hout << "Subregion number (t0) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
-            hout << "P=" << P << endl;
             hout << "a=" << a << " b=" << b << " c=" << c << endl;
             hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
             return 0;
@@ -242,7 +242,6 @@ int Contact_grid::Assign_point_to_regions_cnts(const int& a, const int& b, const
         {
             hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subregion outside the range of subregions." << endl;
             hout << "Subregion number (t1) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
-            hout << "P=" << P << endl;
             hout << "a=" << a << " b=" << b << " c=" << c << endl;
             hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
             return 0;
@@ -262,7 +261,6 @@ int Contact_grid::Assign_point_to_regions_cnts(const int& a, const int& b, const
         {
             hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subregion outside the range of subregions." << endl;
             hout << "Subregion number (t2) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
-            hout << "P=" << P << endl;
             hout << "a=" << a << " b=" << b << " c=" << c << endl;
             hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
             return 0;
