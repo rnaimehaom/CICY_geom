@@ -19,6 +19,7 @@
 #include "Hoshen_Kopelman.h"
 #include "Input_Reader.h"
 #include "Read_Network.h"
+#include "GNP_reconstruction.h"
 //Include for Abaqus
 #include <odb_API.h>
 
@@ -46,16 +47,6 @@ public:
     vector<int> All_gnp_vertices()const;
     int Apply_displacements_to_gnp_vertices(const vector<int>& vertices, odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, GNP& gnp_i)const;
     string Get_gnp_set_name(const int& gnp_i, const int& vertex)const;
-    int Reconstruct_full_gnp(GNP& gnp_i)const;
-    int Get_plane_from_top_squared_face(GNP& gnp_i, Plane_3D& Pl_top)const;
-    int Get_plane_from_bottom_squared_face(const Plane_3D& Pl_top, GNP& gnp_i, Plane_3D& Pl_bot, double& d_planes)const;
-    int Fit_squared_faces_on_parallel_planes(const Plane_3D& Pl_top, const Plane_3D& Pl_bot, double& d_planes, GNP& gnp_i)const;
-    int Adjust_reference_edge(const GNP& gnp_i, const Point_3D& N_top, const double& d_planes, Point_3D& R1, Point_3D& R2, Point_3D& R1R2_hat, Point_3D& N_r1r2)const;
-    int Get_gnp_side_length(const GNP& gnp_i, const Point_3D&M, const Point_3D& R1R2_hat, const Point_3D& N_r1r2, double& l_gnp)const;
-    int Recalculate_gnp_vertices(const Point_3D& M, const Point_3D& R1R2_hat, const Point_3D& N_r1r2, const Point_3D& N_bot, const double& l_gnp, const double& d_planes, GNP& gnp_i)const;
-    int Update_gnp_center(GNP& gnp_i)const;
-    int Reconstruct_partial_gnp(const vector<bool>& vertex_flags, GNP& gnp_i)const;
-    int Find_reconstruction_case(const vector<bool>& vertex_flags, int& gnp_case)const;
 };
 //---------------------------------------------------------------------------
 #endif
