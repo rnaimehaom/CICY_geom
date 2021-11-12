@@ -24,6 +24,7 @@ public:
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
+    //Full GNP
     int Reconstruct_full_gnp(GNP& gnp_i)const;
     int Get_plane_from_top_squared_face(GNP& gnp_i, Plane_3D& Pl_top)const;
     int Get_plane_from_bottom_squared_face(const Plane_3D& Pl_top, GNP& gnp_i, Plane_3D& Pl_bot, double& d_planes)const;
@@ -35,8 +36,13 @@ public:
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
+    //Partial GNP
     int Reconstruct_partial_gnp(const vector<bool>& vertex_flags, GNP& gnp_i)const;
     int Find_reconstruction_case(const vector<bool>& vertex_flags, int& gnp_case)const;
+    int Three_short_edges(const vector<bool>& vertex_flags, GNP& gnp_i, Point_3D& N_top)const;
+    int Get_reference_edge(const vector<bool>& vertex_flags, int& R1, int& R2, int& LT, int& LB)const;
+    int Adjust_vertices_along_thickness_planes(const vector<bool>& vertex_flags, const int& R1, const int& R2, GNP& gnp_i, Point_3D& N)const;
+    int Adjust_thin_faces(const vector<bool>& vertex_flags, const int& R1, const int& R2, const int& LT, const int& LB, GNP& gnp_i)const;
 
 };
 //-------------------------------------------------------
