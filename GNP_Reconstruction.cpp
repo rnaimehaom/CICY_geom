@@ -386,12 +386,21 @@ int GNP_Reconstruction::Reconstruct_partial_gnp(const vector<bool>& vertex_flags
         hout << "Error in Reconstruct_partial_gnp when calling Find_reconstruction_case" << endl;
         return 0;
     }
+    
+    //Variable to store the normal vector of the top surface of the GNP
+    //This is neded to reconstruct the rotation matrix of the GNP
+    Point_3D N_top;
 
     //Reconstruct depending on the case
     switch (gnp_case)
     {
     case 3:
         //3 consecutive short edges
+        if (!Three_short_edges(vertex_flags, gnp_i, N_top))
+        {
+            hout << "Error in Reconstruct_partial_gnp when calling Three_short_edges" << endl;
+            return 0;
+        }
         break;
     case 2:
         //2 consecutive short edges
