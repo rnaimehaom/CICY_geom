@@ -53,12 +53,12 @@ Point_3D Point_3D::operator/( const double &d )const
 //---------------------------------------------------------------------------
 bool Point_3D::operator==(const Point_3D &pt )const
 {
-	return (x==pt.x&&y==pt.y&&z==pt.z);
+	return (abs(pt.x - x) < Zero && abs(pt.y - y) < Zero && abs(pt.z - z) < Zero);
 }
 //---------------------------------------------------------------------------
 bool Point_3D::operator!=( Point_3D &pt )const
 {
-	return (x!=pt.x||y!=pt.y||z!=pt.z);
+	return (abs(pt.x - x) > Zero || abs(pt.y - y) > Zero || abs(pt.z - z) > Zero);
 }
 //---------------------------------------------------------------------------
 double Point_3D::distance_to(const Point_3D &pt )const
@@ -77,6 +77,18 @@ double Point_3D::distance_to(const double &px, const double &py, const double &p
     return sqrt(dx * dx + dy * dy + dz * dz);
 }
 //---------------------------------------------------------------------------
+double Point_3D::distance_to(const Point_3D &P0, const Point_3D &P1)const
+{
+    //Temporary vector v
+    Point_3D v = P1 - P0;
+    
+    //Factors inside the squared root
+    double num = (v.cross(Point_3D(x, y, z) - P0)).length2();
+    double den = v.length2();
+    
+    return sqrt(num/den);
+}
+//---------------------------------------------------------------------------
 double Point_3D::squared_distance_to(const Point_3D &pt )const
 {
     double dx = x - pt.x;
@@ -91,6 +103,18 @@ double Point_3D::squared_distance_to(const double &px, const double &py, const d
     double dy = y - py;
     double dz = z - pz;
     return (dx * dx + dy * dy + dz * dz);
+}
+//---------------------------------------------------------------------------
+double Point_3D::squared_distance_to(const Point_3D &P0, const Point_3D &P1)const
+{
+    //Temporary vector v
+    Point_3D v = P1 - P0;
+    
+    //Factors inside the squared root
+    double num = (v.cross(Point_3D(x, y, z) - P0)).length2();
+    double den = v.length2();
+    
+    return (num/den);
 }
 //---------------------------------------------------------------------------
 //Length of the vector from the origin to Point_3D
@@ -260,10 +284,7 @@ double Line_3D::distance_to(const Point_3D *T)const
 	}
 	else
 	{
-		double X = yn*(T->y-point[0].y)-zl*(T->z-point[0].z);
-		double Y = zl*(T->z-point[0].z)-xm*(T->x-point[0].x);
-		double Z = xm*(T->x-point[0].x)-yn*(T->y-point[0].y);
-		dis = sqrt(X*X+Y*Y+Z*Z)/sqrt(xm*xm+yn*yn+zl*zl);
+		dis = T->distance_to(point[0], point[1]);
 	}
 	return dis;
 }
@@ -279,10 +300,7 @@ double Line_3D::distance_to(const Point_3D &T)const
 	}
     else
 	{
-		double X = yn*(T.y-point[0].y)-zl*(T.z-point[0].z);
-		double Y = zl*(T.z-point[0].z)-xm*(T.x-point[0].x);
-		double Z = xm*(T.x-point[0].x)-yn*(T.y-point[0].y);
-		dis = sqrt(X*X+Y*Y+Z*Z)/sqrt(xm*xm+yn*yn+zl*zl);
+        dis = T.distance_to(point[0], point[1]);
 	}
 	return dis;
 }
@@ -298,10 +316,7 @@ double Line_3D::distance_to(const double dx, const double dy, const double dz)co
 	}
     else
 	{
-		double X = yn*(dy-point[0].y)-zl*(dz-point[0].z);
-		double Y = zl*(dz-point[0].z)-xm*(dx-point[0].x);
-		double Z = xm*(dx-point[0].x)-yn*(dy-point[0].y);
-		dis = sqrt(X*X+Y*Y+Z*Z)/sqrt(xm*xm+yn*yn+zl*zl);
+        dis = Point_3D(dx, dy, dz).distance_to(point[0], point[1]);
 	}
 	return dis;
 }

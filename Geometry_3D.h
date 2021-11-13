@@ -45,8 +45,10 @@ public:
     bool operator!=( Point_3D &pt )const;
     double distance_to(const Point_3D &pt)const;
     double distance_to(const double &px, const double &py,  const double &pz)const;
+    double distance_to(const Point_3D &P1, const Point_3D &P2)const;
     double squared_distance_to(const Point_3D &pt)const;
     double squared_distance_to(const double &px, const double &py,  const double &pz)const;
+    double squared_distance_to(const Point_3D &P0, const Point_3D &P1)const;
     double length()const;
     double length2()const;
     Point_3D cross(const Point_3D &point)const;
