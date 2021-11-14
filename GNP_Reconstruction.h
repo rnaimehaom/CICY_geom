@@ -46,7 +46,11 @@ public:
     int Get_thin_face_case3(const int& R1, const int& R2, const int& LT, const int& LB, const int& RT, GNP& gnp_i, Plane_3D& Pl_thin)const;
     int Get_parallel_thin_face_case3(const vector<bool>& vertex_flags, const int other_v[], const int& R1, const int& R2, const int& LT, const int& LB, const int& RT, const Plane_3D& Pl_thin, GNP& gnp_i, double& l1)const;
     int Calculate_gnp_vertices_case3(const vector<bool>& vertex_flags, const int& R1, const int& R2, const int& LT, const int& LB, const int& RT, const Point_3D& N_top, GNP& gnp_i)const;
-
+    int Two_consecutive_short_edges(const vector<bool>& vertex_flags, GNP& gnp_i, Point_3D& N_top)const;
+    int Get_reference_vertices_case2(const vector<bool>& vertex_flags, int& R1, int& R2, int& R3, int& R4, int& O1, int& O2)const;
+    int Get_reference_plane_case2(const int& R1, const int& R2, const int& R3, const int& R4, GNP& gnp_i)const;
+    int Set_long_reference_edges_as_parallel_case2(const int& R1, const int& R2, const int& R3, const int& R4, const int& O1, const int& O2, GNP& gnp_i)const;
+    int Find_gnp_length_and_calculate_vertices_case2(const int& R1, const int& R2, const int& R3, const int& R4, const int& O1, const int& O2, GNP& gnp_i, Point_3D& N_top)const;
 };
 //-------------------------------------------------------
 #endif
