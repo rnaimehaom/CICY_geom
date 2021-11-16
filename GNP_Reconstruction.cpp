@@ -518,7 +518,8 @@ int GNP_Reconstruction::Three_short_edges(const vector<bool>& vertex_flags, GNP&
     
     //With the information obtained, the GNP can be reconstructed
     //That is, calculate the coordiantes of all eight vertices of the GNP
-    if (!Calculate_gnp_vertices_case3(vertex_flags, R1, R2, LT, LB, SIGABRT, N_top, gnp_i))
+    int RT = (R1 + 1) % 4;
+    if (!Calculate_gnp_vertices_case3(vertex_flags, R1, R2, LT, LB, RT, N_top, gnp_i))
     {
         hout << "Error in Three_short_edges when calling Calculate_gnp_vertices_case3" << endl;
         return 0;
