@@ -1093,36 +1093,30 @@ int GNP_Reconstruction::Set_long_reference_edges_as_parallel_case2(const int& R1
     }
     
     //Now that the maximum distance has been determined, move the vertices
-    if (idx == 1)
+    if (idx != 1)
     {
-        //Only adjust R3 and R4
-        gnp_i.vertices[R3] = gnp_i.vertices[R3] + U*(d_max - dists[2]);
-        gnp_i.vertices[R4] = gnp_i.vertices[R4] + U*(dists[3] - d_max);
-    }
-    else
-    {
-        //Adjust all except idx
+        //Adjust R1 (and R2) since maximum is not at R1 (nor R2)
         gnp_i.vertices[R1] = M - U*d_max;
         gnp_i.vertices[R2] = M + U*d_max;
-        if (idx != 2)
-        {
-            //Adjust R3 since maximum is not at R3
-            gnp_i.vertices[R3] = gnp_i.vertices[R3] + U*(d_max - dists[2]);
-        }
-        if (idx != 3)
-        {
-            //Adjust R4 since maximum is not at R4
-            gnp_i.vertices[R4] = gnp_i.vertices[R4] + U*(dists[3] - d_max);
-        }
+    }
+    if (idx != 2)
+    {
+        //Adjust R3 since maximum is not at R3
+        gnp_i.vertices[R3] = gnp_i.vertices[R3] + U*(d_max - dists[2]);
+    }
+    if (idx != 3)
+    {
+        //Adjust R4 since maximum is not at R4
+        gnp_i.vertices[R4] = gnp_i.vertices[R4] + U*(dists[3] - d_max);
     }
     
-    //Adjust O1 and O2 if present
-    if (O1 != -1) {
+    //Adjust O1 and O2 if present and they were not the ones with maximum distance
+    if (O1 != -1 && idx != -1) {
         //Get the displacement
         Point_3D S = (O1 <= 3)? U*(do1 - d_max): U*(d_max - do1);
         gnp_i.vertices[O1] = gnp_i.vertices[O1] + S;
     }
-    if (O2 != -1) {
+    if (O2 != -1 && idx != -2) {
         //Get the displacement
         Point_3D S = (O2 <= 3)? U*(do2 - d_max): U*(d_max - do2);
         gnp_i.vertices[O2] = gnp_i.vertices[O2] + S;
