@@ -419,6 +419,11 @@ int GNP_Reconstruction::Reconstruct_partial_gnp(const vector<bool>& vertex_flags
         break;
     case 0:
         //0 short edges
+        if (!No_short_edges(vertex_flags, gnp_i, N_top))
+        {
+            hout << "Error in Reconstruct_partial_gnp when calling No_short_edges" << endl;
+            return 0;
+        }
         break;
     case 4:
         //2 non-consecutive short edges
@@ -1650,5 +1655,323 @@ int GNP_Reconstruction::Find_adjacent_vertex_case1(const vector<bool>& vertex_fl
         return 0;
     }
     
+    return 1;
+}
+//This function reconstructs a GNP partially inside the sample for the case when
+//there are no shorts edges inside the sample
+int GNP_Reconstruction::No_short_edges(const vector<bool>& vertex_flags, GNP& gnp_i, Point_3D& N_top)const
+{
+    //Variables to store reference vertices
+    //For this case R4 may not be present
+    int R1, R2, R3, R4;
+
+    //Get the reference vertices
+    if (!Get_reference_vertices_case0(vertex_flags, R1, R2, R3, R4))
+    {
+        hout << "Error in No_short_edges when calling Get_reference_vertices_case0" << endl;
+        return 0;
+    }
+
+    //Unit vectors needed to calculate GNP vertices in their final position
+    Point_3D U, V;
+
+    //Variables to approximate the GNP side length
+    double l1, l2;
+
+    //Set edges parallel along vector R1R2
+    if (!Set_parallel_edges_along_u_case0(R1, R2, R3, R4, gnp_i, l1))
+    {
+        hout << "Error in No_short_edges when calling Set_parallel_edges_along_u_case0" << endl;
+        return 0;
+    }
+
+    //Set edges parallel along vector R2R3
+    if (!Set_parallel_edges_along_v_case0(R1, R2, R3, R4, gnp_i, l2, V))
+    {
+        hout << "Error in No_short_edges when calling Set_parallel_edges_along_v_case0" << endl;
+        return 0;
+    }
+
+    //Get the GNP side length
+    gnp_i.l = 2.0 * max(l1, l2);
+
+    //Calculate GNP vertices
+    if (!Calculate_gnp_vertices_case0(R1, R2, R3, R4, V, gnp_i, N_top))
+    {
+        hout << "Error in No_short_edges when calling Calculate_gnp_vertices_case0" << endl;
+        return 0;
+    }
+
+    return 1;
+}
+//This function finde the reference vertices for the case when
+//there are no shorts edges inside the sample
+int GNP_Reconstruction::Get_reference_vertices_case0(const vector<bool>& vertex_flags, int& R1, int& R2, int& R3, int& R4)const
+{
+    //Find the reference vertices by scanning pairs across the diagonal
+    //First check vertices in top face
+    if (vertex_flags[0] && vertex_flags[2])
+    {
+        //Check for third vertex
+        if (vertex_flags[1])
+        {
+            //Set the three reference vertices that for sure are present
+            R1 = 0; R2 = 1; R3 = 2;
+            //Check if the fouth vertex is present
+            R4 = (vertex_flags[3]) ? 3 : -1;
+        }
+        else if (vertex_flags[3])
+        {
+            //Set the three reference vertices that for sure are present
+            R1 = 2; R2 = 3; R3 = 0;
+            //The fourth vertex is not present since the previous if-statement was false
+            //in orther to reach this part of the code
+            R4 = -1;
+        }
+        else
+        {
+            hout << "Error in Get_reference_vertices_case0. There are not enough vertices in top square face to reconsturct GNP (1)." << endl;
+            return 0;
+        }
+    }
+    else if (vertex_flags[1] && vertex_flags[3])
+    {
+        //Check for third vertex
+        if (vertex_flags[2])
+        {
+            //Set the three reference vertices that for sure are present
+            R1 = 0; R2 = 1; R3 = 2;
+        }
+        else if (vertex_flags[0])
+        {
+            //Set the three reference vertices that for sure are present
+            R1 = 3; R2 = 0; R3 = 1;
+        }
+        else
+        {
+            hout << "Error in Get_reference_vertices_case0. There are not enough vertices in top square face to reconsturct GNP (2)." << endl;
+            return 0;
+        }
+
+        //The fourth vertex is not present since the previous if-statement was false
+        //in orther to reach this part of the code. For the previous if-statement
+        //to be false, at least one vertex was not present, thus at most three are present
+        //Then for sure R4 is not present
+        R4 = -1;
+    }
+    //Now check vertices in bottom face
+    else if (vertex_flags[4] && vertex_flags[6])
+    {
+        //Check for third vertex
+        if (vertex_flags[5])
+        {
+            //Set the three reference vertices that for sure are present
+            R1 = 4; R2 = 5; R3 = 6;
+            //Check if the fouth vertex is present
+            R4 = (vertex_flags[7]) ? 7 : -1;
+        }
+        else if (vertex_flags[7])
+        {
+            //Set the three reference vertices that for sure are present
+            R1 = 6; R2 = 7; R3 = 4;
+            //The fourth vertex is not present since the previous if-statement was false
+            //in orther to reach this part of the code
+            R4 = -1;
+        }
+        else
+        {
+            hout << "Error in Get_reference_vertices_case0. There are not enough vertices in bottom square face to reconsturct GNP (1)." << endl;
+            return 0;
+        }
+    }
+    else if (vertex_flags[5] && vertex_flags[7])
+    {
+        //Check for third vertex
+        if (vertex_flags[4])
+        {
+            //Set the three reference vertices that for sure are present
+            R1 = 7; R2 = 4; R3 = 5;
+        }
+        else if (vertex_flags[6])
+        {
+            //Set the three reference vertices that for sure are present
+            R1 = 5; R2 = 6; R3 = 7;
+        }
+        else
+        {
+            hout << "Error in Get_reference_vertices_case0. There are not enough vertices in bottom square face to reconsturct GNP (2)." << endl;
+            return 0;
+        }
+
+        //The fourth vertex is not present since the previous if-statement was false
+        //in orther to reach this part of the code. For the previous if-statement
+        //to be false, at least one vertex was not present, thus at most three are present
+        //Then for sure R4 is not present
+        R4 = -1;
+    }
+    else
+    {
+        hout << "Error in Get_reference_vertices_case0. There are not enough vertices in GNP to reconsturct it." << endl;
+        return 0;
+    }
+
+    return 1;
+}
+//This function sets edges R1R4 and R2R3 as parallel
+int GNP_Reconstruction::Set_parallel_edges_along_u_case0(const int& R1, const int& R2, const int& R3, const int& R4, GNP& gnp_i, double& l1)const
+{
+    //Edge R1R2 will be a reference edge
+    //Calculate midpoint of reference edge
+    Point_3D M = (gnp_i.vertices[R1] + gnp_i.vertices[R2])*0.5;
+
+    //Calculate vector U, which is the unit vectro along R1R2
+    Point_3D U = (gnp_i.vertices[R2] - gnp_i.vertices[R1]).unit();
+
+    //Find maximum distance from M to all vertices
+    //Start with distance to R1 and R2
+    double d_max = M.distance_to(gnp_i.vertices[R1]);
+    //Index to determine where the maxium distance was found
+    int idx = 1;
+
+    //Find distance to R3 and update if needed
+    double d3 = U.dot(gnp_i.vertices[R3] - M);
+    if (d3 - d_max > Zero)
+    {
+        //Update distance and index
+        d_max = d3;
+        idx = 3;
+    }
+
+    //Find distance to R4 and update if needed
+    double d4 = (R4 != -1)? abs(U.dot(gnp_i.vertices[R4] - M)) : 0.0;
+    if (d4 - d_max > Zero)
+    {
+        //Update distance and index
+        d_max = d4;
+        idx = 4;
+    }
+
+    //Set l1 as the maximum distance found
+    l1 = d_max;
+
+    //Move vertices so that edges R1R4 and R2R3 are parallel
+    if (idx != 1)
+    {
+        //Update R1 and R2 since they are not at maximum distance
+        gnp_i.vertices[R1] = M - U * d_max;
+        gnp_i.vertices[R2] = M + U * d_max;
+    }
+    if (idx != 3)
+    {
+        //Update R3 since it is not at maximum distance
+        gnp_i.vertices[R3] = gnp_i.vertices[R3] + U * (d_max - d3);
+    }
+    if (R4 != -1 && idx != 4)
+    {
+        //Update R4 since it is not at maximum distance
+        gnp_i.vertices[R4] = gnp_i.vertices[R4] - U * (d_max - d4);
+    }
+
+    return 1;
+}
+//This function sets edges R1R2 and R4R3 as parallel
+int GNP_Reconstruction::Set_parallel_edges_along_v_case0(const int& R1, const int& R2, const int& R3, const int& R4, GNP& gnp_i, double& l2, Point_3D& V)const
+{
+    //Edge R2R3 will be a reference edge
+    //Calculate midpoint of reference edge
+    Point_3D M = (gnp_i.vertices[R2] + gnp_i.vertices[R3]) * 0.5;
+
+    //Calculate vector V, which is the unit vectro along R2R3
+    V = (gnp_i.vertices[R3] - gnp_i.vertices[R2]).unit();
+
+    //Find maximum distance from M to all vertices
+    //Start with distance to R2 and R3
+    double d_max = M.distance_to(gnp_i.vertices[R2]);
+    //Index to determine where the maxium distance was found
+    int idx = 2;
+
+    //Find distance to R1 and update if needed
+    double d1 = V.dot(M - gnp_i.vertices[R1]);
+    if (d1 - d_max > Zero)
+    {
+        //Update distance and index
+        d_max = d1;
+        idx = 1;
+    }
+
+    //Find distance to R4 and update if needed
+    double d4 = (R4 != -1) ? abs(V.dot(gnp_i.vertices[R4] - M)) : 0.0;
+    if (d4 - d_max > Zero)
+    {
+        //Update distance and index
+        d_max = d4;
+        idx = 4;
+    }
+
+    //Set l2 as the maximum distance found
+    l2 = d_max;
+
+    //Move vertices so that edges R1R2 and R4R3 are parallel
+    if (idx != 1)
+    {
+        //Update R1 since it is not at maximum distance
+        gnp_i.vertices[R1] = gnp_i.vertices[R1] - V * (d_max - d1);
+    }
+    if (idx != 2)
+    {
+        //Update R2 and R3 since they are not at maximum distance
+        gnp_i.vertices[R2] = M - V * d_max;
+        gnp_i.vertices[R3] = M + V * d_max;
+    }
+    if (R4 != -1 && idx != 4)
+    {
+        //Update R4 since it is not at maximum distance
+        gnp_i.vertices[R4] = gnp_i.vertices[R4] + V * (d_max - d4);
+    }
+
+    return 1;
+}
+//This function calcualtes the GNP vertices for the case when
+//there are no shorts edges inside the sample
+int GNP_Reconstruction::Calculate_gnp_vertices_case0(const int& R1, const int& R2, const int& R3, const int& R4, const Point_3D& V, GNP& gnp_i, Point_3D& N_top)const
+{
+    //Get mid point of R1R2
+    Point_3D M = (gnp_i.vertices[R1] + gnp_i.vertices[R2]) * 0.5;
+
+    //Calculate vector U, which is the unit vectro along R1R2
+    Point_3D U = (gnp_i.vertices[R2] - gnp_i.vertices[R1]).unit();
+
+    //Calculate normal to top face
+    N_top = V.cross(U);
+
+    //Calculate displacement from M to R1, R2
+    Point_3D disp_u = U * gnp_i.l * 0.5;
+
+    //Calculate positions of R1, R2
+    gnp_i.vertices[R1] = M - disp_u;
+    gnp_i.vertices[R2] = M + disp_u;
+
+    //Calculate displacement from R1 to R4, which is the same from R2 to R3
+    Point_3D disp_v = V * gnp_i.l;
+
+    //Calculate position of R3, R4
+    gnp_i.vertices[R3] = gnp_i.vertices[R2] + disp_v;
+    gnp_i.vertices[R4] = gnp_i.vertices[R1] + disp_v;
+
+    //Boolean to determine tif vertices R1-R4 are on the top face
+    bool top_face = R1 <= 3;
+
+    //Calculate displacement for vertices in opposite face
+    Point_3D disp_t = (top_face) ? N_top*(-gnp_i.t) : N_top * gnp_i.t;
+
+    //Determine if should add or subtract 4 to obtain vertices on opposite face
+    int N = (top_face) ? 4 : -4;
+
+    //Calculate vetices on opposite face
+    gnp_i.vertices[R1 + N] = gnp_i.vertices[R1] + disp_t;
+    gnp_i.vertices[R2 + N] = gnp_i.vertices[R2] + disp_t;
+    gnp_i.vertices[R3 + N] = gnp_i.vertices[R3] + disp_t;
+    gnp_i.vertices[R4 + N] = gnp_i.vertices[R4] + disp_t;
+
     return 1;
 }
