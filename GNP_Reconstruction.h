@@ -57,6 +57,9 @@ public:
     int Get_unit_vectors_on_square_surface_case4(const int& R1, const int& R4, const GNP& gnp_i, const Point_3D& N_top, Point_3D& U, Point_3D& V)const;
     int Calculate_gnp_side_length_case4(const int& R1, const int& R2, const int& R3, const int& R4, const int& Ou, const int& Ov, const Point_3D& U, const Point_3D& V, GNP& gnp_i)const;
     int Calculate_gnp_vertices_case4(const int& R1, const int& R2, const Point_3D& U, const Point_3D& V, GNP& gnp_i)const;
+    int One_short_edge(const vector<bool>& vertex_flags, GNP& gnp_i, Point_3D& N_top)const;
+    int Find_vertex_for_two_short_edges_case1(const vector<bool>& vertex_flags, GNP& gnp_i, int& V)const;
+    int Find_adjacent_vertex_case1(const vector<bool>& vertex_flags, const int& R1, const int& R2, int& V, GNP& gnp_i)const;
 };
 //-------------------------------------------------------
 #endif

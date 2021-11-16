@@ -412,6 +412,10 @@ int GNP_Reconstruction::Reconstruct_partial_gnp(const vector<bool>& vertex_flags
         break;
     case 1:
         //1 short edge
+        if (!One_short_edge(vertex_flags, gnp_i, N_top)) {
+            hout << "Error in Reconstruct_partial_gnp when calling One_short_edge" << endl;
+            return 0;
+        }
         break;
     case 0:
         //0 short edges
@@ -1497,6 +1501,159 @@ int GNP_Reconstruction::Calculate_gnp_vertices_case4(const int& R1, const int& R
     int a = (R1 + 2) % 4;
     gnp_i.vertices[a] = gnp_i.vertices[v] + V_disp;
     gnp_i.vertices[a + 4] = gnp_i.vertices[v + 4] + V_disp;
+    
+    return 1;
+}
+//This function reconstructs a GNP partially inside the sample for the case when
+//one short edge is inside the sample
+int GNP_Reconstruction::One_short_edge(const vector<bool>& vertex_flags, GNP& gnp_i, Point_3D& N_top)const
+{
+    //Variable to store the vertex that will be used to form a second short edge
+    int V;
+    
+    //Find a vertex that converts this case into case 2 (two consecutive short edges)
+    if (!Find_vertex_for_two_short_edges_case1(vertex_flags, gnp_i, V))
+    {
+        hout<<"Error in One_short_edge when calling Find_vertex_for_two_short_edges_case1"<<endl;
+        return 0;
+    }
+    
+    //Create a new vertex_flags vector with V set to true
+    vector<bool> new_vertex_flags = vertex_flags;
+    new_vertex_flags[V] = true;
+    
+    //Call case 2 with new vertex_flags vector
+    if (!Two_consecutive_short_edges(new_vertex_flags, gnp_i, N_top))
+    {
+        hout<<"Error in One_short_edge when calling Two_consecutive_short_edges"<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//This function finds a vertex that completes a second consecutive short edge
+int GNP_Reconstruction::Find_vertex_for_two_short_edges_case1(const vector<bool>& vertex_flags, GNP& gnp_i, int& V)const
+{
+    //Find the short edge
+    if (vertex_flags[0] && vertex_flags[4])
+    {
+        //Find adjacent vertex
+        if (!Find_adjacent_vertex_case1(vertex_flags, 0, 4, V, gnp_i))
+        {
+            hout<<"Error in Find_vertex_for_two_short_edges_case1 when calling Find_adjacent_vertex_case1 on edge 04."<<endl;
+            return 0;
+        }
+    }
+    else if (vertex_flags[1] && vertex_flags[5])
+    {
+        //Find adjacent vertex
+        if (!Find_adjacent_vertex_case1(vertex_flags, 1, 5, V, gnp_i))
+        {
+            hout<<"Error in Find_vertex_for_two_short_edges_case1 when calling Find_adjacent_vertex_case1 on edge 15."<<endl;
+            return 0;
+        }
+    }
+    else if (vertex_flags[2] && vertex_flags[6])
+    {
+        //Find adjacent vertex
+        if (!Find_adjacent_vertex_case1(vertex_flags, 2, 6, V, gnp_i))
+        {
+            hout<<"Error in Find_vertex_for_two_short_edges_case1 when calling Find_adjacent_vertex_case1 on edge 26."<<endl;
+            return 0;
+        }
+    }
+    else if (vertex_flags[3] && vertex_flags[7])
+    {
+        //Find adjacent vertex
+        if (!Find_adjacent_vertex_case1(vertex_flags, 3, 7, V, gnp_i))
+        {
+            hout<<"Error in Find_vertex_for_two_short_edges_case1 when calling Find_adjacent_vertex_case1 on edge 37."<<endl;
+            return 0;
+        }
+    }
+    else
+    {
+        hout<<"Error in Find_vertex_for_two_short_edges_case1. No short edge inside the sample was found although there should be exactly one."<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//Given a short edge, this function finds an adjacent edge that completes a second short edge
+int GNP_Reconstruction::Find_adjacent_vertex_case1(const vector<bool>& vertex_flags, const int& R1, const int& R2, int& V, GNP& gnp_i)const
+{
+    //R1 is a top edge and R2 is a bottom edge
+    
+    //Get vertex to the right of R1
+    int R = (R1 + 1) % 4;
+    //Get vertex to the left of R1
+    int L = (R1 + 3) % 4;
+    
+    //Get displacement vector going from bottom square face towards top square face
+    Point_3D disp_t = gnp_i.vertices[R1] - gnp_i.vertices[R2];
+    
+    //Check vertex to the right of R1
+    if (vertex_flags[R])
+    {
+        //Set V as the vertex below R
+        V = R + 4;
+        
+        //Check that V is indeed not present, otherwise there is an error
+        if (vertex_flags[V]) {
+            hout<<"Error in Find_adjacent_vertex_case1. There is a second consecutive short edge ('to the right') inside the sample. Initial short edge is "<<R1<<"-"<<R2<<". Second consecutive edge is "<<R<<"-"<<V<<". The case identified was the one with only one short edge inside the sample."<<endl;
+            return 0;
+        }
+        
+        //Calculate the coordinates of vertex V, which is just going down from vertex R
+        gnp_i.vertices[V] = gnp_i.vertices[R] - disp_t;
+    }
+    //Check vertex to the right of R2, i.e., the one below R
+    else if (vertex_flags[R + 4])
+    {
+        //Set V as R
+        V = R;
+        
+        //There is no need to check if R is present, as this was already done
+        //resulting in false and thus reaching this estatement
+        
+        //Calculate the coordinates of vertex V, which is just going up from vertex R+4
+        gnp_i.vertices[V] = gnp_i.vertices[R + 4] + disp_t;
+    }
+    //Check vertex to the left of R1
+    else if (vertex_flags[L])
+    {
+        //Set V as the vertex below L
+        int V = L + 4;
+        
+        //Check that V is indeed not present, otherwise there is an error
+        if (vertex_flags[V]) {
+            hout<<"Error in Find_adjacent_vertex_case1. There is a second consecutive short edge ('to the left') inside the sample. Initial short edge is "<<R1<<"-"<<R2<<". Second consecutive edge is "<<L<<"-"<<V<<". The case identified was the one with only one short edge inside the sample."<<endl;
+            return 0;
+        }
+        
+        //Calculate the coordinates of vertex V, which is just going down from vertex L
+        gnp_i.vertices[V] = gnp_i.vertices[L] - disp_t;
+    }
+    //Check vertex to the left of R2, i.e., the one below L
+    else if (vertex_flags[L + 4])
+    {
+        //Set V as L
+        V = L;
+        
+        //There is no need to check if L is present, as this was already done
+        //resulting in false and thus reaching this estatement
+        
+        //Calculate the coordinates of vertex V, which is just going up from vertex L+4
+        gnp_i.vertices[V] = gnp_i.vertices[L + 4] + disp_t;
+    }
+    else
+    {
+        hout<<"Error in Find_adjacent_vertex_case1. No adjacent vertex to edge "<<R1<<"-"<<R2<<" was found. GNP with one short edge inside the sample cannot be reconstructed."<<endl;
+        hout << "Boolean vector: " << endl;
+        for (size_t i = 0; i < vertex_flags.size(); i++)
+            hout << "vertex_flags[" << i << "]=" << vertex_flags[i] << endl;
+        return 0;
+    }
     
     return 1;
 }
