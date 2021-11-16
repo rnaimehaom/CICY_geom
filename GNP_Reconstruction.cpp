@@ -418,8 +418,15 @@ int GNP_Reconstruction::Reconstruct_partial_gnp(const vector<bool>& vertex_flags
         break;
     case 4:
         //2 non-consecutive short edges
+        if (!Two_non_consecutive_short_edges(vertex_flags, gnp_i, N_top))
+        {
+            hout << "Error in Reconstruct_partial_gnp when calling Two_non_consecutive_short_edges" << endl;
+            return 0;
+        }
         break;
     default:
+            hout << "Unkonwn case for reconstructing partial GNP. Case: " << gnp_case << endl;
+            return 0;
         break;
     }
 
@@ -1227,6 +1234,269 @@ int GNP_Reconstruction::Find_gnp_length_and_calculate_vertices_case2(const int& 
     idx_top = (R4 + 2) % 4;
     idx_bot = (R3 + 2) % 4;
     gnp_i.vertices[idx_bot] = gnp_i.vertices[idx_top] - disp_thick;
+    
+    return 1;
+}
+//This function reconstructs a GNP partially inside the sample for the case when
+//two non consecutive short edges are inside the sample
+int GNP_Reconstruction::Two_non_consecutive_short_edges(const vector<bool>& vertex_flags, GNP& gnp_i, Point_3D& N_top)const
+{
+    //Variables to store the reference vertices
+    int R1, R2, R3, R4;
+    
+    //Variables to store other vertices, if any
+    int Ou = -1, Ov = -1;
+    
+    //Get the reference vertices
+    if (!Get_reference_vertices_case4(vertex_flags, R1, R2, R3, R4, Ou, Ov))
+    {
+        hout<<"Error in Two_non_consecutive_short_edges when calling Get_reference_vertices_case4"<<endl;
+        return 0;
+    }
+    
+    //Get the unit vector along R1R2, which will serve as normal of the top surface
+    //So in this case we actually have a unitary vector R2R1
+    N_top = (gnp_i.vertices[R1] - gnp_i.vertices[R2]).unit();
+    
+    //Find the maximum distance from M to any vertex along N_top in order to
+    //set the vertices on two parallel planes that correspond to the square faces
+    //In the process the GNP thickness is calculated
+    if (!Set_parallel_planes_for_square_faces_case4(R1, R2, R3, R4, Ou, Ov, gnp_i, N_top))
+    {
+        hout<<"Error in Two_non_consecutive_short_edges when calling Set_parallel_planes_for_square_faces_case4"<<endl;
+        return 0;
+    }
+    
+    //Get unit vector U and V, which go along the top squared face of the GNP
+    Point_3D U, V;
+    if (!Get_unit_vectors_on_square_surface_case4(R1, R4, gnp_i, N_top, U, V))
+    {
+        hout<<"Error in Two_non_consecutive_short_edges when calling Get_unit_vectors_on_square_surface"<<endl;
+        return 0;
+    }
+    
+    //Find the GNP side length
+    if (!Calculate_gnp_side_length_case4(R1, R2, R3, R4, Ou, Ov, U, V, gnp_i))
+    {
+        hout<<"Error in Two_non_consecutive_short_edges when calling Calculate_gnp_side_length_case4"<<endl;
+        return 0;
+    }
+    
+    //Recalculate the GNP vertices
+    if (!Calculate_gnp_vertices_case4(R1, R2, U, V, gnp_i))
+    {
+        hout<<"Error in Two_non_consecutive_short_edges when calling Calculate_gnp_vertices_case4"<<endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//This function finds the reference vertices for the case of
+//two non consecutive short edges inside the sample
+int GNP_Reconstruction::Get_reference_vertices_case4(const vector<bool>& vertex_flags, int& R1, int& R2, int& R3, int& R4, int& Ou, int& Ov)const
+{
+    //There are only two options, check which of the them is
+    if (vertex_flags[0] && vertex_flags[4] && vertex_flags[2] && vertex_flags[6])
+    {
+        //Set reference vertices
+        R1 = 0; R2 = 4; R3 = 6; R4 = 2;
+        
+        //Set other vertices if present
+        Ou = (vertex_flags[3])? 3 : (vertex_flags[7])? 7 : -1;
+        Ov = (vertex_flags[1])? 1 : (vertex_flags[5])? 5 : -1;
+    }
+    else if (vertex_flags[1] && vertex_flags[5] && vertex_flags[3] && vertex_flags[7])
+    {
+        //Set reference vertices
+        R1 = 1; R2 = 5; R3 = 7; R4 = 3;
+        
+        //Set other vertices if present
+        Ou = (vertex_flags[0])? 0 : (vertex_flags[4])? 4 : -1;
+        Ov = (vertex_flags[2])? 2 : (vertex_flags[6])? 6 : -1;
+    }
+    else
+    {
+        hout<<"Error in Get_reference_vertices_case4. There are no two edges across the diagonal inside the sample (case 4)."<<endl;
+        hout << "Boolean vector: " << endl;
+        for (size_t i = 0; i < vertex_flags.size(); i++)
+            hout << "vertex_flags[" << i << "]=" << vertex_flags[i] << endl;
+        return 0;
+    }
+    
+    return 1;
+}
+//This function sets the vertices on two parallel planes that correspond to the square faces
+//for the case of two non consecutive short edges are inside the sample
+int GNP_Reconstruction::Set_parallel_planes_for_square_faces_case4(const int& R1, const int& R2, const int& R3, const int& R4, const int& Ou, const int& Ov, GNP& gnp_i, Point_3D& N_top)const
+{
+    //Get the midpoint of R1R2
+    Point_3D M = (gnp_i.vertices[R1] + gnp_i.vertices[R2])*0.5;
+    
+    //Calculate the distance from M to R1 and R2
+    double d12 = M.distance_to(gnp_i.vertices[R1]);
+    
+    //Initialize the maximum distance with the calculated distance
+    double d_max = d12;
+    //Initialize index of maximum distance
+    double idx = 1;
+    
+    //Calculate the distance to the remaining reference vertices
+    //At the same time look for the maximum distance
+    double d3 = N_top.dot(M - gnp_i.vertices[R3]);
+    if (d3 - d_max > Zero) {
+        d_max = d3;
+        idx = 3;
+    }
+    double d4 = N_top.dot(gnp_i.vertices[R4] - M);
+    if (d4 - d_max > Zero) {
+        d_max = d4;
+        idx = 4;
+    }
+    
+    //Calculate the distances to the other vertices if present
+    //At the same time look for the maximum distance
+    double dou = (Ou != -1)? abs(N_top.dot(gnp_i.vertices[Ou] - M)) : 0.0;
+    if (dou - d_max > Zero) {
+        d_max = dou;
+        idx = -1;
+    }
+    double dov = (Ov != -1)? abs(N_top.dot(gnp_i.vertices[Ov] - M)) : 0.0;
+    if (dov - d_max > Zero) {
+        d_max = dov;
+        idx = -2;
+    }
+    
+    //At this point the maximum distance was found
+    //Update the GNP thickness
+    gnp_i.t = 2.0*d_max;
+    
+    //Displacement along the thickness
+    Point_3D disp_t = N_top*d_max;
+    
+    //Move all vertices to the maximum distance from M
+    if (idx != 1)
+    {
+        //Vertices R1 and R2 are not at the maximum distance, so update them
+        gnp_i.vertices[R1] = M + disp_t;
+        gnp_i.vertices[R2] = M - disp_t;
+    }
+    if (idx != 3)
+    {
+        //Vertex R3 is not at the maximum distance, so update it
+        gnp_i.vertices[R3] = gnp_i.vertices[R3] - N_top*(d_max - d3);
+    }
+    if (idx != 4)
+    {
+        //Vertex R3 is not at the maximum distance, so update it
+        gnp_i.vertices[R4] = gnp_i.vertices[R4] + N_top*(d_max - d4);
+    }
+    if (idx != -1)
+    {
+        //Vertex Ou is not at the maximum distance, so update it
+        double mult = (Ou != -1 && Ou <= 3)? (d_max - dou) : (dou - d_max) ;
+        gnp_i.vertices[Ou] = gnp_i.vertices[Ou] - N_top*mult;
+    }
+    if (idx != -2)
+    {
+        //Vertex Ov is not at the maximum distance, so update it
+        double mult = (Ov != -1 && Ov <= 3)? (d_max - dov) : (dov - d_max) ;
+        gnp_i.vertices[Ov] = gnp_i.vertices[Ov] - N_top*mult;
+    }
+    
+    return 1;
+}
+//This function calculates the vectors that go along the top squared face of the GNP
+int GNP_Reconstruction::Get_unit_vectors_on_square_surface_case4(const int& R1, const int& R4, const GNP& gnp_i, const Point_3D& N_top, Point_3D& U, Point_3D& V)const
+{
+    //Get unit vector R1R4
+    Point_3D R1R4 = (gnp_i.vertices[R4] - gnp_i.vertices[R1]).unit();
+    
+    //Get vector notmal to both N_top and R1R4
+    //This vector is unitary since both N_top and R1R4 are also unitary
+    Point_3D U_45off = N_top.cross(R1R4);
+    
+    //Vector U comes from normalizing the addition of vectors R1R4 and U_45off
+    U = (R1R4 + U_45off).unit();
+    
+    //Vector V is normal to N_top and U
+    V = U.cross(N_top);
+    
+    return 1;
+}
+//This functions determines the GNP side length
+int GNP_Reconstruction::Calculate_gnp_side_length_case4(const int& R1, const int& R2, const int& R3, const int& R4, const int& Ou, const int& Ov, const Point_3D& U, const Point_3D& V, GNP& gnp_i)const
+{
+    //Get distances from R1 along U while saving the maximum distance
+    
+    //Initialize maximum distance with distance to R3 along U
+    double d_max = U.dot(gnp_i.vertices[R3] - gnp_i.vertices[R1]);
+    
+    //Calculate distance to R4 along U and update maximum if needed
+    double d_new = U.dot(gnp_i.vertices[R4] - gnp_i.vertices[R1]);
+    if (d_new - d_max > Zero)
+    {
+        d_max = d_new;
+    }
+    
+    //Calculate distance to Ou along U if present and update maximum if needed
+    d_new = (Ou != -1)? U.dot(gnp_i.vertices[Ou] - gnp_i.vertices[R1]) : 0.0;
+    if (d_new - d_max > Zero)
+    {
+        d_max = d_new;
+    }
+    
+    //Calculate distance to R3 along V and update maximum if needed
+    d_new = V.dot(gnp_i.vertices[R3] - gnp_i.vertices[R1]);
+    if (d_new - d_max > Zero)
+    {
+        d_max = d_new;
+    }
+    
+    //Calculate distance to R4 along V and update maximum if needed
+    d_new = V.dot(gnp_i.vertices[R4] - gnp_i.vertices[R1]);
+    if (d_new - d_max > Zero)
+    {
+        d_max = d_new;
+    }
+    
+    //Calculate distance to Ov along V if present and update maximum if needed
+    d_new = (Ov != -1)? V.dot(gnp_i.vertices[Ov] - gnp_i.vertices[R1]) : 0.0;
+    if (d_new - d_max > Zero)
+    {
+        d_max = d_new;
+    }
+    
+    //Update GNP side length
+    gnp_i.l = d_max;
+    
+    return 1;
+}
+//This function calculates the vertices of the GNP for the case when
+//two non consecutive short edges are inside the sample
+int GNP_Reconstruction::Calculate_gnp_vertices_case4(const int& R1, const int& R2, const Point_3D& U, const Point_3D& V, GNP& gnp_i)const
+{
+    //Reconstruction starts from edge R1R2
+    
+    //Displacement along V
+    Point_3D V_disp = V*gnp_i.l;
+    
+    //Calculate vertices in edge to the right of edge R1R2
+    int v = (R1 + 1) % 4;
+    gnp_i.vertices[v] = gnp_i.vertices[R1] + V_disp;
+    gnp_i.vertices[v + 4] = gnp_i.vertices[R2] + V_disp;
+    
+    //Displacement along U
+    Point_3D U_disp = U*gnp_i.l;
+    
+    //Calculate vertices in edge to the left of edge R1R2
+    v = (R1 + 3) % 4;
+    gnp_i.vertices[v] = gnp_i.vertices[R1] + U_disp;
+    gnp_i.vertices[v + 4] = gnp_i.vertices[R2] + U_disp;
+    
+    //Calculate vertices in the edge across edge R1R2
+    int a = (R1 + 2) % 4;
+    gnp_i.vertices[a] = gnp_i.vertices[v] + V_disp;
+    gnp_i.vertices[a + 4] = gnp_i.vertices[v + 4] + V_disp;
     
     return 1;
 }
