@@ -525,9 +525,6 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
     //is completely inside the sample
     vector<int> all_vertices = All_gnp_vertices();
 
-    //Variable to store flags set to true for a GNP that is completely inside the sample
-    vector<bool> vtx_all_true(8, true);
-
     //Object to reconstruct a GNP
     GNP_Reconstruction GR;
 
@@ -545,7 +542,12 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
                 return 0;
             }
 
-            //Reconstruct partial GNP
+            //Reconstruct GNP
+            if (!GR.Reconstruct_gnp(vertices_gnps_out[idx_gnp_out], vertex_flags[idx_gnp_out], gnps[i]))
+            {
+                hout << "Error in Apply_displacements_to_gnps when calling GR.Reconstruct_gnp (partial)" << endl;
+                return 0;
+            }
 
             //Increase the index of the next available GNP in vector gnps_outside
             //Ensure that the value of the index does not exceed the number of
@@ -562,10 +564,12 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
                 return 0;
             }
 
-            //Reconstruct full GNP
-            if (!GR.Reconstruct_full_gnp(gnps[i]))
+            //Reconstruct GNP
+            //Use an empty boolean vector since in the case of a full GNP the 
+            //boolean vector is not needed
+            if (!GR.Reconstruct_gnp(all_vertices, vector<bool>(), gnps[i]))
             {
-                hout << "Error in Apply_displacements_to_gnps when calling GR.Reconstruct_full_gnp" << endl;
+                hout << "Error in Apply_displacements_to_gnps when calling GR.Reconstruct_gnp (full)" << endl;
                 return 0;
             }
         }

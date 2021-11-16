@@ -9,13 +9,71 @@
 
 #include "GNP_Reconstruction.h"
 
+//This function reconstructs a GNP
+//This function determines whether a full GNP or a partial GNP is reconstructed
+int GNP_Reconstruction::Reconstruct_gnp(const vector<int>& vertices, const vector<bool>& vertex_flags, GNP& gnp_i)const
+{
+    //Variable to store the normal vector of the top surface of the GNP
+    //This is neded to reconstruct the rotation matrix of the GNP
+    Point_3D N_top;
+
+    //Determine whether a full GNP or a partial one is to bre reconstructed
+    if (vertices.size() == 8)
+    {
+        //Reconstruct a full GNP
+        if (!Reconstruct_full_gnp(gnp_i, N_top))
+        {
+            hout << "Error in Reconstruct_gnp when calling Reconstruct_full_gnp" << endl;
+            return 0;
+        }
+    }
+    else
+    {
+        //Reconstruct a partial GNP
+        if (!Reconstruct_partial_gnp(vertex_flags, gnp_i, N_top))
+        {
+            hout << "Error in Reconstruct_gnp when calling Reconstruct_partial_gnp" << endl;
+            return 0;
+        }
+    }
+
+    //Now that all vertices are calculated, update GNP center
+    if (!Update_gnp_center(gnp_i))
+    {
+        hout << "Error in Reconstruct_full_gnp when calling Update_gnp_center" << endl;
+        return 0;
+    }
+
+    //Reset rotation matrix of GNP
+    gnp_i.rotation = MathMatrix(3, 3);
+
+    //Object needed to recalculate GNP rotation matrix and plane equations
+    Generate_Network GN;
+
+    //Recalculate rotation matrix using the normal from one of the parallel planes
+    if (!GN.Rotation_matrix_from_direction(N_top.x, N_top.y, N_top.z, gnp_i.rotation))
+    {
+        hout << "Error in Fit_squared_faces_on_parallel_planes when calling GN.Rotation_matrix_from_direction" << endl;
+        return 0;
+    }
+
+    //Recalculate plane equations of GNP
+    if (!GN.Update_gnp_plane_equations(gnp_i))
+    {
+        hout << "Error in Fit_squared_faces_on_parallel_planes when calling GN.Update_gnp_plane_equations" << endl;
+        return 0;
+    }
+
+
+    return 1;
+}
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //This function reconstrucst a GNP after it has undergone a deformation
 //Here, the paralellepiped that contains the eight vertices of the GNP on 
 //its deformed position is found
-int GNP_Reconstruction::Reconstruct_full_gnp(GNP& gnp_i)const
+int GNP_Reconstruction::Reconstruct_full_gnp(GNP& gnp_i, Point_3D& N_top)const
 {
     //Plane that contains vertices v0 to v3
     Plane_3D Pl_top;
@@ -47,32 +105,8 @@ int GNP_Reconstruction::Reconstruct_full_gnp(GNP& gnp_i)const
         return 0;
     }
 
-    //Now that all vertices are calculated, update GNP center
-    if (!Update_gnp_center(gnp_i))
-    {
-        hout << "Error in Reconstruct_full_gnp when calling Update_gnp_center" << endl;
-        return 0;
-    }
-
-    //Reset rotation matrix of GNP
-    gnp_i.rotation = MathMatrix(3, 3);
-
-    //Object needed to recalculate GNP rotation matrix and plane equations
-    Generate_Network GN;
-
-    //Recalculate rotation matrix using the normal from one of the parallel planes
-    if (!GN.Rotation_matrix_from_direction(Pl_top.N.x, Pl_top.N.y, Pl_top.N.z, gnp_i.rotation))
-    {
-        hout << "Error in Fit_squared_faces_on_parallel_planes when calling GN.Rotation_matrix_from_direction" << endl;
-        return 0;
-    }
-
-    //Recalculate plane equations of GNP
-    if (!GN.Update_gnp_plane_equations(gnp_i))
-    {
-        hout << "Error in Fit_squared_faces_on_parallel_planes when calling GN.Update_gnp_plane_equations" << endl;
-        return 0;
-    }
+    //Set the normal vector to the top face
+    N_top = Pl_top.N;
 
     return 1;
 }
@@ -375,7 +409,7 @@ int GNP_Reconstruction::Update_gnp_center(GNP& gnp_i)const
 //---------------------------------------------------------------------------
 //This function reconstructs a partial GNP
 //This is done in a case by case basis to facilitate reconstruction of the GNP
-int GNP_Reconstruction::Reconstruct_partial_gnp(const vector<bool>& vertex_flags, GNP& gnp_i)const
+int GNP_Reconstruction::Reconstruct_partial_gnp(const vector<bool>& vertex_flags, GNP& gnp_i, Point_3D& N_top)const
 {
     //Variable to store the case for GNP reconstruction
     int gnp_case = -1;
@@ -386,10 +420,6 @@ int GNP_Reconstruction::Reconstruct_partial_gnp(const vector<bool>& vertex_flags
         hout << "Error in Reconstruct_partial_gnp when calling Find_reconstruction_case" << endl;
         return 0;
     }
-    
-    //Variable to store the normal vector of the top surface of the GNP
-    //This is neded to reconstruct the rotation matrix of the GNP
-    Point_3D N_top;
 
     //Reconstruct depending on the case
     switch (gnp_case)
