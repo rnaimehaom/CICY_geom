@@ -86,6 +86,16 @@ public:
     int Add_ofsets_for_triangles(const int& n_tri, ofstream& otec)const;
     int Add_connectivity_for_triangles(const vector<TrFaceL>& triangles, ofstream& otec)const;
     int Export_supertetrahedron(const vector<Point_3D>& vertices, const vector<TrFaceL>& triangles, const string& filename)const;
+    //---------------------------------------------------------------------------
+    //Points
+    int Export_point_array(const Point_3D points[], const int& size, const string& filename)const;
+    int Add_point_coordinates_from_array(const Point_3D points[], const int& size, ofstream& otec)const;
+    int Add_offsets_for_point_array(const Point_3D points[], const int& size, ofstream& otec)const;
+    int Add_connectivity_for_point_array(const Point_3D points[], const int& size, ofstream& otec)const;
+    int Export_point_vector(const vector<Point_3D>& points, const string& filename)const;
+    int Add_point_coordinates_from_vector(const vector<Point_3D>& points, ofstream& otec)const;
+    int Add_offsets_for_point_vector(const vector<Point_3D>& points, ofstream& otec)const;
+    int Add_connectivity_for_point_vector(const vector<Point_3D>& points, ofstream& otec)const;
 };
 
 #endif /* VTK_Export_hpp */

@@ -1668,3 +1668,248 @@ int VTK_Export::Export_supertetrahedron(const vector<Point_3D>& vertices, const 
 
     return 1;
 }
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//Points
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//This function exports an array of points
+int VTK_Export::Export_point_array(const Point_3D points[], const int& size, const string& filename)const
+{
+    //Open the file
+    ofstream otec(filename.c_str());
+
+    //Add header
+    if (!Add_header(otec)) 
+    {
+        hout << "Error in Export_point_array when calling Add_header" << endl;
+        return 0;
+    }
+
+    //Add point coordinates
+    if (!Add_point_coordinates_from_array(points, size, otec))
+    {
+        hout << "Error in Export_point_array when calling Add_point_coordinates_from_array" << endl;
+        return 0;
+    }
+
+    //Add vertices line
+    //The first number is the number of points+1 and the second number is the number of points
+    otec << "VERTICES" << size + 1 << " " << size << endl;
+
+    //Add offsets
+    if (!Add_offsets_for_point_array(points, size, otec))
+    {
+        hout << "Error in Export_point_array when calling Add_offsets_for_point_array" << endl;
+        return 0;
+    }
+
+    //Add connectivity
+    if (!Add_connectivity_for_point_array(points, size, otec))
+    {
+        hout << "Error in Export_point_array when calling Add_connectivity_for_point_array" << endl;
+        return 0;
+    }
+
+    //Close the file
+    otec.close();
+
+    return 1;
+}
+//This function adds the number of points and the point coordinates when exporting a point array
+int VTK_Export::Add_point_coordinates_from_array(const Point_3D points[], const int& size, ofstream& otec)const
+{
+    //Add the number of points
+    otec << "POINTS " << size << " float";
+
+    //Add the point coordinates
+    for (int i = 0; i < size; i++)
+    {
+        //Add a line break every four points
+        if (!(i % 4))
+            otec << endl;
+        
+        //Add point coordinates separated by a space
+        otec << points[i].x << " " << points[i].y << " " << points[i].z << " ";
+    }
+
+    //Add a final line break
+    otec << endl;
+
+    return 1;
+}
+//This function adds the offsets when exporting a point array
+int VTK_Export::Add_offsets_for_point_array(const Point_3D points[], const int& size, ofstream& otec)const
+{
+    //Add offsets line
+    otec << "OFFSETS vtktypeint64";
+
+    //Add the offests
+    //This is a sequence of consecutive numbers starting in 0 and ending in 
+    //the number of points
+    for (int i = 0; i <= size; i++)
+    {
+        //Add a line break every 20 points
+        if (!(i % 20))
+            otec << endl;
+
+        //Add offset
+        otec << i << " ";
+    }
+
+    //Add a final line break
+    otec << endl;
+
+    return 1;
+}
+//This function adds the connectivity when exporting a point array
+int VTK_Export::Add_connectivity_for_point_array(const Point_3D points[], const int& size, ofstream& otec)const
+{
+    //Add connectivity line
+    otec << "CONNECTIVITY vtktypeint64";
+
+    //Add the connectivity
+    //This is a sequence of consecutive numbers starting in 0 and ending in 
+    //the number of points - 1
+    for (int i = 0; i < size; i++)
+    {
+        //Add a line break every 20 points
+        if (!(i % 20))
+            otec << endl;
+
+        //Add connectivity
+        otec << i << " ";
+    }
+
+    //Add a final line break
+    otec << endl;
+
+    return 1;
+}
+//This function exports a vector of points as points in a VTK file
+int VTK_Export::Export_point_vector(const vector<Point_3D>& points, const string& filename)const
+{
+    //Check that the vector is not empty
+    if (points.empty()) {
+        hout << "Vector of points is empty. NO visualization file was exported." << endl;
+        return 1;
+    }
+
+    //Open the file
+    ofstream otec(filename.c_str());
+
+    //Add header
+    if (!Add_header(otec))
+    {
+        hout << "Error in Export_point_vector when calling Add_header" << endl;
+        return 0;
+    }
+
+    //Add point coordinates
+    if (!Add_point_coordinates_from_vector(points, otec))
+    {
+        hout << "Error in Export_point_vector when calling Add_point_coordinates_from_vector" << endl;
+        return 0;
+    }
+
+    //Get the number of points
+    int n_p = (int)points.size();
+
+    //Add vertices line
+    //The first number is the number of points+1 and the second number is the number of points
+    otec << "VERTICES" << n_p + 1 << " " << n_p << endl;
+
+    //Add offsets
+    if (!Add_offsets_for_point_vector(points, otec))
+    {
+        hout << "Error in Export_point_vector when calling Add_offsets_for_point_vector" << endl;
+        return 0;
+    }
+
+    //Add connectivity
+    if (!Add_connectivity_for_point_vector(points, otec))
+    {
+        hout << "Error in Export_point_vector when calling Add_connectivity_for_point_vector" << endl;
+        return 0;
+    }
+
+    //Close the file
+    otec.close();
+
+    return 1;
+}
+//
+int VTK_Export::Add_point_coordinates_from_vector(const vector<Point_3D>& points, ofstream& otec)const
+{
+    //Get the number of points
+    int n_p = (int)points.size();
+
+    //Add the number of points
+    otec << "POINTS " << n_p << " float";
+
+    //Add the point coordinates
+    for (int i = 0; i < n_p; i++)
+    {
+        //Add a line break every four points
+        if (!(i % 4))
+            otec << endl;
+
+        //Add point coordinates separated by a space
+        otec << points[i].x << " " << points[i].y << " " << points[i].z << " ";
+    }
+
+    //Add a final line break
+    otec << endl;
+
+    return 1;
+}
+//
+int VTK_Export::Add_offsets_for_point_vector(const vector<Point_3D>& points, ofstream& otec)const
+{
+    //Add offsets line
+    otec << "OFFSETS vtktypeint64";
+
+    //Add the offests
+    //This is a sequence of consecutive numbers starting in 0 and ending in 
+    //the number of points
+    for (int i = 0; i <= (int)points.size(); i++)
+    {
+        //Add a line break every 20 points
+        if (!(i % 20))
+            otec << endl;
+
+        //Add offset
+        otec << i << " ";
+    }
+
+    //Add a final line break
+    otec << endl;
+
+    return 1;
+}
+//This function adds the connectivity when exporting a point vector
+int VTK_Export::Add_connectivity_for_point_vector(const vector<Point_3D>& points, ofstream& otec)const
+{
+    //Add connectivity line
+    otec << "CONNECTIVITY vtktypeint64";
+
+    //Add the connectivity
+    //This is a sequence of consecutive numbers starting in 0 and ending in 
+    //the number of points - 1
+    for (int i = 0; i < (int)points.size(); i++)
+    {
+        //Add a line break every 20 points
+        if (!(i % 20))
+            otec << endl;
+
+        //Add connectivity
+        otec << i << " ";
+    }
+
+    //Add a final line break
+    otec << endl;
+
+    return 1;
+}
