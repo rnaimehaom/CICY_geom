@@ -284,6 +284,11 @@ int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& parti
     else if (particle_type == "GNP_cuboids" || particle_type == "GNP_CNT_mix") {
 
         //Apply displacements to GNP vertices
+        if (!Apply_displacements_to_gnps(gnps_outside, vertices_gnps_out, vertex_flags, root_assy, previous_fieldU, current_fieldU, gnps))
+        {
+            hout << "Error in Apply_displacements_from_Abaqus when calling Apply_displacements_to_gnps" << endl;
+            return 0;
+        }
 
     }
     else if (particle_type == "Hybrid_particles") {
