@@ -1695,22 +1695,10 @@ int VTK_Export::Export_point_array(const Point_3D points[], const int& size, con
         return 0;
     }
 
-    //Add vertices line
-    //The first number is the number of points+1 and the second number is the number of points
-    otec << "VERTICES" << size + 1 << " " << size << endl;
-
-    //Add offsets
-    if (!Add_offsets_for_point_array(points, size, otec))
+    //Add the lines corresponding to vertices, offsets and connectivity
+    if (!Add_vertices_offsets_connectivity_for_n_points(size, otec))
     {
-        hout << "Error in Export_point_array when calling Add_offsets_for_point_array" << endl;
-        return 0;
-    }
-
-    //Add connectivity
-    if (!Add_connectivity_for_point_array(points, size, otec))
-    {
-        hout << "Error in Export_point_array when calling Add_connectivity_for_point_array" << endl;
-        return 0;
+        hout << "Error in Export_point_array when calling Add_vertices_offsets_connectivity_for_n_points" << endl;
     }
 
     //Close the file
@@ -1740,46 +1728,46 @@ int VTK_Export::Add_point_coordinates_from_array(const Point_3D points[], const 
 
     return 1;
 }
-//This function adds the offsets when exporting a point array
-int VTK_Export::Add_offsets_for_point_array(const Point_3D points[], const int& size, ofstream& otec)const
+//
+int VTK_Export::Add_vertices_offsets_connectivity_for_n_points(const int& n, ofstream& otec)const
 {
+    //Add vertices line
+    //The first number is the number of points+1 and the second number is the number of points
+    otec << "VERTICES" << n + 1 << " " << n << endl;
+
     //Add offsets line
     otec << "OFFSETS vtktypeint64";
 
-    //Add the offests
-    //This is a sequence of consecutive numbers starting in 0 and ending in 
-    //the number of points
-    for (int i = 0; i <= size; i++)
+    //Add offsets (sequence up to number of points)
+    if (!Add_consecutive_numbers(n, otec))
+    {
+        hout << "Error in Add_vertices_offsets_connectivity_for_n_points when calling Add_consecutive_numbers (offsets)" << endl;
+        return 0;
+    }
+
+    //Add connectivity line
+    otec << "CONNECTIVITY vtktypeint64";
+
+    //Add connectivity (sequence up to number of points - 1)
+    if (!Add_consecutive_numbers(n - 1, otec))
+    {
+        hout << "Error in Add_vertices_offsets_connectivity_for_n_points when calling Add_consecutive_numbers (connectivity)" << endl;
+        return 0;
+    }
+
+    return 1;
+}
+//This function adds consecutive numbers from 0 to n (including n)
+int VTK_Export::Add_consecutive_numbers(const int& n, ofstream& otec)const
+{
+    //Iterate from 0 to n (including n)
+    for (int i = 0; i <= n; i++)
     {
         //Add a line break every 20 points
         if (!(i % 20))
             otec << endl;
 
         //Add offset
-        otec << i << " ";
-    }
-
-    //Add a final line break
-    otec << endl;
-
-    return 1;
-}
-//This function adds the connectivity when exporting a point array
-int VTK_Export::Add_connectivity_for_point_array(const Point_3D points[], const int& size, ofstream& otec)const
-{
-    //Add connectivity line
-    otec << "CONNECTIVITY vtktypeint64";
-
-    //Add the connectivity
-    //This is a sequence of consecutive numbers starting in 0 and ending in 
-    //the number of points - 1
-    for (int i = 0; i < size; i++)
-    {
-        //Add a line break every 20 points
-        if (!(i % 20))
-            otec << endl;
-
-        //Add connectivity
         otec << i << " ";
     }
 
@@ -1817,22 +1805,10 @@ int VTK_Export::Export_point_vector(const vector<Point_3D>& points, const string
     //Get the number of points
     int n_p = (int)points.size();
 
-    //Add vertices line
-    //The first number is the number of points+1 and the second number is the number of points
-    otec << "VERTICES" << n_p + 1 << " " << n_p << endl;
-
-    //Add offsets
-    if (!Add_offsets_for_point_vector(points, otec))
+    //Add the lines corresponding to vertices, offsets and connectivity
+    if (!Add_vertices_offsets_connectivity_for_n_points(n_p, otec))
     {
-        hout << "Error in Export_point_vector when calling Add_offsets_for_point_vector" << endl;
-        return 0;
-    }
-
-    //Add connectivity
-    if (!Add_connectivity_for_point_vector(points, otec))
-    {
-        hout << "Error in Export_point_vector when calling Add_connectivity_for_point_vector" << endl;
-        return 0;
+        hout << "Error in Export_point_vector when calling Add_vertices_offsets_connectivity_for_n_points" << endl;
     }
 
     //Close the file
@@ -1865,47 +1841,66 @@ int VTK_Export::Add_point_coordinates_from_vector(const vector<Point_3D>& points
 
     return 1;
 }
-//
-int VTK_Export::Add_offsets_for_point_vector(const vector<Point_3D>& points, ofstream& otec)const
+//This function exports the points in an array but only those indicated in a vector of vertices
+int VTK_Export::Export_selected_points_in_array(const vector<int>& vertices, const Point_3D points[], const string& filename)const
 {
-    //Add offsets line
-    otec << "OFFSETS vtktypeint64";
-
-    //Add the offests
-    //This is a sequence of consecutive numbers starting in 0 and ending in 
-    //the number of points
-    for (int i = 0; i <= (int)points.size(); i++)
-    {
-        //Add a line break every 20 points
-        if (!(i % 20))
-            otec << endl;
-
-        //Add offset
-        otec << i << " ";
+    //Check that the vector of vertices is not empty
+    if (vertices.empty()) {
+        hout << "Vector of vertices to export is empty. NO visualization file was exported." << endl;
+        return 1;
     }
 
-    //Add a final line break
-    otec << endl;
+    //Open the file
+    ofstream otec(filename.c_str());
+
+    //Add header
+    if (!Add_header(otec))
+    {
+        hout << "Error in Export_selected_points_in_array when calling Add_header" << endl;
+        return 0;
+    }
+
+    //Add point coordinates
+    if (!Add_point_coordinates_from_vertex_vector(vertices, points, otec))
+    {
+        hout << "Error in Export_selected_points_in_array when calling Add_point_coordinates_from_vertex_vector" << endl;
+        return 0;
+    }
+    //Get the number of points
+    int n_p = (int)vertices.size();
+
+    //Add the lines corresponding to vertices, offsets and connectivity
+    if (!Add_vertices_offsets_connectivity_for_n_points(n_p, otec))
+    {
+        hout << "Error in Export_point_vector when calling Add_vertices_offsets_connectivity_for_n_points" << endl;
+    }
+
+    //Close the file
+    otec.close();
 
     return 1;
 }
-//This function adds the connectivity when exporting a point vector
-int VTK_Export::Add_connectivity_for_point_vector(const vector<Point_3D>& points, ofstream& otec)const
-{
-    //Add connectivity line
-    otec << "CONNECTIVITY vtktypeint64";
 
-    //Add the connectivity
-    //This is a sequence of consecutive numbers starting in 0 and ending in 
-    //the number of points - 1
-    for (int i = 0; i < (int)points.size(); i++)
+int VTK_Export::Add_point_coordinates_from_vertex_vector(const vector<int>& vertices, const Point_3D points[], ofstream& otec)const
+{
+    //Get the number of points
+    int n_p = (int)vertices.size();
+
+    //Add the number of points
+    otec << "POINTS " << n_p << " float";
+
+    //Add the point coordinates
+    for (int i = 0; i < n_p; i++)
     {
-        //Add a line break every 20 points
-        if (!(i % 20))
+        //Add a line break every four points
+        if (!(i % 4))
             otec << endl;
 
-        //Add connectivity
-        otec << i << " ";
+        //Get the vertex number
+        int v = vertices[i];
+
+        //Add point coordinates separated by a space
+        otec << points[v].x << " " << points[v].y << " " << points[v].z << " ";
     }
 
     //Add a final line break

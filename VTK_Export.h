@@ -90,12 +90,12 @@ public:
     //Points
     int Export_point_array(const Point_3D points[], const int& size, const string& filename)const;
     int Add_point_coordinates_from_array(const Point_3D points[], const int& size, ofstream& otec)const;
-    int Add_offsets_for_point_array(const Point_3D points[], const int& size, ofstream& otec)const;
-    int Add_connectivity_for_point_array(const Point_3D points[], const int& size, ofstream& otec)const;
+    int Add_vertices_offsets_connectivity_for_n_points(const int& n, ofstream& otec)const;
+    int Add_consecutive_numbers(const int& n, ofstream& otec)const;
     int Export_point_vector(const vector<Point_3D>& points, const string& filename)const;
     int Add_point_coordinates_from_vector(const vector<Point_3D>& points, ofstream& otec)const;
-    int Add_offsets_for_point_vector(const vector<Point_3D>& points, ofstream& otec)const;
-    int Add_connectivity_for_point_vector(const vector<Point_3D>& points, ofstream& otec)const;
+    int Export_selected_points_in_array(const vector<int>& vertices, const Point_3D points[], const string& filename)const;
+    int Add_point_coordinates_from_vertex_vector(const vector<int>& vertices, const Point_3D points[], ofstream& otec)const;
 };
 
 #endif /* VTK_Export_hpp */
