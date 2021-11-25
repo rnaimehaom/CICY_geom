@@ -110,20 +110,42 @@ int Read_Network::Generate_nanoparticle_network_from_file(const Simu_para& simu_
     //Check if visualization files were requested for read nanoparticles
     if (vis_flags.generated_nanoparticles) {
 
-        VTK_Export vtk_exp;
+        VTK_Export VTK;
 
         //Export generated CNTs if any
         if (points_cnt.size()) {
-            vtk_exp.Export_from_cnt_structure(points_cnt, structure, "cnts_read.vtk");
+            if (vis_flags.generated_nanoparticles == 2) {
+
+                //Generate one visualization file per CNT
+                for (size_t i = 0; i < structure.size(); i++) {
+                    string filename = "cnt_" + to_string(i) + ".vtk";
+                    VTK.Export_from_cnt_structure(points_cnt, vector<vector<long int> > (1, structure[i]), filename);
+                }
+            }
+            else if (vis_flags.generated_nanoparticles == 1 || vis_flags.generated_nanoparticles == 3) {
+
+                //Generate one visualization file with all the CNTs
+                VTK.Export_from_cnt_structure(points_cnt, structure, "cnts_read.vtk");
+            }
         }
 
         //Export generated GNPs if any
         if (gnps.size()) {
-            vtk_exp.Export_gnps(gnps, "gnps_read.vtk");
+
+            if (vis_flags.generated_nanoparticles == 1)
+            {
+                //Generate one visualization file with all the GNPs
+                VTK.Export_gnps(gnps, "gnps_read.vtk");
+            }
+            else if (vis_flags.generated_nanoparticles == 2)
+            {
+                //Generate one visualization file per GNP
+                VTK.Export_gnps_single_files(gnps, "gnps_read");
+            }
         }
 
         //Export the sample geometry
-        vtk_exp.Export_cuboid(geom_sample.sample, "sample.vtk");
+        VTK.Export_cuboid(geom_sample.sample, "sample.vtk");
     }
 
     return 1;
