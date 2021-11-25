@@ -65,7 +65,6 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
         hout << "Error in Get_gnps_partially_outside_sample." << endl;
         return 0;
     }
-    return 1;
 
     //----------------------------------------------------------------------
     //Vector for GNP shells
@@ -104,6 +103,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     //Open Abaqus database using the name/path intidated in the input file
     //Use a C string, since that seems to be equivalent to (or able to be cast as) an odb_String
     odb_Odb& odb = openOdb(Init->simu_para.odb_file.c_str());
+    //hout << "open dob=" << Init->simu_para.odb_file.c_str() << endl;
 
     //Access the root assembly
     odb_Assembly& root_assy = odb.rootAssembly();
@@ -232,6 +232,17 @@ int App_Network_From_Abaqus::Get_gnps_partially_outside_sample(const Geom_sample
         //Check if not all vertices are inside the sample
         if (vertices_tmp.size() != 8)
         {
+            //Check that there are at least three vertices inside the sample
+            if (vertices_tmp.size() < 3)
+            {
+                hout << "Error in Get_gnps_partially_outside_sample." << endl;
+                hout << "There is a GNP that has less than three vertices inside the sample." << endl;
+                hout << "GNPs should have at least three vertices inside the sample." << endl;
+                string tmp_str = (vertices_tmp.size() == 1) ? " vertex " : " vertices ";
+                hout << "GNP #" << i << " has " << vertices_tmp.size() << tmp_str << "inside the sample." << endl;
+                return 0;
+            }
+
             //GNP i has some vertices outside the sample, so add GNP i to the vector
             //of GNPs partially outside the sample
             gnps_outside.push_back(i);
@@ -284,6 +295,7 @@ int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& parti
     else if (particle_type == "GNP_cuboids" || particle_type == "GNP_CNT_mix") {
 
         //Apply displacements to GNP vertices
+        //hout << "Apply_displacements_to_gnps" << endl;
         if (!Apply_displacements_to_gnps(gnps_outside, vertices_gnps_out, vertex_flags, root_assy, previous_fieldU, current_fieldU, gnps))
         {
             hout << "Error in Apply_displacements_from_Abaqus when calling Apply_displacements_to_gnps" << endl;
@@ -364,13 +376,13 @@ int App_Network_From_Abaqus::Get_displacement_change_from_single_node_set(const 
     //Variables to store current and previous displacements
     Point_3D current_disp, previous_disp;
 
-    //Get the displacement for the current frame for set1
+    //Get the displacement for the current frame for set
     if (!Get_displacement_from_single_node_set(setname, root_assy, current_fieldU, current_disp)) {
         hout << "Error in Get_displacement_change_from_single_node_set when calling Get_displacement_from_single_node_set (current_disp)" << endl;
         return 0;
     }
 
-    //Get the displacement for the previous frame for set1
+    //Get the displacement for the previous frame for set
     if (!Get_displacement_from_single_node_set(setname, root_assy, previous_fieldU, previous_disp)) {
         hout << "Error in Get_displacement_change_from_single_node_set when calling Get_displacement_from_single_node_set (previous_disp)" << endl;
         return 0;
@@ -536,11 +548,22 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
     //Iterate over the GNPs
     for (int i = 0; i < n_gnps; i++)
     {
+        /* /VTK object to generate visualization files
+        VTK_Export VTK;
+        //Filename for exported points and gnp
+        string filename = "gnp_" + to_string(i) + "_points.vtk";
+        hout << "reconstructing GNPi=" << i << endl;*/
+
         //Check if the GNP is partially inside or completely inside
         if (i == gnps_outside[idx_gnp_out])
         {
+            //Export vertices in the previous position as points
+            //hout << "VTK.Export_selected_points_in_array 1" << endl;
+            //VTK.Export_selected_points_in_array(vertices_gnps_out[idx_gnp_out], gnps[i].vertices, filename);
+
             //GNP is partially inside the sample, so use the vector that contains
             //the vertices that are inside the sample
+            //hout << "Apply_displacements_to_gnp_vertices 1" << endl;
             if (!Apply_displacements_to_gnp_vertices(vertices_gnps_out[idx_gnp_out], root_assy, previous_fieldU, current_fieldU, gnps[i]))
             {
                 hout << "Error in Apply_displacements_to_gnps when calling Apply_displacements_to_gnp_vertices (1)" << endl;
@@ -548,6 +571,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
             }
 
             //Reconstruct GNP
+            //hout << "GR.Reconstruct_gnp 1" << endl;
             if (!GR.Reconstruct_gnp(vertices_gnps_out[idx_gnp_out], vertex_flags[idx_gnp_out], gnps[i]))
             {
                 hout << "Error in Apply_displacements_to_gnps when calling GR.Reconstruct_gnp (partial)" << endl;
@@ -561,8 +585,13 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
         }
         else 
         {
+            //Export vertices in the previous position as points
+            //hout << "VTK.Export_selected_points_in_array 2" << endl;
+            //VTK.Export_selected_points_in_array(all_vertices, gnps[i].vertices, filename);
+
             //GNP is competely inside the sample, so use the vector that contains
             //all the GNP vertices
+            //hout << "Apply_displacements_to_gnp_vertices 2" << endl;
             if (!Apply_displacements_to_gnp_vertices(all_vertices, root_assy, previous_fieldU, current_fieldU, gnps[i]))
             {
                 hout << "Error in Apply_displacements_to_gnps when calling Apply_displacements_to_gnp_vertices (2)" << endl;
@@ -572,6 +601,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
             //Reconstruct GNP
             //Use an empty boolean vector since in the case of a full GNP the 
             //boolean vector is not needed
+            //hout << "GR.Reconstruct_gnp 2" << endl;
             if (!GR.Reconstruct_gnp(all_vertices, vector<bool>(), gnps[i]))
             {
                 hout << "Error in Apply_displacements_to_gnps when calling GR.Reconstruct_gnp (full)" << endl;
@@ -607,6 +637,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnp_vertices(const vector<in
 
         //Get the set name for the node v in GNP i
         string setname = Get_gnp_set_name(gnp_i.flag, v);
+        hout << "setname=" << setname << endl;
 
         //Point to store the displacement vector with respect to the previous frame
         Point_3D disp;

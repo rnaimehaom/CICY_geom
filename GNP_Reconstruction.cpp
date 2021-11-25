@@ -108,6 +108,20 @@ int GNP_Reconstruction::Reconstruct_full_gnp(GNP& gnp_i, Point_3D& N_top)const
     //Set the normal vector to the top face
     N_top = Pl_top.N;
 
+    /* /VTK object to generate visualization files
+    VTK_Export VTK;
+    //Filename for exported gnp
+    string filename_gnp = "gnp_" + to_string(gnp_i.flag) + ".vtk";
+
+    //Export reconstructed GNP
+    VTK.Export_single_gnp(gnp_i, filename_gnp);
+
+    //Move all visualization files to the folder of the reconstruction case
+    //hout<<"system commands"<<endl;
+    char command[100];
+    sprintf(command, "mv gnp*.vtk Case8");
+    system(command);*/
+
     return 1;
 }
 //This function "fits" the top vertices of a GNP (v0 to v3) onto a plane
@@ -469,6 +483,20 @@ int GNP_Reconstruction::Reconstruct_partial_gnp(const vector<bool>& vertex_flags
         break;
     }
 
+    /* /VTK object to generate visualization files
+    VTK_Export VTK;
+    //Filename for exported gnp
+    string filename_gnp = "gnp_" + to_string(gnp_i.flag) + ".vtk";
+
+    //Export reconstructed GNP
+    VTK.Export_single_gnp(gnp_i, filename_gnp);
+
+    //Move all visualization files to the folder of the reconstruction case
+    //hout<<"system commands"<<endl;
+    char command[100];
+    sprintf(command, "mv gnp*.vtk Case%d", gnp_case);
+    system(command);*/
+
     return 1;
 }
 //This function finds the case of the GNP reconstruction
@@ -489,11 +517,11 @@ int GNP_Reconstruction::Find_reconstruction_case(const vector<bool>& vertex_flag
     if (vertex_flags[1] && vertex_flags[5])
     {
         n_edges++;
-        e2 = true;
     }
     if (vertex_flags[2] && vertex_flags[6])
     {
         n_edges++;
+        e2 = true;
     }
     if (vertex_flags[3] && vertex_flags[7])
     {
@@ -501,7 +529,7 @@ int GNP_Reconstruction::Find_reconstruction_case(const vector<bool>& vertex_flag
     }
 
     //Set the variable gnp_case with the corresponding case
-    if (n_edges == 2 && e1 != e2)
+    if (n_edges == 2 && e1 == e2)
     {
         //Case 4
         gnp_case = 4;
@@ -907,7 +935,7 @@ int GNP_Reconstruction::Two_consecutive_short_edges(const vector<bool>& vertex_f
     //Initialized to -1 to indicate they are not present
     int O1 = -1, O2 = -1;
     
-    //Get the actual values of the refrence vertices
+    //Get the actual values of the reference vertices
     if (!Get_reference_vertices_case2(vertex_flags, R1, R2, R3, R4, O1, O2))
     {
         hout<<"Error in Two_consecutive_short_edges when calling Get_reference_vertices_case2"<<endl;
@@ -1236,7 +1264,9 @@ int GNP_Reconstruction::Find_gnp_length_and_calculate_vertices_case2(const int& 
     
     //Update R1 and R4
     gnp_i.vertices[R1] = M - V*d_max;
+    //hout << "updated " << R1 << endl;
     gnp_i.vertices[R4] = M + V*d_max;
+    //hout << "updated " << R4 << endl;
     
     //Get a vector going inside the GNP through the refrence face R1R2R3R4
     Point_3D N_in = V.cross(gnp_i.vertices[R3] - gnp_i.vertices[R1]);
@@ -1246,10 +1276,12 @@ int GNP_Reconstruction::Find_gnp_length_and_calculate_vertices_case2(const int& 
     Point_3D disp_face = N_in*gnp_i.l;
     
     //Calculate remaining two vertices on top face
-    idx = (R4 + 1) % 4;
-    gnp_i.vertices[idx] = gnp_i.vertices[R4] + disp_face;
-    idx = (R4 + 2) % 4;
-    gnp_i.vertices[idx] = gnp_i.vertices[R1] + disp_face;
+    int idx_top1 = (R4 + 1) % 4;
+    gnp_i.vertices[idx_top1] = gnp_i.vertices[R4] + disp_face;
+    //hout << "updated " << idx_top1 << endl;
+    int idx_top2 = (R4 + 2) % 4;
+    gnp_i.vertices[idx_top2] = gnp_i.vertices[R1] + disp_face;
+    //hout << "updated " << idx_top2 << endl;
     
     //Calculate vector normal to top face
     //Both V and N_in are normal and unitary, thus its dot product is a unitary vector
@@ -1261,13 +1293,15 @@ int GNP_Reconstruction::Find_gnp_length_and_calculate_vertices_case2(const int& 
     
     //Calculate vertices in bottom face
     gnp_i.vertices[R2] = gnp_i.vertices[R1] - disp_thick;
+    //hout << "updated " << R2 << endl;
     gnp_i.vertices[R3] = gnp_i.vertices[R4] - disp_thick;
-    int idx_top = (R4 + 1) % 4;
-    int idx_bot = (R3 + 1) % 4;
-    gnp_i.vertices[idx_bot] = gnp_i.vertices[idx_top] - disp_thick;
-    idx_top = (R4 + 2) % 4;
-    idx_bot = (R3 + 2) % 4;
-    gnp_i.vertices[idx_bot] = gnp_i.vertices[idx_top] - disp_thick;
+    //hout << "updated " << R3 << endl;
+    int idx_bot = idx_top1 + 4;
+    gnp_i.vertices[idx_bot] = gnp_i.vertices[idx_top1] - disp_thick;
+    //hout << "updated " << idx_bot << endl;
+    idx_bot = idx_top2 + 4;
+    gnp_i.vertices[idx_bot] = gnp_i.vertices[idx_top2] - disp_thick;
+    //hout << "updated " << idx_bot << endl;
     
     return 1;
 }

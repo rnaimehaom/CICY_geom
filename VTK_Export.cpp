@@ -1733,7 +1733,7 @@ int VTK_Export::Add_vertices_offsets_connectivity_for_n_points(const int& n, ofs
 {
     //Add vertices line
     //The first number is the number of points+1 and the second number is the number of points
-    otec << "VERTICES" << n + 1 << " " << n << endl;
+    otec << "VERTICES " << n + 1 << " " << n << endl;
 
     //Add offsets line
     otec << "OFFSETS vtktypeint64";
