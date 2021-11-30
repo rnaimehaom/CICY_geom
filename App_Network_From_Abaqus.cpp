@@ -253,12 +253,15 @@ int App_Network_From_Abaqus::Get_gnps_partially_outside_sample(const Geom_sample
             //Add vertex flags of GNP i to the vector vertex_flags
             vertex_flags.push_back(vf_tmp);
 
-            hout << "Inside vertices of GNP " << i << endl << "\t";
+            /*hout << "Inside vertices of GNP " << i << endl << "\t";
             for (size_t k = 0; k < vertices_tmp.size(); k++) {
                 hout << vertices_tmp[k] << ' ';
-            } hout << endl;
+            } hout << endl;*/
         }
-        
+        /*hout << "Vertices of GNP " << i << endl << "\t";
+        for (size_t k = 0; k < vertices_tmp.size(); k++) {
+            hout << vertices_tmp[k] << ' ';
+        } hout << endl;*/
     }
 
     return 1;
@@ -542,28 +545,21 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
     //is completely inside the sample
     vector<int> all_vertices = All_gnp_vertices();
 
+    //Flags for full GNPs (used when checking if points are inside the reconstructed GNP)
+    vector<bool> all_true(8, true);
+
     //Object to reconstruct a GNP
     GNP_Reconstruction GR;
 
     //Iterate over the GNPs
     for (int i = 0; i < n_gnps; i++)
     {
-        /* /VTK object to generate visualization files
-        VTK_Export VTK;
-        //Filename for exported points and gnp
-        string filename = "gnp_" + to_string(i) + "_points.vtk";
-        hout << "reconstructing GNPi=" << i << endl;*/
-
         //Check if the GNP is partially inside or completely inside
         if (i == gnps_outside[idx_gnp_out])
         {
-            //Export vertices in the previous position as points
-            //hout << "VTK.Export_selected_points_in_array 1" << endl;
-            //VTK.Export_selected_points_in_array(vertices_gnps_out[idx_gnp_out], gnps[i].vertices, filename);
-
             //GNP is partially inside the sample, so use the vector that contains
             //the vertices that are inside the sample
-            //hout << "Apply_displacements_to_gnp_vertices 1" << endl;
+            //hout << endl << "Apply_displacements_to_gnp_vertices 1" << endl;
             if (!Apply_displacements_to_gnp_vertices(vertices_gnps_out[idx_gnp_out], root_assy, previous_fieldU, current_fieldU, gnps[i]))
             {
                 hout << "Error in Apply_displacements_to_gnps when calling Apply_displacements_to_gnp_vertices (1)" << endl;
@@ -585,13 +581,9 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
         }
         else 
         {
-            //Export vertices in the previous position as points
-            //hout << "VTK.Export_selected_points_in_array 2" << endl;
-            //VTK.Export_selected_points_in_array(all_vertices, gnps[i].vertices, filename);
-
             //GNP is competely inside the sample, so use the vector that contains
             //all the GNP vertices
-            //hout << "Apply_displacements_to_gnp_vertices 2" << endl;
+            //hout << endl << "Apply_displacements_to_gnp_vertices 2" << endl;
             if (!Apply_displacements_to_gnp_vertices(all_vertices, root_assy, previous_fieldU, current_fieldU, gnps[i]))
             {
                 hout << "Error in Apply_displacements_to_gnps when calling Apply_displacements_to_gnp_vertices (2)" << endl;
@@ -602,7 +594,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
             //Use an empty boolean vector since in the case of a full GNP the 
             //boolean vector is not needed
             //hout << "GR.Reconstruct_gnp 2" << endl;
-            if (!GR.Reconstruct_gnp(all_vertices, vector<bool>(), gnps[i]))
+            if (!GR.Reconstruct_gnp(all_vertices, all_true, gnps[i]))
             {
                 hout << "Error in Apply_displacements_to_gnps when calling GR.Reconstruct_gnp (full)" << endl;
                 return 0;
@@ -637,7 +629,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnp_vertices(const vector<in
 
         //Get the set name for the node v in GNP i
         string setname = Get_gnp_set_name(gnp_i.flag, v);
-        hout << "setname=" << setname << endl;
+        //hout << setname << endl;
 
         //Point to store the displacement vector with respect to the previous frame
         Point_3D disp;

@@ -1883,6 +1883,9 @@ int VTK_Export::Export_selected_points_in_array(const vector<int>& vertices, con
 
 int VTK_Export::Add_point_coordinates_from_vertex_vector(const vector<int>& vertices, const Point_3D points[], ofstream& otec)const
 {
+    //Set precision for points
+    otec.precision(15);
+
     //Get the number of points
     int n_p = (int)vertices.size();
 

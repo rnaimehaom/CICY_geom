@@ -349,14 +349,18 @@ struct GNP {
     {
         //This vector is used multiple times
         Point_3D V4P = P - vertices[4];
+        //hout << "V4P=" << V4P.str() << " l=" << V4P.length() << " l2=" << V4P.length2() << endl;
         
         //Check if P is between faces 0 and 1
+        //hout << faces[0].N.dot(P - vertices[0]) << " " << faces[1].N.dot(V4P) << endl;
         if (faces[0].N.dot(P - vertices[0]) < Zero && faces[1].N.dot(V4P) < Zero) {
             
             //Check if P is between faces 2 and 4
+            //hout << faces[2].N.dot(V4P) << " " << faces[4].N.dot(P - vertices[1]) << endl;
             if (faces[2].N.dot(V4P) < Zero && faces[4].N.dot(P - vertices[1]) < Zero) {
                 
                 //Check if P is between faces 3 and 5
+                //hout << faces[3].N.dot(V4P) << " " << faces[5].N.dot(P - vertices[2]) << endl;
                 if (faces[3].N.dot(V4P) < Zero && faces[5].N.dot(P - vertices[2]) < Zero) {
                     
                     //Point P is inside the GNP so return true
