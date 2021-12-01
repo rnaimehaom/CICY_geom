@@ -860,7 +860,7 @@ int GNP_Reconstruction::Find_gnp_side_length_and_recalculate_vertices_case3(cons
 int GNP_Reconstruction::Two_consecutive_short_edges(const vector<bool>& vertex_flags, GNP& gnp_i, Point_3D& N_top)const
 {
     //Initial gnp
-    GNP gnp0 = gnp_i;
+    //GNP gnp0 = gnp_i;
 
     //Variables to store the reference plane, i.e., these are the reference vertices
     int R1, R2, R3, R4;
@@ -877,7 +877,7 @@ int GNP_Reconstruction::Two_consecutive_short_edges(const vector<bool>& vertex_f
     }
     //hout << "R1=" << R1 << " R2=" << R2 << " R3=" << R3 << " R4=" << R4 << " O1=" << O1 << " O2=" << O2 << endl;
 
-    //Get all vertices R1-R4 on a reference plane
+    //Get all vertices R1 to R4 on a reference plane
     if (!Get_reference_plane_case2(R1, R2, R3, R4, gnp_i))
     {
         hout<<"Error in Two_consecutive_short_edges when calling Get_reference_plane_case2"<<endl;
@@ -898,9 +898,9 @@ int GNP_Reconstruction::Two_consecutive_short_edges(const vector<bool>& vertex_f
         return 0;
     }
 
-    //Plane with final GNP
+    /* /Plane with final GNP
     Plane_3D Pl(gnp_i.vertices[R1], gnp_i.vertices[R2], gnp_i.vertices[R3]);
-    /* /Distance from initial GNP to final GNP face
+    //Distance from initial GNP to final GNP face
     for (size_t i = 0; i < vertex_flags.size(); i++)
     {
         if (vertex_flags[i])
