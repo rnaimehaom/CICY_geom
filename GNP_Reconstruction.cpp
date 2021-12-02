@@ -340,7 +340,7 @@ int GNP_Reconstruction::Set_parallel_planes_along_x(GNP& gnp_i, double& lx)const
     return 1;
 }
 //Set parallel planes v0v4v7v3 and v1v5v6v2
-int GNP_Reconstruction::Set_parallel_planes_along_y_and_recalculate_vertices(const Plane_3D& Pl_top, double& d_planes, const double& lx, GNP& gnp_i)const
+int GNP_Reconstruction::Set_parallel_planes_along_y_and_recalculate_vertices(const Plane_3D& Pl_top, const double& d_planes, const double& lx, GNP& gnp_i)const
 {
     //Set v1v0 as reference edge, get the unit vector along that edge
     Point_3D V = (gnp_i.vertices[0] - gnp_i.vertices[1]).unit();

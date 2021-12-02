@@ -30,7 +30,7 @@ public:
     int Get_plane_from_top_squared_face(GNP& gnp_i, Plane_3D& Pl_top)const;
     int Get_plane_from_bottom_squared_face(const Plane_3D& Pl_top, GNP& gnp_i, double& d_planes)const;
     int Set_parallel_planes_along_x(GNP& gnp_i, double& lx)const;
-    int Set_parallel_planes_along_y_and_recalculate_vertices(const Plane_3D& Pl_top, double& d_planes, const double& lx, GNP& gnp_i)const;
+    int Set_parallel_planes_along_y_and_recalculate_vertices(const Plane_3D& Pl_top, const double& d_planes, const double& lx, GNP& gnp_i)const;
     int Update_gnp_center(GNP& gnp_i)const;
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
