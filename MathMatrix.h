@@ -26,32 +26,35 @@ public:
 	vector<vector<double> > element;
 
 	//-----------------------------------------------
-	//Constructor
-	MathMatrix(){};
-	MathMatrix(const int&, const int&);							//to construct a matrix by (M*N) with zero values
-	MathMatrix(const vector<double>&);						//to construct a vector in 1D
-	MathMatrix(const vector<vector<double> >&);			//to construct a vector in 2D
-	MathMatrix(const double *, const int&);					//to construct an array in 1D
-	MathMatrix(const double *, const int&, const int&);	//to construct an array in 2D, the arguments are (&vec[0][0], m, n)
+	//Constructors
+	MathMatrix() {};
+	//Constructor for identity matrix
+	MathMatrix(const int& M);
+	//Constructor for MxN zero matrix
+	MathMatrix(const int& M, const int& N);
+	MathMatrix(const vector<double>& vec1D);
+	MathMatrix(const vector<vector<double> >& vec2D);
+	MathMatrix(const double *vec, const int& N);
+	MathMatrix(const double *vec, const int& M, const int& N);
+
 	//-----------------------------------------------
 	//Member Functions
-	void Evalu(const double *, const int&);						//a 1D array is assigned to a matrix
-	void Evalu(const double *, const int& , const int&);	//a 2D array is assigned to a matrix, the arguments are (&vec[0][0], m, n)
-	void operator=(const vector<double>&);					//to overload the assignment operator (a 1D vector is assigned to a matrix)
-	void operator=(const vector<vector<double> >&);	//to overload the assignment operator (a 2D vector is assigned to a matrix)
-	MathMatrix operator*(const MathMatrix&);				//to overload the multiplication operator (a matrix is multipled by a matrix)
-	MathMatrix operator*(const double&);						//to overload the multiplication operator (a matrix is multipled by a real)
-	MathMatrix operator+(const MathMatrix&);				//to overload the addition operator (add a matrix to a matrix)
-	double operator+(const double&);								//to overload the addition operator (add (1*1) matrix to a real)	
-	MathMatrix operator-(const MathMatrix&);				//to overload the subtraction operator (subtract a matrix from a matrix)
-	MathMatrix Inverse(void);											//matrix inversion
-	MathMatrix Transpose(void);										//matrix transposition
-	int RowN(void);														//to calculate the number of row in a matrix
-	int CalN(void);															//to calculate the number of column in a matrix
-	int Symmetry(void);													//to judge if a matrix is symmetric
-    double determinant(void);
-	//-----------------------------------------------------------------------------
-	MathMatrix GetCol(int cn);										//to covert a column of matrix in a new matrix
+	void Evalu(const double *vec, const int& N);	
+	void Evalu(const double *vec, const int& M, const int& N);
+	void operator=(const vector<double>& vec);
+	void operator=(const vector<vector<double> >& vec);	
+	MathMatrix operator*(const MathMatrix& matrix);
+	MathMatrix operator*(const double& R);
+	//Addition operator for two matrices
+	MathMatrix operator+(const MathMatrix& matrix);
+	MathMatrix operator-(const MathMatrix& matrix);
+	MathMatrix Inverse();
+	MathMatrix Transpose();
+	MathMatrix GetCol(int cn);
+	int Rows();
+	int Cols();
+	int Symmetry();	
+    double determinant();
 
 	//overload the operator of output stream
 	friend ostream& operator<<(ostream& o, const MathMatrix& matrix);
