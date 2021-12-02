@@ -69,7 +69,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const int &iter, const c
         
         //Make GNP clusters
         //hout<<"Make_gnp_clusters n_total_labels="<<n_total_labels<<endl;
-        if (!Make_gnp_clusters(sample, gnps_inside, sectioned_domain_gnp, gnps, cutoffs.tunneling_dist, n_labels_cnt, n_total_labels, structure_gnp, points_gnp, labels_gnp)) {
+        if (!Make_gnp_clusters(sample, gnps_inside, sectioned_domain_gnp, gnps, cutoffs, n_labels_cnt, n_total_labels, structure_gnp, points_gnp, labels_gnp)) {
             hout<<"Error in Determine_clusters when calling Make_gnp_clusters"<<endl;
             return 0;
         }
@@ -506,14 +506,14 @@ int Hoshen_Kopelman::Complete_cnt_elements(const vector<vector<long int> > &stru
     return 1;
 }
 //This function makes the GNP clusters
-int Hoshen_Kopelman::Make_gnp_clusters(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, const int &n_labels_cnt, int &n_total_labels, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp)
+int Hoshen_Kopelman::Make_gnp_clusters(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, const int &n_labels_cnt, int &n_total_labels, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp)
 {
     //Vector of labels of labels
     vector<int> labels_labels_gnp;
     
     //Label the GNPs
     //hout<<"Label_gnps_in_window"<<endl;
-    if (!Label_gnps_in_window(sample, gnps_inside, sectioned_domain_gnp, gnps, tunnel_cutoff, structure_gnp, points_gnp, labels_gnp, labels_labels_gnp)) {
+    if (!Label_gnps_in_window(sample, gnps_inside, sectioned_domain_gnp, gnps, cutoffs, structure_gnp, points_gnp, labels_gnp, labels_labels_gnp)) {
         hout<<"Error in Make_gnp_clusters when calling Label_gnps_in_window"<<endl;
         return 0;
     }
@@ -543,7 +543,7 @@ int Hoshen_Kopelman::Make_gnp_clusters(const cuboid& sample, const vector<int> &
     return 1;
 }
 //This function labels the GNPs so that they can be grouped into clusters
-int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const double &tunnel_cutoff, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp)
+int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp)
 {
     //Initialize the temporary map for determining if a pair of veritces is an edge
     Initialize_edge_map();
@@ -603,24 +603,59 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                     //Use the GJK for distance to calculate the separation between GNPs
                     //and the direction vector
                     //hout<<"CL.GJK_distance"<<endl;
-                    if (!CL.GJK_distance(gnps[GNP1], gnps[GNP2], simplex, dist, N, p_flag)) {
+                    if (!CL.GJK_distance(gnps[GNPa], gnps[GNPb], simplex, dist, N, p_flag)) {
                         hout<<"Error in Label_gnps_in_window when calling CL.GJK_distance"<<endl;
                         return 0;
                     }
+
+                    //Create a temporary GNP that will be moved in case there is interpenetration
+                    GNP gnp_B = gnps[GNPb];
                     
-                    if (p_flag) {
-                        hout << "Error in Label_gnps_in_window. There are penetrating GNPs but at this point there should not be any. \nPenetrating GNPs: " << GNPa << " and " << GNPb << endl;
+                    //Check if the GNPs are interpenetrating each other
+                    if (p_flag) 
+                    {
+                        //GNPs are interpenetrating each other
+                        //Use EPA to find the penetration depth PD and direction vector N
+                        if (!CL.EPA(gnps[GNPa].vertices, gnp_B.vertices, simplex, N, dist)) {
+                            hout << "Error in Move_gnps_if_needed when calling EPA" << endl;
+                            string gnp1_str = "gnp_" + to_string(gnps[GNPa].flag) + ".vtk";
+                            string gnp2_str = "gnp_" + to_string(gnps[GNPb].flag) + ".vtk";
+                            hout << "GNPs are exported into files " << gnp1_str << " and " << gnp2_str << endl;
+                            //Export GNPs thta caused the error
+                            VTK_Export VTK;
+                            VTK.Export_single_gnp(gnps[GNPa], gnp1_str);
+                            VTK.Export_single_gnp(gnps[GNPb], gnp2_str);
+                            return 0;
+                        }
+
+                        //Calculate total displacement for GNP
+                        Point_3D disp_tot = N * (dist + cutoffs.van_der_Waals_dist);
+
+                        //Move gnp_B so that there is no interpenetration and so that the 
+                        //GNPs are separated the van der Waals distance
+                        //Use a Generate_Network object
+                        Generate_Network GN;
+                        if (!GN.Move_gnp(disp_tot, gnp_B))
+                        {
+                            hout << "Error in Move_gnps_if_needed when calling GN.Move_gnp" << endl;
+                            return 0;
+                        }
+                         
+                        //Now GNPs are separated a distance equal to the van der Waals distance
+                        //So set the distance to that value
+                        dist = cutoffs.van_der_Waals_dist;
+
+                        /*hout << "Error in Label_gnps_in_window. There are penetrating GNPs but at this point there should not be any. \nPenetrating GNPs: " << GNPa << " and " << GNPb << endl;
                         VTK_Export VTK;
                         VTK.Export_single_gnp(gnps[GNPa], "gnp_" + to_string(GNPa) + ".vtk");
                         VTK.Export_single_gnp(gnps[GNPb], "gnp_" + to_string(GNPb) + ".vtk");
-
-                        return 0;
+                        return 0;*/
                     }
 
                     //Check if the separation between GNPs is below the cutoff for tunneling
                     //hout<<"GNPa="<<GNPa<<" GNPb="<<GNPb<<" dist="<<dist<<endl;
                     //hout<<"dist <= tunnel_cutoff = "<<(dist <= tunnel_cutoff)<<endl;
-                    if (dist <= tunnel_cutoff) {
+                    if (dist <= cutoffs.tunneling_dist) {
 
                         /* /Export GNPs that are found to be in contact for manually testing percolation
                         hout << "Contact: GNPa=" << GNPa << " GNPb=" << GNPb << " dist=" << dist << endl;
@@ -634,7 +669,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                         //Find the points of contact on each GNP, and add them if both
                         //are inside the sample
                         //hout<<"Add_junction_points_for_gnps"<<endl;
-                        if (!Add_junction_points_for_gnps(sample, gnps[GNP1], gnps[GNP2], N, dist, points_gnp, junction_in)) {
+                        if (!Add_junction_points_for_gnps(sample, gnps[GNPa], gnp_B, N, dist, points_gnp, junction_in)) {
                             hout << "Error in Label_gnps_in_window when calling Add_junction_points_for_gnps" << endl;
                             return 0;
                         }
@@ -645,7 +680,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
 
                             //Here is where the actual HK76 algorithm takes place
                             //Only perform the HK76 when the junctions are inside the sample
-                            if (!HK76(GNP1, GNP2, new_label, labels_gnp, labels_labels_gnp)) {
+                            if (!HK76(GNPa, GNPb, new_label, labels_gnp, labels_labels_gnp)) {
                                 hout << "Error in Label_gnps_in_window when calling HK76" << endl;
                                 return 0;
                             }
@@ -1024,6 +1059,7 @@ int Hoshen_Kopelman::Find_junction_points_in_gnps(const vector<int> &simplexA, c
         
         //Find PointB, depending on the size of simplexB
         if (!Find_point_b_for_vertex_in_simplex_a(simplexB, GNP_B, N, distance, PointA, PointB)) {
+            hout << "GNP_A=" << GNP_A.flag << " GNP_B=" << GNP_B.flag << endl;
             hout<<"Error in Find_junction_points_in_gnps when calling Find_point_b_for_vertex_in_simplex_a"<<endl;
 
             //GNP_A could not be saved within fucntion Find_point_b_for_vertex_in_simplex_a since
@@ -1055,6 +1091,7 @@ int Hoshen_Kopelman::Find_junction_points_in_gnps(const vector<int> &simplexA, c
         hout<<"Error in Find_junction_points_in_gnps: simplexA has an invalid size="<<simplexA.size()<<", it size must be 1, 2, or 4"<<endl;
         hout<<"GNP for simplex of size " << simplexA.size() << " is saved in file gnp_A.vtk." << endl;
         hout<<"Second GNP is saved in file gnp_B.vtk." << endl;
+        hout << "GNP_A=" << GNP_A.flag << " GNP_B=" << GNP_B.flag << endl;
 
         VTK_Export VTK;
         VTK.Export_single_gnp(GNP_A, "gnp_A.vtk");
@@ -1149,6 +1186,7 @@ int Hoshen_Kopelman::Find_point_b_for_edge_in_simplex_a(const vector<int> &simpl
         hout<<"Error in Find_point_b_for_edge_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 2 or 4."<<endl;
         hout << "GNP for simplex of size 2 is saved in file gnp_A.vtk." << endl;
         hout << "GNP for simplex of size "<< simplexB.size() <<" is saved in file gnp_B.vtk." << endl;
+        hout << "GNP_A=" << GNP_A.flag << " GNP_B=" << GNP_B.flag << endl;
 
         //Export the GNPs for debugging
         VTK_Export VTK;
@@ -1673,6 +1711,7 @@ int Hoshen_Kopelman::Find_point_b_for_face_in_simplex_a(const vector<int> &simpl
         hout<<"Error in Find_point_b_for_face_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 4"<<endl;
         hout << "GNP for simplex of size 4 is saved in file gnp_A.vtk." << endl;
         hout << "GNP for simplex of size " << simplexB.size() << " is saved in file gnp_B.vtk." << endl;
+        hout << "GNP_A=" << GNP_A.flag << " GNP_B=" << GNP_B.flag << endl;
 
         //Export the GNPs for debugging
         VTK_Export VTK;
