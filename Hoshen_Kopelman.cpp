@@ -610,6 +610,9 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
 
                     //Create a temporary GNP that will be moved in case there is interpenetration
                     GNP gnp_B = gnps[GNPb];
+
+                    //Displacement variable in case there is interpenetration
+                    Point_3D disp_tot;
                     
                     //Check if the GNPs are interpenetrating each other
                     if (p_flag) 
@@ -629,7 +632,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                         }
 
                         //Calculate total displacement for GNP
-                        Point_3D disp_tot = N * (dist + cutoffs.van_der_Waals_dist);
+                        disp_tot = N * (dist + cutoffs.van_der_Waals_dist);
 
                         //Move gnp_B so that there is no interpenetration and so that the 
                         //GNPs are separated the van der Waals distance
@@ -673,6 +676,14 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                             hout << "Error in Label_gnps_in_window when calling Add_junction_points_for_gnps" << endl;
                             return 0;
                         }
+
+                        //Check if there is interpenetration of GNPs
+                        if (p_flag)
+                        {
+                            //There is interpenetration of GNPs, so GNPb was moved
+                            //Thus, move the point in GNPb towards its location were GNPb not moved
+                            points_gnp.back() = points_gnp.back() - disp_tot;
+                        }
                         
                         //Add the junction to the vector of junctions if it is inside the sample
                         if (junction_in)
@@ -686,8 +697,8 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                             }
 
                             //Get the point numbers
-                            long int Pa = (long int)points_gnp.size() - 1;
-                            long int Pb = (long int)points_gnp.size() - 2;
+                            long int Pa = (long int)points_gnp.size() - 2;
+                            long int Pb = (long int)points_gnp.size() - 1;
 
                             //Create a junction with the GNPs in contact
                             Junction j(Pa, GNPa, "GNP", Pb, GNPb, "GNP", dist);
