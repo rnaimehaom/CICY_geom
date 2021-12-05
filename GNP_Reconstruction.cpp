@@ -581,23 +581,23 @@ int GNP_Reconstruction::Three_short_edges(const vector<bool>& vertex_flags, GNP&
 //The vertices for the edge to the "left" of the edge are also obtained
 int GNP_Reconstruction::Get_reference_edge_case3(const vector<bool>& vertex_flags, int& R1, int& R2)const
 {
-    //Find the top reference vertex
-    if (vertex_flags[0] && vertex_flags[1] && vertex_flags[2] && !vertex_flags[3] && !vertex_flags[7])
+    //Find the top reference vertex by finding the vertex that is not completely inside the sample
+    if (!vertex_flags[3] || !vertex_flags[7])
     {
         //Reference edge vertices
         R1 = 1; R2 = 5;
     }
-    else if (vertex_flags[1] && vertex_flags[2] && vertex_flags[3] && !vertex_flags[0] && !vertex_flags[4])
+    else if (!vertex_flags[0] || !vertex_flags[4])
     {
         //Reference edge vertices
         R1 = 2; R2 = 6;
     }
-    else if (vertex_flags[2] && vertex_flags[3] && vertex_flags[0] && !vertex_flags[1] && !vertex_flags[5])
+    else if (!vertex_flags[1] || !vertex_flags[5])
     {
         //Reference edge vertices
         R1 = 3; R2 = 7;
     }
-    else if (vertex_flags[3] && vertex_flags[0] && vertex_flags[1] && !vertex_flags[2] && !vertex_flags[6])
+    else if (!vertex_flags[2] || !vertex_flags[6])
     {
         //Reference edge vertices
         R1 = 0; R2 = 4;
@@ -1080,6 +1080,7 @@ int GNP_Reconstruction::Set_long_reference_edges_as_parallel_case2(const int& R1
     {
         //Calculate the distance to O1 along U
         do1 = abs(U.dot(M - gnp_i.vertices[O1]));
+        //hout << "d_max=" << d_max << " do1=" << do1 << endl;
         
         //Check if maximum distance needs to be updated
         if (do1 - d_max > Zero)
@@ -1174,6 +1175,16 @@ int GNP_Reconstruction::Find_gnp_length_and_calculate_vertices_case2(const int& 
     
     //Variables for the distances to other vertices, if any
     double do1 = 0.0, do2 = 0.0;
+
+    //Variable for second approximation of l_GNP
+    double l2 = 0.0;
+
+    //Plane with reference face
+    Plane_3D Pl;
+    if (O1 != -1 || O2 != -1)
+    {
+        Pl = Plane_3D(gnp_i.vertices[R1], gnp_i.vertices[R2], gnp_i.vertices[R3]);
+    }
     
     //Check if there are other vertices that might affect the calculation of
     //the GNP thickness
@@ -1181,6 +1192,9 @@ int GNP_Reconstruction::Find_gnp_length_and_calculate_vertices_case2(const int& 
     {
         //Calculate the distance to O1 along V
         do1 = abs(V.dot(M - gnp_i.vertices[O1]));
+
+        //Calculate the distance from the reference face to O1
+        l2 = Pl.distance_to(gnp_i.vertices[O1]);
         
         //Check if maximum distance needs to be updated
         if (do1 - d_max > Zero)
@@ -1192,6 +1206,13 @@ int GNP_Reconstruction::Find_gnp_length_and_calculate_vertices_case2(const int& 
     {
         //Calculate the distance to O2 along V
         do2 = abs(V.dot(M - gnp_i.vertices[O2]));
+
+        //Calculate the distance from the reference face to O2
+        double l3 = Pl.distance_to(gnp_i.vertices[O2]);
+        if (l3 - l2 > Zero)
+        {
+            l2 = l3;
+        }
         
         //Check if maximum distance needs to be updated
         if (do2 - d_max > Zero)
@@ -1200,10 +1221,12 @@ int GNP_Reconstruction::Find_gnp_length_and_calculate_vertices_case2(const int& 
         }
     }
     //hout << "d14=" << gnp_i.vertices[R1].distance_to(gnp_i.vertices[R4]) << " d23=" << gnp_i.vertices[R3].distance_to(gnp_i.vertices[R2]) << endl;
-    //hout << "d1=" << d1 << " d2=" << d2 << " d3=" << d3 << " do1=" << do1 << " do2=" << do2 << " d_max=" << d_max << endl;
+    //hout << "d1=" << d1 << " d2=" << d2 << " d3=" << d3 << " do1=" << do1 << " do2=" << do2 << endl;
+    //hout << "d_max=" << d_max << " l2=" << l2 << endl;
     
     //Now that the maximum distance has been determined, set the GNP side length
-    gnp_i.l = 2.0*d_max;
+    gnp_i.l = max(2.0*d_max, l2);
+    //hout << "l_GNP=" << gnp_i.l << endl;
     
     //Calculate the eight GNP vertices
     
@@ -1530,9 +1553,11 @@ int GNP_Reconstruction::One_short_edge(const vector<bool>& vertex_flags, GNP& gn
     
     //Create a new vertex_flags vector with V set to true
     vector<bool> new_vertex_flags = vertex_flags;
+    //hout << "new_vertex_flags=" << new_vertex_flags.size()<<" V="<<V << endl;
     new_vertex_flags[V] = true;
     
     //Call case 2 with new vertex_flags vector
+    //hout << "Two_consecutive_short_edges" << endl;
     if (!Two_consecutive_short_edges(new_vertex_flags, gnp_i, N_top))
     {
         hout<<"Error in One_short_edge when calling Two_consecutive_short_edges"<<endl;
@@ -1598,6 +1623,7 @@ int GNP_Reconstruction::Find_adjacent_vertex_case1(const vector<bool>& vertex_fl
     int R = (R1 + 1) % 4;
     //Get vertex to the left of R1
     int L = (R1 + 3) % 4;
+    //hout << "R=" << R << " L=" << L << endl;
     
     //Get displacement vector going from bottom square face towards top square face
     Point_3D disp_t = gnp_i.vertices[R1] - gnp_i.vertices[R2];
@@ -1607,6 +1633,7 @@ int GNP_Reconstruction::Find_adjacent_vertex_case1(const vector<bool>& vertex_fl
     {
         //Set V as the vertex below R
         V = R + 4;
+        //hout << "V = R + 4=" << V << endl;
         
         //Check that V is indeed not present, otherwise there is an error
         if (vertex_flags[V]) {
@@ -1622,6 +1649,7 @@ int GNP_Reconstruction::Find_adjacent_vertex_case1(const vector<bool>& vertex_fl
     {
         //Set V as R
         V = R;
+        //hout << "V = R =" << V << endl;
         
         //There is no need to check if R is present, as this was already done
         //resulting in false and thus reaching this estatement
@@ -1633,7 +1661,8 @@ int GNP_Reconstruction::Find_adjacent_vertex_case1(const vector<bool>& vertex_fl
     else if (vertex_flags[L])
     {
         //Set V as the vertex below L
-        int V = L + 4;
+        V = L + 4;
+        //hout << "V = L + 4=" << V << endl;
         
         //Check that V is indeed not present, otherwise there is an error
         if (vertex_flags[V]) {
@@ -1649,6 +1678,7 @@ int GNP_Reconstruction::Find_adjacent_vertex_case1(const vector<bool>& vertex_fl
     {
         //Set V as L
         V = L;
+        //hout << "V = L =" << V << endl;
         
         //There is no need to check if L is present, as this was already done
         //resulting in false and thus reaching this estatement

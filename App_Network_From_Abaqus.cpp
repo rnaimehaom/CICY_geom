@@ -559,7 +559,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
         {
             //GNP is partially inside the sample, so use the vector that contains
             //the vertices that are inside the sample
-            //hout << endl << "Apply_displacements_to_gnp_vertices 1" << endl;
+            //hout << endl << "Apply_displacements_to_gnp_vertices (1) GNP=" << i << endl;
             if (!Apply_displacements_to_gnp_vertices(vertices_gnps_out[idx_gnp_out], root_assy, previous_fieldU, current_fieldU, gnps[i]))
             {
                 hout << "Error in Apply_displacements_to_gnps when calling Apply_displacements_to_gnp_vertices (1)" << endl;
@@ -579,11 +579,11 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
             //GNPs partially inside the sampe (n_gnps_out)
             idx_gnp_out = (idx_gnp_out + 1) % n_gnps_out;
         }
-        else 
+        else
         {
             //GNP is competely inside the sample, so use the vector that contains
             //all the GNP vertices
-            //hout << endl << "Apply_displacements_to_gnp_vertices 2" << endl;
+            //hout << endl << "Apply_displacements_to_gnp_vertices (2) GNP=" << i << endl;
             if (!Apply_displacements_to_gnp_vertices(all_vertices, root_assy, previous_fieldU, current_fieldU, gnps[i]))
             {
                 hout << "Error in Apply_displacements_to_gnps when calling Apply_displacements_to_gnp_vertices (2)" << endl;
@@ -626,6 +626,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnp_vertices(const vector<in
     {
         //Get vertex number
         int v = vertices[j];
+        //hout << "v=" << v << endl;
 
         //Get the set name for the node v in GNP i
         string setname = Get_gnp_set_name(gnp_i.flag, v);
@@ -635,6 +636,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnp_vertices(const vector<in
         Point_3D disp;
 
         //Get the displacement for node v in the current frame
+        //hout << "Get_displacement_change_from_single_node_set" << endl;
         if (!Get_displacement_change_from_single_node_set(setname, root_assy, previous_fieldU, current_fieldU, disp)) {
             hout << "Error in Apply_displacements_to_gnp_vertices when calling Get_displacement_change_from_single_node_set (GNP "<<gnp_i.flag<<", node "<<v<< ")" << endl;
             return 0;
