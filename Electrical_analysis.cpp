@@ -21,7 +21,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
     int n_clusters = Get_number_of_clusters(HoKo->clusters_cnt, HoKo->clusters_gnp);
 
     //Clear GNP triangulations (if needed)
-    if (!Clear_triangulations(iter, HoKo->clusters_gnp, gnps)) {
+    if (!Clear_triangulations(HoKo->clusters_gnp, gnps)) {
         hout << "Error in Perform_analysis_on_clusters when calling Clear_triangulations" << endl;
         return 0;
     }
@@ -158,11 +158,10 @@ int Electrical_analysis::Get_number_of_clusters(const vector<vector<int> >& clus
     return 0;
 }
 //This function clears the triangulations stored in the GNP objects
-int Electrical_analysis::Clear_triangulations(const int& iter, const vector<vector<int> >& clusters_gnp, vector<GNP>& gnps)
+int Electrical_analysis::Clear_triangulations(const vector<vector<int> >& clusters_gnp, vector<GNP>& gnps)
 {
-    //Clear the triangulations only if this is not iteration 0 (i.e., not the first iteration) 
-    //and if there are GNP clusters
-    if (iter && clusters_gnp.size()) 
+    //Clear the triangulations only if there are GNP clusters
+    if (clusters_gnp.size()) 
     {
         //Iterate over all clusters
         for (size_t i = 0; i < gnps.size(); i++)

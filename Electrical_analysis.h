@@ -25,7 +25,7 @@ public:
     
     int Perform_analysis_on_clusters(const int &iter, const cuboid &window, const Simu_para &simu_param, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const Output_data_flags &out_flags, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps);
     int Get_number_of_clusters(const vector<vector<int> >& clusters_cnt, const vector<vector<int> >& clusters_gnp);
-    int Clear_triangulations(const int& iter, const vector<vector<int> >& clusters_gnp, vector<GNP>& gnps);
+    int Clear_triangulations(const vector<vector<int> >& clusters_gnp, vector<GNP>& gnps);
     int Export_triangulations(const int &iter, const vector<int> &cluster_gnp, const vector<GNP> &gnps, const vector<Point_3D> &points_gnp);
     int Clear_triangulations_of_cluster(const vector<int>& cluster_gnp, vector<GNP>& gnps);
     int Electrical_resistance_along_each_percolated_direction (const int &R_flag, const int &n_cluster, const cuboid &window, Hoshen_Kopelman *HoKo, Cutoff_Wins *Cutwins, const Simu_para &simu_param, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &structure_gnp, const vector<Point_3D> &points_gnp, vector<GNP> &gnps, vector<vector<double> > &paralel_resistors);

@@ -425,11 +425,13 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     //Check there are no zeros in the diagonal
     //At this point, the diagonal vector is in its final form
     vector<int> zero_idx;
+    vector<double> zero_vals;
     for (size_t i = 0; i < diagonal.size(); i++) {
         if (abs(diagonal[i]) < Zero) {
             //Add the reserved nodes, since at this points those have been removed
             //from the diagonal vector
             zero_idx.push_back(i + reserved_nodes);
+            zero_vals.push_back(diagonal[i]);
         }
     }
     
@@ -438,6 +440,11 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         hout << "Nodes with zero on the diagonal: ";
         for (size_t i = 0; i < zero_idx.size(); i++) {
             hout << zero_idx[i] << " ";
+        }
+        hout << endl;
+        hout << "Zeros on the diagonal: ";
+        for (size_t i = 0; i < zero_vals.size(); i++) {
+            hout << zero_vals[i] << " ";
         }
         hout << endl;
         return 0;
