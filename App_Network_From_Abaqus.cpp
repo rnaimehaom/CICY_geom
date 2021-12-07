@@ -47,6 +47,9 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     ct1 = time(NULL);
     hout << "Network generation from file time: " << (int)(ct1 - ct0) << " secs." << endl;
 
+    //Make a copy of the GNPs in their initial position (as they were generated)
+    vector<GNP> gnps0(gnps.begin(), gnps.end());
+
     //Set the number of cuts to 0 since there are no observation windows when reading
     //a network from file and applying displacements from abaqus
     Init->geom_sample.cut_num = 0;
@@ -130,7 +133,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
             //Read Abaqus database and apply displacements
             ct0 = time(NULL);
             //hout<<"Apply_displacements_from_Abaqus"<<endl;
-            if (!Apply_displacements_from_Abaqus(Init->simu_para.particle_type, (int)structure_cnt.size(), structure_cnt, gnps_outside, vertices_gnps_out, vertex_flags, root_assy, allFramesInStep[i-1], allFramesInStep[i], Init->geom_sample, points_cnt, gnps))
+            if (!Apply_displacements_from_Abaqus(Init->simu_para.particle_type, (int)structure_cnt.size(), structure_cnt, gnps_outside, vertices_gnps_out, vertex_flags, gnps0, root_assy, allFramesInStep[i-1], allFramesInStep[i], Init->geom_sample, points_cnt, gnps))
             {
                 hout << "Error when applying displacement to nanoparticles." << endl;
                 return 0;
@@ -267,7 +270,7 @@ int App_Network_From_Abaqus::Get_gnps_partially_outside_sample(const Geom_sample
     return 1;
 }
 //This functions adds the displacements to the CNTs, GNPs and sample
-int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, const vector<int>& gnps_outside, const vector<vector<int> >& vertices_gnps_out, const vector<vector<bool> >& vertex_flags, odb_Assembly& root_assy, odb_Frame& previous_frame, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const
+int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, const vector<int>& gnps_outside, const vector<vector<int> >& vertices_gnps_out, const vector<vector<bool> >& vertex_flags, vector<GNP>& gnps0, odb_Assembly& root_assy, odb_Frame& previous_frame, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const
 {
     //Access displacement field ("U") in the current frame
     //hout << "current_fieldU" << endl;
@@ -299,7 +302,7 @@ int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& parti
 
         //Apply displacements to GNP vertices
         //hout << "Apply_displacements_to_gnps" << endl;
-        if (!Apply_displacements_to_gnps(gnps_outside, vertices_gnps_out, vertex_flags, root_assy, previous_fieldU, current_fieldU, gnps))
+        if (!Apply_displacements_to_gnps(gnps_outside, vertices_gnps_out, vertex_flags, gnps0, root_assy, current_fieldU, gnps))
         {
             hout << "Error in Apply_displacements_from_Abaqus when calling Apply_displacements_to_gnps" << endl;
             return 0;
@@ -375,7 +378,6 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
 //at that node with respect to the previous frame
 int App_Network_From_Abaqus::Get_displacement_change_from_single_node_set(const string& setname, odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, Point_3D& disp)const
 {
-
     //Variables to store current and previous displacements
     Point_3D current_disp, previous_disp;
 
@@ -529,7 +531,7 @@ string App_Network_From_Abaqus::Get_cnt_set_name(const int& cnt_i)const
     return ("CNT-"+to_string(cnt_i)+"-NODES");
 }
 //This fucntion pplies displacements to GNPs
-int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps_outside, const vector<vector<int> >& vertices_gnps_out, const vector<vector<bool> >& vertex_flags, odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, vector<GNP>& gnps)const
+int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps_outside, const vector<vector<int> >& vertices_gnps_out, const vector<vector<bool> >& vertex_flags, const vector<GNP>& gnps0, odb_Assembly& root_assy, odb_FieldOutput& current_fieldU, vector<GNP>& gnps)const
 {
     //Variable to store the index within vector gnps_outside 
     //of next GNP that is partially outside the sample
@@ -554,13 +556,16 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
     //Iterate over the GNPs
     for (int i = 0; i < n_gnps; i++)
     {
+        //Reset GNP i to its initial location
+        gnps[i] = gnps0[i];
+
         //Check if the GNP is partially inside or completely inside
         if (i == gnps_outside[idx_gnp_out])
         {
             //GNP is partially inside the sample, so use the vector that contains
             //the vertices that are inside the sample
             //hout << endl << "Apply_displacements_to_gnp_vertices (1) GNP=" << i << endl;
-            if (!Apply_displacements_to_gnp_vertices(vertices_gnps_out[idx_gnp_out], root_assy, previous_fieldU, current_fieldU, gnps[i]))
+            if (!Apply_displacements_to_gnp_vertices(vertices_gnps_out[idx_gnp_out], root_assy, current_fieldU, gnps[i]))
             {
                 hout << "Error in Apply_displacements_to_gnps when calling Apply_displacements_to_gnp_vertices (1)" << endl;
                 return 0;
@@ -584,7 +589,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnps(const vector<int>& gnps
             //GNP is competely inside the sample, so use the vector that contains
             //all the GNP vertices
             //hout << endl << "Apply_displacements_to_gnp_vertices (2) GNP=" << i << endl;
-            if (!Apply_displacements_to_gnp_vertices(all_vertices, root_assy, previous_fieldU, current_fieldU, gnps[i]))
+            if (!Apply_displacements_to_gnp_vertices(all_vertices, root_assy, current_fieldU, gnps[i]))
             {
                 hout << "Error in Apply_displacements_to_gnps when calling Apply_displacements_to_gnp_vertices (2)" << endl;
                 return 0;
@@ -619,7 +624,7 @@ vector<int> App_Network_From_Abaqus::All_gnp_vertices()const
 }
 //This function adds displacements to GNP vertices for the case when all vertices
 //are inside the sample
-int App_Network_From_Abaqus::Apply_displacements_to_gnp_vertices(const vector<int>& vertices, odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, GNP& gnp_i)const
+int App_Network_From_Abaqus::Apply_displacements_to_gnp_vertices(const vector<int>& vertices, odb_Assembly& root_assy, odb_FieldOutput& current_fieldU, GNP& gnp_i)const
 {
     //Iterate over the vertices of the GNP
     for (size_t j = 0; j < vertices.size(); j++)
@@ -635,10 +640,9 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnp_vertices(const vector<in
         //Point to store the displacement vector with respect to the previous frame
         Point_3D disp;
 
-        //Get the displacement for node v in the current frame
-        //hout << "Get_displacement_change_from_single_node_set" << endl;
-        if (!Get_displacement_change_from_single_node_set(setname, root_assy, previous_fieldU, current_fieldU, disp)) {
-            hout << "Error in Apply_displacements_to_gnp_vertices when calling Get_displacement_change_from_single_node_set (GNP "<<gnp_i.flag<<", node "<<v<< ")" << endl;
+        //Get the displacement for the current frame for set
+        if (!Get_displacement_from_single_node_set(setname, root_assy, current_fieldU, disp)) {
+            hout << "Error in Apply_displacements_to_gnp_vertices when calling Get_displacement_from_single_node_set" << endl;
             return 0;
         }
 
