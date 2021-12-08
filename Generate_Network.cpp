@@ -3353,6 +3353,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
                 
                 //Current GNP will not be rejected nor ignored, so add it to the
                 //corresponding subregions
+                //hout << "Add_valid_gnp_to_subregions" << endl;
                 if (!Add_valid_gnp_to_subregions((int)gnps.size(), subregions_gnp, sectioned_domain)) {
                     hout<<"Error in Add_valid_gnp_to_subregions after displacement."<<endl;
                     return 0;
@@ -3373,6 +3374,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
                 //The GNP is completely outside the sample or not of it enough inside the sample
                 //so increase the count of ignored GNPs
                 gnp_ignored_count++;
+                //hout << "ignored " << gnp_ignored_count << endl;
             }
         }//End of if for rejected flag
         
@@ -3380,6 +3382,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
         ct1 = time(NULL);
         
         //Check progress
+        //hout << "Check_progress" << endl;
         if (!Check_progress("GNP", (int)(ct1-ct0), gnp_geo.volume, gnp_vol_tot, vol_completed, vol_completed_acc)) {
             hout<<"Error when calculating the percentage of GNP volume generated"<<endl;
             return 0;
@@ -3863,7 +3866,7 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
         Point_3D N;
         
         //Check if GNP and GNP_new penetrate each other
-        //hout<<"GJK_EPA.GJK end"<<endl;
+        //hout<<"GJK_EPA.GJK_distance"<<endl;
         if (!GJK_EPA.GJK_distance(gnps[GNP_i], gnp_new, simplex, PD, N, p_flag)) {
             //Filenames for GNPs to be exported
             string gnp1_str = "gnp_" + to_string(gnps[GNP_i].flag) + ".vtk";
@@ -3902,6 +3905,7 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
             VTK.Export_single_gnp(gnps[GNP_i], "gnp_old.vtk");*/
 
             //There is penetration, so then use EPA to find the penetration depth PD and direction vector N
+            //hout << "GJK_EPA.EPA simplex.size=" << simplex.size() << endl;
             if (!GJK_EPA.EPA(gnps[GNP_i].vertices, gnp_new.vertices, simplex, N, PD)) {
                 hout<<"Error in Move_gnps_if_needed when calling EPA"<<endl;
 
@@ -3919,6 +3923,7 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
             //hout<<"EPA PD="<<PD<<" normal="<<N.str()<< " length=" << N.length() << endl;
             
             //Add to the vector of displacements
+            //hout << "Add_to_vector_of_displacements" << endl;
             if (!Add_to_vector_of_displacements(PD + cutoffs.van_der_Waals_dist, N, disps, disps_vec)) {
                 hout<<"Error in Move_gnps_if_needed when calling Add_to_vector_of_displacements (1)"<<endl;
                 return 0;
@@ -3979,7 +3984,7 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
         //Set the displace flag to true
         displaced = true;
         
-        //hout<<"GNP moved disp_tot="<<disp_tot.str()<<endl;
+        //hout<<"Move_gnp_two_displacements"<<endl;
         //Point_3D center_new = gnp_new.center;
         //hout << "center_new=" << center_new.str() << endl;
         //A displacement is needed, then move gnp_new

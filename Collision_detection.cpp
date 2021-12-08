@@ -1701,7 +1701,15 @@ int Collision_detection::Reduce_simplex_4_to_2(const int& idx1, const int& idx2,
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //Extended Polytope Algorithm (EPA)
-int Collision_detection::EPA(const Point_3D verticesA[], const Point_3D verticesB[], vector<Point_3D> &simplex, Point_3D &normal, double &PD) {
+int Collision_detection::EPA(const Point_3D verticesA[], const Point_3D verticesB[], vector<Point_3D> &simplex, Point_3D &normal, double &PD) 
+{
+    //Check that the simplex is actually a tetrahedron
+    //To run the EPA algorithm the simplex must be atetrahedron
+    if (simplex.size() != 4)
+    {
+        hout << "Error in EPA. The simplex used as input to the EPA algorithm is not a tetrahedron, i.e., it's size is not 4. Simplex size: " << simplex.size() << endl;
+        return 0;
+    }
     
     //Generate the faces of the original simplex (which is a tetrahedron)
     vector<TrFace> Faces(4);
@@ -1789,7 +1797,7 @@ void Collision_detection::Normal_and_distance_to_origin(const vector<Point_3D> &
     //then, the vector -v1 goes from the face towards the origin
     //If the dot product is positive, then both vectors "go towards the same direction"
     //So if the dot product of N and -v1 is positive, then N needs to be reversed
-    //hout<<"dir check="<<dot(N, simplex[f.v1]*(-1.0))<<endl;
+    //hout<<"dir check="<<N.dot(simplex[f.v1]*(-1.0))<<endl;
     //Also, save the value of the dot procduct as it is used to calculate the distance
     //from the origin to the face f
     double signed_dist = N.dot(simplex[f.v1]*(-1.0));
