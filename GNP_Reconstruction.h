@@ -55,8 +55,8 @@ public:
     int Calculate_gnp_side_length_case4(const int& R1, const int& R2, const int& R3, const int& R4, const int& Ou, const int& Ov, const Point_3D& U, const Point_3D& V, GNP& gnp_i)const;
     int Calculate_gnp_vertices_case4(const int& R1, const int& R2, const Point_3D& U, const Point_3D& V, GNP& gnp_i)const;
     int One_short_edge(const vector<bool>& vertex_flags, GNP& gnp_i, Point_3D& N_top)const;
-    int Find_vertex_for_two_short_edges_case1(const vector<bool>& vertex_flags, GNP& gnp_i, int& V)const;
-    int Find_adjacent_vertex_case1(const vector<bool>& vertex_flags, const int& R1, const int& R2, int& V, GNP& gnp_i)const;
+    int Find_vertex_for_two_short_edges_case1(const vector<bool>& vertex_flags, GNP& gnp_i, int& V, int& new_case)const;
+    int Find_adjacent_vertex_case1(const vector<bool>& vertex_flags, const int& R1, const int& R2, int& V, int& new_case, GNP& gnp_i)const;
     int No_short_edges(const vector<bool>& vertex_flags, GNP& gnp_i, Point_3D& N_top)const;
     int Get_reference_vertices_case0(const vector<bool>& vertex_flags, int& R1, int& R2, int& R3, int& R4)const;
     int Set_parallel_edges_along_u_case0(const int& R1, const int& R2, const int& R3, const int& R4, GNP& gnp_i, double& l1)const;
