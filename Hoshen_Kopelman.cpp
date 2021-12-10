@@ -683,6 +683,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                             //There is interpenetration of GNPs, so GNPb was moved
                             //Thus, move the point in GNPb towards its location were GNPb not moved
                             points_gnp.back() = points_gnp.back() - disp_tot;
+                            points_gnp.back().flag = GNPb;
                         }
                         
                         //Add the junction to the vector of junctions if it is inside the sample
@@ -704,12 +705,11 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                             Junction j(Pa, GNPa, "GNP", Pb, GNPb, "GNP", dist);
 
                             //Add point numbers to structure
-                            structure_gnp[points_gnp[Pa].flag].push_back(Pa);
-                            structure_gnp[points_gnp[Pb].flag].push_back(Pb);
+                            structure_gnp[GNPa].push_back(Pa);
+                            structure_gnp[GNPb].push_back(Pb);
 
                             //Add the junction to the vector of junctions
                             junctions_gnp.push_back(j);
-
                         }
                     }
                     

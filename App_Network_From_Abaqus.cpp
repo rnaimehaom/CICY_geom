@@ -128,6 +128,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
 
         //----------------------------------------------------------------------
         //Apply displacement to CNTs, GNPs and sample, except for frame 0 (which has no displacement)
+        //Also perform again window extraction for the GNPs only
         if (i)
         {
             //Read Abaqus database and apply displacements
@@ -140,6 +141,25 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
             }
             ct1 = time(NULL);
             hout << "Apply displacements for current frame time: " << (int)(ct1 - ct0) << " secs." << endl;
+
+            //Clear the GNP points
+            points_gnp.clear();
+
+            //Clear the GNP vectors that are filled with extracting an observation window
+            Cutwins->boundary_gnp.clear();
+            Cutwins->boundary_gnp_pts.clear();
+            Cutwins->gnps_inside.clear();
+
+            //Find the GNPs and GNP points at boundaries
+            ct0 = time(NULL);
+            //hout<<"Extract_observation_window (GNPs only)"<<endl;
+            //For the case of reading data from an Abaqus database, window is always 0
+            if (!Cutwins->Extract_observation_window(0, "GNP_cuboids", Init->geom_sample, Init->geom_sample.sample, Init->nanotube_geo, gnps, structure_cnt, vector<double>(), vector<Point_3D>(), vector<vector<int> >(), shell_gnps, structure_gnp, points_gnp)) {
+                hout << "Error when extracting observation window " << endl;
+                return 0;
+            }
+            ct1 = time(NULL);
+            hout << "Extract observation window (GNPs only) time: " << (int)(ct1 - ct0) << " secs." << endl;
         }
 
         //Window geometry is the same as that of the sample
