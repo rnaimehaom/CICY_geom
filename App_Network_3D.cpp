@@ -21,13 +21,9 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
     //CNT structure, each cnts_structure[i] referes to the points in CNT_i
     vector<vector<long int> > structure_cnt;
     
-    //Variables for GNPs
+    //Variable for GNPs
     //GNPs
     vector<GNP> gnps;
-    //GNP points (only those needed are stored)
-    vector<Point_3D> points_gnp;
-    //GNP structure, each structure_gnp[i] referes to the points in GNP_i
-    vector<vector<long int> > structure_gnp;
     
     //Shell vectors (used to remove nanoparticles when reduding observation window size)
     vector<vector<int> > shells_cnts;
@@ -106,6 +102,13 @@ int App_Network_3D::Generate_nanoparticle_resistor_network(Input *Init)const
         hout << "Iteration " << i+1 << " of " << Init->geom_sample.cut_num+1 << endl;
         time_t it0, it1;
         it0 = time(NULL);
+
+        //Variables for GNPs created here so that the data from iteration i-1
+        //is not used in iteration i
+        //GNP points (only those needed are stored)
+        vector<Point_3D> points_gnp;
+        //GNP structure, each structure_gnp[i] referes to the points in GNP_i
+        vector<vector<long int> > structure_gnp;
         
         //Update observation window geometry
         //hout<<"Update observation window geometry"<<endl;
