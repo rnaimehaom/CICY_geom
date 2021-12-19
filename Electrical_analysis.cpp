@@ -601,7 +601,7 @@ int Electrical_analysis::Currents_through_boundary_gnps(const long int &node, co
         
         //Current GNP
         int GNPi = boundary_gnp[i];
-        //hout << "GNPi=" << GNPi << " triangulation.size=" << gnps[GNPi].triangulation.size() << endl;
+        //hout <<endl<< "GNPi=" << GNPi << " triangulation.size=" << gnps[GNPi].triangulation.size() << endl;
         
         //Some GNPs on the boundary might not be part of the backbone or the geometric cluster
         //First check if there are any triangulation edges on the GNP,
@@ -820,27 +820,33 @@ int Electrical_analysis::Export_isolated_particles(const int &iter, const vector
         }
     }
     
-    //Export the isolated CNTs using the indices
-    //hout<<"VTK_E.Export_from_cnt_indices"<<endl;
-    if (!VTK_E.Export_from_cnt_indices(points_cnt, all_isolated_cnts, str_cnts)) {
-        hout<<"Error in Export_isolated_particles when calling VTK_E.Export_from_cnt_indices"<<endl;
-        return 0;
+    //Export the isolated CNTs using the indices (if there are CNTs)
+    if (isolated_cnts.size())
+    {
+        //hout<<"VTK_E.Export_from_cnt_indices"<<endl;
+        if (!VTK_E.Export_from_cnt_indices(points_cnt, all_isolated_cnts, str_cnts)) {
+            hout << "Error in Export_isolated_particles when calling VTK_E.Export_from_cnt_indices" << endl;
+            return 0;
+        }
     }
     
     //Create a vector with indices of all isolated GNPs
     vector<int> all_isolated_gnps;
     //hout<<"all_isolated_gnps"<<endl;
     for (int i = 0; i < (int)isolated_gnps.size(); i++) {
-        for (int j = 0; j < (int)isolated_gnps[i].size(); i++) {
+        for (int j = 0; j < (int)isolated_gnps[i].size(); j++) {
             all_isolated_gnps.push_back(isolated_gnps[i][j]);
         }
     }
     
-    //Export the isolated GNPs as a cluster
-    //hout<<"VTK_E.Export_gnps_in_cluster"<<endl;
-    if (!VTK_E.Export_gnps_in_cluster(gnps, all_isolated_gnps, str_gnps)) {
-        hout<<"Error in Export_isolated_particles when calling VTK_E.Export_gnps_in_cluster"<<endl;
-        return 0;
+    //Export the isolated GNPs as a cluster (if there are GNPs)
+    if (isolated_gnps.size())
+    {
+        //hout<<"VTK_E.Export_gnps_in_cluster"<<endl;
+        if (!VTK_E.Export_gnps_in_cluster(gnps, all_isolated_gnps, str_gnps)) {
+            hout << "Error in Export_isolated_particles when calling VTK_E.Export_gnps_in_cluster" << endl;
+            return 0;
+        }
     }
     
     //Move all visualization files to the folder of the iteration
