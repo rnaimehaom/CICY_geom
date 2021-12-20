@@ -5204,21 +5204,22 @@ Point_3D Generate_Network::Get_point_closest_to_large_gnp_face(const GNP &gnp, c
 //edge closest to P
 Point_3D Generate_Network::Distance_from_point_to_edge(const Point_3D &P, const Point_3D &A, const Point_3D &B, double &distance)const
 {
+    //Calculate distance from P to edge
+    distance = P.distance_to(A, B);
+    
     //Calcualte vector AB
     Point_3D AB = B - A;
     
     //Calculate vector AP
     Point_3D AP = P - A;
-    
-    //Calculate the proyeted distance on edge V1V2 (squared quantity)
-    double dot_ = AP.dot(AB);
-    double dp2 = dot_*dot_/AB.length2();
-    
-    //Calculate the distance from AB to the point P
-    distance = sqrt(AP.length2() - dp2);
+
+    //Get normal vector from segment AB to point P
+    Point_3D N = (AB.cross(AP)).cross(AB);
+    //Make it a unitary vector
+    N.make_unit();
     
     //Calculate the position of the point closest to P in edge AB
-    Point_3D Q = A + AB.unit()*sqrt(dp2);
+    Point_3D Q = P - N*distance;
     
     //Set the flag to zero
     Q.flag = 0;
