@@ -129,9 +129,9 @@ public:
     int Generate_gnp(const GNP_Geo &gnp_geo, GNP &gnp, mt19937 &engine_l, mt19937 &engine_t, uniform_real_distribution<double> &dist)const;
     int Obtain_gnp_vertex_coordinates(GNP& gnp)const;
     int Update_gnp_plane_equations(GNP &gnp)const;
-    int Deal_with_gnp_interpenetrations(const int &MAX_ATTEMPTS_GNP, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const int n_subregions[], GNP &gnp_new, set<int> &subregions_gnp, vector<vector<int> > &sectioned_domain, bool &rejected)const;
-    int Get_gnp_subregions(const Geom_sample &geom_sample, const GNP &gnp_new, const int n_subregions[], set<int> &subregions)const;
-    int Add_gnp_subregions_to_set_for_gnp_point(const Geom_sample &geom_sample, const Point_3D &new_point, const int n_subregions[], set<int> &subregions)const;
+    int Deal_with_gnp_interpenetrations(const int &MAX_ATTEMPTS_GNP, const int& tot_regions, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const int n_subregions[], GNP &gnp_new, set<int> &subregions_gnp, vector<vector<int> > &sectioned_domain, bool &rejected)const;
+    int Get_gnp_subregions(const int& tot_regions, const Geom_sample &geom_sample, const GNP &gnp_new, const int n_subregions[], set<int> &subregions)const;
+    int Add_gnp_subregions_to_set_for_gnp_point(const int& tot_regions, const Geom_sample& geom_sample, const Point_3D& new_point, const int n_subregions[], set<int>& subregions)const;
     int Get_gnps_in_subregions(const vector<vector<int> > &sectioned_domain, const set<int> &subregions, set<int> &gnp_set)const;
     int Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int& attempts, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, set<int> &gnp_set, GNP &gnp_new, bool &displaced)const;
     int Add_to_vector_of_displacements(const double &disp, const Point_3D &N, vector<double> &disps, vector<Point_3D> &disps_vec)const;

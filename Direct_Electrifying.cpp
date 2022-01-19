@@ -964,16 +964,20 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
                     rad2 = points_cnt_rad[v2];
                 }
                 
+                //hout<<"rad1="<<rad1<<" rad2="<<rad2<<endl;
+                //hout<<"points_gnp[v1]="<<points_gnp[v1].str()<<" points_gnp[v2]="<<points_gnp[v2].str()<<endl;
                 //Calculate the triangulation resistor, i.e., the resistance of
                 //the "conduction band" in the GNP
                 if (!Calculate_resistance_gnp(points_gnp[v1], points_gnp[v2], rad1, rad2, electric_param, Re_inv)) {
+                    hout << "GNP_i=" << gnp_i << endl;
                     hout << "Error in Fill_2d_matrices_gnp when calling Calculate_resistance_gnp" << endl;
                     return 0;
                 }
                 
                 //Calculate inverse of resistance
+                //hout << "R=" << Re_inv << " ";
                 Re_inv = 1/Re_inv;
-                
+                //hout << "R_inv=" << Re_inv << endl;
             }
             else if (R_flag != 0) {
                 hout << "Error in Fill_2d_matrices_gnp. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
@@ -1058,6 +1062,15 @@ int Direct_Electrifying::Calculate_resistance_gnp(const Point_3D &P1, const Poin
 {
     //Calculate the distance between the points in contact
     double L = P1.distance_to(P2);
+
+    if (L < Zero)
+    {
+        hout << "Error in Calculate_resistance_gnp. GNP points to calculate GNP resistor are too close or the same, which results in the resistor to have zero length." << endl;
+        hout << "P1=" << P1.str() << endl;
+        hout << "P2=" << P2.str() << endl;
+        hout << "P1.distance_to(P2)=" << L << endl;
+        return 0;
+    }
     
     //Unit vector in the direction from P1 to P2
     Point_3D u_direction = (P2 - P1)/L;
@@ -1102,7 +1115,9 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
             }
             
             //Calculate inverse of resistance
+            //hout << "Rj=" << Re_inv << " ";
             Re_inv = 1/Re_inv;
+            //hout << "Rj_inv=" << Re_inv << endl;
         }
         else if (R_flag != 0) {
             hout << "Error in Fill_2d_matrices_gnp_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;

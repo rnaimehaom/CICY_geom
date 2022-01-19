@@ -900,9 +900,20 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
     geom_sample.ex_dom_cnt.max_x = geom_sample.ex_dom_cnt.poi_min.x +  geom_sample.ex_dom_cnt.len_x;
     geom_sample.ex_dom_cnt.max_y = geom_sample.ex_dom_cnt.poi_min.y +  geom_sample.ex_dom_cnt.wid_y;
     geom_sample.ex_dom_cnt.max_z = geom_sample.ex_dom_cnt.poi_min.z +  geom_sample.ex_dom_cnt.hei_z;
-    
-    //Determine the overlapping of the overlapping sub-regions for CNTs
-    geom_sample.gs_overlap_cnt = 2*nanotube_geo.rad_max + cutoff_dist.tunneling_dist;
+
+    //Determine the overlapping of the overlapping sub-regions for CNTs depending on the particle type
+    //This section could be read even when only GNPs are used
+    if (simu_para.particle_type == "CNT_deposit" || simu_para.particle_type == "CNT_wires")
+    {
+        //There are only CNTs, then use the calculated overlapping for CNTs
+        geom_sample.gs_overlap_cnt = 2 * nanotube_geo.rad_max + cutoff_dist.tunneling_dist;
+    }
+    else
+    {
+        //There are no CNTs, so set the overlapping to zero so it does not interfere with 
+        //the overlapping for GNPs
+        geom_sample.gs_overlap_cnt = 0.0;
+    }
     
 	return 1;
 }
@@ -1156,9 +1167,20 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
     geom_sample.ex_dom_gnp.max_x = geom_sample.ex_dom_gnp.poi_min.x + geom_sample.ex_dom_gnp.len_x;
     geom_sample.ex_dom_gnp.max_y = geom_sample.ex_dom_gnp.poi_min.y + geom_sample.ex_dom_gnp.wid_y;
     geom_sample.ex_dom_gnp.max_z = geom_sample.ex_dom_gnp.poi_min.z + geom_sample.ex_dom_gnp.hei_z;
-    
-    //Determine the overlapping of the overlapping sub-regions for GNPs
-    geom_sample.gs_overlap_gnp = geom_sample.gs_minx/(sqrt(8.0));
+
+    //Determine the overlapping of the overlapping sub-regions for GNPs depending on the particle type
+    //This section could be read even when only CNTs are used
+    if (simu_para.particle_type == "GNP_cuboids" || simu_para.particle_type == "GNP_CNT_mix")
+    {
+        //There are only GNPs, then use the calculated overlapping for GNPs
+        geom_sample.gs_overlap_gnp = geom_sample.gs_minx / (sqrt(8.0));
+    }
+    else 
+    {
+        //There are no GNPs, so set the overlapping to zero so it does not interfere with 
+        //the overlapping for CNTs
+        geom_sample.gs_overlap_gnp = 0.0;
+    }
     
     return 1;
 }

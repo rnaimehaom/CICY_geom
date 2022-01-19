@@ -76,7 +76,7 @@ struct Geom_sample{
     bool mark;
     double volume;
     double matrix_density;
-    //Minimum size for background grids (overlapping sub-regions)
+    //Size for background grids (overlapping sub-regions)
     double gs_minx, gs_miny, gs_minz;
     //Overlapping of background grids
     double gs_overlap_cnt, gs_overlap_gnp;

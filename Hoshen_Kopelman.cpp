@@ -664,8 +664,8 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                         hout << "Contact: GNPa=" << GNPa << " GNPb=" << GNPb << " dist=" << dist << endl;
                         VTK_Export VTK;
                         VTK.Export_single_gnp(gnps[GNPa], "gnp_" + to_string(GNPa) + ".vtk");
-                        VTK.Export_single_gnp(gnps[GNPb], "gnp_" + to_string(GNPb) + ".vtk");*/
-
+                        VTK.Export_single_gnp(gnps[GNPb], "gnp_" + to_string(GNPb) + ".vtk");// */
+                        
                         //Flag that determines if a junction is inside the sample
                         bool junction_in = false;
                         
