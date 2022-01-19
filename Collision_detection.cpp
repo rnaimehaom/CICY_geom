@@ -1801,7 +1801,7 @@ void Collision_detection::Normal_and_distance_to_origin(const vector<Point_3D> &
     //Also, save the value of the dot procduct as it is used to calculate the distance
     //from the origin to the face f
     double signed_dist = N.dot(simplex[f.v1]*(-1.0));
-    normal = (signed_dist > Zero)? N*(-1.0) : N;
+    normal = (signed_dist > 0.0)? N*(-1.0) : N;
     
     //Calculate distance to origin
     //distance = abs(dot(normal, simplex[f.v1]));
@@ -1857,7 +1857,7 @@ void Collision_detection::Reconstruct_simplex(const vector<Point_3D> &simplex, c
         //The face is seen by the support point, S, if the vector that goes from the face to S
         //is in the same direction as the normal of the face
         //hout<<"Faces["<<i<<"]="<<Faces[i].str()<<" dot(S-v1,N)="<<dot(simplex[S]-simplex[Faces[i].v1], Normals[i])<<endl;
-        if (Normals[i].dot(simplex[S]-simplex[Faces[i].v1]) > Zero ) {
+        if (Normals[i].dot(simplex[S]-simplex[Faces[i].v1]) > 0.0 ) {
             
             //Add the index of faces to remove
             idxs.push_back(i);
