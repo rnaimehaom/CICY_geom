@@ -309,10 +309,10 @@ int Contact_grid::Fill_sectioned_domain_gnps(const cuboid &window_geom, const ve
 int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, const GNP &gnp, const double &overlapping, const int n_regions[], const double l_regions[], const int& tot_regions)
 {
     //Number of points to discretize the GNP along the x direction (of the GNP local coordinates)
-    int n_points_x = max(2, 1 + (int)(gnp.l/l_regions[0]));
+    int n_points_x = max(20, 1 + (int)(gnp.l/l_regions[0]));
     
     //Number of points to discretize the GNP along the y direction (of the GNP local coordinates)
-    int n_points_y = max(2, 1 + (int)(gnp.l/l_regions[1]));
+    int n_points_y = max(20, 1 + (int)(gnp.l/l_regions[1]));
     
     //Number of points to discretize the GNP along the z direction (of the GNP local coordinates)
     //Make sure there are at least two points in the discretization along z
