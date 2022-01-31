@@ -50,23 +50,28 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         
         //Generate a GNP network
         vector<vector<int> > sectioned_domain_gnp;
-        if (!Generate_gnp_network_mt(simu_para, gnp_geo, geom_sample, cutoffs, gnps, sectioned_domain_gnp, gnp_vol_tot, gnp_wt_tot)) {
+        int n_subregion[] = { 0,0,0 };
+        if (!Generate_gnp_network_mt(simu_para, gnp_geo, geom_sample, cutoffs, gnps, sectioned_domain_gnp, n_subregion, gnp_vol_tot, gnp_wt_tot)) {
             hout << "Error in generating a GNP network" << endl;
             return 0;
         }
         
     }
     else if (simu_para.particle_type == "GNP_CNT_mix") {
+
+        //Variables for the sectioned domain, which needs to have the same size for 
+        //CNTs and GNPs
+        vector<vector<int> > sectioned_domain_gnp;
+        int n_subregion[] = { 0,0,0 };
         
         //Generate a GNP network
-        vector<vector<int> > sectioned_domain_gnp;
-        if (!Generate_gnp_network_mt(simu_para, gnp_geo, geom_sample, cutoffs, gnps, sectioned_domain_gnp, gnp_vol_tot, gnp_wt_tot)) {
+        if (!Generate_gnp_network_mt(simu_para, gnp_geo, geom_sample, cutoffs, gnps, sectioned_domain_gnp, n_subregion, gnp_vol_tot, gnp_wt_tot)) {
             hout << "Error in generating a GNP network for mixed particles" << endl;
             return 0;
         }
         
         //Generate a CNT network within a GNP network
-        if (!Generate_cnt_network_threads_among_gnps_mt(simu_para, gnp_geo, nanotube_geo, geom_sample, cutoffs, gnps, sectioned_domain_gnp, gnp_vol_tot, gnp_wt_tot, cnts_points, radii_in)) {
+        if (!Generate_cnt_network_threads_among_gnps_mt(simu_para, gnp_geo, nanotube_geo, geom_sample, cutoffs, gnps, sectioned_domain_gnp, n_subregion, gnp_vol_tot, gnp_wt_tot, cnts_points, radii_in)) {
             hout<<"Error in generating a CNT network for mixed particles"<<endl;
             return 0;
         }
@@ -219,6 +224,9 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         return 0;
     }
     
+    //Total number of subregions
+    int tot_regions = n_subregions[0] * n_subregions[1] * n_subregions[2];
+    
     //Get the time when generation started
     ct0 = time(NULL);
     
@@ -351,7 +359,9 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         double cnt_len = 0.0;
         
         //Add the seed point to the overlapping subregions it belongs to using the map
-        if (!Add_cnt_point_to_overlapping_regions_map(geom_sample, new_cnt[0], 0, is_prev_in_sample, n_subregions, subr_point_map)) {
+        //First 0 is the local number of the seed point on the CNT
+        //Second 0 is to indicate no layer is considered when calculating subregion numbers
+        if (!Add_cnt_point_to_overlapping_regions_map(geom_sample, new_cnt[0], 0, is_prev_in_sample, 0, tot_regions, n_subregions, subr_point_map)) {
             hout<<"Error when adding the seed point to the map of subregions"<<endl;
             return 0;
         }
@@ -413,7 +423,8 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                     
                     //Add the new_point to the overlapping subregions it belongs to using the map
                     //hout << "Add_cnt_point_to_overlapping_regions_map" << endl;
-                    if (!Add_cnt_point_to_overlapping_regions_map(geom_sample, new_point, (int)new_cnt.size(), is_new_inside_sample, n_subregions, subr_point_map)) {
+                    //0 is to indicate no layer is considered when calculating subregion numbers
+                    if (!Add_cnt_point_to_overlapping_regions_map(geom_sample, new_point, (int)new_cnt.size(), is_new_inside_sample, 0, tot_regions, n_subregions, subr_point_map)) {
                         hout<<"Error when adding a point to the map of subregions"<<endl;
                         return 0;
                     }
@@ -1368,40 +1379,118 @@ double Generate_Network::Length_inside_sample(const cuboid &sample, const Point_
     }
 }
 //This function adds a point to the overlapping subregions it belongs to using a map
-int Generate_Network::Add_cnt_point_to_overlapping_regions_map(const Geom_sample &geom_sample, const Point_3D &new_point, const int &local_num, const int &is_new_inside_sample, const int n_subregions[], map<int, vector<int> > &subr_point_map)const
+int Generate_Network::Add_cnt_point_to_overlapping_regions_map(const Geom_sample &geom_sample, const Point_3D &new_point, const int &local_num, const int &is_new_inside_sample, const int& layer_flag, const int& tot_regions, const int n_subregions[], map<int, vector<int> > &subr_point_map)const
 {
     //A point is added only if it is in the composite domain, i.e., inside the sample
     //If the point is in the boundary layer, overlapping is not important
     if (is_new_inside_sample) {
         
-        //Create array for loop over overlaping regions
-        int flags[2][3];
+        //Variables to store the subregion coordinates
+        int a = 0, b = 0, c = 0;
         
         //Initialize flags for overlaping regions
-        int fx = 0;
-        int fy = 0;
-        int fz = 0;
-        
-        //Fill the array of flags
-        Get_overlapping_flags(geom_sample, new_point, n_subregions, flags, fx, fy, fz);
-        
-        //In this loop I check all regions a point can belong to when it is in an overlaping zone
-        for (int ii = 0; ii < 2; ii++) {
-            if (!fx) ii++; //if flag is zero, do this loop only once
-            for (int jj = 0; jj < 2; jj++) {
-                if (!fy) jj++; //if flag is zero, do this loop only once
-                for (int kk = 0; kk < 2; kk++) {
-                    if (!fz) kk++; //if flag is zero, do this loop only once
-                    
-                    //hout <<"a="<<a<<" fx="<<fx<<" b="<<b<<" fy="<<fy<<" c="<<c<<" fz="<<fz;
-                    //Calculate the region number
-                    int t = Calculate_t(flags[ii][0], flags[jj][1], flags[kk][2], n_subregions[0], n_subregions[1]);
-                    
-                    //Add the map from subregion to local point number: t->local_num
-                    subr_point_map[t].push_back(local_num);
-                }
+        int f_regions[] = { 0,0,0 };
+
+        //Check if layer needs to be considered when calculating the subregion number
+        if (layer_flag)
+        {
+            //Layer is present
+            //Calculate the subregion-coordinates a, b, c
+            if (!Get_subregion_coordinates_with_layer(geom_sample, new_point, n_subregions, a, b, c))
+            {
+                hout << "Error in Add_cnt_point_to_overlapping_regions_map when calling Get_subregion_coordinates_with_layer." << endl;
+                return 0;
+            }
+
+            //Get the overlapping flags
+            if (!Get_overlapping_flags_with_layer(geom_sample, new_point, a, b, c, f_regions))
+            {
+                hout << "Error in Add_cnt_point_to_overlapping_regions_map when calling Get_overlapping_flags_with_layer." << endl;
+                return 0;
             }
         }
+        else
+        {
+            //Layer is not present
+            //Calculate the subregion-coordinates
+            Get_subregion_coordinates(geom_sample, n_subregions, new_point, a, b, c);
+
+            //Get the overlapping flags
+            if (!Get_overlapping_flags(geom_sample, new_point, n_subregions, a, b, c, f_regions))
+            {
+                hout << "Error in Add_cnt_point_to_overlapping_regions_map when calling Get_overlapping_flags." << endl;
+                return 0;
+            }
+        }
+
+        //Calculate default region
+        int t = Calculate_t(a, b, c, n_subregions[0], n_subregions[1]);
+        if (t >= tot_regions || t < 0)
+        {
+            hout << "Error in Add_cnt_point_to_overlapping_regions_map. Point belongs to a subregion outside the range of subregions." << endl;
+            hout << "Subregion number (t) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+            hout << "a=" << a << " b=" << b << " c=" << c << endl;
+            return 0;
+        }
+
+        //Add the map from subregion to local point number: t->local_num
+        subr_point_map[t].push_back(local_num);
+
+        //Check if P needs to be added to more regions due to their overlapping
+        //Check the flag for the subregion's a-coordinate
+        if (f_regions[0] != 0) 
+        {
+            //Calculate the region
+            t = Calculate_t(a + f_regions[0], b, c, n_subregions[0], n_subregions[1]);
+            if (t >= tot_regions || t < 0)
+            {
+                hout << "Error in Add_cnt_point_to_overlapping_regions_map. Point belongs to a subregion outside the range of subregions." << endl;
+                hout << "Subregion number (t0) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+                hout << "a=" << a << " b=" << b << " c=" << c << endl;
+                hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
+                return 0;
+            }
+
+            //Add the map from subregion to local point number: t->local_num
+            subr_point_map[t].push_back(local_num);
+        }
+
+        //Check the flag for the subregion's b-coordinate
+        if (f_regions[1] != 0) 
+        {
+            //Calculate the region
+            t = Calculate_t(a, b + f_regions[1], c, n_subregions[0], n_subregions[1]);
+            if (t >= tot_regions || t < 0)
+            {
+                hout << "Error in Add_cnt_point_to_overlapping_regions_map. Point belongs to a subregion outside the range of subregions." << endl;
+                hout << "Subregion number (t1) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+                hout << "a=" << a << " b=" << b << " c=" << c << endl;
+                hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
+                return 0;
+            }
+
+            //Add the map from subregion to local point number: t->local_num
+            subr_point_map[t].push_back(local_num);
+        }
+
+        //Check the flag for the subregion's c-coordinate
+        if (f_regions[2] != 0) 
+        {
+            //Calculate the region
+            t = Calculate_t(a, b, c + f_regions[2], n_subregions[0], n_subregions[1]);
+            if (t >= tot_regions || t < 0)
+            {
+                hout << "Error in Add_cnt_point_to_overlapping_regions_map. Point belongs to a subregion outside the range of subregions." << endl;
+                hout << "Subregion number (t2) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+                hout << "a=" << a << " b=" << b << " c=" << c << endl;
+                hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
+                return 0;
+            }
+
+            //Add the map from subregion to local point number: t->local_num
+            subr_point_map[t].push_back(local_num);
+        }
+
     }
     
     return 1;
@@ -1477,7 +1566,7 @@ int Generate_Network::Store_or_ignore_new_cnt_using_map(const int &penetration_m
     
     return 1;
 }
-int Generate_Network::Store_or_ignore_new_cnt(const Geom_sample &geom_sample, const int &penetration_model_flag, const int &points_in, const double &cnt_len, const double &cnt_rad, const double &cnt_cross_area, const vector<Point_3D> &new_cnt, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius, const int n_subregions[], vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coordinates, double &vol_sum, int &cnt_ignore_count)const
+int Generate_Network::Store_or_ignore_new_cnt(const Geom_sample &geom_sample, const int &penetration_model_flag, const int &points_in, const double &cnt_len, const double &cnt_rad, const double &cnt_cross_area, const vector<Point_3D> &new_cnt, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius, const int& tot_regions, const int n_subregions[], vector<vector<long int> > &sectioned_domain, vector<vector<int> > &global_coordinates, double &vol_sum, int &cnt_ignore_count)const
 {
     //Store the CNT points
     //hout << "Store CNT ";
@@ -1512,8 +1601,11 @@ int Generate_Network::Store_or_ignore_new_cnt(const Geom_sample &geom_sample, co
                 empty[1] = ii;
                 global_coordinates.push_back(empty);
                 //Add point to an overlapping region in the vector sectioned_domain
-                Add_cnt_point_to_overlapping_regions(geom_sample, new_cnt[ii], (long int)global_coordinates.size()-1, n_subregions, sectioned_domain);
-                
+                if (!Add_cnt_point_to_overlapping_regions(geom_sample, new_cnt[ii], (long int)global_coordinates.size() - 1, tot_regions, n_subregions, sectioned_domain))
+                {
+                    hout << "Error in Store_or_ignore_new_cnt when calling Add_cnt_point_to_overlapping_regions" << endl;
+                    return 0;
+                }                
             }
         }
     }
@@ -1528,92 +1620,134 @@ int Generate_Network::Store_or_ignore_new_cnt(const Geom_sample &geom_sample, co
 }
 //---------------------------------------------------------------------------
 //This function adds a point to a region so penetration can be checked
-void Generate_Network::Add_cnt_point_to_overlapping_regions(const Geom_sample &geom_sample, const Point_3D &point, const long int &global_num, const int n_subregions[], vector<vector<long int> > &sectioned_domain)const
+int Generate_Network::Add_cnt_point_to_overlapping_regions(const Geom_sample &geom_sample, const Point_3D &point, const long int &global_num, const int& tot_regions, const int n_subregions[], vector<vector<long int> > &sectioned_domain)const
 {
     //A point is added only if it is in the composite domain
     //If the point is in the boundary layer, overlapping is not important
     if (Is_point_inside_cuboid(geom_sample.sample, point)) {
-        
-        //Create array for loop over overlaping regions
-        int flags[2][3];
-        
+
+        //Variables to store the subregion coordinates
+        int a = 0, b = 0, c = 0;
+
         //Initialize flags for overlaping regions
-        int fx = 0;
-        int fy = 0;
-        int fz = 0;
-        
-        //Fill the array of flags
-        Get_overlapping_flags(geom_sample, point, n_subregions, flags, fx, fy, fz);
-        
-        //In this loop I check all regions a point can belong to when it is in an overlaping zone
-        for (int ii = 0; ii < 2; ii++) {
-            if (!fx) ii++; //if flag is zero, do this loop only once
-            for (int jj = 0; jj < 2; jj++) {
-                if (!fy) jj++; //if flag is zero, do this loop only once
-                for (int kk = 0; kk < 2; kk++) {
-                    if (!fz) kk++; //if flag is zero, do this loop only once
-                    //hout <<"a="<<a<<" fx="<<fx<<" b="<<b<<" fy="<<fy<<" c="<<c<<" fz="<<fz;
-                    int t = Calculate_t(flags[ii][0], flags[jj][1], flags[kk][2], n_subregions[0], n_subregions[1]);
-                    //hout<<" t="<<t<<" sectioned_domain["<<t<<"].size()="<<sectioned_domain[t].size();
-                    sectioned_domain[t].push_back(global_num);
-                    //hout<<'.'<<endl;
-                }
-            }
+        int f_regions[] = { 0,0,0 };
+
+        //Calculate the subregion-coordinates
+        Get_subregion_coordinates(geom_sample, n_subregions, point, a, b, c);
+
+        //Get the overlapping flags
+        if (!Get_overlapping_flags(geom_sample, point, n_subregions, a, b, c, f_regions))
+        {
+            hout << "Error in Add_cnt_point_to_overlapping_regions when calling Get_overlapping_flags." << endl;
+            return 0;
         }
+
+        //Calculate default region
+        int t = Calculate_t(a, b, c, n_subregions[0], n_subregions[1]);
+        if (t >= tot_regions || t < 0)
+        {
+            hout << "Error in Add_cnt_point_to_overlapping_regions. Point belongs to a subregion outside the range of subregions." << endl;
+            hout << "Subregion number (t) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+            hout << "a=" << a << " b=" << b << " c=" << c << endl;
+            return 0;
+        }
+
+        //hout<<" t="<<t<<" sectioned_domain["<<t<<"].size()="<<sectioned_domain[t].size();
+        sectioned_domain[t].push_back(global_num);
+
+        //Check if P needs to be added to more regions due to their overlapping
+        //Check the flag for the subregion's a-coordinate
+        if (f_regions[0] != 0)
+        {
+            //Calculate the region
+            t = Calculate_t(a + f_regions[0], b, c, n_subregions[0], n_subregions[1]);
+            if (t >= tot_regions || t < 0)
+            {
+                hout << "Error in Add_cnt_point_to_overlapping_regions. Point belongs to a subregion outside the range of subregions." << endl;
+                hout << "Subregion number (t0) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+                hout << "a=" << a << " b=" << b << " c=" << c << endl;
+                hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
+                return 0;
+            }
+
+            //hout<<" t="<<t<<" sectioned_domain["<<t<<"].size()="<<sectioned_domain[t].size();
+            sectioned_domain[t].push_back(global_num);
+        }
+
+        //Check the flag for the subregion's b-coordinate
+        if (f_regions[1] != 0)
+        {
+            //Calculate the region
+            t = Calculate_t(a, b + f_regions[1], c, n_subregions[0], n_subregions[1]);
+            if (t >= tot_regions || t < 0)
+            {
+                hout << "Error in Add_cnt_point_to_overlapping_regions. Point belongs to a subregion outside the range of subregions." << endl;
+                hout << "Subregion number (t1) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+                hout << "a=" << a << " b=" << b << " c=" << c << endl;
+                hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
+                return 0;
+            }
+
+            //hout<<" t="<<t<<" sectioned_domain["<<t<<"].size()="<<sectioned_domain[t].size();
+            sectioned_domain[t].push_back(global_num);
+        }
+
+        //Check the flag for the subregion's c-coordinate
+        if (f_regions[2] != 0)
+        {
+            //Calculate the region
+            t = Calculate_t(a, b, c + f_regions[2], n_subregions[0], n_subregions[1]);
+            if (t >= tot_regions || t < 0)
+            {
+                hout << "Error in Add_cnt_point_to_overlapping_regions. Point belongs to a subregion outside the range of subregions." << endl;
+                hout << "Subregion number (t2) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+                hout << "a=" << a << " b=" << b << " c=" << c << endl;
+                hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
+                return 0;
+            }
+
+            //hout<<" t="<<t<<" sectioned_domain["<<t<<"].size()="<<sectioned_domain[t].size();
+            sectioned_domain[t].push_back(global_num);
+        }
+
     }
+
+    return 1;
 }
 //---------------------------------------------------------------------------
 //This function determines the individual flags and fills the array of flags that
 //help determine if a point is in more than one overlapping region
-void Generate_Network::Get_overlapping_flags(const Geom_sample &geom_sample, const Point_3D &point, const int n_subregions[], int flags[][3], int &fx, int &fy, int &fz)const
+int Generate_Network::Get_overlapping_flags(const Geom_sample& geom_sample, const Point_3D& new_point, const int n_subregions[], const int& a, const int& b, const int& c, int f_regions[])const
 {
-    //Save coordinates of the point
-    double x = point.x;
-    double y = point.y;
-    double z = point.z;
-    
-    //These variables will give me the region cordinates of the region that a point belongs to
-    int a, b, c;
-    
-    //Calculate the subregion-coordinates
-    Get_subregion_coordinates(geom_sample, n_subregions, point, a, b, c);
-    
     //These variables are the coordinates of the lower corner of the RVE that defines its geometry
     double xmin = geom_sample.sample.poi_min.x;
     double ymin = geom_sample.sample.poi_min.y;
     double zmin = geom_sample.sample.poi_min.z;
-    
+
     //Coordinates of non-overlaping region the point belongs to
-    double x1 = (double)a*geom_sample.gs_minx +  xmin;
+    double x1 = (double)a * geom_sample.gs_minx + xmin;
     double x2 = x1 + geom_sample.gs_minx;
-    double y1 = (double)b*geom_sample.gs_miny +  ymin;
+    double y1 = (double)b * geom_sample.gs_miny + ymin;
     double y2 = y1 + geom_sample.gs_miny;
-    double z1 = (double)c*geom_sample.gs_minz +  zmin;
+    double z1 = (double)c * geom_sample.gs_minz + zmin;
     double z2 = z1 + geom_sample.gs_minz;
-    
+
     //Assign value of flag according to position of point
     //The first operand eliminates the periodicity on the boundary
-    if ((a > 0) && (x >= x1) && (x <= x1+geom_sample.gs_overlap_cnt))
-        fx = -1;
-    else if ((a < n_subregions[0]-1) && (x >= x2-geom_sample.gs_overlap_cnt) && (x <= x2 ))
-        fx = 1;
-    if ((b > 0) && (y >= y1) && (y <= y1+geom_sample.gs_overlap_cnt))
-        fy = -1;
-    else if ((b < n_subregions[1]-1) && (y >= y2-geom_sample.gs_overlap_cnt) && (y <= y2 ))
-        fy = 1;
-    if ((c > 0) && (z >= z1) && (z <= z1+geom_sample.gs_overlap_cnt))
-        fz = -1;
-    else if ((c < n_subregions[2]-1) && (z >= z2-geom_sample.gs_overlap_cnt) && (z <= z2 ))
-        fz = 1;
-    
-    //Fill the array of flags for overlapping regions
-    //int flags[2][3] = { {a+fx, b+fy, c+fz}, {a, b, c}};
-    flags[0][0] = a+fx;
-    flags[0][1] = b+fy;
-    flags[0][2] = c+fz;
-    flags[1][0] = a;
-    flags[1][1] = b;
-    flags[1][2] = c;
+    if ((a > 0) && (new_point.x >= x1) && (new_point.x <= x1 + geom_sample.gs_overlap_cnt))
+        f_regions[0] = -1;
+    else if ((a < n_subregions[0] - 1) && (new_point.x >= x2 - geom_sample.gs_overlap_cnt) && (new_point.x <= x2))
+        f_regions[0] = 1;
+    if ((b > 0) && (new_point.y >= y1) && (new_point.y <= y1 + geom_sample.gs_overlap_cnt))
+        f_regions[1] = -1;
+    else if ((b < n_subregions[1] - 1) && (new_point.y >= y2 - geom_sample.gs_overlap_cnt) && (new_point.y <= y2))
+        f_regions[1] = 1;
+    if ((c > 0) && (new_point.z >= z1) && (new_point.z <= z1 + geom_sample.gs_overlap_cnt))
+        f_regions[2] = -1;
+    else if ((c < n_subregions[2] - 1) && (new_point.z >= z2 - geom_sample.gs_overlap_cnt) && (new_point.z <= z2))
+        f_regions[2] = 1;
+
+    return 1;
 }
 //---------------------------------------------------------------------------
 //Calculates the region to which a point corresponds
@@ -2078,6 +2212,9 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
         hout << "Error in Generate_network_threads_mt when calling Initialize_cnt_subregions_extended_domain" <<endl;
         return 0;
     }
+
+    //Total number of subregions
+    int tot_regions = n_subregions[0] * n_subregions[1] * n_subregions[2];
     
     //Get the time when generation started
     ct0 = time(NULL);
@@ -2240,7 +2377,7 @@ int Generate_Network::Generate_cnt_deposit_mt(const Simu_para &simu_para, const 
         //hout<<"Store_or_ignore_new_cnt"<<endl;
         int cnt_ignore_count = 0;
         //To add points to global coordinates, need to use the sample geometry of the deposit
-        if (!Store_or_ignore_new_cnt(geom_sample_deposit, simu_para.penetration_model_flag, (int)new_cnt.size(), cnt_len, cnt_rad, cnt_cross_area, new_cnt, cnts_points, cnts_radii, n_subregions, sectioned_domain, global_coordinates, vol_sum, cnt_ignore_count)) {
+        if (!Store_or_ignore_new_cnt(geom_sample_deposit, simu_para.penetration_model_flag, (int)new_cnt.size(), cnt_len, cnt_rad, cnt_cross_area, new_cnt, cnts_points, cnts_radii, tot_regions, n_subregions, sectioned_domain, global_coordinates, vol_sum, cnt_ignore_count)) {
             hout<<"Error when storing or ignoring a new CNT"<<endl;
             return 0;
         }
@@ -3202,7 +3339,7 @@ int Generate_Network::Check_progress(const string &particle, const int &elapsed_
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //Generate a GNP network
-int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, vector<GNP> &gnps, vector<vector<int> > &sectioned_domain, double &gnp_vol_tot, double &gnp_wt_tot)const
+int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, vector<GNP> &gnps, vector<vector<int> > &sectioned_domain, int n_subregion[], double &gnp_vol_tot, double &gnp_wt_tot)const
 {
 
     //geom_sample cannot be modified, so copy the seeds to an array if they were specified in
@@ -3236,12 +3373,11 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
     //Variable to count the number of GNPs ignored because they were not even partially inside the sample
     int gnp_ignored_count = 0;
     
-    //n_subregions[0] is the number of subregions along x
-    //n_subregions[1] is the number of subregions along y
-    //n_subregions[2] is the number of subregions along z
-    int n_subregion[] = {0,0,0};
     //Calculate the number of subregins along each direction and intialize the sectioned_domain vector
     //hout<<"Initialize_gnp_subregions"<<endl;
+    //n_subregion[0] is the number of subregions along x
+    //n_subregion[1] is the number of subregions along y
+    //n_subregion[2] is the number of subregions along z
     if (!Initialize_gnp_subregions(geom_sample, n_subregion, sectioned_domain)) {
         hout<<"Error in Initialize_gnp_subregions"<<endl;
         return 1;
@@ -3715,51 +3851,23 @@ int Generate_Network::Get_gnp_subregions(const int& tot_regions, const Geom_samp
 int Generate_Network::Add_gnp_subregions_to_set_for_gnp_point(const int& tot_regions, const Geom_sample &geom_sample, const Point_3D &new_point, const int n_subregions[], set<int> &subregions)const
 {
     //=================================================================================
-    //Calculate the region-coordinates a, b, c
-    int a = (int)((new_point.x-geom_sample.sample.poi_min.x)/geom_sample.gs_minx);
-    //Limit the value of a as it has to go from 0 to n_subregions[0]-1
-    if (a < 0) a = 0;
-    else if (a >= n_subregions[0]) a = n_subregions[0] - 1;
-    int b = (int)((new_point.y-geom_sample.sample.poi_min.y)/geom_sample.gs_miny);
-    //Limit the value of b as it has to go from 0 to n_subregions[1]-1
-    if (b < 0) b = 0;
-    else if (b >= n_subregions[1]) b = n_subregions[1] - 1;
-    int c = (int)((new_point.z-geom_sample.sample.poi_min.z)/geom_sample.gs_minz);
-    //Limit the value of c as it has to go from 0 to n_subregions[2]-1
-    if (c < 0) c = 0;
-    else if (c >= n_subregions[2]) c = n_subregions[2] - 1;
-    //hout<<"a="<<a<<" b="<<b<<" c="<<c<<endl;
+    //Calculate the subregion-coordinates a, b, c
+    int a = 0, b = 0, c = 0;
+    if (!Get_subregion_coordinates_with_layer(geom_sample, new_point, n_subregions, a, b, c))
+    {
+        hout << "Error in Add_gnp_subregions_to_set_for_gnp_point when calling Get_subregion_coordinates_with_layer." << endl;
+        return 0;
+    }
 
     //=================================================================================
     //Initialize flags for overlaping regions
     int f_regions[] = { 0,0,0 };
 
-    //Coordinates of non-overlaping region the point belongs to
-    //Recall that, for generation purposes, doordinate 0 is outside the sample
-    //and for coordinate a = 1 we have that x1 = geom_sample.sample.poi_min.x
-    //Thus for a = 0 we have that x1 = - geom_sample.sample.poi_min.x
-    //Simlarly for b and c
-    double x1 = a * geom_sample.gs_minx - geom_sample.sample.poi_min.x;
-    double x2 = x1 + geom_sample.gs_minx;
-    double y1 = b * geom_sample.gs_miny - geom_sample.sample.poi_min.y;
-    double y2 = y1 + geom_sample.gs_miny;
-    double z1 = c * geom_sample.gs_minz - geom_sample.sample.poi_min.z;
-    double z2 = z1 + geom_sample.gs_minz;
-
-    //Assign value of flag according to position of point
-    //The first operand eliminates the periodicity on the boundary
-    if ((a > 0) && (new_point.x >= x1) && (new_point.x <= x1 + geom_sample.gs_overlap_gnp))
-        f_regions[0] = -1;
-    else if ((a < geom_sample.gs_minx - 1) && (new_point.x >= x2 - geom_sample.gs_overlap_gnp) && (new_point.x <= x2))
-        f_regions[0] = 1;
-    if ((b > 0) && (new_point.y >= y1) && (new_point.y <= y1 + geom_sample.gs_overlap_gnp))
-        f_regions[1] = -1;
-    else if ((b < geom_sample.gs_miny - 1) && (new_point.y >= y2 - geom_sample.gs_overlap_gnp) && (new_point.y <= y2))
-        f_regions[1] = 1;
-    if ((c > 0) && (new_point.z >= z1) && (new_point.z <= z1 + geom_sample.gs_overlap_gnp))
-        f_regions[2] = -1;
-    else if ((c < geom_sample.gs_minz - 1) && (new_point.z >= z2 - geom_sample.gs_overlap_gnp) && (new_point.z <= z2))
-        f_regions[2] = 1;
+    if (!Get_overlapping_flags_with_layer(geom_sample, new_point, a, b, c, f_regions))
+    {
+        hout << "Error in Add_gnp_subregions_to_set_for_gnp_point when calling Get_overlapping_flags_with_layer." << endl;
+        return 0;
+    }
 
     //====================================================================
     //Calculate default region
@@ -3833,6 +3941,64 @@ int Generate_Network::Add_gnp_subregions_to_set_for_gnp_point(const int& tot_reg
         //Add the subregion number to the set of subregions
         subregions.insert(t);
     }
+
+    return 1;
+}
+//This function calculates the subregion coordinates when there is a boundary layer, i.e., there
+//are subregions outside the sample
+int Generate_Network::Get_subregion_coordinates_with_layer(const Geom_sample& geom_sample, const Point_3D& new_point, const int n_subregions[], int& a, int& b, int& c)const
+{
+    //Calculate the subregion coordinate along the x-direction
+    a = (int)((new_point.x - geom_sample.sample.poi_min.x) / geom_sample.gs_minx);
+    //Limit the value of a as it has to go from 0 to n_subregions[0]-1
+    if (a < 0) a = 0;
+    else if (a >= n_subregions[0]) a = n_subregions[0] - 1;
+
+    //Calculate the subregion coordinate along the y-direction
+    b = (int)((new_point.y - geom_sample.sample.poi_min.y) / geom_sample.gs_miny);
+    //Limit the value of b as it has to go from 0 to n_subregions[1]-1
+    if (b < 0) b = 0;
+    else if (b >= n_subregions[1]) b = n_subregions[1] - 1;
+
+    //Calculate the subregion coordinate along the z-direction
+    c = (int)((new_point.z - geom_sample.sample.poi_min.z) / geom_sample.gs_minz);
+    //Limit the value of c as it has to go from 0 to n_subregions[2]-1
+    if (c < 0) c = 0;
+    else if (c >= n_subregions[2]) c = n_subregions[2] - 1;
+    //hout<<"a="<<a<<" b="<<b<<" c="<<c<<endl;
+
+    return 1;
+}
+//This function gets the overlapping flags when there is a boundary layer, i.e., there
+//are subregions outside the sample
+int Generate_Network::Get_overlapping_flags_with_layer(const Geom_sample& geom_sample, const Point_3D& new_point, const int& a, const int& b, const int& c, int f_regions[])const
+{
+    //Coordinates of non-overlaping region the point belongs to
+    //Recall that, for generation purposes, doordinate 0 is outside the sample
+    //and for coordinate a = 1 we have that x1 = geom_sample.sample.poi_min.x
+    //Thus for a = 0 we have that x1 = - geom_sample.sample.poi_min.x
+    //Simlarly for b and c
+    double x1 = a * geom_sample.gs_minx - geom_sample.sample.poi_min.x;
+    double x2 = x1 + geom_sample.gs_minx;
+    double y1 = b * geom_sample.gs_miny - geom_sample.sample.poi_min.y;
+    double y2 = y1 + geom_sample.gs_miny;
+    double z1 = c * geom_sample.gs_minz - geom_sample.sample.poi_min.z;
+    double z2 = z1 + geom_sample.gs_minz;
+
+    //Assign value of flag according to position of point
+    //The first operand eliminates the periodicity on the boundary
+    if ((a > 0) && (new_point.x >= x1) && (new_point.x <= x1 + geom_sample.gs_overlap_gnp))
+        f_regions[0] = -1;
+    else if ((a < geom_sample.gs_minx - 1) && (new_point.x >= x2 - geom_sample.gs_overlap_gnp) && (new_point.x <= x2))
+        f_regions[0] = 1;
+    if ((b > 0) && (new_point.y >= y1) && (new_point.y <= y1 + geom_sample.gs_overlap_gnp))
+        f_regions[1] = -1;
+    else if ((b < geom_sample.gs_miny - 1) && (new_point.y >= y2 - geom_sample.gs_overlap_gnp) && (new_point.y <= y2))
+        f_regions[1] = 1;
+    if ((c > 0) && (new_point.z >= z1) && (new_point.z <= z1 + geom_sample.gs_overlap_gnp))
+        f_regions[2] = -1;
+    else if ((c < geom_sample.gs_minz - 1) && (new_point.z >= z2 - geom_sample.gs_overlap_gnp) && (new_point.z <= z2))
+        f_regions[2] = 1;
 
     return 1;
 }
@@ -4444,7 +4610,7 @@ int Generate_Network::Approximate_gnp_volume_inside_sample(const cuboid &sample_
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //This function generates CNTs for a mixed nanoparticle network
-int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Nanotube_Geo &nanotube_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, const double &gnp_vol_tot, const double &gnp_wt_tot, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius)const
+int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para &simu_para, const GNP_Geo &gnp_geo, const Nanotube_Geo &nanotube_geo, const Geom_sample &geom_sample, const Cutoff_dist &cutoffs, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, const int n_subregions[], const double &gnp_vol_tot, const double &gnp_wt_tot, vector<vector<Point_3D> > &cnts_points, vector<double> &cnts_radius)const
 {
     //Initial seeds, if any are in network_seeds within geom_sample.
     //However, geom_sample cannot be modified, so copy the seeds to a new vector
@@ -4494,16 +4660,19 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
     //global_coordinates[i][0] stores the CNT number of global point i
     //global_coordinates[i][1] stores the local point number of global point i
     vector<vector<int> > global_coordinates;
+
     //sectioned_domain[i] contains all the points in sub-region i.
     //Sub-region i is an overlapping subregion to check for penetrations
-    vector<vector<long int> > sectioned_domain;
+    //Use the same size as for GNPs
+    vector<vector<long int> > sectioned_domain(sectioned_domain_gnp.size());
+
+    //For n_subregions use the same as with GNPs since the sectioned domain needs
+    //to have the same size
     //n_subregions[0] is the number of subregions along x
     //n_subregions[1] is the number of subregions along y
     //n_subregions[2] is the number of subregions along z
-    int n_subregions[3];
-    //Initialize the vector sub-regions
-    //hout<<"Initialize_cnt_subregions"<<endl;
-    Initialize_cnt_subregions(geom_sample, n_subregions, sectioned_domain);
+    //Calculate the total number of subregions
+    int tot_regions = 
     
     //Get the time when generation started
     ct0 = time(NULL);
@@ -4596,7 +4765,9 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
         double cnt_len = 0.0;
         
         //Add the seed point to the overlapping subregions it belongs to using the map
-        if (!Add_cnt_point_to_overlapping_regions_map(geom_sample, new_cnt[0], 0, is_prev_in_sample, n_subregions, subr_point_map)) {
+        //0 is the local number of the seed point on the CNT
+        //1 is to indicate no layer is considered when calculating subregion numbers
+        if (!Add_cnt_point_to_overlapping_regions_map(geom_sample, new_cnt[0], 0, is_prev_in_sample, 1, tot_regions, n_subregions, subr_point_map)) {
             hout<<"Error when adding the seed point to the map of subregions"<<endl;
             return 0;
         }
@@ -4663,7 +4834,8 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
                     is_prev_in_sample = is_new_inside_sample;
                     
                     //Add the new_point to the overlapping subregions it belongs to using the map
-                    if (!Add_cnt_point_to_overlapping_regions_map(geom_sample, new_point, (int)new_cnt.size(), is_new_inside_sample, n_subregions, subr_point_map)) {
+                    //1 is to indicate no layer is considered when calculating subregion numbers
+                    if (!Add_cnt_point_to_overlapping_regions_map(geom_sample, new_point, (int)new_cnt.size(), is_new_inside_sample, 1, tot_regions, n_subregions, subr_point_map)) {
                         hout<<"Error when adding a point to the map of subregions"<<endl;
                         return 0;
                     }

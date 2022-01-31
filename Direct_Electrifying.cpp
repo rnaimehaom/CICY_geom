@@ -318,7 +318,7 @@ int Direct_Electrifying::LM_matrix_for_gnps(const int &n_cluster, Hoshen_Kopelma
                 
                 //Add the mapping of the current GNP point to a node number
                 LMM_gnps[P] = global_nodes;
-                //hout << "LMM_gnps[P=" << P << "] = " << global_nodes << endl;
+                //hout << "LMM_gnps[P=" << P << "] = " << global_nodes << " gnp_i="<< gnp_i << endl;
                 
                 //Update the next available node
                 global_nodes++;
@@ -1105,6 +1105,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
         //Get the particle numbers
         int GNP1 = junctions_gnp[idx].N1;
         int GNP2 = junctions_gnp[idx].N2;
+        //hout << "GNP1=" << GNP1 << " GNP2=" << GNP2 << endl;
         
         //Calculate the junction resistance
         double Re_inv = 1.0;

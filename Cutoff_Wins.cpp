@@ -918,7 +918,7 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
         
         //Calculate the average point of the points accumulated at each boundary and add it
         //to the vector points_gnp
-        //hout<<"points_acc.size()="<<points_acc.size()<<endl;
+        //hout<<"gnp.flag="<< gnp.flag<<" points_acc.size()="<<points_acc.size()<<endl;
         for (int i = 0; i < (int)points_acc.size(); i++) {
             
             //Check if any point was accumulated at boundary i
