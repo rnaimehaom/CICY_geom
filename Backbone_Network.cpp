@@ -237,15 +237,18 @@ int Backbone_Network::Find_zero_current(const int &n_cluster, const int &R_flag,
     //in the current gave good results.
     //zero_cutoff = currents.back()*1e-9;
     zero_current = I_max*1e-9;
+    //hout << "zero_current=" << zero_current << endl;
     
-    /*/
-    Printer *P = new Printer;
+    /* /
+    Printer P; string filename;
     if (R_flag) {
-        P->Print_1d_vec(currents, "currents_R.txt");
+        filename = "currents_R_" + to_string(n_cluster) + ".txt";
+        P.Print_1d_vec(currents, filename);
     } else {
-        P->Print_1d_vec(currents, "currents.txt");
+        filename = "currents_" + to_string(n_cluster) + ".txt";
+        P.Print_1d_vec(currents, filename);
     }
-    delete P;//*/
+    hout << "SAVED CURRENTS FILE " << filename << endl;//*/
     
     return 1;
 }

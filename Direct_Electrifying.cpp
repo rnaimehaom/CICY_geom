@@ -67,6 +67,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
     //AND
     //the family is 0, 1, or 2
     vector<double> V_guess(global_nodes-reserved_nodes, 0.0);
+    //Check if initial guess is needed
     if (R_flag && reserved_nodes == 2) {
         
         //Calculate an initial guess for the conjugate gradient
@@ -421,6 +422,17 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     Pr.Print_1d_vec(col_ind, "col_ind" + str + ".txt");
     Pr.Print_1d_vec(values, "values" + str + ".txt");
     Pr.Print_1d_vec(R, "R" + str + ".txt");// */
+
+    /* /Print some vectors with sorted values of the non-zero entries of the stifness matrix
+    Printer Pr;
+    string str = "-" + to_string(R_flag) + "-" + to_string(HoKo->family[n_cluster]);
+    vector<double> diag_sorted = diagonal;
+    sort(diag_sorted.begin(), diag_sorted.end());
+    Pr.Print_1d_vec(diag_sorted, "diag_sorted" + str + ".txt");
+    vector<double> val_sorted = values;
+    sort(val_sorted.begin(), val_sorted.end());
+    Pr.Print_1d_vec(val_sorted, "val_sorted" + str + ".txt");// */
+
 
     //Check there are no zeros in the diagonal
     //At this point, the diagonal vector is in its final form
