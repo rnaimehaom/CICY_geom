@@ -20,6 +20,14 @@ int GNP_Reconstruction::Reconstruct_gnp(const vector<int>& vertices, const vecto
     //This is neded to reconstruct the rotation matrix of the GNP
     Point_3D N_top;
 
+    /* /Output all vertices inside the sample
+    hout << endl;
+    for (size_t i = 0; i < vertices.size(); i++)
+        hout << "v=" << vertices[i] << endl;
+    //Output all vertexflags
+    for (size_t i = 0; i < vertex_flags.size(); i++)
+        hout << "bool["<<i<<"]=" << vertex_flags[i] << endl;// */
+
     //Determine whether a full GNP or a partial one is to bre reconstructed
     if (vertices.size() == 8)
     {
@@ -74,6 +82,7 @@ int GNP_Reconstruction::Reconstruct_gnp(const vector<int>& vertices, const vecto
     {
         if (vertex_flags[i])
         {
+            //hout << endl << "GNP "<<gnp0.flag << endl;
             if (gnp_i.Is_point_inside_gnp(gnp0.vertices[i]))
             {
                 ss << i << " inside GNP ";
@@ -85,15 +94,17 @@ int GNP_Reconstruction::Reconstruct_gnp(const vector<int>& vertices, const vecto
             }
             //ss << gnp_i.flag << " O=" << gnp0.vertices[i].str(15) << " N=" << gnp_i.vertices[i].str(15) << endl;
             ss << endl;
+            //if (gnp0.flag == 22 && i == 4) 
+                //hout << "face 2 in new GNP to vertex 4 in original GNP" << gnp_i.faces[2].distance_to(gnp0.vertices[i]) << endl;
+            //hout<<endl;
         }
     }
     if (terminate)
     {
-        hout << "Displaced point is outside reconstructed GNP" << endl;
+        hout << "Displaced point is outside reconstructed GNP #"<<gnp0.flag << endl;
         hout << ss.str() << endl;
         return 0;
     }
-
 
     return 1;
 }
@@ -433,7 +444,7 @@ int GNP_Reconstruction::Reconstruct_partial_gnp(const vector<bool>& vertex_flags
         hout << "Error in Reconstruct_partial_gnp when calling Find_reconstruction_case" << endl;
         return 0;
     }
-    //hout << "case " << gnp_case << endl;
+    //hout << endl << "case " << gnp_case << endl;
 
     //Reconstruct depending on the case
     switch (gnp_case)
@@ -546,6 +557,7 @@ int GNP_Reconstruction::Three_short_edges(const vector<bool>& vertex_flags, GNP&
     //Adjust the vertices to two paralel planes that define the thickness of the GNP
     //In the process the thickness of the GNP is obtained
     //The normal vector to the top plane is also obtained during the calculations
+    //hout << "Adjust_vertices_along_thickness_planes_case3" << endl;
     if (!Adjust_vertices_along_thickness_planes_case3(vertex_flags, R1, R2, gnp_i, N_top))
     {
         hout << "Error in Three_short_edges when calling Adjust_vertices_along_thickness_planes" << endl;
@@ -559,6 +571,7 @@ int GNP_Reconstruction::Three_short_edges(const vector<bool>& vertex_flags, GNP&
     double l1 = 0.0;
 
     //Set two thin faces as parallel
+    //hout << "Set_first_pair_of_parallel_thin_faces_case3" << endl;
     if (!Set_first_pair_of_parallel_thin_faces_case3(vertex_flags, R1, gnp_i, l1))
     {
         hout << "Error in Three_short_edges when calling Set_pair_of_parallel_thin_faces" << endl;
@@ -567,6 +580,7 @@ int GNP_Reconstruction::Three_short_edges(const vector<bool>& vertex_flags, GNP&
 
     //Find the GNP side length by setting the other two pair of thin faces parallel
     //and recalculate vertex coordinates
+    //hout << "Find_gnp_side_length_and_recalculate_vertices_case3" << endl;
     if (!Find_gnp_side_length_and_recalculate_vertices_case3(vertex_flags, R1, l1, N_top, gnp_i))
     {
         hout << "Error in Three_short_edges when calling Find_gnp_side_length_and_recalculate_vertices_case3" << endl;
@@ -616,68 +630,111 @@ int GNP_Reconstruction::Get_reference_edge_case3(const vector<bool>& vertex_flag
 //This function adjusts all vertices on two paralel planes for the squared faces
 int GNP_Reconstruction::Adjust_vertices_along_thickness_planes_case3(const vector<bool>& vertex_flags, const int& R1, const int& R2, GNP& gnp_i, Point_3D& N)const
 {
-    //Get midpoint along reference edge
-    Point_3D M = (gnp_i.vertices[R1] + gnp_i.vertices[R2]) * 0.5;
+    //Get the two other vertices that for sure are presen on the top face
+    int RT = (R1 + 1) % 4;
+    int LT = (R1 + 3) % 4;
 
-    //Vector to store distances to all vertices
-    vector<double> t_halfs(8, 0.0);
+    //Create a reference plane that contains R1, RT, and LT
+    //This plane is the top plane of the GNP
+    Plane_3D Pl_ref(gnp_i.vertices[R1], gnp_i.vertices[RT], gnp_i.vertices[LT]);
+    //hout << "Pl_ref=" << Pl_ref.str() << endl;
+    //for (int i = 0; i < 8; i++)
+        //if(vertex_flags[i])
+            //hout << "d_" << i << "=" << Pl_ref.distance_to(gnp_i.vertices[i])<<endl;
 
-    //Get the distance from midpoint to a reference vertex
-    //This will be the half of the GNP thickness
-    double t_half = M.distance_to(gnp_i.vertices[R1]);
-    t_halfs[R1] = t_half;
-    t_halfs[R2] = t_half;
+    //Vector used to determine the direction of normal vector N
+    Point_3D R2R1 = gnp_i.vertices[R1] - gnp_i.vertices[R2];
 
-    //Index of maximum distance
-    int idx = R1;
+    //Set N so that is goes in the same direction as R2R1
+    N = (R2R1.dot(Pl_ref.N) > 0) ? Pl_ref.N : Pl_ref.N*(-1.0);
 
-    //Unit vector along refernce edge
-    N = (gnp_i.vertices[R1] - gnp_i.vertices[R2]).unit();
+    //Get the number of the fourth vertex in the top plane
+    int OT = (R1 + 2) % 4;
+    //hout << "R1=" << R1 << " LT=" << LT << " RT=" << RT << " OT=" << OT << endl;
 
-    //Iterate over the GNP vertices to find the one furthest from M along normal vector N
-    for (int i = 0; i < 8; i++)
+    //Check if OT is present
+    if (vertex_flags[OT])
     {
-        //Avoid vertices outside the sample and reference edge
-        if (vertex_flags[i] && i != R1 && i != R2)
+        //Check if OT is above the reference plane, i.e., outside the reconstructed GNP
+        if ((gnp_i.vertices[OT] - gnp_i.vertices[R1]).dot(N) < 0.0)
         {
-            //Calculate the distance from M to vertex i along normal vector N
-            //Store it in the vector of distances
-            t_halfs[i] = abs(N.dot(gnp_i.vertices[i] - M));
+            //OT is below reference plane
+            //hout << "OT is below reference plane" << endl;
+            //Calculate distance from OT to reference plane
+            double d_OT = Pl_ref.distance_to(gnp_i.vertices[OT]);
+            
+            //Project OT onto reference plane
+            gnp_i.vertices[OT] = gnp_i.vertices[OT] + N * d_OT;
+        }
+        else
+        {
+            //OT is above reference plane
+            //hout << "OT is above reference plane" << endl;
+            //Update reference plane
+            //Now LT will be below the reference plane
+            Pl_ref = Plane_3D(gnp_i.vertices[R1], gnp_i.vertices[RT], gnp_i.vertices[OT]);
 
-            //Check if t_half needs updating
-            if (t_halfs[i] - t_half > Zero)
+            //Set N so that is goes in the same direction as R2R1
+            N = (R2R1.dot(Pl_ref.N) > 0) ? Pl_ref.N : Pl_ref.N * (-1.0);
+
+            //Calculate distance from LT to reference plane
+            double d_LT = Pl_ref.distance_to(gnp_i.vertices[LT]);
+
+            //Project LT onto reference plane
+            gnp_i.vertices[LT] = gnp_i.vertices[LT] + N * d_LT;
+        }
+    }
+
+    //At this point, vertices R1, RT, LT, and OT (if present) lie in the same plane
+
+    //Variable to store the approximation of the thickness
+    double t_approx = 0.0;
+
+    //Index where the thickness approximation is found
+    int idx = 4;
+
+    //Variable to store all distances from the reference plane to the vertices in the bottom plane
+    double ts[] = { 0.0, 0.0, 0.0, 0.0};
+
+    //Calculate the distance from the reference plane to all vertices present in the bottom face
+    //The maximum of such distances will be the approximation of the thickness
+    for (int i = 4; i < 8; i++)
+    {
+        //Check if vertex i is present
+        if (vertex_flags[i])
+        {
+            //Vertex i is present, so calculate the distance from reference plane to vertex i
+            ts[i - 4] = Pl_ref.distance_to(gnp_i.vertices[i]);
+            //hout<<"Vertex "<<i<<" is present ts[" << i - 4 << "]=" << ts[i - 4] <<" d="<< Pl_ref.distance_to(gnp_i.vertices[i]) << endl;
+
+            //Check if current distance is greater than the current approximation of the thickness
+            if (ts[i - 4] - t_approx > Zero)
             {
-                //Update t_half and index
-                t_half = t_halfs[i];
+                //Update the approximation of the thickness
+                t_approx = ts[i - 4];
+
+                //Update index where the thickness approximation is found
                 idx = i;
+                //hout << "t_approx=" << t_approx << " idx" << idx << endl;
             }
         }
     }
-    
-    //Update the thickness of the GNP
-    gnp_i.t = 2.0*t_half;
 
-    //Adjust top vertices to be at distance t_half from M along normal N
-    for (int i = 0; i < 4; i++)
-    {
-        //Avoid vertices outside the sample
-        if (vertex_flags[i] && i != idx)
-        {
-            //Calculate new location of vertex
-            gnp_i.vertices[i] = gnp_i.vertices[i] + N * (t_half - t_halfs[i]);
-        }
-    }
-
-    //Adjust bottom vertices to be at distance t_half from M along U
+    //Set all vertices present in the bottom face to a distance t_approx from the reference plane
     for (int i = 4; i < 8; i++)
     {
-        //Avoid vertices outside the sample
+        //Check if vertex i is present and it is not where the approximation was found
         if (vertex_flags[i] && i != idx)
         {
-            //Calculate new location of vertex
-            gnp_i.vertices[i] = gnp_i.vertices[i] - N * (t_half - t_halfs[i]);
+            //Update vertex i
+            //hout << "Update vertex " << i << endl;
+            gnp_i.vertices[i] = gnp_i.vertices[i] - N * (t_approx - ts[i - 4]);
         }
     }
+
+    //Set the GNP thickness
+    gnp_i.t = t_approx;
+    //hout << "gnp_i.t=" << gnp_i.t << endl;
 
     return 1;
 }
@@ -687,6 +744,7 @@ int GNP_Reconstruction::Set_first_pair_of_parallel_thin_faces_case3(const vector
 {
     //Calculate the reference vertex to the "left" of R1
     int LT = (R1 + 3) % 4;
+    //hout << "LT=" << LT << endl;
 
     //Calculate the midpoint of edge LTR1
     Point_3D M = (gnp_i.vertices[LT] + gnp_i.vertices[R1]) * 0.5;
@@ -696,6 +754,7 @@ int GNP_Reconstruction::Set_first_pair_of_parallel_thin_faces_case3(const vector
 
     //Initialize a maximum distance using one of the reference vertices
     double d_max = M.distance_to(gnp_i.vertices[R1]);
+    //hout << "d_max=" << d_max << endl;
     //Index of maximum distance
     int idx = R1;
 
@@ -710,6 +769,7 @@ int GNP_Reconstruction::Set_first_pair_of_parallel_thin_faces_case3(const vector
         {
             //Calculate distance along vector U
             dists[i] = abs(U.dot(M - gnp_i.vertices[i]));
+            //hout << "dists[" << i << "]=" << dists[i] << endl;
 
             //Check if maximum distance needs updating
             if (dists[i] - d_max > Zero)
@@ -723,6 +783,7 @@ int GNP_Reconstruction::Set_first_pair_of_parallel_thin_faces_case3(const vector
 
     //Set the first approximation for GNP side length
     l1 = 2.0 * d_max;
+    //hout << "l1=" << l1 << " d_max=" << d_max << " idx=" << idx << endl;
 
     //Update locations of all vertices inside the sample
 
@@ -732,6 +793,7 @@ int GNP_Reconstruction::Set_first_pair_of_parallel_thin_faces_case3(const vector
     //Update reference vertices if not at maximum distance
     if (idx != R1)
     {
+        //hout << "Updated " << R1 << endl;
         gnp_i.vertices[R1] = M + M_disp;
         gnp_i.vertices[LT] = M - M_disp;
     }
@@ -739,12 +801,14 @@ int GNP_Reconstruction::Set_first_pair_of_parallel_thin_faces_case3(const vector
     //Update vertex below reference vertex R1 if not at maximum distance
     if (idx != R1 + 4)
     {
+        //hout << "Updated " << R1+4 << endl;
         gnp_i.vertices[R1 + 4] = gnp_i.vertices[R1 + 4] + U * (d_max - dists[R1 + 4]);
     }
 
     //Update vertex below reference vertex LT if not at maximum distance
     if (idx != LT + 4)
     {
+        //hout << "Updated " << LT+4 << endl;
         gnp_i.vertices[LT + 4] = gnp_i.vertices[LT + 4] - U * (d_max - dists[LT + 4]);
     }
 
@@ -752,12 +816,14 @@ int GNP_Reconstruction::Set_first_pair_of_parallel_thin_faces_case3(const vector
     int idx1 = (R1 + 1) % 4;
     if (idx != idx1)
     {
+        //hout << "Updated " << idx1 << endl;
         gnp_i.vertices[idx1] = gnp_i.vertices[idx1] + U * (d_max - dists[idx1]);
     }
 
     //Update vertex below vertex idx1 if not at maximum distance
     if (idx != idx1 + 4)
     {
+        //hout << "Updated " << idx1+4 <<endl;
         gnp_i.vertices[idx1 + 4] = gnp_i.vertices[idx1 + 4] + U * (d_max - dists[idx1 + 4]);
     }
 
@@ -766,13 +832,15 @@ int GNP_Reconstruction::Set_first_pair_of_parallel_thin_faces_case3(const vector
     int idxt = (R1 + 2) % 4;
     if (vertex_flags[idxt] && idx != idxt)
     {
+        //hout << "Updated " << idxt << endl;
         gnp_i.vertices[idxt] = gnp_i.vertices[idxt] - U * (d_max - dists[idxt]);
     }
 
     //Check if bottom vertex of fourth edge is present
     //If so, update vertex if not at maximum distance
-    if (idx != idxt + 4)
+    if (vertex_flags[idxt+4] && idx != idxt + 4)
     {
+        //hout << "Updated " << idxt+4 << endl;
         gnp_i.vertices[idxt + 4] = gnp_i.vertices[idxt + 4] - U * (d_max - dists[idxt + 4]);
     }
 
@@ -784,6 +852,7 @@ int GNP_Reconstruction::Find_gnp_side_length_and_recalculate_vertices_case3(cons
 {
     //Calculate the reference vertex to the "right" of R1
     int RT = (R1 + 1) % 4;
+    //hout << "RT=" << RT << endl;
 
     //Calculate the midpoint of edge RTR1
     Point_3D M = (gnp_i.vertices[RT] + gnp_i.vertices[R1]) * 0.5;
@@ -793,6 +862,7 @@ int GNP_Reconstruction::Find_gnp_side_length_and_recalculate_vertices_case3(cons
 
     //Initialize a maximum distance using one of the reference vertices
     double d_max = M.distance_to(gnp_i.vertices[R1]);
+    //hout << "d_max=" << d_max << endl;
 
     //Iterate over all vertices
     for (int i = 0; i < (int)vertex_flags.size(); i++)
@@ -802,6 +872,7 @@ int GNP_Reconstruction::Find_gnp_side_length_and_recalculate_vertices_case3(cons
         {
             //Calculate distance along vector U
             double new_d = abs(V.dot(M - gnp_i.vertices[i]));
+            //hout << "new_d[" << i << "]=" << new_d << endl;
 
             //Check if maximum distance needs updating
             if (new_d - d_max > Zero)
@@ -814,6 +885,7 @@ int GNP_Reconstruction::Find_gnp_side_length_and_recalculate_vertices_case3(cons
 
     //Set the GNP side length
     gnp_i.l = max(l1, 2.0*d_max);
+    //hout << "gnp_i.l=" << gnp_i.l<<" l1="<< l1<<" 2d_max="<< 2.0 * d_max << " d_max=" << d_max << endl;
 
     //Now that the GNP side length is known, reconstruct the GNP
     //Recall the thickness is already known
