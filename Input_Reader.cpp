@@ -508,6 +508,12 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
         hout << "Error: Cannot choose 3 (only generate network) as the flag for the simulation scope when the nanoparticle network is read from file." << endl;
         return 0;
     }
+    //If only the network is to be generated and the network is read from file, then terminate
+    //with an error as this case is not useful
+    if ((simu_para.simulation_scope == 3 || simu_para.simulation_scope == 1)&& app_name.str == "Network_From_Abaqus") {
+        hout << "Error: Cannot choose 1 or 3 as the flag for the simulation scope when the application is Network_From_Abaqus." << endl;
+        return 0;
+    }
     //Check if the network resistance needs to be calculated
     //When choosing 0, three more flags are needed to calculate the resistance on each direction (x, y, z)
     //One flag per direction, 1 for calculating resistance in that direction or 0 for not calculating it

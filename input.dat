@@ -77,11 +77,13 @@ vol 0.001000
 %    Example: 0 0 0 0 is equivalent to inputting only "1"
 % 1: Avoid calculating the resistance of the network but calculate the fractions of nanoparticles that
 %    belong to the backbone
+%    This option can not be used when the application is Network_From_Abaqus
 % 2: Generate the network and only determine if there is percolation or not
 %    This is sent as a message in the output file
 % 3: Only generate the nanoparticle network
 %    This is useful when a network needs to be generated and then exported into Abaqus
 %    This option can not be used when the network is read from file
+%    This option can not be used when the application is Network_From_Abaqus
 0 1 1 1
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Tolerance for converge in the conjugate gradient algorithm
