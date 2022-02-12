@@ -27,6 +27,9 @@ public:
     map<long int, long int> LMM_gnps;
     //Set used to determine the nodes from CNT points in mixed junctions
     map<long int, double> points_cnt_rad;
+
+    //Vector to output all resistors in the stiffness matrix
+    //vector<double> all_resistors;
     
     //Constructor
     Direct_Electrifying(){};

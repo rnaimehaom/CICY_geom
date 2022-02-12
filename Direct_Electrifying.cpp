@@ -62,6 +62,15 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
         return 0;
     }
     
+    /* /Check if actual resistances are used
+    if (R_flag)
+    {
+        //Sort resistances
+        sort(all_resistors.begin(), all_resistors.end());
+        //Print file with sorted resistances
+        Printer Pr; Pr.Print_1d_vec(all_resistors, "Resistors_" + to_string(n_cluster) + "_" + to_string(HoKo->family[n_cluster]) + ".txt");
+    }// */
+    
     //Create the approximation of the voltage vector when:
     //actual resistors are used
     //AND
@@ -986,6 +995,9 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
                     return 0;
                 }
                 
+                //Add resistance to vector of all resistors
+                //all_resistors.push_back(Re_inv);
+
                 //Calculate inverse of resistance
                 //hout << "R=" << Re_inv << " ";
                 Re_inv = 1/Re_inv;
@@ -1126,6 +1138,9 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
                 hout<<"Error in Fill_2d_matrices_gnp_junctions when calling Calculate_junction_resistance"<<endl;
                 return 0;
             }
+
+            //Add resistance to vector of all resistors
+            //all_resistors.push_back(Re_inv);
             
             //Calculate inverse of resistance
             //hout << "Rj=" << Re_inv << " ";
