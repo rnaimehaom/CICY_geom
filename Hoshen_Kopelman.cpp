@@ -545,9 +545,6 @@ int Hoshen_Kopelman::Make_gnp_clusters(const cuboid& sample, const vector<int> &
 //This function labels the GNPs so that they can be grouped into clusters
 int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp)
 {
-    //Initialize the temporary map for determining if a pair of veritces is an edge
-    Initialize_edge_map();
-    
     //new_label will take the value of the newest cluster
     //Since GNP clusters are made after CNT clusters, the first label for GNPs is equal
     //to the number of CNT labels
@@ -722,197 +719,8 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
     
     return 1;
 }
-//Initialize the temporary map for determining if a pair of veritces is an edge
-void Hoshen_Kopelman::Initialize_edge_map()
-{
-    //Second vertex of edges with vertex 0
-    edge_map[0] = vector<int>{1,3,4};
-    //Second vertex of edges with vertex 1
-    edge_map[1] = vector<int>{0,2,5};
-    //Second vertex of edges with vertex 2
-    edge_map[2] = vector<int>{1,3,6};
-    //Second vertex of edges with vertex 3
-    edge_map[3] = vector<int>{0,2,7};
-    //Second vertex of edges with vertex 4
-    edge_map[4] = vector<int>{0,5,7};
-    //Second vertex of edges with vertex 5
-    edge_map[5] = vector<int>{1,4,6};
-    //Second vertex of edges with vertex 6
-    edge_map[6] = vector<int>{2,5,7};
-    //Second vertex of edges with vertex 7
-    edge_map[7] = vector<int>{3,4,6};
-}
-//This function assumes that the simplex2 has size 2 (i.e., it's an edge) ans simplex3
-//has size 3 (i.e., it's two edges). Then, the edge in simplex3 that is closest to simplex2
-//is found. simplex3 is updated so that it only contains the edge closest to simplex2
-//Also note that the vertices in simplex3 may define 3 edges, however, only two are valid
-//edges in a GNP
-int Hoshen_Kopelman::Deal_with_simplex_size_3(const GNP &GNP2, const GNP &GNP3, const vector<int> &simplex2, const vector<int> &simplex3, Point_3D &Point2, Point_3D &Point3)
-{
-    //hout << "GNP2=" << GNP2.flag << endl;
-    //hout << "Vertices=" << simplex2[0] << ", " << simplex2[1] << endl;
-    //hout << "GNP3=" << GNP3.flag << endl;
-    //hout << "Vertices=" << simplex3[0] << ", " << simplex3[1] << ", " << simplex3[2] << endl;
-    //Array for valied edges of simplex3
-    int eds[][2] = {{-1,-1},{-1,-1}};
-    
-    //Find the valid edges
-    //Edge 01
-    if (edge_map[simplex3[0]][0] == simplex3[1] ||
-        edge_map[simplex3[0]][1] == simplex3[1] ||
-        edge_map[simplex3[0]][2] == simplex3[1]) {
-        //Edge 01 is a valid edge
-        eds[0][0] = simplex3[0];
-        eds[0][1] = simplex3[1];
-        //hout<<"Edge "<<simplex3[0]<<"-"<<simplex3[1]<<endl;
-    }
-    //Edge 02
-    if (edge_map[simplex3[0]][0] == simplex3[2] ||
-        edge_map[simplex3[0]][1] == simplex3[2] ||
-        edge_map[simplex3[0]][2] == simplex3[2]) {
-        //Edge 02 is a valid edge
-        //Select where to save the indices of the valid edge
-        int i = (eds[0][0] == -1)? 0:1;
-        eds[i][0] = simplex3[0];
-        eds[i][1] = simplex3[2];
-        //hout<<"Edge "<<simplex3[0]<<"-"<<simplex3[2]<<endl;
-    }
-    //Edge 12
-    if (edge_map[simplex3[1]][0] == simplex3[2] ||
-        edge_map[simplex3[1]][1] == simplex3[2] ||
-        edge_map[simplex3[1]][2] == simplex3[2]) {
-        if (eds[1][0] != -1) {
-            hout<<"Error in Deal_with_simplex_size_3. There are three valid edges in simplex of size three. There can only be two valid edges in the simplex of size three"<<endl;
-            return 0;
-        }
-        //Edge 12 is a valid edge
-        eds[1][0] = simplex3[1];
-        eds[1][1] = simplex3[2];
-        //hout<<"Edge "<<simplex3[1]<<"-"<<simplex3[2]<<endl;
-    }
-    
-    //Calculate distances between edges
-    
-    //Vector along the edge on simplex2
-    Point_3D E1 = GNP2.vertices[simplex2[0]] - GNP2.vertices[simplex2[1]];
-    
-    //Vector normal to both simplex2 and first valid edge
-    Point_3D N = E1.cross(GNP3.vertices[eds[0][0]] - GNP3.vertices[eds[0][1]]);
-    //Make N a unit vector
-    N.make_unit();
-    
-    //Signed distance between simplex2 and first valid edge
-    double d1 = (GNP2.vertices[simplex2[0]] - GNP3.vertices[eds[0][0]]).dot(N);
-    //If d1 is negative, then N goes from simplex2 to simplex3
-    //In such case, invert N and take the absolute value of d1
-    if (d1 < Zero) {
-        N = N*(-1);
-        d1 = abs(d1);
-    }
-    
-    //Calculate points translated from first valid edge to simplex2
-    Point_3D Q1 = GNP3.vertices[eds[0][0]] + N*d1;
-    Point_3D Q2 = GNP3.vertices[eds[0][1]] + N*d1;
-    
-    //Calculate the intersection and check that it is within the edges, i.e., by checking
-    //that lambda is in the interval [0,1]
-    //lambda1 = 0 at GNP2.vertices[simplex2[1]]
-    //Thus P = GNP2.vertices[simplex2[1]] +
-    //         (GNP2.vertices[simplex2[0]] - GNP2.vertices[simplex2[1]])*lambda1
-    //P = GNP2.vertices[simplex2[1]] + E1*lambda1
-    double lambda1 = Lambda_of_two_lines(GNP2.vertices[simplex2[0]], GNP2.vertices[simplex2[1]],Q1, Q2);
-    //hout << "GNP2.P1=" << GNP2.vertices[simplex2[0]].str() << " GNP2.P2=" << GNP2.vertices[simplex2[1]].str() << endl;
-    //hout << "lambda1=" << lambda1 << " Q1=" << Q1.str() << " Q2=" << Q2.str() << endl;
-    
-    //Boolean to decide how to calculate intersection point
-    bool b1 = lambda1 - 1.0 <= Zero && lambda1 >= Zero;
-    
-    //Vector normal to both simplex2 and second valid edge
-    N = E1.cross(GNP3.vertices[eds[1][0]] - GNP3.vertices[eds[1][1]]);
-    N.make_unit();
-    
-    //Signed distance between simplex2 and second valid edge
-    double d2 = (GNP2.vertices[simplex2[0]] - GNP3.vertices[eds[1][0]]).dot(N);
-    //If d2 is negative, then N goes from simplex2 to simplex3
-    //In such case, invert N and take the absolute value of d2
-    if (d2 < Zero) {
-        N = N*(-1);
-        d2 = abs(d2);
-    }
-    
-    //Calculate points translated from first valid edge to simplex2
-    Q1 = GNP3.vertices[eds[0][0]] + N*d2;
-    Q2 = GNP3.vertices[eds[0][1]] + N*d2;
-    
-    //Calculate the intersection and check that it is within the edges, i.e., by checking
-    //that lambda is in the interval [0,1]
-    //lambda2 = 0 at GNP2.vertices[simplex2[1]]
-    //Thus P = GNP2.vertices[simplex2[1]] +
-    //         (GNP2.vertices[simplex2[0]] - GNP2.vertices[simplex2[1]])*lambda2
-    //P = GNP2.vertices[simplex2[1]] + E1*lambda2
-    double lambda2 = Lambda_of_two_lines(GNP2.vertices[simplex2[0]], GNP2.vertices[simplex2[1]],Q1, Q2);
-    //hout << "lambda2=" << lambda2 << " Q1=" << Q1.str() << " Q2=" << Q2.str() << endl;
-    //hout << "d1=" << d1 << " d2=" << d2 << endl;
-    
-    //Boolean to decide how to calculate intersection point
-    bool b2 = lambda2 - 1.0 <= Zero && lambda2 >= Zero;
-    
-    //Choose the lambda in the interval [0,1], or if both are in that interval, then
-    //choose the lambda that corresponds to the smallest distance
-    if (b1 && b2) {
-        
-        //Choose the smallest distance
-        if (d1 - d2 < Zero) {
-            
-            //Lambda1 corresponds to the smallest distance
-            //Thus calculate the point in simplex 2
-            Point2 = GNP2.vertices[simplex2[1]] + E1*lambda1;
-            
-            //Calculate the point on the valid edge on simplex3 using the normal vector
-            //to both edges and distance d1
-            Point3 = Point2 - N*d1;
-            //hout<<"Case 1A"<<endl;
-        }
-        else {
-            
-            //Lambda2 corresponds to the smallest distance
-            Point2 = GNP2.vertices[simplex2[1]] + E1*lambda2;
-            
-            //Calculate the point on the valid edge on simplex3 using the normal vector
-            //to both edges and distance d2
-            Point3 = Point2 - N*d2;
-            //hout<<"Case 1B"<<endl;
-        }
-    }
-    //Check if only lambda1 is in the interval [0,1]
-    else if (b1) {
-        
-        //Calculate the point in simplex 2 using lambda1
-        Point2 = GNP2.vertices[simplex2[1]] + E1*lambda1;
-        
-        //Calculate the point on the valid edge on simplex3 using the normal vector
-        //to both edges and distance d1
-        Point3 = Point2 - N*d1;
-        //hout<<"Case 2"<<endl;
-    }
-    //Check if only lambda2 is in the interval [0,1]
-    else if (b2) {
-        
-        //Calculate the point in simplex 2 using lambda2
-        Point2 = GNP2.vertices[simplex2[1]] + E1*lambda2;
-        
-        //Calculate the point on the valid edge on simplex3 using the normal vector
-        //to both edges and distance d2
-        Point3 = Point2 - N*d2;
-        //hout<<"Case 3"<<endl;
-    }
-    else {
-        hout<<"Error in Deal_with_simplex_size_3. None of the lambdas are in the interval [0,1]. This implies that the edges that are closest to each other are not intersecting when translated."<<endl;
-        return 0;
-    }
-    
-    return 1;
-}
+//This function finds the points in two GNPs that will serve as junction points
+//These points are also used to define the GNP resistors
 int Hoshen_Kopelman::Add_junction_points_for_gnps(const cuboid &sample, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<Point_3D> &points_gnp, bool & junction_in)
 {
     //Vectors to save the simplices in A and B that are closest to each other
@@ -1182,17 +990,6 @@ int Hoshen_Kopelman::Find_point_b_for_edge_in_simplex_a(const vector<int> &simpl
             return 0;
         }
     }
-    /*else if (simplexB.size() == 3) {
-        
-        //Deal with the case when a set has size three and the other has size two
-        //(which should not happen)
-        //hout << "d_gjk=" << distance << endl;
-        if (!Deal_with_simplex_size_3(GNP_A, GNP_B, simplexA, simplexB, PointA, PointB)) {
-            hout<<"Error in Find_closest_simplices_of_gnps_in_contact when calling Deal_with_simplex_size_3"<<endl;
-            return 0;
-        }
-        
-    }*/
     else {
         hout<<"Error in Find_point_b_for_edge_in_simplex_a: simplexB has an invalid size="<<simplexB.size()<<", it size must be 2 or 4."<<endl;
         hout << "GNP for simplex of size 2 is saved in file gnp_A.vtk." << endl;

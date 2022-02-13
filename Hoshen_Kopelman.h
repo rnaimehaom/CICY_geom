@@ -67,8 +67,6 @@ public:
     int Complete_cnt_elements(const vector<vector<long int> > &structure_cnt);
     int Make_gnp_clusters(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, const int &n_labels_cnt, int &n_total_labels, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp);
     int Label_gnps_in_window(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp);
-    void Initialize_edge_map();
-    int Deal_with_simplex_size_3(const GNP &GNP2, const GNP &GNP3, const vector<int> &simplex2, const vector<int> &simplex3, Point_3D &Point2, Point_3D &Point3);
     int Add_junction_points_for_gnps(const cuboid &sample, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<Point_3D> &points_gnp, bool & junction_in);
     int Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<int> &simplexA, vector<int> &simplexB, int &v_sumA, int &v_sumB);
     int Find_junction_points_in_gnps(const vector<int> &simplexA, const vector<int> &simplexB, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, const int &face_sumA, const int &face_sumB, Point_3D &PointA, Point_3D &PointB);
