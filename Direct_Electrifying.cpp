@@ -101,7 +101,7 @@ int Direct_Electrifying::Compute_voltage_field(const int &n_cluster, const int &
         return 0;
     }
     
-    /*/Print the voltages
+    /* /Print the voltages
     Printer Pr;
     if (R_flag) {
         Pr.Print_1d_vec(voltages, "voltages_R_"+ to_string(HoKo->family[n_cluster])+ ".txt");
@@ -314,6 +314,7 @@ int Direct_Electrifying::LM_matrix_for_gnps(const int &n_cluster, Hoshen_Kopelma
         
         //Get current GNP
         int gnp_i = HoKo->clusters_gnp[n_cluster][i];
+        //hout << "structure_gnp[" << gnp_i << "].size()=" << structure_gnp[gnp_i].size() << endl;
         
         //Iterate over all points in GNP
         for (int j = 0; j < (int)structure_gnp[gnp_i].size(); j++) {
@@ -441,7 +442,6 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     vector<double> val_sorted = values;
     sort(val_sorted.begin(), val_sorted.end());
     Pr.Print_1d_vec(val_sorted, "val_sorted" + str + ".txt");// */
-
 
     //Check there are no zeros in the diagonal
     //At this point, the diagonal vector is in its final form
@@ -741,7 +741,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
         //Calculate the junction resistance
         double Re_inv = 1.0;
         if (R_flag == 1) {
-            if (!Calculate_junction_resistance(junctions_cnt[idx], d_vdw, radii[CNT1], points_cnt[P1], radii[CNT2], points_cnt[P2], electric_param, Re_inv)) {
+            if (!Calculate_junction_resistance(junctions_cnt[idx], radii[CNT1], radii[CNT2], electric_param, Re_inv)) {
                 hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Calculate_junction_resistance"<<endl;
                 return 0;
             }
@@ -787,7 +787,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
 }
 //This function calculates the junction resistance between either two CNTs, two GNPs, or
 //a CNT and a GNP
-int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const double &d_vdw, const double &l1, const Point_3D &P1, const double &l2, const Point_3D &P2, const struct Electric_para &electric_param, double &Re)
+int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const double &l1, const double &l2, const struct Electric_para &electric_param, double &Re)
 {
     //Check if a constant resistance is used
     if (electric_param.junction_type == "constant") {
@@ -795,19 +795,14 @@ int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const 
         return 1;
     }
     else if (electric_param.junction_type == "exponential") {
-        
-        //Calcualte the distance between the to points
-        double separation = P1.distance_to(P2);
 
-        //Variables to store the CNT diameter or GNP thickness
+        //Variables to store the CNT diameter or GNP thickness, which is neede to calculate
+        //the area of the junction
         double jl1 = l1, jl2 = l2;
         
         //Check if the first particle of the junction is a CNT
         if (j.type1 == "CNT") 
         {
-            //Susbtract the radius which is stored in l1
-            separation = separation - l1;
-
             //Get the CNT diameter
             jl1 = jl1 + l1;
         }
@@ -815,19 +810,8 @@ int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const 
         //Check if the second particle of the junction is a CNT
         if (j.type2 == "CNT")
         {
-            //Susbtract the radius which is stored in l2
-            separation = separation - l2;
-
             //Get the CNT diameter
             jl2 = jl2 + l2;
-        }
-        
-        //Check if the tunnel distance is below the van der Waals distance
-        //This happens when the penetrating model is used
-        if (separation - d_vdw < Zero) {
-            
-            //If the distance between the points is below the van der Waals distance, then set the separation equal to the van der Waals distance
-            separation = d_vdw;
         }
 
         //Junction area is considered to be a square
@@ -837,7 +821,7 @@ int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const 
         double A = (jl1 - jl2 < Zero)? jl1 * jl1 : jl2 * jl2;
         
         //Calculate junction resistance using the pre-calculated constants
-        Re = electric_param.C1 * separation * exp(electric_param.C2*separation)/A;
+        Re = electric_param.C1 * j.junction_dist * exp(electric_param.C2*j.junction_dist)/A;
     }
     else {
         hout<<"Error in Calculate_junction_resistance: invalid junction type. Input was: "<<electric_param.junction_type<<endl;
@@ -866,7 +850,7 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, con
         //Calculate the junction resistance
         double Re_inv = 1.0;
         if (R_flag == 1) {
-            if (!Calculate_junction_resistance(junctions_mixed[idx], d_vdw, radii[cnt_n], points_cnt[Pcnt], gnps[gnp_n].t, points_gnp[Pgnp], electric_param, Re_inv)) {
+            if (!Calculate_junction_resistance(junctions_mixed[idx], radii[cnt_n], gnps[gnp_n].t, electric_param, Re_inv)) {
                 hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Calculate_junction_resistance"<<endl;
                 return 0;
             }
@@ -1139,7 +1123,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
         //Calculate the junction resistance
         double Re_inv = 1.0;
         if (R_flag == 1) {
-            if (!Calculate_junction_resistance(junctions_gnp[idx], d_vdw, gnps[GNP1].t, points_gnp[P1], gnps[GNP2].t, points_gnp[P2], electric_param, Re_inv)) {
+            if (!Calculate_junction_resistance(junctions_gnp[idx], gnps[GNP1].t, gnps[GNP2].t, electric_param, Re_inv)) {
                 hout<<"Error in Fill_2d_matrices_gnp_junctions when calling Calculate_junction_resistance"<<endl;
                 return 0;
             }
@@ -1160,6 +1144,16 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
         //Get node numbers
         long int node1 = LMM_gnps.at(P1);
         long int node2 = LMM_gnps.at(P2);
+        /* /Check for small numbers
+        if (Re_inv < 1e-13) {
+            hout << "R_inv=" << Re_inv << " d=" << junctions_gnp[idx].junction_dist <<" d_P="<< points_gnp[P1].distance_to(points_gnp[P2]) << endl;
+            hout << "GNP1=" << GNP1 << " GNP2=" << GNP2 << endl;
+            hout << "l_GNP1=" << gnps[GNP1].l << " t_GNP1=" << gnps[GNP1].t << endl;
+            hout << "l_GNP2=" << gnps[GNP2].l << " t_GNP2=" << gnps[GNP2].t << endl;
+            hout << "node1=" << node1 << " node2=" << node2 << endl;
+            double Re = electric_param.C1 * junctions_gnp[idx].junction_dist * exp(electric_param.C2 * junctions_gnp[idx].junction_dist) / (gnps[GNP1].t* gnps[GNP1].t);
+            hout << "Re=" << Re << " 1/Re=" << 1.0 / Re << endl;
+        }// */
         
         //Add junction resistance to sparse stiffness matrix
         if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {

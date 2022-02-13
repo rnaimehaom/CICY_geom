@@ -1268,6 +1268,7 @@ int Input::Read_electrical_parameters(Electric_para &electric_para, ifstream &in
 
         //Calculate C2
         electric_para.C2 = 4000.0 * PI * sqrt_tmp / electric_para.h_plank;
+        //hout << "C1=" << electric_para.C1 << " C2=" << electric_para.C2 << endl;
     }
     else {
         hout << "Error: the junction type is neither 'constant' nor 'exponential'." << endl;

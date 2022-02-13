@@ -651,7 +651,7 @@ int Electrical_analysis::Currents_through_boundary_gnps(const long int &node, co
                         hout<<"Error in Currents_through_boundary_gnps when calling DEA->Calculate_resistance_gnp"<<endl;
                         return 0;
                     }
-                    //hout<<"V="<<DEA->voltages[node2]<<" - "<<DEA->voltages[node1]<<", Re="<<Re<<endl;
+                    //hout<<"V="<<DEA->voltages[node2]<<" - "<<DEA->voltages[node1]<<", Re="<<Re<<" L="<< points_gnp[v1].distance_to(points_gnp[v2])<< endl;
                     
                     //Add calcualted current
                     I = I + V/Re;
