@@ -2789,7 +2789,7 @@ int Hoshen_Kopelman::Export_clusters(const int &percolation, const int &iter, co
         
         //Check if there are percolated clusters and, thus, the corresponding visualization files
         if (clusters_cnt.size() || clusters_gnp.size()) {
-            sprintf(command, "mv perc_cluster_*.vtk isolated_*.vtk percolated_%.4d", iter);
+            sprintf(command, "mv perc_cluster_*.vtk percolated_%.4d", iter);
             system(command);
         }
     }
