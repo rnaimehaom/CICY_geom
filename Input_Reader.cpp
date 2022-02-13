@@ -1259,6 +1259,15 @@ int Input::Read_electrical_parameters(Electric_para &electric_para, ifstream &in
             hout<<"Error: Electric parameters cannot be negative. Input was: "<<electric_para.h_plank<<", "<<electric_para.e_charge<<", "<<electric_para.e_mass<<", "<<electric_para.lambda_barrier<<endl;
             return 0;
         }
+
+        //Calculate a squared root term that is used twice in the equation
+        double sqrt_tmp = sqrt(2.0 * electric_para.e_mass * electric_para.lambda_barrier * electric_para.e_charge);
+
+        //Calculate C1
+        electric_para.C1 = 10.0 * electric_para.h_plank * electric_para.h_plank / (electric_para.e_mass * electric_para.e_mass * sqrt_tmp);
+
+        //Calculate C2
+        electric_para.C2 = 4000.0 * PI * sqrt_tmp / electric_para.h_plank;
     }
     else {
         hout << "Error: the junction type is neither 'constant' nor 'exponential'." << endl;

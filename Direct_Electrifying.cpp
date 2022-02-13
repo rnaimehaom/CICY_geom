@@ -787,7 +787,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
 }
 //This function calculates the junction resistance between either two CNTs, two GNPs, or
 //a CNT and a GNP
-int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const double &d_vdw, const double &rad1, const Point_3D &P1, const double &rad2, const Point_3D &P2, const struct Electric_para &electric_param, double &Re)
+int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const double &d_vdw, const double &l1, const Point_3D &P1, const double &l2, const Point_3D &P2, const struct Electric_para &electric_param, double &Re)
 {
     //Check if a constant resistance is used
     if (electric_param.junction_type == "constant") {
@@ -798,15 +798,28 @@ int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const 
         
         //Calcualte the distance between the to points
         double separation = P1.distance_to(P2);
+
+        //Variables to store the CNT diameter or GNP thickness
+        double jl1 = l1, jl2 = l2;
         
-        //If the first particle of the junction is a CNT, susbtract the radius
-        if (j.type1 == "CNT") {
-            separation = separation - rad1;
+        //Check if the first particle of the junction is a CNT
+        if (j.type1 == "CNT") 
+        {
+            //Susbtract the radius which is stored in l1
+            separation = separation - l1;
+
+            //Get the CNT diameter
+            jl1 = jl1 + l1;
         }
         
-        //If the second particle of the junction is a CNT, susbtract the radius
-        if (j.type2 == "CNT") {
-            separation = separation - rad2;
+        //Check if the second particle of the junction is a CNT
+        if (j.type2 == "CNT")
+        {
+            //Susbtract the radius which is stored in l2
+            separation = separation - l2;
+
+            //Get the CNT diameter
+            jl2 = jl2 + l2;
         }
         
         //Check if the tunnel distance is below the van der Waals distance
@@ -816,23 +829,15 @@ int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const 
             //If the distance between the points is below the van der Waals distance, then set the separation equal to the van der Waals distance
             separation = d_vdw;
         }
+
+        //Junction area is considered to be a square
+        //At this point in jl1 and jl2 the CNT diameter of GNP thickness is stored
+        //So calculate the area of the junction assuming a square using the smallest
+        //CNT diameter or GN thickness, which will the one limiting the flow of electrons
+        double A = (jl1 - jl2 < Zero)? jl1 * jl1 : jl2 * jl2;
         
-        //Calculate the area of the junction assuming a circle using the smalles radius
-        //which will the one limiting the flow of electrons
-        double A = (rad1 - rad2 < Zero)? PI*rad1*rad1: PI*rad2*rad2;
-        
-        //Calculate quantity associted with a squared root
-        double sqrt_tmp = sqrt(2*electric_param.e_mass*electric_param.lambda_barrier*electric_param.e_charge);
-        
-        //Calculate the exponential term
-        double exp_tmp = exp(4000*PI*separation*sqrt_tmp/electric_param.h_plank);
-        
-        //Calculate term that multiplies the exponential
-        double denominator_tmp = A*electric_param.e_charge*electric_param.e_charge*sqrt_tmp;
-        double mult_tmp = 10*electric_param.h_plank*electric_param.h_plank*separation/denominator_tmp;
-        
-        //Calculate tunnel resistance
-        Re = mult_tmp*exp_tmp;
+        //Calculate junction resistance using the pre-calculated constants
+        Re = electric_param.C1 * separation * exp(electric_param.C2*separation)/A;
     }
     else {
         hout<<"Error in Calculate_junction_resistance: invalid junction type. Input was: "<<electric_param.junction_type<<endl;
@@ -861,7 +866,7 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, con
         //Calculate the junction resistance
         double Re_inv = 1.0;
         if (R_flag == 1) {
-            if (!Calculate_junction_resistance(junctions_mixed[idx], d_vdw, radii[cnt_n], points_cnt[Pcnt], gnps[gnp_n].t/2, points_gnp[Pgnp], electric_param, Re_inv)) {
+            if (!Calculate_junction_resistance(junctions_mixed[idx], d_vdw, radii[cnt_n], points_cnt[Pcnt], gnps[gnp_n].t, points_gnp[Pgnp], electric_param, Re_inv)) {
                 hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Calculate_junction_resistance"<<endl;
                 return 0;
             }
@@ -1134,7 +1139,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
         //Calculate the junction resistance
         double Re_inv = 1.0;
         if (R_flag == 1) {
-            if (!Calculate_junction_resistance(junctions_gnp[idx], d_vdw, gnps[GNP1].t/2, points_gnp[P1], gnps[GNP2].t/2, points_gnp[P2], electric_param, Re_inv)) {
+            if (!Calculate_junction_resistance(junctions_gnp[idx], d_vdw, gnps[GNP1].t, points_gnp[P1], gnps[GNP2].t, points_gnp[P2], electric_param, Re_inv)) {
                 hout<<"Error in Fill_2d_matrices_gnp_junctions when calling Calculate_junction_resistance"<<endl;
                 return 0;
             }

@@ -228,6 +228,10 @@ struct Electric_para{
     double h_plank;
     double e_mass;
     double lambda_barrier;
+    //Constants used to calculate the junction resistance when using the 
+    //exponential equation by Hu et al.
+    //This avoid to make operations that always give the same result
+    double C1, C2;
     //Constant value for junction resistance
     double junction_resistance;
 };
