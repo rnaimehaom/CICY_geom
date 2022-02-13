@@ -51,7 +51,7 @@ public:
     vector<int> family;
     
     //Temporary map for determining if a pair of veritces is an edge
-    map<int, vector<int>> edge_map;
+    map<int, vector<int> > edge_map;
     
     
     //Constructor
