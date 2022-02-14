@@ -1660,7 +1660,9 @@ int Hoshen_Kopelman::Add_gnp_junction(const vector<GNP>& gnps, const int& GNPa, 
     Junction j(Pa, GNPa, "GNP", Pb, GNPb, "GNP", dist);
 
     //Add the junction to the vector of junctions
-    junctions_gnp.push_back(j);
+    junctions_gnp.push_back(j); 
+    
+    //hout << "Junction: GNPa=" << GNPa << " Pa=" << Pa << " GNPb=" << GNPb << " Pb=" << Pb << " dist=" << dist << endl;
 
     return 1;
 }

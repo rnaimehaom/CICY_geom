@@ -352,8 +352,8 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     //Add contributions from particles
     
     //Fill the 2D matrices with the contributions of the CNTs when there are CNT clusters
-    if (HoKo->clusters_cnt.size() && HoKo->clusters_cnt[n_cluster].size()) {
-        
+    if (HoKo->clusters_cnt.size() && HoKo->clusters_cnt[n_cluster].size()) 
+    {
         //Add contributions from CNT resistors
         //hout << "Fill_2d_matrices_cnts"<<endl;
         if (!Fill_2d_matrices_cnts(R_flag, n_cluster, electric_param, HoKo, points_cnt, radii, col_values, diagonal)) {
@@ -376,8 +376,8 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     //map<long int, long int> points_cnt_rad;
     
     //Check if there are mixed junctions for n_cluster
-    if (HoKo->cluster_mix_junctions.size() && HoKo->cluster_mix_junctions[n_cluster].size()) {
-        
+    if (HoKo->cluster_mix_junctions.size() && HoKo->cluster_mix_junctions[n_cluster].size()) 
+    {
         //Add contributions from mixed junctions
         //hout << "Fill_2d_matrices_mixed_junctions"<<endl;
         if (!Fill_2d_matrices_mixed_junctions(R_flag, reserved_nodes, d_vdw, electric_param, HoKo->cluster_mix_junctions[n_cluster], HoKo->junctions_mixed, points_cnt, radii, points_gnp, gnps, LMM_cnts, LMM_gnps, col_values, diagonal, points_cnt_rad)) {
@@ -387,8 +387,8 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     }
     
     //Fill the 2D matrices with the contributions of the GNPs when there are GNP clusters
-    if (HoKo->clusters_gnp.size() && HoKo->clusters_gnp[n_cluster].size()) {
-        
+    if (HoKo->clusters_gnp.size() && HoKo->clusters_gnp[n_cluster].size()) 
+    {
         //Add contributions from GNP resistors
         //hout<<"Fill_2d_matrices_gnp"<<endl;
         if (!Fill_2d_matrices_gnp(R_flag, electric_param, HoKo->clusters_gnp[n_cluster], points_gnp, structure_gnp, gnps, LMM_gnps, points_cnt_rad, col_values, diagonal)) {
@@ -398,7 +398,8 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         
         //Add contributions from GNP-GNP junctions, if any
         //hout<<"Fill_2d_matrices_gnp_junctions"<<endl;
-        if (HoKo->cluster_gnp_junctions.size() && HoKo->cluster_gnp_junctions[n_cluster].size()) {
+        if (HoKo->cluster_gnp_junctions.size() && HoKo->cluster_gnp_junctions[n_cluster].size()) 
+        {
             //hout << "junctions="<<HoKo->cluster_gnp_junctions[n_cluster].size() << endl;
             if (!Fill_2d_matrices_gnp_junctions(R_flag, d_vdw, electric_param, HoKo->cluster_gnp_junctions[n_cluster], HoKo->junctions_gnp, points_gnp, gnps, LMM_gnps, col_values, diagonal)) {
                 hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_gnp_junctions" << endl;
@@ -1119,7 +1120,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
         //Get the particle numbers
         int GNP1 = junctions_gnp[idx].N1;
         int GNP2 = junctions_gnp[idx].N2;
-        //hout << "GNP1=" << GNP1 << " GNP2=" << GNP2 << endl;
+        //hout << "Junction: GNP1=" << GNP1 << " GNP2=" << GNP2 << endl;
         
         //Calculate the junction resistance
         double Re_inv = 1.0;

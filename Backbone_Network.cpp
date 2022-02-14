@@ -248,7 +248,7 @@ int Backbone_Network::Find_zero_current(const int &n_cluster, const int &R_flag,
         filename = "currents_" + to_string(n_cluster) + ".txt";
         P.Print_1d_vec(currents, filename);
     }
-    hout << "SAVED CURRENTS FILE " << filename << endl;//*/
+    hout << "SAVED CURRENTS FILE " << filename << endl;// */
     
     return 1;
 }

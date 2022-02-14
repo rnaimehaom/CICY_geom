@@ -926,8 +926,7 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
             if (points_acc[i].size()) {
                 
                 //Point to store the average
-                Point_3D P_avg(0,0,0);
-                P_avg.flag = gnp.flag;
+                Point_3D P_avg(0.0, 0.0, 0.0);
                 
                 //Add all points in the boundary
                 for (int j = 0; j < (int)points_acc[i].size(); j++) {
@@ -950,6 +949,10 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
                 //Add the average to the boundary vector
                 points_gnp.push_back(P_avg/((double)points_acc[i].size()));
                 //hout<<"P_avg="<<points_gnp.back().str()<<" is inside GNP?="<<gnp.Is_point_inside_gnp(points_gnp.back())<<endl;
+
+                //Set the flag to be the same as that of the GNP number
+                points_gnp.back().flag = gnp.flag;
+                //if (gnp.flag < 0) { hout << "negative GNP flag" << endl; return 0; }
             }
         }
         
