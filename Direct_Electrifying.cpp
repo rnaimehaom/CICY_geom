@@ -1078,7 +1078,8 @@ int Direct_Electrifying::Calculate_resistance_gnp(const Point_3D &P1, const Poin
 
     if (L < Zero)
     {
-        hout << "Error in Calculate_resistance_gnp. GNP points to calculate GNP resistor are too close or the same, which results in the resistor to have zero length." << endl;
+        hout << "Error in Calculate_resistance_gnp. GNP points to calculate GNP resistor are too close or the same." << endl;
+        hout<<"This results in a resistor with zero length." << endl;
         hout << "P1=" << P1.str() << endl;
         hout << "P2=" << P2.str() << endl;
         hout << "P1.distance_to(P2)=" << L << endl;

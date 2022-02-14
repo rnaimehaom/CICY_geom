@@ -203,6 +203,13 @@ struct Cutoff_dist{
     double van_der_Waals_dist;
     double tunneling_dist;
     int min_points;
+    //Tolerance for considering two GNP junctions points (in the same GNP)
+    //to be the same point
+    double tol_gnp;
+    //Squared value of tol_gnp
+    //This is the quantity that will actually be used for comparison as squared
+    //distances will be calculated to reduce computational time
+    double tol_gnp2;
 };
 //Electrical parameters
 struct Electric_para{

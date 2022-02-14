@@ -550,29 +550,26 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
     //to the number of CNT labels
     int new_label = 0;
     
-    //Collision detection object to find the distance between GNPs
-    Collision_detection CL;
-    
     //Vector to check if a GNP-GNP contact has already been visited
     vector<set<int> > visited(gnps.size());
     
     //Scan every overlapping sub-region
     //hout<<"sectioned_domain_gnp.size()="<<sectioned_domain_gnp.size()<<endl;
-    for (int i = 0; i < (int)sectioned_domain_gnp.size(); i++) {
-        
+    for (int i = 0; i < (int)sectioned_domain_gnp.size(); i++) 
+    {
         //Size of subregion i
         int inner = (int)sectioned_domain_gnp[i].size();
         //hout<<"sectioned_domain_gnp[i="<<i<<"].size()="<<sectioned_domain_gnp[i].size()<<endl;
         
         //Scan all GNPs in subregion i
-        for (int j = 0; j < inner-1; j++) {
-            
+        for (int j = 0; j < inner - 1; j++) 
+        {
             //Get GNP1
             int GNP1 = sectioned_domain_gnp[i][j];
-            
+
             //Campare GNP1 with all other GNPs in sectioned domain i, if any
-            for (int k = j+1; k < inner; k++) {
-                
+            for (int k = j + 1; k < inner; k++)
+            {
                 //Get GNP2
                 int GNP2 = sectioned_domain_gnp[i][k];
                 
@@ -583,93 +580,52 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                 //hout<<"GNPa="<<GNPa<<" GNPb="<<GNPb<<" GNP1="<<GNP1<<" GNP2="<<GNP2<<endl;
                 
                 //Check if the contact has already been visited
-                if (visited[GNPa].find(GNPb) == visited[GNPa].end()) {
-                    
+                if (visited[GNPa].find(GNPb) == visited[GNPa].end()) 
+                {
                     //Contact GNPa-GNPb has not been visited
-                    
-                    //Variables for the GJK
-                    vector<Point_3D> simplex;
-
-                    //Variables to store the distance and direction from GNP1 to GNP2
-                    Point_3D N;
-                    double dist;
-
-                    //Penetration flag initialized with false
-                    bool p_flag = false;
-                    
-                    //Use the GJK for distance to calculate the separation between GNPs
-                    //and the direction vector
-                    //hout<<"CL.GJK_distance"<<endl;
-                    if (!CL.GJK_distance(gnps[GNPa], gnps[GNPb], simplex, dist, N, p_flag)) {
-                        hout<<"Error in Label_gnps_in_window when calling CL.GJK_distance"<<endl;
-                        return 0;
-                    }
 
                     //Create a temporary GNP that will be moved in case there is interpenetration
                     GNP gnp_B = gnps[GNPb];
 
                     //Displacement variable in case there is interpenetration
+                    //This is the displacement applied to GNPb in case there is interpenetration
                     Point_3D disp_tot;
-                    
-                    //Check if the GNPs are interpenetrating each other
-                    if (p_flag) 
+
+                    //Penetration flag initialized with false
+                    bool p_flag = false;
+
+                    //Variables to store the distance between GNPa and GNPb and the direction 
+                    //vect between them
+                    double dist;
+                    Point_3D N;
+
+                    //Get the distance between GNPs and, in case there are interpenetrations,
+                    //also get gnps[GNPb] in the new variable gnp_B
+                    if (!Get_distance_between_GNPs(cutoffs, gnps, GNPa, GNPb, p_flag, disp_tot, N, dist, gnp_B))
                     {
-                        //GNPs are interpenetrating each other
-                        //Use EPA to find the penetration depth PD and direction vector N
-                        if (!CL.EPA(gnps[GNPa].vertices, gnp_B.vertices, simplex, N, dist)) {
-                            hout << "Error in Move_gnps_if_needed when calling EPA" << endl;
-                            string gnp1_str = "gnp_" + to_string(gnps[GNPa].flag) + ".vtk";
-                            string gnp2_str = "gnp_" + to_string(gnps[GNPb].flag) + ".vtk";
-                            hout << "GNPs are exported into files " << gnp1_str << " and " << gnp2_str << endl;
-                            //Export GNPs thta caused the error
-                            VTK_Export VTK;
-                            VTK.Export_single_gnp(gnps[GNPa], gnp1_str);
-                            VTK.Export_single_gnp(gnps[GNPb], gnp2_str);
+                        hout << "Error in Label_gnps_in_window when calling Get_distance_between_GNPs" << endl;
                             return 0;
-                        }
-
-                        //Calculate total displacement for GNP
-                        disp_tot = N * (dist + cutoffs.van_der_Waals_dist);
-
-                        //Move gnp_B so that there is no interpenetration and so that the 
-                        //GNPs are separated the van der Waals distance
-                        //Use a Generate_Network object
-                        Generate_Network GN;
-                        if (!GN.Move_gnp(disp_tot, gnp_B))
-                        {
-                            hout << "Error in Move_gnps_if_needed when calling GN.Move_gnp" << endl;
-                            return 0;
-                        }
-                         
-                        //Now GNPs are separated a distance equal to the van der Waals distance
-                        //So set the distance to that value
-                        dist = cutoffs.van_der_Waals_dist;
-
-                        /*hout << "Error in Label_gnps_in_window. There are penetrating GNPs but at this point there should not be any. \nPenetrating GNPs: " << GNPa << " and " << GNPb << endl;
-                        VTK_Export VTK;
-                        VTK.Export_single_gnp(gnps[GNPa], "gnp_" + to_string(GNPa) + ".vtk");
-                        VTK.Export_single_gnp(gnps[GNPb], "gnp_" + to_string(GNPb) + ".vtk");
-                        return 0;*/
                     }
 
                     //Check if the separation between GNPs is below the cutoff for tunneling
                     //hout<<"GNPa="<<GNPa<<" GNPb="<<GNPb<<" dist="<<dist<<endl;
                     //hout<<"dist <= tunnel_cutoff = "<<(dist <= tunnel_cutoff)<<endl;
-                    if (dist <= cutoffs.tunneling_dist) {
-
+                    if (dist <= cutoffs.tunneling_dist) 
+                    {
                         /* /Export GNPs that are found to be in contact for manually testing percolation
                         hout << "Contact: GNPa=" << GNPa << " GNPb=" << GNPb << " dist=" << dist << endl;
                         VTK_Export VTK;
                         VTK.Export_single_gnp(gnps[GNPa], "gnp_" + to_string(GNPa) + ".vtk");
                         VTK.Export_single_gnp(gnps[GNPb], "gnp_" + to_string(GNPb) + ".vtk");// */
-                        
-                        //Flag that determines if a junction is inside the sample
-                        bool junction_in = false;
+
+                        //Junction points on GNPs
+                        Point_3D PointA, PointB;
                         
                         //Find the points of contact on each GNP, and add them if both
                         //are inside the sample
                         //hout<<"Add_junction_points_for_gnps"<<endl;
-                        if (!Add_junction_points_for_gnps(sample, gnps[GNPa], gnp_B, N, dist, points_gnp, junction_in)) {
+                        if (!Find_junction_points_for_gnps(sample, gnps[GNPa], gnp_B, N, dist, points_gnp, PointA, PointB)) 
+                        {
                             hout << "Error in Label_gnps_in_window when calling Add_junction_points_for_gnps" << endl;
                             return 0;
                         }
@@ -678,36 +634,34 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                         if (p_flag)
                         {
                             //There is interpenetration of GNPs, so GNPb was moved
-                            //Thus, move the point in GNPb towards its location were GNPb not moved
-                            points_gnp.back() = points_gnp.back() - disp_tot;
-                            points_gnp.back().flag = GNPb;
+                            //Thus, move the point in GNPb towards GNPb's original position
+                            PointB = PointB - disp_tot;
+                            //Flag might be lost in the operation above
+                            PointB.flag = GNPb;
                         }
-                        
-                        //Add the junction to the vector of junctions if it is inside the sample
-                        if (junction_in)
-                        {
 
+                        //Check if both junction points are inside the sample
+                        if (!PointA.is_outside_cuboid(sample) && !PointB.is_outside_cuboid(sample))
+                        {
+                            //Junction is inside the sample so assign the GNPs into the same cluster
                             //Here is where the actual HK76 algorithm takes place
-                            //Only perform the HK76 when the junctions are inside the sample
-                            if (!HK76(GNPa, GNPb, new_label, labels_gnp, labels_labels_gnp)) {
+                            if (!HK76(GNPa, GNPb, new_label, labels_gnp, labels_labels_gnp)) 
+                            {
                                 hout << "Error in Label_gnps_in_window when calling HK76" << endl;
                                 return 0;
                             }
 
-                            //Get the point numbers
-                            long int Pa = (long int)points_gnp.size() - 2;
-                            long int Pb = (long int)points_gnp.size() - 1;
-
-                            //Create a junction with the GNPs in contact
-                            Junction j(Pa, GNPa, "GNP", Pb, GNPb, "GNP", dist);
-
-                            //Add point numbers to structure
-                            structure_gnp[GNPa].push_back(Pa);
-                            structure_gnp[GNPb].push_back(Pb);
-
-                            //Add the junction to the vector of junctions
-                            junctions_gnp.push_back(j);
+                            //Add junction to vector of junctions
+                            if (!Add_gnp_junction(gnps, GNPa, GNPb, p_flag, PointA, PointB, dist, cutoffs.tol_gnp2, points_gnp, structure_gnp))
+                            {
+                                hout << "Error in Label_gnps_in_window when calling Add_gnp_junction" << endl;
+                                return 0;
+                            }
                         }
+                        //else {
+                            //The junction is actually ouside the sample, so it should be ignored
+                            //hout << "Ignore junction between GNP " << GNP_A.flag << " and GNP " << GNP_B.flag << endl;
+                        //}
                     }
                     
                     //Mark the contact as visited
@@ -719,9 +673,65 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
     
     return 1;
 }
+//This function moves GNPb to a position where it does not penetrate GNPa, however the GNP in its
+//new location is saved into a new variable
+int Hoshen_Kopelman::Get_distance_between_GNPs(const Cutoff_dist& cutoffs, const vector<GNP>& gnps, const int& GNPa, const int& GNPb, bool& p_flag, Point_3D& disp_tot, Point_3D& N, double& dist, GNP& gnp_B)
+{
+    //Collision detection object
+    Collision_detection CL;
+
+    //Variables for the GJK
+    vector<Point_3D> simplex;
+
+    //Use the GJK for distance to calculate the separation between GNPs
+    //and the direction vector
+    //The distance between GNPs is saved in the output variable dist
+    //hout<<"CL.GJK_distance"<<endl;
+    if (!CL.GJK_distance(gnps[GNPa], gnps[GNPb], simplex, dist, N, p_flag)) {
+        hout << "Error in Get_distance_between_GNPs when calling CL.GJK_distance" << endl;
+        return 0;
+    }
+
+    //Check if the GNPs are interpenetrating each other
+    if (p_flag)
+    {
+        //GNPs are interpenetrating each other
+        //Use EPA to find the penetration depth PD and direction vector N
+        if (!CL.EPA(gnps[GNPa].vertices, gnp_B.vertices, simplex, N, dist)) {
+            hout << "Error in Get_distance_between_GNPs when calling EPA" << endl;
+            string gnp1_str = "gnp_" + to_string(gnps[GNPa].flag) + ".vtk";
+            string gnp2_str = "gnp_" + to_string(gnps[GNPb].flag) + ".vtk";
+            hout << "GNPs are exported into files " << gnp1_str << " and " << gnp2_str << endl;
+            //Export GNPs thta caused the error
+            VTK_Export VTK;
+            VTK.Export_single_gnp(gnps[GNPa], gnp1_str);
+            VTK.Export_single_gnp(gnps[GNPb], gnp2_str);
+            return 0;
+        }
+
+        //Calculate total displacement for GNPb
+        disp_tot = N * (dist + cutoffs.van_der_Waals_dist);
+
+        //Move gnp_B so that there is no interpenetration and so that the 
+        //GNPs are separated the van der Waals distance
+        //Use a Generate_Network object
+        Generate_Network GN;
+        if (!GN.Move_gnp(disp_tot, gnp_B))
+        {
+            hout << "Error in Get_distance_between_GNPs when calling GN.Move_gnp" << endl;
+            return 0;
+        }
+
+        //Now GNPs are separated a distance equal to the van der Waals distance
+        //So set the distance to that value
+        dist = cutoffs.van_der_Waals_dist;
+    }
+
+    return 1;
+}
 //This function finds the points in two GNPs that will serve as junction points
 //These points are also used to define the GNP resistors
-int Hoshen_Kopelman::Add_junction_points_for_gnps(const cuboid &sample, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<Point_3D> &points_gnp, bool & junction_in)
+int Hoshen_Kopelman::Find_junction_points_for_gnps(const cuboid &sample, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<Point_3D> &points_gnp, Point_3D& PointA, Point_3D& PointB)
 {
     //Vectors to save the simplices in A and B that are closest to each other
     vector<int> simplexA, simplexB;
@@ -731,9 +741,6 @@ int Hoshen_Kopelman::Add_junction_points_for_gnps(const cuboid &sample, const GN
         return 0;
     }
     //hout<<"simplexA.size="<<simplexA.size()<<" simplexB.size="<<simplexB.size()<<" v_sumA="<<v_sumA<<" v_sumB="<<v_sumB<<endl;
-    
-    //Points to be added to the vector of GNP points
-    Point_3D PointA, PointB;
     
     //Using the simplices in GNP_A and GNP_B find the two points that define a junction between
     //the two GNPs
@@ -755,21 +762,6 @@ int Hoshen_Kopelman::Add_junction_points_for_gnps(const cuboid &sample, const GN
             return 0;
         }
     }
-
-    //Check if the junction points are inside the sample
-    if (!PointA.is_outside_cuboid(sample) && !PointB.is_outside_cuboid(sample))
-    {
-        //The junction is inside the sample, so add the calculated points to 
-        //the vector of GNP points
-        points_gnp.push_back(PointA);
-        points_gnp.push_back(PointB);
-        junction_in = true;
-    }
-    //else {
-        //The junction is actually ouside the sample, so it should be ignored
-        //Set to flase the flag that indicates the junction is inside the sample
-        //hout << "Ignore junction between GNP " << GNP_A.flag << " and GNP " << GNP_B.flag << endl;
-    //}
     
     return 1;
 }
@@ -1642,6 +1634,80 @@ int Hoshen_Kopelman::Average_point_with_two_interserctions(const vector<Edge> &e
     //Take the average PB
     PB = PB/3.0;
     
+    return 1;
+}
+//Add junction to vector of junctions
+int Hoshen_Kopelman::Add_gnp_junction(const vector<GNP>& gnps, const int& GNPa, const int& GNPb, const bool& p_flag, const Point_3D& PointA, const Point_3D& PointB, const double& dist, const double& tol_gnp, vector<Point_3D>& points_gnp, vector<vector<long int> >& structure_gnp)
+{
+    //Variables to store the GNP point numbers
+    long int Pa, Pb;
+    
+    //Get the actual value of Pa and add PointA to vectors if not repeated
+    if (!Add_gnp_point_to_vectors_if_not_repeated(PointA, tol_gnp, p_flag, Pa, points_gnp, structure_gnp[GNPa]))
+    {
+        hout << "Error in Add_gnp_junction when calling Add_gnp_point_to_vectors_if_not_repeated for PointA" << endl;
+        return 0;
+    }
+
+    //Get the actual value of Pb and add PointB to vectors if not repeated
+    if (!Add_gnp_point_to_vectors_if_not_repeated(PointB, tol_gnp, p_flag, Pb, points_gnp, structure_gnp[GNPb]))
+    {
+        hout << "Error in Add_gnp_junction when calling Add_gnp_point_to_vectors_if_not_repeated for PointB" << endl;
+        return 0;
+    }
+
+    //Create a junction with the GNPs in contact
+    Junction j(Pa, GNPa, "GNP", Pb, GNPb, "GNP", dist);
+
+    //Add the junction to the vector of junctions
+    junctions_gnp.push_back(j);
+
+    return 1;
+}
+//This function adds a GNP junction point to the vectors of GNP points and the structure vector
+//However, if the point is already in the vector of points or too close to it, it is not added 
+//and the existing point is used instead
+int Hoshen_Kopelman::Add_gnp_point_to_vectors_if_not_repeated(const Point_3D& P, const double& tol_gnp, const bool& p_flag, long int& Pj, vector<Point_3D>& points_gnp, vector<long int>& structure_gnp)
+{
+    //Check if there were interpenetrations
+    if (p_flag)
+    {
+        //Iterate over all points in GNP
+        for (size_t i = 0; i < structure_gnp.size(); i++)
+        {
+            //Get the point number
+            long int Pgnp = structure_gnp[i];
+
+            //Check if too close to P
+            //Use squared distance to reduce computational time
+            if (P.squared_distance_to(points_gnp[Pgnp]) < tol_gnp)
+            {
+                //P and Pgnp are considered to be the same point
+                //Set the point number to be Pgnp
+                //This is the point number that will be used to add a junction object
+                Pj = Pgnp;
+
+                //There is no need to add a new point to the vector of points nor to the 
+                //structure since the point we need already exists (as Pgnp)
+
+                //Terminate function to avoid executing the code after the if-statement
+                //that contains the for-loop
+                return 1;
+            }
+        }
+    }
+
+    //If this part of the code is reached, then there are no interpenetrations nor were
+    //repeated points found
+    //Get the point number of P
+    Pj = (long int)points_gnp.size();
+
+    //Add P as a new point to the vector of points
+    points_gnp.push_back(P);
+
+    //Add Pj to the structure vector
+    structure_gnp.push_back(Pj);
+
     return 1;
 }
 //This function merges CNT and GNP labels to make mixed clusters

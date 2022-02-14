@@ -1035,6 +1035,14 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
     istr4 >> gnp_geo.t_min >> gnp_geo.t_max;
     if(gnp_geo.t_min<Zero||gnp_geo.t_max<Zero||gnp_geo.t_max<gnp_geo.t_min) {
         hout << "Error: The maximum and minimum values of GNP thickness must be non-negative and the minimum value must be smaller than the maximum value. Input for minimum was "<<gnp_geo.t_min<<" and for maximum was "<<gnp_geo.t_max<< endl; return 0; }
+
+    //----------------------------------------------------------------------
+    //Define the GNP tolerance as 1.5 times the maximum thickness
+    cutoff_dist.tol_gnp = 1.5 * gnp_geo.t_max;
+    //Calculate the squared value of tol_gnp
+    //This is the quantity that will actually be used for comparison as squared
+    //distances will be calculated to reduce computational time
+    cutoff_dist.tol_gnp2 = cutoff_dist.tol_gnp * cutoff_dist.tol_gnp;
     
     //----------------------------------------------------------------------
     //Define the GNP density (in gr/micron3)
