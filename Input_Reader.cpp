@@ -882,7 +882,7 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
     //In the case of the CNT deposit, the boundary layer is drastically reduced to
     //reduce memmory usage. This because the boundary layer is also divided into
     //subregions to identify non-penetrating points
-    double l_ext = (simu_para.particle_type=="CNT_deposit")? 0.2*nanotube_geo.len_max: nanotube_geo.len_max;
+    double l_ext = (simu_para.particle_type=="CNT_deposit")? 0.2*nanotube_geo.len_max: 0.5*nanotube_geo.len_max;
     double l_ext_half = 0.5*l_ext;
     
     //Get the geometry of the extended domain for CNTs
@@ -1186,7 +1186,7 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
     //This section could be read even when only CNTs are used
     if (simu_para.particle_type == "GNP_cuboids" || simu_para.particle_type == "GNP_CNT_mix")
     {
-        //There are only GNPs, then use the calculated overlapping for GNPs
+        //There are GNPs, then use the calculated overlapping for GNPs
         geom_sample.gs_overlap_gnp = geom_sample.gs_minx / (sqrt(8.0));
     }
     else 
