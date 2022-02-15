@@ -822,6 +822,9 @@ void Generate_Network::Get_penetrating_points(const vector<vector<Point_3D> > &c
         CNT2 = global_coordinates[coord2][0];
         P2 = global_coordinates[coord2][1];
 
+        //hout << "Check4 ";
+        cutoff_p = rad_plus_dvdw + radii[CNT2];
+
         //Calculate distance between points
         distance = point.distance_to(cnts[CNT2][P2]);
 
@@ -4865,7 +4868,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
                         hout << "Error in Generate_network_threads_mt when calling Check_mixed_interpenetration (CNT initial point)" <<endl;
                         return 0;
                     }
-                    
+                    //hout << "Checked" << endl;
                 }
                 
                 if (!simu_para.penetration_model_flag || mixed_interpenetration) {
