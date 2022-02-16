@@ -112,7 +112,7 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
         //Export generated GNPs if any
         if (gnps.size()) {
 
-            if (vis_flags.generated_nanoparticles == 1)
+            if (vis_flags.generated_nanoparticles == 1 || vis_flags.generated_nanoparticles == 3)
             {
                 //Generate one visualization file with all the GNPs
                 vtk_exp.Export_gnps(gnps, "gnps_generated.vtk");
