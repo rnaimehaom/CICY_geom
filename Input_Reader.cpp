@@ -909,9 +909,11 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
 
     //Determine the overlapping of the overlapping sub-regions for CNTs depending on the particle type
     //This section could be read even when only GNPs are used
-    if (simu_para.particle_type == "CNT_deposit" || simu_para.particle_type == "CNT_wires")
+    if (simu_para.particle_type == "CNT_deposit" || 
+        simu_para.particle_type == "CNT_wires" || 
+        simu_para.particle_type == "GNP_CNT_mix")
     {
-        //There are only CNTs, then use the calculated overlapping for CNTs
+        //There are CNTs, then use the calculated overlapping for CNTs
         geom_sample.gs_overlap_cnt = 2 * nanotube_geo.rad_max + cutoff_dist.tunneling_dist;
     }
     else
