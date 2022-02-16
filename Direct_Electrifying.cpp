@@ -614,6 +614,9 @@ int Direct_Electrifying::Calculate_resistance_cnt(const int &R_flag, const vecto
         
         //Calculate resistance as R = rho*l/A; A = PI*r*r
         Re = resistivity*length/(PI*radius*radius);
+
+        //Add resistance to vector of all resistors
+        //all_resistors.push_back(Re);
     }
     else if (R_flag == 0) {
         
@@ -746,6 +749,9 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
                 hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Calculate_junction_resistance"<<endl;
                 return 0;
             }
+
+            //Add resistance to vector of all resistors
+            //all_resistors.push_back(Re_inv);
             
             //Calculate inverse of resistance
             Re_inv = 1/Re_inv;
@@ -759,6 +765,15 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
         long int node1 = LMM_cnts.at(P1);
         long int node2 = LMM_cnts.at(P2);
         //hout<<"node1="<<node1<<" node2="<<node2<<endl;
+        /* /Check for small numbers
+        if (Re_inv < 1e-13) {
+            hout << "R_inv=" << Re_inv << " d=" << junctions_cnt[idx].junction_dist << " d_P=" << points_cnt[P1].distance_to(points_cnt[P2]) << endl;
+            hout << "P1=" << P1 << " CNT1=" << CNT1 << " P2=" << P2 << " CNT2=" << CNT2 << endl;
+            hout << "r_cnt1=" << radii[CNT1] << " r_cnt2=" << radii[CNT2] << endl;
+            hout << "node1=" << node1 << " node2=" << node2 << endl;
+            double Re = electric_param.C1 * junctions_cnt[idx].junction_dist * exp(electric_param.C2 * junctions_cnt[idx].junction_dist) / (radii[CNT1]*radii[CNT2]*4.0);
+            hout << "Re=" << Re << " 1/Re=" << 1.0 / Re << endl;
+        }// */
         
         //Check if any of the nodes is at a boundary with prescribed voltage
         if (node1 >= reserved_nodes && node2 >= reserved_nodes) {
@@ -855,6 +870,9 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, con
                 hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Calculate_junction_resistance"<<endl;
                 return 0;
             }
+
+            //Add resistance to vector of all resistors
+            //all_resistors.push_back(Re_inv);
             
             //Calculate inverse of resistance
             Re_inv = 1/Re_inv;
@@ -867,6 +885,16 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, con
         //Get node numbers
         long int node1 = LMM_cnts.at(Pcnt);
         long int node2 = LMM_gnps.at(Pgnp);
+        /* /Check for small numbers
+        if (Re_inv < 1e-13) {
+            hout << "R_inv=" << Re_inv << " d=" << junctions_mixed[idx].junction_dist << " d_P=" << points_gnp[Pgnp].distance_to(points_cnt[Pcnt]) << endl;
+            hout << "Pcnt=" << Pcnt << " cnt_n=" << cnt_n << " Pgnp=" << Pgnp << " gnp_n=" << gnp_n << endl;
+            hout << "r_cnt=" << radii[cnt_n] << endl;
+            hout << "l_gnp=" << gnps[gnp_n].l << " t_gnp=" << gnps[gnp_n].t << endl;
+            hout << "node1=" << node1 << " node2=" << node2 << endl;
+            double Re = electric_param.C1 * junctions_mixed[idx].junction_dist * exp(electric_param.C2 * junctions_mixed[idx].junction_dist) / (gnps[gnp_n].t * radii[cnt_n] * 2.0);
+            hout << "Re=" << Re << " 1/Re=" << 1.0 / Re << endl;
+        }// */
         
         //Check if any of the nodes is at a boundary with prescribed voltage
         if (node1 >= reserved_nodes && node2 >= reserved_nodes) {
@@ -1146,7 +1174,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
         //Get node numbers
         long int node1 = LMM_gnps.at(P1);
         long int node2 = LMM_gnps.at(P2);
-        /* /Check for small numbers
+        //Check for small numbers
         if (Re_inv < 1e-13) {
             hout << "R_inv=" << Re_inv << " d=" << junctions_gnp[idx].junction_dist <<" d_P="<< points_gnp[P1].distance_to(points_gnp[P2]) << endl;
             hout << "GNP1=" << GNP1 << " GNP2=" << GNP2 << endl;

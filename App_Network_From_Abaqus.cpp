@@ -159,7 +159,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
                 return 0;
             }
             ct1 = time(NULL);
-            hout << "Extract observation window (GNPs only) time: " << (int)(ct1 - ct0) << " secs." << endl;
+            hout << "Extract observation window time: " << (int)(ct1 - ct0) << " secs." << endl;
         }
 
         //Window geometry is the same as that of the sample
@@ -357,12 +357,11 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
         return 0;
     }
 
+    //Manually adjust the displacement if some CNT elements from Abaqus lie outside the RVE
+    //disp.x = disp.x * 3.0 / 3.02; disp.z = disp.z * 3.0 / 3.02;
+
     //Update lower left corner of sample
-    // 
-    //Note current_disp contains the displacement for current frame i, no the displacement
-    //of the current frame with respect to the previous frame
-    //Thus, calculate the increment of displacement with respect to the previous frame
-    //Otherwise I would need the initial geometry of the sample for each frame
+    //hout << "P0=" << geom_sample.sample.poi_min.str() << " disp=" << disp.str() << " P0+dips=" << (geom_sample.sample.poi_min + disp).str() << endl;
     geom_sample.sample.poi_min = geom_sample.sample.poi_min + disp;
 
     //Name of the set for the opposite corner (it is hard coded in the python scritp too)
@@ -374,12 +373,11 @@ int App_Network_From_Abaqus::Apply_displacements_to_sample(odb_Assembly& root_as
         return 0;
     }
 
-    //Update the maximum coordinates of the sample, which are the maximum coordinates of the sample
-    // 
-    //Note current_disp contains the displacement for current frame i, no the displacement
-    //of the current frame with respect to the previous frame
-    //Thus, calculate the increment of displacement with respect to the previous frame
-    //Otherwise I would need the initial geometry of the sample for each frame
+    //Manually adjust the displacement if some CNT elements from Abaqus lie outside the RVE
+    //disp.x = disp.x * 3.0 / 3.02; disp.z = disp.z * 3.0 / 3.02;
+    
+    //Update the maximum coordinates of the sample
+    //hout << "corner=(" << geom_sample.sample.max_x << ", " << geom_sample.sample.max_y << ", " << geom_sample.sample.max_z << ") disp=" << disp.str() << " corner+disp=(" << geom_sample.sample.max_x + disp.x << ", " << geom_sample.sample.max_y + disp.y << ", " << geom_sample.sample.max_z + disp.z << ")" << endl;
     geom_sample.sample.max_x = geom_sample.sample.max_x + disp.x;
     geom_sample.sample.max_y = geom_sample.sample.max_y + disp.y;
     geom_sample.sample.max_z = geom_sample.sample.max_z + disp.z;
@@ -506,7 +504,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
         {
             //Note that nodes are actually in reverse order given the way
             //CNTs are generated (and meshed) in Abaqus
-            //Thus, I need to go in reverse order when scanning the structure vcetor
+            //Thus, I need to go in reverse order when scanning the structure vector
             //With this definition of idx, I can start at the last element of 
             //structure[i] and stop at its first element
             int idx = v_size1 - j;

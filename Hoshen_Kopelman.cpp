@@ -167,7 +167,7 @@ int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_cnt, const
     
     //Label the CNTs
     //hout<<"Label_cnts_in_window"<<endl;
-    if (!Label_cnts_in_window(points_cnt, radii, cutoffs.tunneling_dist, sectioned_domain_cnt, point_contacts, point_contacts_dist, contact_elements, labels_cnt, labels_labels_cnt)) {
+    if (!Label_cnts_in_window(points_cnt, radii, cutoffs, sectioned_domain_cnt, point_contacts, point_contacts_dist, contact_elements, labels_cnt, labels_labels_cnt)) {
         hout<<"Error in Make_cnt_clusters when calling Label_cnts_in_window"<<endl;
         return 0;
     }
@@ -197,7 +197,7 @@ int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_cnt, const
 }
 //This function labels the CNTs in a window
 //These labels are used to make clusters
-int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, const vector<double> &radii, const double &tunnel_cutoff, const vector<vector<long int> > &sectioned_domain_cnt, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &contact_elements, vector<int> &labels_cnt, vector<int> &labels_labels_cnt)
+int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, const vector<double> &radii, const Cutoff_dist& cutoffs, const vector<vector<long int> > &sectioned_domain_cnt, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &contact_elements, vector<int> &labels_cnt, vector<int> &labels_labels_cnt)
 {
     //new_label will take the value of the newest cluster
     int new_label = 0;
@@ -234,12 +234,25 @@ int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, co
                 if (CNT1 != CNT2) {
                     
                     //Calculate the distance between points
-                    double dist_junc = points_cnt[P1].distance_to(points_cnt[P2]);
+                    double dist_cnts = points_cnt[P1].distance_to(points_cnt[P2]);
                     //hout <<" dist_junc="<<dist_junc<<endl;
+
+                    //Calculate the junction distance
+                    double dist_junc = dist_cnts - radii[CNT1] - radii[CNT2];
+                    if (dist_junc < cutoffs.van_der_Waals_dist)
+                    {/* /
+                        hout << "Junction distance too small dist_junc=" << dist_junc << " dist_cnts=" << dist_cnts << endl;
+                        hout<<"P1="<<points_cnt[P1].str()<<" sectioned_domain_cnt[i="<<i<<"][j="<<j<<"]="<<sectioned_domain_cnt[i][j]<<endl;
+                        hout<<"P2="<<points_cnt[P2].str()<<" sectioned_domain_cnt[i="<<i<<"][k="<<k<<"]="<<sectioned_domain_cnt[i][k]<<endl;
+                        hout <<"P1="<<P1<<" CNT1="<<CNT1<<" P2="<<P2<<" CNT2="<<CNT2;
+                        hout<<" r1="<<radii[CNT1]<<" r2="<<radii[CNT2]<<endl;
+                        return 0;// */
+                        dist_junc = cutoffs.van_der_Waals_dist;
+                    }
                     
                     //Compare the distance between points against the junction distance
                     //to check whether there is tunneling
-                    if (dist_junc <= radii[CNT1] + radii[CNT2] + tunnel_cutoff) {
+                    if (dist_junc <= cutoffs.tunneling_dist) {
                         
                         //Here is where the actual HK76 algorithm takes place
                         if (!HK76(CNT1, CNT2, new_label, labels_cnt, labels_labels_cnt)) {
@@ -1752,7 +1765,20 @@ int Hoshen_Kopelman::Make_mixed_clusters(const int &n_labels, const Cutoff_dist 
 }
 //This function finds the CNTs in contact with GNPs, then an adjacency matrix is filled to
 //merge the CNT and GNP clusters
-int Hoshen_Kopelman::Find_adjacent_labels(const vector<int> &labels_cnt, const vector<int> &labels_gnp, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, vector<Point_3D> &contact_points_gnp, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &gnp_cnt_point_contacts, vector<set<int> > &adj_labels)
+int Hoshen_Kopelman::Find_adjacent_labels(
+    const vector<int> &labels_cnt, 
+    const vector<int> &labels_gnp, 
+    const Cutoff_dist &cutoffs, 
+    const vector<Point_3D> &points_cnt, 
+    const vector<double> &radii, 
+    const vector<vector<long int> > &sectioned_domain_cnt, 
+    const vector<GNP> &gnps, 
+    const vector<vector<int> > &sectioned_domain_gnp, 
+    vector<Point_3D> &contact_points_gnp, 
+    map<long int, map<int, long int> > &point_contacts, 
+    map<long int, map<int, double> > &point_contacts_dist, 
+    vector<map<int, set<long int> > > &gnp_cnt_point_contacts, 
+    vector<set<int> > &adj_labels)
 {
     //Create a vector of visited contacts
     vector<set<long int> > visited(gnps.size());
@@ -1786,11 +1812,21 @@ int Hoshen_Kopelman::Find_adjacent_labels(const vector<int> &labels_cnt, const v
                     
                     //The GNP-CNT contact has not been visited, so calculate the distance
                     //between CNT point and GNP
-                    double dist_junc;
-                    Point_3D P_gnp = GN.Get_gnp_point_closest_to_point(gnps[GNP], points_cnt[P], dist_junc);
+                    double dist_cnt_gnp;
+                    Point_3D P_gnp = GN.Get_gnp_point_closest_to_point(gnps[GNP], points_cnt[P], dist_cnt_gnp);
+
+                    //Calculate the junction distance
+                    double dist_junc = dist_cnt_gnp - radii[CNT];
+                    //hout << "dist_junc=" << dist_junc <<" dist_cnt_gnp="<< dist_cnt_gnp << endl;
+
+                    //Check that the juntion distance is at least the van der Waals distance
+                    if (dist_junc < cutoffs.van_der_Waals_dist)
+                    {
+                        dist_junc = cutoffs.van_der_Waals_dist;
+                    }
                     
                     //Check if there is tunneling
-                    if (dist_junc <= radii[CNT] + cutoffs.tunneling_dist) {
+                    if (dist_junc - cutoffs.tunneling_dist <= Zero) {
                         
                         //Get the GNP point number
                         long int P_gnp_num = (long int)contact_points_gnp.size();

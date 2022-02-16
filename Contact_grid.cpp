@@ -147,6 +147,7 @@ int Contact_grid::Fill_sectioned_domain_cnts(const cuboid &window_geom, const ve
                 hout << "Error in Generate_sectioned_domain_cnts when calling Assign_point_to_region" << endl;
                 hout << "P=" << points_cnt[P].str() << endl;
                 hout << "CNT=" << CNT << " P#=" << P << endl;
+                hout << "window_geom=" << window_geom.str() << endl;
                 return 0;
             }
             //hout<<"for-j"<<endl;
@@ -205,7 +206,7 @@ int Contact_grid::Assign_point_to_regions_cnts(const int& a, const int& b, const
     //hout<<"t="<<t<<endl;
     if (t >= tot_regions || t < 0)
     {
-        hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subrigion outside the range of subregions." << endl;
+        hout << "Error in Assign_point_to_regions_cnts. Point belongs to a subregion outside the range of subregions." << endl;
         hout << "Subregion number (t) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
         hout << "a=" << a << " b=" << b << " c=" << c << endl;
         return 0;
