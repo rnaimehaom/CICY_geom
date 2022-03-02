@@ -243,6 +243,8 @@ struct Electric_para{
     double C1, C2;
     //Constant value for junction resistance
     double junction_resistance;
+    //Scaling factor for reducing numerical errors
+    double scaling_R;
 };
 struct Visualization_flags{
     string keywords;

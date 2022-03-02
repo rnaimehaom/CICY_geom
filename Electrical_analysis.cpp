@@ -455,6 +455,9 @@ int Electrical_analysis::Calculate_parallel_resistor(const int &direction, const
     //thus, there are only two boundary conditions and
     //the voltage difference is equal to the input voltage
     double R_total = electric_param.applied_voltage/I_total;
+
+    //Undo the scaling on the resistor
+    R_total = R_total / electric_param.scaling_R;
     
     //Add resistor to vector of parallel resistors
     paralel_resistors[direction].push_back(R_total);
@@ -574,13 +577,13 @@ int Electrical_analysis::Current_of_element_in_boundary(const long int &P1, cons
             //Check if the resistor is at the back of the CNT, since in that case the calculated resistance will be zero;
             //this because if P1 > P2, the function that calculates the resistance does not find points after P1
             //When the resistor is at the back of the element P1 > P2, so in that case invert the point numbers
-            if (!DEA->Calculate_resistance_cnt(1, points_cnt, P2, P1, radius, electric_param.resistivity_CNT, Re)) {
+            if (!DEA->Calculate_resistance_cnt(1, points_cnt, P2, P1, radius, electric_param, Re)) {
                 hout<<"Error in Current_of_element_in_boundary when calling DEA->Calculate_resistance_cnt (1)"<<endl;
                 return 0;
             }
         }
         else {
-            if (!DEA->Calculate_resistance_cnt(1, points_cnt, P1, P2, radius, electric_param.resistivity_CNT, Re)) {
+            if (!DEA->Calculate_resistance_cnt(1, points_cnt, P1, P2, radius, electric_param, Re)) {
                 hout<<"Error in Current_of_element_in_boundary when calling DEA->Calculate_resistance_cnt (2)"<<endl;
                 return 0;
             }

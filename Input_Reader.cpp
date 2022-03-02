@@ -217,7 +217,13 @@ int Input::Data_Initialization()
 	electric_para.keywords = "Electrical_Parameters";
 	electric_para.mark = false;
 	electric_para.applied_voltage = 1.0;
-	electric_para.resistivity_CNT = 0.001;
+	electric_para.resistivity_CNT = 10;
+    electric_para.resistivity_GNP_t = 10;
+    electric_para.resistivity_GNP_surf = 10;
+    electric_para.e_charge = 1.60217662;
+    electric_para.e_mass = 9.10938291;
+    electric_para.h_plank = 6.62606957;
+    electric_para.scaling_R = 1e-6;
     
     //Initialize visualization flags (do not export anything)
     vis_flags.keywords = "Visualization_Flags";

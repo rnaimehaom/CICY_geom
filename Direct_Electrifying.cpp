@@ -356,16 +356,18 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     {
         //Add contributions from CNT resistors
         //hout << "Fill_2d_matrices_cnts"<<endl;
-        if (!Fill_2d_matrices_cnts(R_flag, n_cluster, electric_param, HoKo, points_cnt, radii, col_values, diagonal)) {
+        if (!Fill_2d_matrices_cnts(R_flag, n_cluster, electric_param, HoKo, points_cnt, radii, col_values, diagonal)) 
+        {
             hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_cnts" << endl;
             return 0;
         }
         
         //Add contributions from CNT-CNT junctions if any
-        if (HoKo->cluster_cnt_junctions.size() && HoKo->cluster_cnt_junctions[n_cluster].size()) {
-            
+        if (HoKo->cluster_cnt_junctions.size() && HoKo->cluster_cnt_junctions[n_cluster].size()) 
+        {
             //hout << "Fill_2d_matrices_cnt_junctions"<<endl;
-            if (!Fill_2d_matrices_cnt_junctions(R_flag, reserved_nodes, d_vdw, electric_param, HoKo->cluster_cnt_junctions[n_cluster], HoKo->junctions_cnt, points_cnt, radii, LMM_cnts, col_values, diagonal)) {
+            if (!Fill_2d_matrices_cnt_junctions(R_flag, reserved_nodes, d_vdw, electric_param, HoKo->cluster_cnt_junctions[n_cluster], HoKo->junctions_cnt, points_cnt, radii, LMM_cnts, col_values, diagonal)) 
+            {
                 hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_cnt_junctions" << endl;
                 return 0;
             }
@@ -391,7 +393,8 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
     {
         //Add contributions from GNP resistors
         //hout<<"Fill_2d_matrices_gnp"<<endl;
-        if (!Fill_2d_matrices_gnp(R_flag, electric_param, HoKo->clusters_gnp[n_cluster], points_gnp, structure_gnp, gnps, LMM_gnps, points_cnt_rad, col_values, diagonal)) {
+        if (!Fill_2d_matrices_gnp(R_flag, electric_param, HoKo->clusters_gnp[n_cluster], points_gnp, structure_gnp, gnps, LMM_gnps, points_cnt_rad, col_values, diagonal)) 
+        {
             hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_gnp" << endl;
             return 0;
         }
@@ -401,7 +404,8 @@ int Direct_Electrifying::Fill_sparse_stiffness_matrix(const int &R_flag, const l
         if (HoKo->cluster_gnp_junctions.size() && HoKo->cluster_gnp_junctions[n_cluster].size()) 
         {
             //hout << "junctions="<<HoKo->cluster_gnp_junctions[n_cluster].size() << endl;
-            if (!Fill_2d_matrices_gnp_junctions(R_flag, d_vdw, electric_param, HoKo->cluster_gnp_junctions[n_cluster], HoKo->junctions_gnp, points_gnp, gnps, LMM_gnps, col_values, diagonal)) {
+            if (!Fill_2d_matrices_gnp_junctions(R_flag, d_vdw, electric_param, HoKo->cluster_gnp_junctions[n_cluster], HoKo->junctions_gnp, points_gnp, gnps, LMM_gnps, col_values, diagonal)) 
+            {
                 hout << "Error in Fill_sparse_stiffness_matrix when calling Fill_2d_matrices_gnp_junctions" << endl;
                 return 0;
             }
@@ -512,7 +516,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnts(const int &R_flag, const int &n_c
                 
                 //Calculate resistance depending of the R_flag
                 double Re;
-                if (!Calculate_resistance_cnt(R_flag, points_cnt, P1, P2, radii[CNT], electric_param.resistivity_CNT, Re)) {
+                if (!Calculate_resistance_cnt(R_flag, points_cnt, P1, P2, radii[CNT], electric_param, Re)) {
                     hout<<"Error in Fill_2d_matrices_cnts when calling Calculate_resistance_cnt"<<endl;
                     return 0;
                 }
@@ -554,7 +558,7 @@ int Direct_Electrifying::Three_points_in_element(const int &R_flag, const Electr
     if (R_flag == 1) {
         
         //hout<<"Calculate_resistance_cnt 1"<<endl;
-        if (!Calculate_resistance_cnt(R_flag, points_cnt, P1, P2, radius, electric_param.resistivity_CNT, Re1_inv)) {
+        if (!Calculate_resistance_cnt(R_flag, points_cnt, P1, P2, radius, electric_param, Re1_inv)) {
             hout<<"Error in Three_points_in_element when calling Calculate_resistance_cnt Re1"<<endl;
             return 0;
         }
@@ -569,7 +573,7 @@ int Direct_Electrifying::Three_points_in_element(const int &R_flag, const Electr
     if (R_flag == 1) {
         
         //hout<<"Calculate_resistance_cnt 2"<<endl;
-        if (!Calculate_resistance_cnt(R_flag, points_cnt, P2, P3, radius, electric_param.resistivity_CNT, Re2_inv)) {
+        if (!Calculate_resistance_cnt(R_flag, points_cnt, P2, P3, radius, electric_param, Re2_inv)) {
             hout<<"Error in Three_points_in_element when calling Calculate_resistance_cnt Re2"<<endl;
             return 0;
         }
@@ -597,7 +601,7 @@ int Direct_Electrifying::Three_points_in_element(const int &R_flag, const Electr
 }
 //This function calculates the length of a CNT segment that corresponds to one element (resistor)
 //Using the resisitivity as input parameter the resistance of the CNT segment is calculated
-int Direct_Electrifying::Calculate_resistance_cnt(const int &R_flag, const vector<Point_3D> &points_cnt, const long int &P1, const long int &P2, const double &radius, const double &resistivity, double &Re)
+int Direct_Electrifying::Calculate_resistance_cnt(const int &R_flag, const vector<Point_3D> &points_cnt, const long int &P1, const long int &P2, const double &radius, const Electric_para& electric_param, double &Re)
 {
     //Check the resistance flag
     if (R_flag == 1) {
@@ -613,7 +617,10 @@ int Direct_Electrifying::Calculate_resistance_cnt(const int &R_flag, const vecto
         }
         
         //Calculate resistance as R = rho*l/A; A = PI*r*r
-        Re = resistivity*length/(PI*radius*radius);
+        Re = electric_param.resistivity_CNT*length/(PI*radius*radius);
+
+        //Scaling factor
+        Re = Re * electric_param.scaling_R;
 
         //Add resistance to vector of all resistors
         //all_resistors.push_back(Re);
@@ -806,11 +813,13 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
 int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const double &l1, const double &l2, const struct Electric_para &electric_param, double &Re)
 {
     //Check if a constant resistance is used
-    if (electric_param.junction_type == "constant") {
+    if (electric_param.junction_type == "constant") 
+    {
+        //Take the constant value from the electrical parameters
         Re = electric_param.junction_resistance;
-        return 1;
     }
-    else if (electric_param.junction_type == "exponential") {
+    else if (electric_param.junction_type == "exponential") 
+    {
 
         //Variables to store the CNT diameter or GNP thickness, which is neede to calculate
         //the area of the junction
@@ -843,6 +852,9 @@ int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const 
         hout<<"Error in Calculate_junction_resistance: invalid junction type. Input was: "<<electric_param.junction_type<<endl;
         return 0;
     }
+
+    //Scaling factor
+    Re = Re * electric_param.scaling_R;
     
     return 1;
 }
@@ -1130,6 +1142,9 @@ int Direct_Electrifying::Calculate_resistance_gnp(const Point_3D &P1, const Poin
     //Calcualte resistance as:
     //Re = rho*L/(PI*rad1*rad2)
     Re = rho*L/(PI*rad1*rad2);
+
+    //Scaling factor
+    Re = Re * electric_param.scaling_R;
     
     return 1;
 }
@@ -1175,7 +1190,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
         //Get node numbers
         long int node1 = LMM_gnps.at(P1);
         long int node2 = LMM_gnps.at(P2);
-        //Check for small numbers
+        /* /Check for small numbers
         if (Re_inv < 1e-13) {
             hout << "R_inv=" << Re_inv << " d=" << junctions_gnp[idx].junction_dist <<" d_P="<< points_gnp[P1].distance_to(points_gnp[P2]) << endl;
             hout << "GNP1=" << GNP1 << " GNP2=" << GNP2 << endl;
