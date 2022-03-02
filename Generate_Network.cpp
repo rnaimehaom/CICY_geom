@@ -2083,7 +2083,7 @@ Point_3D Generate_Network::Find_intersection_at_boundary(const cuboid &sample, c
     //Lambda function to calculate the lambda coefficient, since I only use it three times here and is a
     //simple calculation, so I rather use a lambda function instead of declaring a new proper function
     //as part of the class
-    auto calc_lambda = [](auto x_plane, auto x_out, auto x_T) {return (x_plane - x_out)/x_T;};
+    auto calc_lambda = [](double x_plane, double x_out, double x_T) {return (x_plane - x_out)/x_T;};
     
     //Go through each boundary and find the lambda value for those that are intersected for the
     //line segment that goes from p_outside to p_inside

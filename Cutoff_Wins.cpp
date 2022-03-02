@@ -476,7 +476,7 @@ int Cutoff_Wins::Substitute_boundary_point(const cuboid &window_geo, const Point
     
     //Lambda function to calculate the lambda coefficient, since I only use it multiple times here and is a
     //simple calculation I rather use a lambda function instead of declaring a new proper function
-    auto calc_lambda = [](auto x_plane, auto x_out, auto x_T) {return (x_plane - x_out)/x_T;};
+    auto calc_lambda = [](double x_plane, double x_out, double x_T) {return (x_plane - x_out)/x_T;};
     
     //Go through each boundary and, if the segment defined by p_inside and p_outside
     //crosses the boundary, calculate the lambda for that boundary
