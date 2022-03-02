@@ -884,6 +884,21 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
     //subregions to identify non-penetrating points
     double l_ext = (simu_para.particle_type=="CNT_deposit")? 0.2*nanotube_geo.len_max: 0.5*nanotube_geo.len_max;
     double l_ext_half = 0.5*l_ext;
+
+    //Get the geometry of the non-penetrating domain
+    //This is done by extending each face 2.1 times the maximum radius, 
+    //i.e., 5% more than the maximum diameter
+    double np_extension = 2.1 * nanotube_geo.rad_max;
+    //Minimum coordinates
+    geom_sample.np_domain.poi_min = geom_sample.sample.poi_min - np_extension;
+    //Maximum coordinates
+    geom_sample.np_domain.max_x = geom_sample.sample.max_x + np_extension;
+    geom_sample.np_domain.max_y = geom_sample.sample.max_y + np_extension;
+    geom_sample.np_domain.max_z = geom_sample.sample.max_z + np_extension;
+    //Side lengths
+    geom_sample.np_domain.len_x = geom_sample.np_domain.max_x - geom_sample.sample.poi_min.x;
+    geom_sample.np_domain.wid_y = geom_sample.np_domain.max_y - geom_sample.sample.poi_min.y;
+    geom_sample.np_domain.hei_z = geom_sample.np_domain.max_z - geom_sample.sample.poi_min.z;
     
     //Get the geometry of the extended domain for CNTs
     geom_sample.ex_dom_cnt.poi_min.x = geom_sample.sample.poi_min.x - l_ext_half;
@@ -891,7 +906,7 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
     geom_sample.ex_dom_cnt.len_x = geom_sample.sample.len_x + l_ext;
     geom_sample.ex_dom_cnt.wid_y = geom_sample.sample.wid_y + l_ext;
     //In the case of a CNT deposit, the lowest z-coordinate is tha same as the sample's, 
-    //but the length is only incresaed hald the extended length (compared to the sample's)
+    //but the length is only increased half the extended length (compared to the sample's)
     if (simu_para.particle_type=="CNT_deposit") {
         geom_sample.ex_dom_cnt.poi_min.z = geom_sample.sample.poi_min.z;
         //geom_sample.ex_dom_cnt.hei_z = geom_sample.sample.hei_z + l_ext_half;

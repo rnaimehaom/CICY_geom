@@ -247,6 +247,9 @@ int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, co
                         hout <<"P1="<<P1<<" CNT1="<<CNT1<<" P2="<<P2<<" CNT2="<<CNT2;
                         hout<<" r1="<<radii[CNT1]<<" r2="<<radii[CNT2]<<endl;
                         return 0;// */
+
+                        //The distance between points might be less than the van der Waals
+                        //distance if penetrations are allowed or Abaqus causes them
                         dist_junc = cutoffs.van_der_Waals_dist;
                     }
                     
@@ -1822,6 +1825,9 @@ int Hoshen_Kopelman::Find_adjacent_labels(
                     //Check that the juntion distance is at least the van der Waals distance
                     if (dist_junc < cutoffs.van_der_Waals_dist)
                     {
+                        //The distance between a CNT point and a GNP might be less 
+                        //than the van der Waals distance if penetrations are allowed 
+                        //or Abaqus causes them
                         dist_junc = cutoffs.van_der_Waals_dist;
                     }
                     

@@ -764,26 +764,26 @@ int Generate_Network::Get_cnt_point_subregion(const Geom_sample &geom_sample, co
 }
 int Generate_Network::Get_cnt_point_subregion_mixed(const Geom_sample& geom_sample, const int n_subregions[], const Point_3D& point)const
 {
-
-    //These variables will give me the region cordinates of the region that a point belongs to
-    int a, b, c;
-
-    //Calculate the subregion-coordinates
-    Get_subregion_coordinates_with_layer(geom_sample, point, n_subregions, a, b, c);
-
-    //Check if in a subregion in the layer
-    if (!a || a == n_subregions[0] - 1 || 
-        !b || b == n_subregions[1] - 1 ||
-        !c || c == n_subregions[2] - 1)
+    //Check point is in non-penetration domain
+    if (point.is_outside_cuboid(geom_sample.np_domain))
     {
-        //If the point is in a subregion that belong to the boundary layer, 
-        //then reurn -1 so that penetrations are not checked
+        //point is in the boudary but not in the non-penetration layer, so interpenetrations
+        //are ignored. thus return -1
         return -1;
     }
+    //Calcualte the subregion with layer
+    else 
+    {
+        //These variables will give me the region cordinates of the region that a point belongs to
+        int a, b, c;
 
-    //Return the subregion number
-    return Calculate_t(a, b, c, n_subregions[0], n_subregions[1]);
+        //Calculate the subregion-coordinates
+        Get_subregion_coordinates_with_layer(geom_sample, point, n_subregions, a, b, c);
 
+        //Return the subregion number
+        return Calculate_t(a, b, c, n_subregions[0], n_subregions[1]);
+
+    }
 }
 //This function finds the coordinates of a subregions where point belongs
 void Generate_Network::Get_subregion_coordinates(const Geom_sample &geom_sample, const int n_subregions[], const Point_3D &point, int &a, int &b, int &c)const
@@ -803,30 +803,25 @@ void Generate_Network::Get_subregion_coordinates(const Geom_sample &geom_sample,
 //This function iterates over a sub-region and determines if there are any penetrating points
 //If there are penetrating points, they are stored in the vector affected_points
 void Generate_Network::Get_penetrating_points(const vector<vector<Point_3D> > &cnts, const vector<vector<int> > &global_coordinates, const vector<long int> &subregion_vec, const vector<double> &radii, const double &rad_plus_dvdw, Point_3D &point, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances)const
-{
-    //They are just intermediate variables and I only use them to make the code more readable
-    long int coord2;
-    int P2, CNT2;
-    //cutoff_p is used for the cutoff between two points (of different CNTs), distance is the actual distance
-    //between those two points
-    double cutoff_p, distance;
-    
+{   
     //hout << "Check0 " << subregion_vec.size() << ' ';
     //hout << "CNT1=" << point.flag <<" ("<< point.x<<", "<<point.y<< ", " <<point.z<<") r1=" << cnt_rad<<endl;
     for (long int i = 0; i < (long int)subregion_vec.size(); i++) {
         
         //hout << "Check1 " ;
-        coord2 = subregion_vec[i];
+        //Get the global coordinate
+        long int coord2 = subregion_vec[i];
         //hout << "coord2="<<coord2<<" global_coordinates.size()="<<global_coordinates.size()<<endl;
         
-        CNT2 = global_coordinates[coord2][0];
-        P2 = global_coordinates[coord2][1];
+        int CNT2 = global_coordinates[coord2][0];
+        int P2 = global_coordinates[coord2][1];
 
         //hout << "Check4 ";
-        cutoff_p = rad_plus_dvdw + radii[CNT2];
+        //Cutoff distance between two points (of different CNTs)
+        double cutoff_p = rad_plus_dvdw + radii[CNT2];
 
         //Calculate distance between points
-        distance = point.distance_to(cnts[CNT2][P2]);
+        double distance = point.distance_to(cnts[CNT2][P2]);
 
         //Check if the points are too close
         if (distance - cutoff_p < Zero)
@@ -834,7 +829,7 @@ void Generate_Network::Get_penetrating_points(const vector<vector<Point_3D> > &c
             affected_points.push_back(cnts[CNT2][P2]);
             cutoffs_p.push_back(cutoff_p);
             distances.push_back(distance);
-            //hout << "Penetrating point"<< affected_points.size()<< " CNT2=" << CNT2 << "("<<cnts[CNT2].size()<<" points) P2=" << P2 << " r2=" << radii[CNT2] << " (" << cnts[CNT2][P2].x << ", " << cnts[CNT2][P2].y << ", " << cnts[CNT2][P2].z << ") "<< endl;
+            //hout << "Penetrating point"<< affected_points.size()<< " CNT2=" << CNT2 << "("<<cnts[CNT2].size()<<" points) P2=" << P2 << " r2=" << radii[CNT2] << " P2" << cnts[CNT2][P2].str() << endl;
         }
         //hout << "Check5 ";
     }
@@ -962,6 +957,7 @@ int Generate_Network::One_penetrating_point(const double &d_s, const double &d_c
         hout << "S=" << S.str() << endl;
         hout << "P0=" << P0.str() << endl;
         hout << "N=" << N.str() << endl;
+        hout << "dp=" << N.distance_to(S) << endl;
         hout << "d_s=" << d_s << " d1=" << d1 << " d_c=" << d_c << endl;
         hout << "d_s*d_s=" << d_s2 << " d1*d1=" << d1 * d1 << " d_c*d_c=" << d_c * d_c << endl;
         return 0;
@@ -3671,11 +3667,11 @@ int Generate_Network::Initialize_gnp_subregions(const Geom_sample &sample_geom, 
     //the maximum coordinate
     //
     //Number of subregions along x
-    n_subregion[0] = max(1, (int)(sample_geom.sample.len_x/sample_geom.gs_minx)) + 2;
+    n_subregion[0] = max(1, (int)(sample_geom.sample.len_x/sample_geom.gs_minx));
     //Number of subregions along y
-    n_subregion[1] = max(1, (int)(sample_geom.sample.wid_y/sample_geom.gs_miny)) + 2;
+    n_subregion[1] = max(1, (int)(sample_geom.sample.wid_y/sample_geom.gs_miny));
     //Number of subregions along z
-    n_subregion[2] = max(1, (int)(sample_geom.sample.hei_z/sample_geom.gs_minz)) + 2;
+    n_subregion[2] = max(1, (int)(sample_geom.sample.hei_z/sample_geom.gs_minz));
     
     //Initialize sectioned_domain
     sectioned_domain.assign(n_subregion[0]*n_subregion[1]*n_subregion[2], vector<int>());
@@ -4815,8 +4811,13 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
             return 0;
         }
         
-        //Get the location of the initial point
+        //Get the location of the initial point with respect to the sample
         bool is_prev_in_sample = Is_point_inside_cuboid(geom_sample.sample, new_cnt[0]);
+
+        //Get the location of the initial point with respect to the non-penetration domain
+        //If seed point is inside the sample, for sure it is also inside the 
+        //non-penetration domain
+        bool is_prev_in_np = (is_prev_in_sample) ? true: Is_point_inside_cuboid(geom_sample.np_domain, new_cnt[0]);
         
         //Set the flag of the point depending on its position
         //1: inside the sample
@@ -4863,7 +4864,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
                     
                     //Get the status on mixed penetration
                     //hout<<"Check_mixed_interpenetration"<<endl;
-                    mixed_interpenetration = Check_mixed_interpenetration(simu_para.MAX_ATTEMPTS_CNT, geom_sample, cnts_points, cnts_radius, new_cnt, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, nanotube_geo.step_length, ignr, subr_point_map, global_coordinates, sectioned_domain, gnps, sectioned_domain_gnp, n_subregions, new_point);
+                    mixed_interpenetration = Check_mixed_interpenetration(simu_para.MAX_ATTEMPTS_CNT, geom_sample, cnts_points, cnts_radius, new_cnt, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, nanotube_geo.step_length, ignr, is_prev_in_np, subr_point_map, global_coordinates, sectioned_domain, gnps, sectioned_domain_gnp, n_subregions, new_point);
                     if (mixed_interpenetration == -1) {
                         hout << "Error in Generate_network_threads_mt when calling Check_mixed_interpenetration (CNT initial point)" <<endl;
                         return 0;
@@ -4898,13 +4899,18 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
                         new_point.flag = 0;
                     }
                     
-                    //For the next iteration of the for loop, cnt_poi will become previous point,
+                    //For the next iteration of the for loop, new_point will become the previous point,
                     //so update the boolean is_prev_in_sample for the next iteration
                     is_prev_in_sample = is_new_inside_sample;
+
+                    //Also update is_prev_in_np
+                    //If new_point is inside the sample, for sure it is also inside the 
+                    //non-penetration domain
+                    is_prev_in_np = (is_new_inside_sample) ? true : Is_point_inside_cuboid(geom_sample.np_domain, new_point);
                     
                     //Add the new_point to the overlapping subregions it belongs to using the map
-                    //1 is to indicate no layer is considered when calculating subregion numbers
-                    if (!Add_cnt_point_to_overlapping_regions_map(geom_sample, new_point, (int)new_cnt.size(), is_new_inside_sample, 1, tot_regions, n_subregions, subr_point_map)) {
+                    //0 is to indicate no layer is considered when calculating subregion numbers
+                    if (!Add_cnt_point_to_overlapping_regions_map(geom_sample, new_point, (int)new_cnt.size(), is_new_inside_sample, 0, tot_regions, n_subregions, subr_point_map)) {
                         hout<<"Error when adding a point to the map of subregions"<<endl;
                         return 0;
                     }
@@ -5039,8 +5045,11 @@ int Generate_Network::Generate_initial_point_of_cnt(
             
             //If non-penetrating model is used, then make sure the intial point of the CNT
             //is in a valid position
+            //The value of the is_prev_in_np flag does not matter since new_point is a seed point
+            //However is_prev_in_np flag is set to false to enforce the usage of function Move_point
+            //if there are interpenetrations
             //hout<<"Check_mixed_interpenetration"<<endl;
-            int interpenetration = Check_mixed_interpenetration(simu_para.MAX_ATTEMPTS_CNT, geom_sample, cnts, radii, new_cnt, rad_plus_dvdw, cnt_cutoff, cnt_cutoff2, step_length, ignr, subr_point_map, global_coordinates, sectioned_domain_cnt, gnps, sectioned_domain_gnp, n_subregions, new_point);
+            int interpenetration = Check_mixed_interpenetration(simu_para.MAX_ATTEMPTS_CNT, geom_sample, cnts, radii, new_cnt, rad_plus_dvdw, cnt_cutoff, cnt_cutoff2, step_length, ignr, false, subr_point_map, global_coordinates, sectioned_domain_cnt, gnps, sectioned_domain_gnp, n_subregions, new_point);
             if (interpenetration == -1) {
                 hout << "Error in Generate_network_threads_mt when calling Check_mixed_interpenetration (CNT initial point)" <<endl;
                 return -1;
@@ -5068,16 +5077,17 @@ int Generate_Network::Generate_initial_point_of_cnt(
 }
 //This function checks if a CNT point is penetrating a CNT or GNP
 int Generate_Network::Check_mixed_interpenetration(
-    const int &MAX_ATTEMPTS_CNT, 
-    const Geom_sample &geom_sample, 
-    const vector<vector<Point_3D> > &cnts, 
-    const vector<double> &radii, 
-    vector<Point_3D> &new_cnt, 
-    const double &rad_plus_dvdw, 
-    const double &cnt_cutoff, 
-    const double &cnt_cutoff2, 
-    const double &step_length, 
-    const int& ignr, 
+    const int& MAX_ATTEMPTS_CNT,
+    const Geom_sample& geom_sample,
+    const vector<vector<Point_3D> >& cnts,
+    const vector<double>& radii,
+    vector<Point_3D>& new_cnt,
+    const double& rad_plus_dvdw,
+    const double& cnt_cutoff,
+    const double& cnt_cutoff2,
+    const double& step_length,
+    const int& ignr,
+    const bool& is_prev_in_np,
     const map<int, vector<int> > &subr_point_map, 
     const vector<vector<int> > &global_coordinates, 
     const vector<vector<long int> > &sectioned_domain_cnt, 
@@ -5153,34 +5163,46 @@ int Generate_Network::Check_mixed_interpenetration(
             }
             
         }
-        else {
+        else 
+        {
             
             //Check if point is too close or penetrating another CNT
             //hout<<"Get_penetrating_points"<<endl;
             Get_penetrating_points(cnts, global_coordinates, sectioned_domain_cnt[subregion], radii, rad_plus_dvdw, new_point, affected_points, cutoffs_p, distances);
+            //hout << "affected_points.empty()=" << affected_points.empty() << endl;
+            //hout << "affected_points.size()=" << affected_points.size() << endl;
             
             //Check if there are any penetration within the CNT
             //hout<<"Get_penetrating_points_within_cnt"<<endl;
             Get_penetrating_points_within_cnt(subregion, ignr, cnt_cutoff, cnt_cutoff2, new_point, new_cnt, subr_point_map, affected_points, cutoffs_p, distances);
             //hout<<"affected_points.empty()="<<affected_points.empty()<<endl;
+            //hout << "affected_points.size()=" << affected_points.size() << endl;
             
             //Check if there are any penetrating points
-            if (!affected_points.empty()) {
-                
-                //To determine how to move the point, check if it is a seed point
-                if (new_cnt.empty()) {
-                    
+            if (!affected_points.empty()) 
+            {
+                //To determine how to move the point, check if:
+                //new_point is a seed point 
+                //OR
+                //the last point in new_cnt is outside the non-penetrating domain
+                if (new_cnt.empty() || !is_prev_in_np) 
+                {
                     //Point is a seed, so then use functions that move the point
                     //hout<<"Move_point"<<endl;
                     Move_point(cutoffs_p, distances, affected_points, new_point);
                 }
                 else {
                     
-                    //Point is not a seed so use functions that rotate the CNT segment
+                    //Point is not a seed nor the last point is outside the non-penetrating domain,
+                    //so use functions that rotate the CNT segment
+                    //In this way CNT segment length is preserved
                     //hout<<"Move_point_by_totating_cnt_segment cnt.back="<<((new_cnt.empty())?" ":new_cnt.back().str())<<endl;
                     //hout<<"new_point="<<new_point.str()<<endl;
-                    if (!Move_point_by_totating_cnt_segment(step_length, new_cnt, cutoffs_p, distances, affected_points, new_point)) {
+                    if (!Move_point_by_totating_cnt_segment(step_length, new_cnt, cutoffs_p, distances, affected_points, new_point)) 
+                    {
                         hout<<"Error in Check_mixed_interpenetration when calling Move_point_by_totating_cnt_segment"<<endl;
+                        hout << "CNTs generated=" << cnts.size() << " Points in new CNT=" << new_cnt.size() << endl;
+                        hout << "affected_points.size()=" << affected_points.size() << endl;
                         return -1;
                     }
                     //hout<<"new_point="<<new_point.str()<<endl;
@@ -5188,7 +5210,8 @@ int Generate_Network::Check_mixed_interpenetration(
                 
                 //Check if the segment has a valid orientation
                 //hout<<"Check_segment_orientation 2"<<endl;
-                if (!Check_segment_orientation(new_point, new_cnt)) {
+                if (!Check_segment_orientation(new_point, new_cnt)) 
+                {
                     //When not in a valid position it cannot be moved again so a new CNT is needed
                     //hout<<"Point not in a valid position"<<endl;
                     return 0;

@@ -92,6 +92,8 @@ struct Geom_sample{
     cuboid ex_dom_gnp;
     //Cuboid for the extended domain for CNTs
     cuboid ex_dom_cnt;
+    //Cuboid for the non-penetration domain of CNTs
+    cuboid np_domain;
     
     //Update the geometry of the observation window
     cuboid update_observation_window_geometry(const int &window, const string particle_type)
