@@ -305,7 +305,10 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
             while (counter <= simu_para.MAX_ATTEMPTS_CNT && penetration_check == 0) {
                 
                 //Check if the seed point penetrates other CNTs and move it to a valid position
-                penetration_check = Check_penetration(simu_para.MAX_ATTEMPTS_CNT, geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, ignr, subr_point_map, point_overlap_count, point_overlap_count_unique, new_point);
+                //The value of the is_prev_in_np flag does not matter since new_point is a seed point
+                //However is_prev_in_np flag is set to false to enforce the usage of function Move_point
+                //if there are interpenetrations
+                penetration_check = Check_penetration(simu_para.MAX_ATTEMPTS_CNT, geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, ignr, false, subr_point_map, point_overlap_count, point_overlap_count_unique, new_point);
                 
                 //Check for errors
                 if (penetration_check == -1) {
@@ -354,6 +357,11 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
         
         //Get the location of the seed
         bool is_prev_in_sample = Is_point_inside_cuboid(geom_sample.sample, new_cnt[0]);
+
+        //Get the location of the initial point with respect to the non-penetration domain
+        //If seed point is inside the sample, for sure it is also inside the 
+        //non-penetration domain
+        bool is_prev_in_np = (is_prev_in_sample) ? true : Is_point_inside_cuboid(geom_sample.np_domain, new_cnt[0]);
         
         //Variable to count the number of points of the new CNT that are inside the sample
         int points_in = (is_prev_in_sample)? 1: 0;
@@ -391,7 +399,7 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                     
                     //Penetration model is used, so check for penetrating points
                     //hout<<"penetration_check i="<<i<<endl;
-                    penetration_check = Check_penetration(simu_para.MAX_ATTEMPTS_CNT, geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, ignr, subr_point_map, point_overlap_count, point_overlap_count_unique, new_point);
+                    penetration_check = Check_penetration(simu_para.MAX_ATTEMPTS_CNT, geom_sample, nanotube_geo, cnts_points, global_coordinates, sectioned_domain, cnts_radius, new_cnt, n_subregions, rad_p_dvdw, cnt_cutoff, cnt_cutoff2, ignr, is_prev_in_np, subr_point_map, point_overlap_count, point_overlap_count_unique, new_point);
                     
                     //Check for error, which in this case is -1
                     if (penetration_check == -1) {
@@ -423,6 +431,11 @@ int Generate_Network::Generate_cnt_network_threads_mt(const Simu_para &simu_para
                     //For the next iteration of the for loop, cnt_poi will become previous point,
                     //so update the boolean is_prev_in_sample for the next iteration
                     is_prev_in_sample = is_new_inside_sample;
+
+                    //Also update is_prev_in_np
+                    //If new_point is inside the sample, for sure it is also inside the 
+                    //non-penetration domain
+                    is_prev_in_np = (is_new_inside_sample) ? true : Is_point_inside_cuboid(geom_sample.np_domain, new_point);
                     
                     //Add the new_point to the overlapping subregions it belongs to using the map
                     //hout << "Add_cnt_point_to_overlapping_regions_map" << endl;
@@ -627,6 +640,7 @@ int Generate_Network::Check_penetration(
     const double &cnt_cutoff, 
     const double &cnt_cutoff2, 
     const int& ignr,
+    const bool& is_prev_in_np,
     const map<int, vector<int> > &subr_point_map, 
     int &point_overlap_count, 
     int &point_overlap_count_unique, 
@@ -677,7 +691,7 @@ int Generate_Network::Check_penetration(
             //hout << "Point " << global_coordinates.size()-1+cnt_new.size() << " in CNT " << cnts.size() << " is overlapping." <<endl;
             //hout << "Moved a point from initial position "<<new_point.str()<<" attempts="<<attempts<<endl;
             //Check if seed point
-            if (cnt_new.empty()) {
+            if (cnt_new.empty() || !is_prev_in_np) {
                 
                 //Point is a seed, so then use functions that move the point
                 //hout << "Move_point" << endl;
