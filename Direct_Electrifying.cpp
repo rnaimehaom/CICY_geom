@@ -937,6 +937,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
         //current GNP
         int gnp_i = cluster_gnp[i];
         //hout<<endl<<"gnp_i="<<gnp_i<<" structure_gnp[gnp_i].size="<< structure_gnp[gnp_i].size() << " gnps[gnp_i].triangulation.size()="<< gnps[gnp_i].triangulation.size()<<endl;
+        //for (size_t i = 0; i < structure_gnp[gnp_i].size(); i++) hout << "structure_gnp[gnp_i="<< gnp_i<<"][" << i << "]=" << structure_gnp[gnp_i][i] << endl;
         
         //Check if the triangulation needs to be performed
         //Triangulation is performed when calculating the backbone (R_flag == 0)

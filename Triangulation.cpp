@@ -12,10 +12,11 @@
 int Triangulation::Generate_3d_trangulation(const vector<Point_3D> &points_gnp, const vector<long int> &structure_i, GNP &gnp_i)
 {
     //Check if the number of points to triangulate is 2, 3, or 4, which would be a trivial case
-    if (structure_i.size() <= 4) {
-        
+    if (structure_i.size() <= 4) 
+    {   
         //Contruct the trivial case
-        if (!Generate_trivial_triangulation(structure_i, gnp_i)) {
+        if (!Generate_trivial_triangulation(structure_i, gnp_i)) 
+        {
             hout<<"Error in Generate_3d_trangulation when calling Generate_trivial_triangulation"<<endl;
             return 0;
         }
@@ -23,14 +24,91 @@ int Triangulation::Generate_3d_trangulation(const vector<Point_3D> &points_gnp, 
     else {
         
         //There are more than 4 points, make the triangulation using the Bowyer-Watson algorithm
+
+        //Move points towards mid plane, which is where the supertriangle is located
+        vector<Point_3D> points_in_plane(structure_i.size()); 
+        vector<long int> structure_new(structure_i.size(), 0);
+        //hout << "Points_on_midplane" << endl;
+        if (!Points_on_midplane(points_gnp, structure_i, gnp_i, points_in_plane, structure_new))
+        {
+            hout << "Error in Generate_3d_trangulation when calling Points_on_midplane" << endl;
+            return 0;
+        }
         
         //Add points to the triangulation sequentially using the Bowyer-Watson algorithm
-        if (!Bowyer_watson(points_gnp, structure_i, gnp_i)) {
+        //hout << "Bowyer_watson" << endl;
+        if (!Bowyer_watson(points_in_plane, structure_new, gnp_i))
+        {
             hout<<"Error in Generate_3d_trangulation when calling Bowyer_watson"<<endl;
+            return 0;
+        }
+
+        //Map edges back to global numbers
+        //hout << "Update_edge_numbers" << endl;
+        if (!Update_edge_numbers(structure_i, gnp_i))
+        {
+            hout << "Error in Generate_3d_trangulation when calling Update_edge_numbers" << endl;
             return 0;
         }
     }
     
+    return 1;
+}
+//This function move all GNP points to the midplane
+int Triangulation::Points_on_midplane(const vector<Point_3D>& points_gnp, const vector<long int>& structure_i, GNP& gnp_i, vector<Point_3D>& points_in_plane, vector<long int>& structure_new)
+{
+    /*/Export GNP and points on their initial position
+    if (gnp_i.flag == 91) {
+        VTK_Export VTK;
+        vector<Point_3D>tmp;
+        for (size_t i = 0; i < structure_i.size(); i++)
+        {
+            tmp.push_back(points_gnp[structure_i[i]]);
+            //hout << "P[" << structure_i[i] << "]=" << points_gnp[structure_i[i]].str() << endl;
+        }VTK.Export_single_cnt(tmp, "triangulation_points.vtk");
+    }// */
+
+    //Iterate over point numbers in structure_i
+    for (long int i = 0; i < (long int)structure_i.size(); i++)
+    {
+        //Set new point number in structure_new
+        structure_new[i] = i;
+
+        //Get original point number
+        long int Pi = structure_i[i];
+
+        //Get sigened distance from Pi to midplane
+        //This is done using the center and the normal to face 0
+        double d_sign = (points_gnp[Pi] - gnp_i.center).dot(gnp_i.faces[0].N);
+
+        //Move point towards midplane using signed distance
+        points_in_plane[i] = points_gnp[Pi] - gnp_i.faces[0].N*d_sign;
+    }
+
+    return 1;
+}
+//Update the edges with the global point numbers
+int Triangulation::Update_edge_numbers(const vector<long int>& structure_i, GNP& gnp_i)
+{
+    //Iterate over the traingulation edges
+    //hout << "gnp_i.triangulation.size()=" << gnp_i.triangulation.size() << endl;
+    for (size_t i = 0; i < gnp_i.triangulation.size(); i++)
+    {
+        /* /
+        if (gnp_i.triangulation[i].v1 >= structure_i.size() || gnp_i.triangulation[i].v2 >= structure_i.size())
+        {
+            hout << "v1=" << gnp_i.triangulation[i].v1 << endl;
+            hout << "v2=" << gnp_i.triangulation[i].v2 << endl;
+            return 0;
+        }// */
+        //hout << "v1=" << gnp_i.triangulation[i].v1 << endl;
+        //hout << "v2=" << gnp_i.triangulation[i].v2 << endl;
+        //Global point numbers are simple the numbers stored in structure_i
+        gnp_i.triangulation[i].v1 = structure_i[gnp_i.triangulation[i].v1];
+        gnp_i.triangulation[i].v2 = structure_i[gnp_i.triangulation[i].v2];
+        //if (gnp_i.flag == 99)hout << "gnp_i.triangulation[i="<<i<<"]=" << gnp_i.triangulation[i].str() << endl;
+    }
+
     return 1;
 }
 //This function generates a trivial triangulation of 2, 3, or 4 vertices to triangulate
@@ -67,8 +145,8 @@ int Triangulation::Bowyer_watson(const vector<Point_3D> &points_gnp, const vecto
         hout<<"Error in Generate_3d_trangulation when calling Generate_supertriangle"<<endl;
         return 0;
     }
-    /* /Export supertetrahedron and GNP
-    if (gnp_i.flag == 99) {
+    /* /Export supertetrahedron, GNP, and points in plane
+    if (gnp_i.flag == 91) {
         VTK_Export VTK;
         VTK.Export_single_gnp(gnp_i, "gnp_" + to_string(gnp_i.flag) + ".vtk");
         VTK.Export_supertetrahedron(vertices, triangles, "supertetrahedron.vtk");
@@ -77,7 +155,7 @@ int Triangulation::Bowyer_watson(const vector<Point_3D> &points_gnp, const vecto
         {
             tmp.push_back(points_gnp[structure_i[i]]);
             hout << "P[" << structure_i[i] << "]=" << points_gnp[structure_i[i]].str() << endl;
-        }VTK.Export_single_cnt(tmp, "triangulation_points.vtk");
+        }VTK.Export_single_cnt(tmp, "triangulation_points_plane.vtk");
     }// */
     
     //Add each point in the GNP (in structure_i) to the triangulation

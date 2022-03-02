@@ -23,6 +23,8 @@ public:
     //3D triangulation
     int Generate_3d_trangulation(const vector<Point_3D> &points_gnp, const vector<long int> &structure_i, GNP &gnp_i);
     int Generate_trivial_triangulation(const vector<long int> &structure_i, GNP &gnp_i);
+    int Points_on_midplane(const vector<Point_3D>& points_gnp, const vector<long int>& structure_i, GNP& gnp_i, vector<Point_3D>& points_in_plane, vector<long int>& structure_new);
+    int Update_edge_numbers(const vector<long int>& structure_i, GNP& gnp_i);
     int Bowyer_watson(const vector<Point_3D> &points_gnp, const vector<long int> &structure_i, GNP &gnp_i);
     int Generate_supertriangle(const GNP& gnp_i, vector<Point_3D>& vertices, vector<TrFaceL>& triangles);
     int Generate_supertetrahedron(const GNP& gnp_i, vector<Point_3D>& vertices, vector<TrFaceL>& triangles);
