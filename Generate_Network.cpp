@@ -5148,7 +5148,7 @@ int Generate_Network::Check_mixed_interpenetration(
         //hout<<"sectioned_domain_gnp[subregion].size="<<sectioned_domain_gnp[subregion].size()<<endl;
         
         //Check for a special case
-        if (!affected_points.empty() && affected_points[0].flag == -1) {
+        if (affected_points.size() && affected_points[0].flag == -1) {
             //This is a special case when the point is inside a GNP
             //Since the point is inside a GNP, there is no need to check other points
             //because there cannot be penetration with other CNTs, this would have
@@ -5193,7 +5193,7 @@ int Generate_Network::Check_mixed_interpenetration(
             //hout << "affected_points.size()=" << affected_points.size() << endl;
             
             //Check if there are any penetrating points
-            if (!affected_points.empty()) 
+            if (affected_points.size()) 
             {
                 //To determine how to move the point, check if:
                 //new_point is a seed point 
