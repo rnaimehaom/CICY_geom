@@ -1420,7 +1420,7 @@ int Direct_Electrifying::Update_residual_vector(const vector<long int>& col_ind,
 
     //Calculate the residual R = b - A*x0
     //Variable R already has stored the value of b so I just need to do: R <- b - A*x0
-    for (size_t i = 0; i < N; i++) {
+    for (long int i = 0; i < N; i++) {
         R[i] = R[i] - Ax0[i];
     }
 

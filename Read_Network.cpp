@@ -294,9 +294,6 @@ int Read_Network::Read_cnt_data_from_csv(vector<Point_3D>& points_cnt, vector<do
     //Set the size for the points vector
     points_cnt.assign(Np, Point_3D());
 
-    //Variable to store the CNT number
-    int cnt_i = 0;
-
     //Variable to count the number of points (again)
     long int Nq = 0;
 
@@ -324,7 +321,7 @@ int Read_Network::Read_cnt_data_from_csv(vector<Point_3D>& points_cnt, vector<do
             ss >> points_cnt[Nq].z;
 
             //Set the CNT flag with the CNT number (i is the CNT number)
-            points_cnt[Nq].flag = i;
+            points_cnt[Nq].flag = (int)i;
 
             //Increase the count of points
             Nq++;
@@ -424,9 +421,6 @@ int Read_Network::Read_cnt_data_from_dat(vector<Point_3D>& points_cnt, vector<do
     //Set the size for the points vector
     points_cnt.assign(Np, Point_3D());
 
-    //Variable to store the CNT number
-    int cnt_i = 0;
-
     //Variable to count the number of points (again)
     long int Nq = 0;
 
@@ -448,7 +442,7 @@ int Read_Network::Read_cnt_data_from_dat(vector<Point_3D>& points_cnt, vector<do
             coord_file.read((char*)&points_cnt[Nq].z, double_size);
 
             //Set the CNT flag with the CNT number (i is the CNT number)
-            points_cnt[Nq].flag = i;
+            points_cnt[Nq].flag = (int)i;
 
             //Increase the count of points
             Nq++;

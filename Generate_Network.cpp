@@ -5258,7 +5258,7 @@ int Generate_Network::Get_gnp_penetrating_points(const vector<GNP> &gnps, const 
 {
     
     //Scan all GNPs in the subregion
-    for (int i = 0; i < subregion_gnp.size(); i++) {
+    for (int i = 0; i < (int)subregion_gnp.size(); i++) {
         
         //Get the GNP number of the current subregion
         int GNP_i = subregion_gnp[i];

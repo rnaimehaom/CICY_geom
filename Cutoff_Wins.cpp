@@ -42,7 +42,7 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
         }
     }
     
-    //Flag to determine if hybrid particles are used
+    /* /Flag to determine if hybrid particles are used
     //This flag determines if GNP contacts with the boundary are ignored
     int hybrid_flag = 0;
     
@@ -52,15 +52,15 @@ int Cutoff_Wins::Extract_observation_window(const int &window, const string &par
         
         //hout << "Compare_seeds" << endl;
         //Compare the initial points of the CNTs attached to the GNPs
-        /* /If they are different, that means that the CNT is not attached to the GNP anymore
+        //If they are different, that means that the CNT is not attached to the GNP anymore
         if (!Compare_seeds(hybrid_particles, structure, seeds)) {
             hout << "Error in Extract_observation_window when calling Compare_seeds" << endl;
             return 0;
-        }*/
+        }
         
         //Set the flag to 1 as hybrid particles are being used
         hybrid_flag = 1;
-    }
+    } // */
     
     //Remove GNPs that are outside the observation window
     //Check if the structure has GNPs, this happens when the particle type is not CNT
@@ -877,7 +877,7 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
     for (int i = 0; i < 8; i++) {
         
         //Variable for the boundary location
-        int boundary_l;
+        int boundary_l = -1;
         
         //Get the location of vertex i
         //hout<<"Get the location of vertex i="<<i<<" P="<<gnp.vertices[i].str()<<endl;

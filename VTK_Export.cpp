@@ -1051,7 +1051,7 @@ int VTK_Export::Add_ofsets_for_gnps(const int &n_gnps, ofstream &otec)const
     int n_vertices = 0;
     
     //Write the offsets, one line per GNP
-    for (size_t i = 0; i < n_gnps; i++) {
+    for (int i = 0; i < n_gnps; i++) {
         
         //Add the number of vertices per face in GNP i
         for (int j = 0; j < 6; j++) {
