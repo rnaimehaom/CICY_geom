@@ -620,7 +620,7 @@ int Direct_Electrifying::Calculate_resistance_cnt(const int &R_flag, const vecto
         Re = electric_param.resistivity_CNT*length/(PI*radius*radius);
 
         //Scaling factor
-        Re = Re * electric_param.scaling_R;
+        //Re = Re * electric_param.scaling_R;
 
         //Add resistance to vector of all resistors
         //all_resistors.push_back(Re);
@@ -854,7 +854,7 @@ int Direct_Electrifying::Calculate_junction_resistance(const Junction &j, const 
     }
 
     //Scaling factor
-    Re = Re * electric_param.scaling_R;
+    //Re = Re * electric_param.scaling_R;
     
     return 1;
 }
@@ -1144,7 +1144,7 @@ int Direct_Electrifying::Calculate_resistance_gnp(const Point_3D &P1, const Poin
     Re = rho*L/(PI*rad1*rad2);
 
     //Scaling factor
-    Re = Re * electric_param.scaling_R;
+    //Re = Re * electric_param.scaling_R;
     
     return 1;
 }
@@ -1449,7 +1449,7 @@ int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const
     //vector<double> voltages_sol(nodes-reserved_nodes, 0);
     
     //Maximum number of iterations for the CG
-    long int max_iter = 10*nodes;
+    long int max_iter = 100*nodes;
     //Iteration variable
     long int k;
     //Variable to check the status of the CG

@@ -457,7 +457,7 @@ int Electrical_analysis::Calculate_parallel_resistor(const int &direction, const
     double R_total = electric_param.applied_voltage/I_total;
 
     //Undo the scaling on the resistor
-    R_total = R_total / electric_param.scaling_R;
+    //R_total = R_total / electric_param.scaling_R;
     
     //Add resistor to vector of parallel resistors
     paralel_resistors[direction].push_back(R_total);
