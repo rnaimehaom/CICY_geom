@@ -336,6 +336,10 @@ struct GNP {
     vector<EdgeL> triangulation;
     //Flag for GNP number
     int flag;
+    //Vector of pairs for boundary vectors
+    //first element: GNP point number
+    //second element: boundary number
+    vector<pair<long int, int> > pts_boundary;
     
     //Default constructor
     GNP() {

@@ -945,6 +945,9 @@ int Cutoff_Wins::Find_gnp_boundary_points(const cuboid &window_geo, GNP &gnp, ve
                 
                 //Add the GNP point number to the GNP structure
                 structure_gnp[gnp.flag].push_back(P_gnp_num);
+
+                //Add the pair that helps mapping from point number to boundary number
+                gnp.pts_boundary.push_back(pair<long int, int>(P_gnp_num, i));
                 
                 //Add the average to the boundary vector
                 points_gnp.push_back(P_avg/((double)points_acc[i].size()));

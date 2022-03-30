@@ -58,7 +58,7 @@ public:
     Hoshen_Kopelman(){};
     
     //
-    int Determine_clusters_and_percolation(const int &iter, const cuboid &sample, const Simu_para &simu_para, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp);
+    int Determine_clusters_and_percolation(const int &iter, const cuboid &sample, const Simu_para &simu_para, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp);
     int Make_cnt_clusters(const vector<Point_3D> &points_cnt, const vector<double> &radii, const Cutoff_dist &cutoffs, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, vector<int> &labels_cnt, int &n_labels_cnt);
     int Label_cnts_in_window(const vector<Point_3D> &points_cnt, const vector<double> &radii, const Cutoff_dist& cutoffs, const vector<vector<long int> > &sectioned_domain_cnt, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &contact_elements, vector<int> &labels_cnt, vector<int> &labels_labels_cnt);
     int Cleanup_labels(vector<int> &labels_labels, vector<int> &labels, int &n_labels);
@@ -100,6 +100,10 @@ public:
     int Group_junctions(const vector<Point_3D> &points_cnt, const vector<Point_3D> &points_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const map<int,int> &percolated_labels);
     int Group_junctions_same_particle(const vector<Point_3D> &points, const vector<int> &labels, const vector<Junction> &junctions, const map<int,int> &percolated_labels, vector<vector<int> > &cluster_junction);
     int Group_junctions_mix_particle(const vector<Point_3D> &points_cnt, const vector<Point_3D> &points_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const map<int,int> &percolated_labels);
+    int Remove_gnp_points_in_non_relevant_boundaries(vector<vector<long int> >& structure_gnp, vector<GNP>& gnps);
+    int Get_vector_with_relevant_boundaries(const int& family, vector<int> &relevant_boundaries);
+    int Check_relevant_boundary_and_remove_if_needed(const int& n_rb, const int& gnp_j, const vector<GNP>& gnps, const vector<int>& relevant_boundaries, vector<pair<long int, int> >& relevant_points, vector<vector<long int> >& structure_gnp);
+    bool Is_in_relevant_boundary(const int& n_rb, const int& bk, const vector<int>& relevant_boundaries);
     //-------------------------------------------------------
     //HK76
     int HK76(const int &CNT1, const int &CNT2, int &new_label, vector<int> &labels, vector<int> &labels_labels);

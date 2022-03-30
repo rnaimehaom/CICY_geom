@@ -14,7 +14,24 @@
  */
 
 //This function groups nanoparticles into clusters
-int Hoshen_Kopelman::Determine_clusters_and_percolation(const int &iter, const cuboid& sample, const Simu_para &simu_para, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp)
+int Hoshen_Kopelman::Determine_clusters_and_percolation(
+    const int &iter, 
+    const cuboid& sample, 
+    const Simu_para &simu_para, 
+    const Cutoff_dist &cutoffs, 
+    const Visualization_flags &vis_flags, 
+    const vector<int> &cnts_inside, 
+    const vector<vector<long int> > &sectioned_domain_cnt, 
+    const vector<vector<long int> > &structure_cnt, 
+    const vector<Point_3D> &points_cnt, 
+    const vector<double> &radii, 
+    const vector<vector<int> > &boundary_cnt, 
+    const vector<int> &gnps_inside, 
+    const vector<vector<int> > &sectioned_domain_gnp, 
+    vector<GNP> &gnps, 
+    const vector<vector<int> > &boundary_gnp, 
+    vector<vector<long int> > &structure_gnp, 
+    vector<Point_3D> &points_gnp)
 {
     //Label vectors for CNTs and GNPs
     vector<int> labels_cnt, labels_gnp;
@@ -134,15 +151,25 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(const int &iter, const c
         }
     }
     
-    //Group junctions if there is percolation
+    //Check if there is percolation
     if ( clusters_cnt.size() + clusters_gnp.size() ) {
         
         //There is at least one percoalted cluster
+        
         //Group the junctions into the clusters they belong to
         //hout<<"Group_junctions"<<endl;
         hout << "There are percolated clusters" << endl;
-        if (!Group_junctions(points_cnt, points_gnp, labels_cnt, labels_gnp, percolated_labels)) {
+        if (!Group_junctions(points_cnt, points_gnp, labels_cnt, labels_gnp, percolated_labels)) 
+        {
             hout<<"Error in Find_percolated_clusters when calling Group_junctions"<<endl;
+            return 0;
+        }
+
+        //Remove points in non-relevant boundaries
+        //Remove_gnp_points_in_non_relevant_boundaries(vector<vector<long int> >& structure_gnp, vector<GNP>& gnps)
+        if (!Remove_gnp_points_in_non_relevant_boundaries(structure_gnp, gnps))
+        {
+            hout << "Error in Find_percolated_clusters when calling Remove_gnp_points_in_non_relevant_boundaries" << endl;
             return 0;
         }
     }
@@ -2522,6 +2549,171 @@ int Hoshen_Kopelman::Group_junctions_mix_particle(const vector<Point_3D> &points
     }
     
     return 1;
+}
+//This function removes GNP points in non-relevant boundaries from the GNP structure vector
+int Hoshen_Kopelman::Remove_gnp_points_in_non_relevant_boundaries(vector<vector<long int> >& structure_gnp, vector<GNP>& gnps)
+{
+    //Iterate over the GNPs in clusters
+    //First iterate over each cluster
+    for (size_t i = 0; i < clusters_gnp.size(); i++)
+    {
+        //Check if family is not 6
+        //When family is 6 all boundaries are relevant boundaries, so there is no need
+        //to remove any boundary points
+        if (family[i] != 6)
+        {
+            //Get the number of relevant boundaries
+            int n_rb = (family[i] <= 2) ? 2 : 4;
+
+            //Get the vector with relevant boundaries
+            vector<int> relevant_boundaries(n_rb);
+            if (!Get_vector_with_relevant_boundaries(family[i], relevant_boundaries))
+            {
+                hout << "Error in Remove_gnp_points_in_non_relevant_boundaries when calling Get_vector_with_relevant_boundaries" << endl;
+                return 0;
+            }
+
+            //Iterate over each GNP in cluster i
+            for (size_t j = 0; j < clusters_gnp[i].size(); j++)
+            {
+                //Get current GNP
+                int gnp_j = clusters_gnp[i][j];
+
+                //Vector to store the pairs that correspond to relevant boundaries
+                vector<pair<long int, int> > relevant_points;
+
+                //Check if boundary points of gnp_j are in relevant boundaries
+                //If so, add them to relevant_points
+                //If not remove them from the structure vector
+                if (!Check_relevant_boundary_and_remove_if_needed(n_rb, gnp_j, gnps, relevant_boundaries, relevant_points, structure_gnp))
+                {
+                    hout << "Error in Remove_gnp_points_in_non_relevant_boundaries when calling Check_relevant_boundary_and_remove_if_needed" << endl;
+                    return 0;
+                }
+
+                //Check if there are less boundary points in the relevant_points vector
+                //than in the GNP
+                if (relevant_points.size() < gnps[gnp_j].pts_boundary.size())
+                {
+                    //Set the relevant points vector as the new vector in the GNP 
+                    gnps[gnp_j].pts_boundary = relevant_points;
+                }
+                else if (relevant_points.size() > gnps[gnp_j].pts_boundary.size())
+                {
+                    //There are more boundary points than at the beginning, this is an error
+                    hout << "Error in Remove_gnp_points_in_non_relevant_boundaries. When trying to remove boundary points at non-relevant boundaries, more boundary points where found than at the beginning. " << endl;
+                    return 0;
+                }
+                //If the number of points is the same, no adjustment is needed
+            }
+        }
+    }
+
+    return 1;
+}
+//This function gets the vector with all the relevant boundaries depending on the family number
+int Hoshen_Kopelman::Get_vector_with_relevant_boundaries(const int& family, vector<int>& relevant_boundaries)
+{
+    //Fill the vector depending on the case
+    if (family == 0)
+    {
+        relevant_boundaries[0] = 2;
+        relevant_boundaries[1] = 4;
+    }
+    else if (family == 1)
+    {
+        relevant_boundaries[0] = 3;
+        relevant_boundaries[1] = 5;
+    }
+    else if (family == 2)
+    {
+        relevant_boundaries[0] = 0;
+        relevant_boundaries[1] = 1;
+    }
+    else if (family == 3)
+    {
+        relevant_boundaries[0] = 2;
+        relevant_boundaries[1] = 4;
+        relevant_boundaries[2] = 3;
+        relevant_boundaries[3] = 5;
+    }
+    else if (family == 4)
+    {
+        relevant_boundaries[0] = 2;
+        relevant_boundaries[1] = 4;
+        relevant_boundaries[2] = 0;
+        relevant_boundaries[3] = 1;
+    }
+    else if (family == 5)
+    {
+        relevant_boundaries[0] = 3;
+        relevant_boundaries[1] = 5;
+        relevant_boundaries[2] = 0;
+        relevant_boundaries[3] = 1;
+    }
+    else 
+    {
+        hout << "Erro in Get_vector_with_relevant_boundaries. Invalid family in function: " << family << ". \nValid families in function Get_vector_with_relevant_boundaries are only from 0 to 5." << endl;
+        return 0;
+    }
+
+    return 1;
+}
+//This function check if boundary points of a GNP are in a relevant boundary
+//If so, they are added to a vector that contains only points in relevant boundaries
+//If not, they are removed from the structure vector
+int Hoshen_Kopelman::Check_relevant_boundary_and_remove_if_needed(const int& n_rb, const int& gnp_j, const vector<GNP>& gnps, const vector<int>& relevant_boundaries, vector<pair<long int, int> >& relevant_points, vector<vector<long int> >& structure_gnp)
+{
+    //Iterate over the boundary points of gnp_j
+    //If gnp_j has no boundary points, then the for-loop does nothing
+    for (size_t k = 0; k < gnps[gnp_j].pts_boundary.size(); k++)
+    {
+        //Get the boundary number
+        int bk = gnps[gnp_j].pts_boundary[k].second;
+
+        //Check if bk is a relevant boundary 
+        if (Is_in_relevant_boundary(n_rb, bk, relevant_boundaries))
+        {
+            //Add to vector of relevant points
+            relevant_points.push_back(gnps[gnp_j].pts_boundary[k]);
+        }
+        else
+        {
+            //Point is not in relevant point so remove it from the structure
+
+            //Get GNP point number
+            int Pk = gnps[gnp_j].pts_boundary[k].first;
+
+            //Iterate over the structure
+            for (size_t m = 0; m < structure_gnp[gnp_j].size(); m++)
+            {
+                if (Pk == structure_gnp[gnp_j][m])
+                {
+                    //Remove Pk
+                    structure_gnp[gnp_j].erase(structure_gnp[gnp_j].begin() + m);
+
+                    //break loop
+                    break;
+                }
+            }
+        }
+    }
+
+    return 1;
+}
+//This function determines if a boundary bk is a relevant boundary, 
+//i.e., if bk is an element of vector relevant_boundaries
+//n_rb is the number of relevant boundaries
+bool Hoshen_Kopelman::Is_in_relevant_boundary(const int& n_rb, const int& bk, const vector<int>& relevant_boundaries)
+{
+    if (n_rb == 2)
+    {
+        return (bk == relevant_boundaries[0] || bk == relevant_boundaries[1]);
+    }
+    else
+    {
+        return (bk == relevant_boundaries[0] || bk == relevant_boundaries[1] || bk == relevant_boundaries[2] || bk == relevant_boundaries[3]);
+    }
 }
 //-------------------------------------------------------
 //HK76

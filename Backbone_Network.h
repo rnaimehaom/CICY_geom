@@ -47,18 +47,20 @@ public:
     
     //Member Functions
     int Determine_backbone_network(const int &n_cluster, const int &R_flag, const int &avoid_resistance_flag, const int &vtk_flag, const vector<double> &voltages, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, const Electric_para &electric_param, const Cutoff_dist &cutoffs, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, Hoshen_Kopelman *HoKo);
-    int Find_zero_current(const int &n_cluster, const int &R_flag, const vector<double> &voltages, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, Hoshen_Kopelman *HoKo, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, vector<vector<double> > &currents_cnt, vector<vector<double> > &currents_gnp, double &zero_current);
+    int Find_zero_current(const int &n_cluster, const int &R_flag, const vector<double> &voltages, const map<long int, long int> &LMM_cnts, const map<long int, long int> &LMM_gnps, Hoshen_Kopelman *HoKo, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<Point_3D> &points_gnp, const vector<GNP> &gnps, vector<vector<double> > &currents_cnt, double &zero_current);
     int Zero_current_in_same_particle_junctions_unit_resistor(const vector<int> &junction_cluster, const vector<Junction> &junctions, const vector<double> &voltages, const map<long int, long int> &LMM, double &I_max);
     int Zero_current_in_same_particle_junctions_unit_resistor_test(const vector<int> &junction_cluster, const vector<Junction> &junctions, const vector<double> &voltages, const map<long int, long int> &LMM, double &I_max, vector<double> &currents);
-    int Find_backbone_and_fractions_cnts(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const double &zero_current, const vector<vector<double> > &currents_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, Hoshen_Kopelman *HoKo);
+    int Find_backbone_cnts(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const double &zero_current, const vector<vector<double> > &currents_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, Hoshen_Kopelman *HoKo);
     int Calculate_cnt_volumes(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const int &CNTi, const int &idx1, const int &idx2, const int &branch_idx, const vector<Point_3D> &points_cnt, const double &radius, Hoshen_Kopelman *HoKo, vector<vector<long int> > &dead_branches_idx, vector<vector<long int> > &backbone_idx);
     int CNT_volume_between_two_points(const long int &P1, const long int P2, const double &radius, const vector<Point_3D> &points_cnt, double &volume);
-    int Find_backbone_and_fractions_gnps(const int &n_cluster, const int &avoid_resistance_flag, const int &vtk_flag, const double &zero_current, const vector<vector<double> > &currents_gnp, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, Hoshen_Kopelman *HoKo);
+    int Find_backbone_gnps(const int& n_cluster, const int& avoid_resistance_flag, const int& vtk_flag, const double& zero_current, const vector<double>& voltages, const map<long int, long int>& LMM_cnts, const map<long int, long int>& LMM_gnps, vector<vector<long int> >& structure_gnp, vector<GNP>& gnps, Hoshen_Kopelman* HoKo);
+    int Find_and_remove_gnp_and_mixed_junctions_below_zero_current(const int& n_cluster, const double& zero_current, const vector<double>& voltages, const map<long int, long int>& LMM_cnts, const map<long int, long int>& LMM_gnps, vector<vector<long int> >& structure_gnp, Hoshen_Kopelman* HoKo);
+    int Clear_structure_of_dead_gnps(const int& n_cluster, vector<GNP>& gnps, vector<vector<long int> >& structure_gnp, int& to_remove, Hoshen_Kopelman* HoKo);
+    int Calculate_gnp_backbone_volume(const int& n_cluster, const int& vtk_flag, vector<vector<long int> >& structure_gnp, vector<GNP>& gnps, Hoshen_Kopelman* HoKo);
     int Remove_junctions_with_dead_particles_cnts(const int &n_cluster, Hoshen_Kopelman *HoKo);
     int Remove_junctions_with_dead_particles_gnps(const int &n_cluster, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, Hoshen_Kopelman *HoKo);
     int Remove_point_from_vector(const long int &P, vector<long int> &structure_i);
     int Remove_junctions_with_dead_particles_mixed(const int &n_cluster, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, Hoshen_Kopelman *HoKo);
-    
     
 private:
     
