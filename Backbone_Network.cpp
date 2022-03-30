@@ -221,7 +221,7 @@ int Backbone_Network::Find_zero_current(const int &n_cluster, const int &R_flag,
     zero_current = I_max*1e-9;
     hout << "zero_current=" << zero_current << endl;
     
-    //
+    /* /
     Printer P; string filename;
     if (R_flag) {
         filename = "currents_R_" + to_string(n_cluster) + ".txt";
