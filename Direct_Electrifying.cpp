@@ -978,6 +978,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
             //Get the two vertices of the triangulation
             long int v1 = gnps[gnp_i].triangulation[j].v1;
             long int v2 = gnps[gnp_i].triangulation[j].v2;
+            //hout << "v1=" << v1 << " v2=" << v2 << endl;
             
             //Get the node numbers
             long int node1 = LMM_gnps.at(v1);

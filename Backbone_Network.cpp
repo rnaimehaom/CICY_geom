@@ -219,7 +219,7 @@ int Backbone_Network::Find_zero_current(const int &n_cluster, const int &R_flag,
     //in the current gave good results.
     //zero_cutoff = currents.back()*1e-9;
     zero_current = I_max*1e-9;
-    hout << "zero_current=" << zero_current << endl;
+    //hout << "zero_current=" << zero_current << endl;
     
     /* /
     Printer P; string filename;
@@ -564,6 +564,7 @@ int Backbone_Network::CNT_volume_between_two_points(const long int &P1, const lo
 int Backbone_Network::Find_backbone_gnps(const int& n_cluster, const int& avoid_resistance_flag, const int& vtk_flag, const double& zero_current, const vector<double>& voltages, const map<long int, long int>& LMM_cnts, const map<long int, long int>& LMM_gnps, vector<vector<long int> >& structure_gnp, vector<GNP>& gnps, Hoshen_Kopelman* HoKo)
 {
     //Remove CNT-GNP and GNP-GNP junctions with current below the zero current
+    //hout << "Find_and_remove_gnp_and_mixed_junctions_below_zero_current" << endl;
     if (!Find_and_remove_gnp_and_mixed_junctions_below_zero_current(n_cluster, zero_current, voltages, LMM_cnts, LMM_gnps, structure_gnp, HoKo))
     {
         hout << "Error in Find_backbone_and_fractions_gnps when calling Find_and_remove_gnp_and_mixed_junctions_below_zero_current" << endl;
@@ -574,6 +575,7 @@ int Backbone_Network::Find_backbone_gnps(const int& n_cluster, const int& avoid_
     int to_remove = 0;
 
     //Scan all GNPs and clear the structure vector of the dead GNPs
+    //hout << "Clear_structure_of_dead_gnps" << endl;
     if (!Clear_structure_of_dead_gnps(n_cluster, gnps, structure_gnp, to_remove, HoKo))
     {
         hout << "Error in Find_backbone_and_fractions_gnps when calling Find_dead_gnps_first_pass" << endl;
@@ -605,6 +607,7 @@ int Backbone_Network::Find_backbone_gnps(const int& n_cluster, const int& avoid_
         }
 
         //Check if more junctions need to be removed and clear the structure vector of the dead GNPs
+        //hout << "Clear_structure_of_dead_gnps (while)" << endl;
         if (!Clear_structure_of_dead_gnps(n_cluster, gnps, structure_gnp, to_remove, HoKo))
         {
             hout << "Error in Find_backbone_and_fractions_gnps when calling Find_dead_gnps_first_pass" << endl;
@@ -613,6 +616,7 @@ int Backbone_Network::Find_backbone_gnps(const int& n_cluster, const int& avoid_
     }
 
     //Calculate dead and backbone volumes
+    //hout << "Calculate_gnp_backbone_volume" << endl;
     if (!Calculate_gnp_backbone_volume(n_cluster, vtk_flag, structure_gnp, gnps, HoKo))
     {
         hout << "Error in Find_backbone_and_fractions_gnps when calling Calculate_gnp_backbone_volume" << endl;
@@ -625,11 +629,12 @@ int Backbone_Network::Find_backbone_gnps(const int& n_cluster, const int& avoid_
 int Backbone_Network::Find_and_remove_gnp_and_mixed_junctions_below_zero_current(const int& n_cluster, const double& zero_current, const vector<double>& voltages, const map<long int, long int>& LMM_cnts, const map<long int, long int>& LMM_gnps, vector<vector<long int> >& structure_gnp, Hoshen_Kopelman* HoKo)
 {
     //Check if there are mixed junctions
+    //hout << "Mixed junctions" << endl;
     if (HoKo->cluster_mix_junctions.size() && HoKo->cluster_mix_junctions[n_cluster].size())
     {
         //Iterate over the mixed junctions in the cluster
         //Iterate in reverse order to remove elements from the vector
-        for (size_t i = HoKo->cluster_mix_junctions[n_cluster].size() - 1; i >= 0; i--)
+        for (int i = (int)HoKo->cluster_mix_junctions[n_cluster].size() - 1; i >= 0; i--)
         {
             //Get the current mixed junction
             int junc = HoKo->cluster_mix_junctions[n_cluster][i];
@@ -643,7 +648,6 @@ int Backbone_Network::Find_and_remove_gnp_and_mixed_junctions_below_zero_current
             long int node2 = LMM_gnps.at(P2);
 
             //Get the GNP number
-            int GNP1 = HoKo->junctions_mixed[junc].N1;
             int GNP2 = HoKo->junctions_mixed[junc].N2;
 
             //Get the current passing through the junction as the difference between voltages since
@@ -669,26 +673,32 @@ int Backbone_Network::Find_and_remove_gnp_and_mixed_junctions_below_zero_current
     }
 
     //Check if there are GNP-GNP junctions
+    //hout << "GNP-GNP junctions" << endl;
     if (HoKo->cluster_gnp_junctions.size() && HoKo->cluster_gnp_junctions[n_cluster].size())
     {
+        //hout << "HoKo->cluster_gnp_junctions[n_cluster]=" << HoKo->cluster_gnp_junctions[n_cluster].size() << endl;
         //Iterate over the GNP-GNP junctions in the cluster
         //Iterate in reverse order to remove elements from the vector
-        for (size_t i = HoKo->cluster_gnp_junctions[n_cluster].size() - 1; i >= 0; i--)
+        for (int i = (int)HoKo->cluster_gnp_junctions[n_cluster].size() - 1; i >= 0; i--)
         {
             //Get the current mixed junction
             int junc = HoKo->cluster_gnp_junctions[n_cluster][i];
+            //hout << "junc=" << junc << " i=" << i << endl;
 
             //Get the points in the junction
             long int P1 = HoKo->junctions_gnp[junc].P1;
             long int P2 = HoKo->junctions_gnp[junc].P2;
+            //hout << "P1=" << P1 << " P2=" << P2 << endl;
 
             //Get the node numbers
             long int node1 = LMM_gnps.at(P1);
             long int node2 = LMM_gnps.at(P2);
+            //hout << "node1=" << node1 << " node2=" << node2 << endl;
 
             //Get the current passing through the junction as the difference between voltages since
             //unit resistors are assumed
             double Ij = abs(voltages[node1] - voltages[node2]);
+            //hout << "Ij=" << Ij << endl;
 
             //Check if current is below zero current
             if (Ij - zero_current < Zero)
@@ -698,8 +708,10 @@ int Backbone_Network::Find_and_remove_gnp_and_mixed_junctions_below_zero_current
                 //Get the GNP numbers
                 int GNP1 = HoKo->junctions_gnp[junc].N1;
                 int GNP2 = HoKo->junctions_gnp[junc].N2;
+                //hout << "GNP1=" << GNP1 << " GNP2=" << GNP2 << endl;
 
                 //Remove the point in GNP1 from the structure
+                //hout << "Remove_point_from_vector 1" << endl;
                 if (!Remove_point_from_vector(P1, structure_gnp[GNP1]))
                 {
                     hout << "Error in Find_and_remove_gnp_and_mixed_junctions_below_zero_current when calling Remove_point_from_vector (GNP1)" << endl;
@@ -707,6 +719,7 @@ int Backbone_Network::Find_and_remove_gnp_and_mixed_junctions_below_zero_current
                 }
 
                 //Remove the point in GNP2 from the structure
+                //hout << "Remove_point_from_vector 2" << endl;
                 if (!Remove_point_from_vector(P2, structure_gnp[GNP2]))
                 {
                     hout << "Error in Find_and_remove_gnp_and_mixed_junctions_below_zero_current when calling Remove_point_from_vector (GNP2)" << endl;
@@ -768,6 +781,8 @@ int Backbone_Network::Clear_structure_of_dead_gnps(const int& n_cluster, vector<
             {
                 hout << "Error in Clear_structure_of_dead_gnps. There should be at least two points, i.e., at least one edge." << endl;
                 hout << "Points in structure_gnp[gnp_i="<<gnp_i<<"]=" << structure_gnp[gnp_i].size() << endl;
+                hout << "Boundary points=" << NB << endl;
+                hout << "Junctions=" << NJ << endl;
                 return 0;
             }
         }
@@ -811,6 +826,9 @@ int Backbone_Network::Calculate_gnp_backbone_volume(const int& n_cluster, const 
                 dead_gnps_idx.push_back(gnp_i);
             }
         }
+
+        //Clear the triangulation of current GNP
+        gnps[gnp_i].triangulation.clear();
     }
 
     //Check if visualization files are needed

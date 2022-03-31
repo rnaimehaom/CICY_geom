@@ -836,6 +836,10 @@ int Cutoff_Wins::Fill_gnps_inside(const int &window, const cuboid &window_geo, c
     
     //Itertate over all GNPs
     for (int i = 0; i < (int)gnps.size(); i++) {
+
+        //Clear boundary points vector in GNP object as they are no longer used
+        //This is done here to ensure there are no points left from a previous iteration
+        gnps[i].pts_boundary.clear();
         
         //Check if GNP i is inside the window
         //hout<<"GNPi="<<i<<" GNP.flag="<<gnps[i].flag<<endl;

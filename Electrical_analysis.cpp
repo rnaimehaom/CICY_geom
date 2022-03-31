@@ -91,6 +91,7 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
             //If there is more than one cluster (i.e., j > 0), clear the triangulations
             //of the previous cluster so that it does not interfere with the current cluster
             if (j) {
+                //hout << "Clear_triangulations_of_cluster" << endl;
                 if (!Clear_triangulations_of_cluster(HoKo->clusters_gnp[j-1], gnps)) {
                     hout << "Error in Perform_analysis_on_clusters when calling Clear_triangulations_of_cluster" << endl;
                     return 0;
@@ -254,7 +255,9 @@ int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(c
         //Run a new DEA to obtain the new voltage field in the backbone using the actual resistances
         //As the variable for family use the percolated direction k
         ct0 = time(NULL);
-        if (!DEA_Re->Compute_voltage_field(n_cluster, R_flag, window, simu_param, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) {
+        //hout << "DEA_Re->Compute_voltage_field k=" << k << endl;
+        if (!DEA_Re->Compute_voltage_field(n_cluster, R_flag, window, simu_param, electric_param, cutoffs, HoKo, Cutwins, points_cnt, radii, structure_gnp, points_gnp, gnps)) 
+        {
             hout<<"Error in Electrical_resistance_along_each_percolated_direction when calling DEA_Re->Compute_voltage_field"<<endl;
             return 0;
         }
@@ -262,11 +265,13 @@ int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(c
         hout << "Voltage field on backbone time: "<<(int)(ct1-ct0)<<" secs."<<endl;
         
         //With the new voltage field calculate the current going through a face and calculate the resistance along that direction
-        if (!Calculate_parallel_resistor(directions[k], n_cluster, electric_param, DEA_Re, points_cnt, radii, HoKo->elements_cnt, HoKo->clusters_cnt, Cutwins->boundary_cnt, points_gnp, gnps, HoKo->clusters_gnp, Cutwins->boundary_gnp, paralel_resistors)) {
+        //hout << "Calculate_parallel_resistor" << endl;
+        if (!Calculate_parallel_resistor(directions[k], n_cluster, electric_param, DEA_Re, points_cnt, radii, HoKo->elements_cnt, HoKo->clusters_cnt, Cutwins->boundary_cnt, points_gnp, gnps, HoKo->clusters_gnp, Cutwins->boundary_gnp, paralel_resistors)) 
+        {
             hout<<"Error in Perform_analysis_on_clusters when calling DEA->Calculate_parallel_resistor"<<endl;
             return 0;
         }
-        //hout << "Calculate_parallel_resistor" << endl;
+        //hout << "Calculate_parallel_resistor done" << endl;
         
         //Delete objects to free memory
         delete DEA_Re;
