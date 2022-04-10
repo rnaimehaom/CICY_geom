@@ -5141,35 +5141,57 @@ int Generate_Network::Check_mixed_interpenetration(
         //Check if point is too close or penetrating a GNP
         //hout<<"Get_gnp_penetrating_points"<<endl;
         GNP affected_gnp;
-        if (!Get_gnp_penetrating_points(gnps, sectioned_domain_gnp[subregion], rad_plus_dvdw, new_point, affected_points, cutoffs_p, distances, affected_gnp)) {
+        if (!Get_gnp_penetrating_points(step_length, gnps, sectioned_domain_gnp[subregion], new_cnt, rad_plus_dvdw, affected_points, cutoffs_p, distances, affected_gnp, new_point))
+        {
             hout<<"Error in Check_mixed_interpenetration when calling Get_gnp_penetrating_points"<<endl;
             return -1;
         }
         //hout<<"sectioned_domain_gnp[subregion].size="<<sectioned_domain_gnp[subregion].size()<<endl;
         
-        //Check for a special case
-        if (affected_points.size() && affected_points[0].flag == -1) {
-            //This is a special case when the point is inside a GNP
-            //Since the point is inside a GNP, there is no need to check other points
-            //because there cannot be penetration with other CNTs, this would have
-            //been avoided due to using the non-penetrating model
-            
-            //Go to the special case when the CNT point is inside the GNP
-            //hout<<"Deal_with_point_inside_gnp"<<endl;
-            if (!Deal_with_point_inside_gnp(geom_sample, affected_gnp, rad_plus_dvdw, new_cnt, new_point)) {
-                //new_point could not be accomodated so reject it
-                return 0;
+        //First check if there are interpenetrations with GNPs
+        if (affected_points.size()) 
+        {
+            //First deal with the interpenetrations with GNPs
+
+            //Check if the CNT point is inside the GNP
+            if (affected_points[0].flag == -1)
+            {
+                //Go to the special case when the CNT point is inside the GNP
+                //hout<<"Deal_with_point_inside_gnp"<<endl;
+                if (!Deal_with_point_inside_gnp(geom_sample, affected_gnp, rad_plus_dvdw, new_cnt, new_point)) 
+                {
+                    //new_point could not be accomodated so reject it
+                    return 0;
+                }
             }
-            
-            //Check if the segment has a valid orientation, only when:
+            else
+            {
+                //CNT point is not inside a GNP, so rotate the CNT segment
+                //hout<<"Move_point_by_totating_cnt_segment cnt.back="<<((new_cnt.empty())?" ":new_cnt.back().str())<<endl;
+                //hout<<"new_point="<<new_point.str()<<endl;
+                if (!Move_point_by_totating_cnt_segment(step_length, new_cnt, cutoffs_p, distances, affected_points, new_point))
+                {
+                    hout << "Error in Check_mixed_interpenetration when calling Move_point_by_totating_cnt_segment (CNT segment traversing GNP)" << endl;
+                    hout << "CNTs generated=" << cnts.size() << " Points in new CNT=" << new_cnt.size() << endl;
+                    hout << "affected_points.size()=" << affected_points.size() << endl;
+                    hout << "new_point=" << new_point.str() << endl;
+                    return -1;
+                }
+                //hout<<"new_point="<<new_point.str()<<endl;
+            }
+
+            //A CNT point has been moved, so check if the segment has a valid orientation, 
+            //but only when:
             //new_cnt has at least two points
             //AND
             //new_cnt.back() is inside the sample
             //hout<<"Is_point_inside_cuboid"<<endl;
-            if (new_cnt.size() >= 2 && Is_point_inside_cuboid(geom_sample.sample, new_cnt.back())) {
-                
+            if (new_cnt.size() >= 2 && Is_point_inside_cuboid(geom_sample.sample, new_cnt.back()))
+            {
+
                 //hout<<"Check_segment_orientation 1"<<endl;
-                if (!Check_segment_orientation(new_point, new_cnt)) {
+                if (!Check_segment_orientation(new_point, new_cnt))
+                {
                     //When not in a valid position it cannot be moved again so a new CNT is needed
                     //hout<<"Point not in a valid position (special case)"<<endl;
                     return 0;
@@ -5216,7 +5238,8 @@ int Generate_Network::Check_mixed_interpenetration(
                     {
                         hout<<"Error in Check_mixed_interpenetration when calling Move_point_by_totating_cnt_segment"<<endl;
                         hout << "CNTs generated=" << cnts.size() << " Points in new CNT=" << new_cnt.size() << endl;
-                        hout << "affected_points.size()=" << affected_points.size() << endl;
+                        hout << "affected_points.size()=" << affected_points.size() << endl; 
+                        hout << "new_point=" << new_point.str() << endl;
                         return -1;
                     }
                     //hout<<"new_point="<<new_point.str()<<endl;
@@ -5252,9 +5275,9 @@ int Generate_Network::Check_mixed_interpenetration(
     //hout<<"Point could not be accomodated"<<endl;
     return 0;
 }
-//This function finsd the GNPs that are too close to a CNT point penetrating the GNP
+//This function finds the GNPs that are too close to a CNT point penetrating the GNP
 //The points in the GNP that are in contact with the CNT are also found
-int Generate_Network::Get_gnp_penetrating_points(const vector<GNP> &gnps, const vector<int> &subregion_gnp, const double &cutoff, const Point_3D &new_point, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances, GNP &affected_gnp)const
+int Generate_Network::Get_gnp_penetrating_points(const double& step_lenght, const vector<GNP> &gnps, const vector<int> &subregion_gnp, const vector<Point_3D>& new_cnt, const double &cutoff, vector<Point_3D> &affected_points, vector<double> &cutoffs_p, vector<double> &distances, GNP &affected_gnp, Point_3D& new_point)const
 {
     
     //Scan all GNPs in the subregion
@@ -5263,7 +5286,7 @@ int Generate_Network::Get_gnp_penetrating_points(const vector<GNP> &gnps, const 
         //Get the GNP number of the current subregion
         int GNP_i = subregion_gnp[i];
         
-        //Find the distance from new_point to GNP  and the closest point in the GNP
+        //Find the distance from new_point to GNP and the closest point in the GNP
         double distance = 0;
         //hout<<"Get_gnp_point_closest_to_point i="<<i<<endl;
         Point_3D P = Get_gnp_point_closest_to_point(gnps[GNP_i], new_point, distance);
@@ -5284,6 +5307,54 @@ int Generate_Network::Get_gnp_penetrating_points(const vector<GNP> &gnps, const 
         
         //Check if distance is below the cutoff
         if (distance < cutoff) {
+
+            //Check if the CNT segment length is larger than the GNP thickness
+            //Also check this is not the frist point of the CNT (if this is the first CNT
+            //point of the CNT there are no CNT segments)
+            if (step_lenght - gnps[GNP_i].t > Zero && new_cnt.size())
+            {
+                //Calcualte the unit vector from P0 (last point in new_cnt) to P 
+                Point_3D r_hat = (P - new_cnt.back()).unit();
+
+                //Check for the case of the CNT segment traversing the GNP
+                if (Is_cnt_segment_traversing_gnp(gnps[GNP_i], new_cnt, new_point, P, r_hat))
+                {
+                    //Current CNT segment is traversing GNP.
+
+                    //Move point new_point so that when the new CNT segment is rotated
+                    //the rotation goes towards the last point in new_cnt. This would put the 
+                    //CNT segment in a position closer to avoid traversing the GNP.
+                    //Otherwise, given the geometry, rotation would result in the CNT segment still
+                    //interpenetrating the GNP without getting closer to avoiding the interpenetration.
+                    if (Move_point_for_traversing_cnt_segment(gnps[GNP_i], new_cnt, r_hat, P, new_point))
+                    {
+                        hout << "Error in Get_gnp_penetrating_points when calling Move_point_for_traversing_cnt_segment" << endl;
+                        return 0;
+                    }
+
+                    //Only keep the penetrating point P in the vector of affected points
+                    affected_points.clear();
+                    affected_points.push_back(P);
+
+                    //Check if new_point is now inside the GNP
+                    if (P.flag == -1)
+                    {
+                        //Get the affected GNP
+                        affected_gnp = gnps[GNP_i];
+                    }
+                    else
+                    {
+                        //CNT point is not inside GNP, so only keep the distance and cutoff to P
+                        cutoffs_p.clear();
+                        cutoffs_p.push_back(cutoff);
+                        distances.clear();
+                        distances.push_back(distance);
+                    }
+
+                    //Terminate function, only work with current point P in GNP_i
+                    return 1;
+                }
+            }
             
             //Add the current point, distance and cutoff to the output vectors
             affected_points.push_back(P);
@@ -5292,6 +5363,41 @@ int Generate_Network::Get_gnp_penetrating_points(const vector<GNP> &gnps, const 
         }
     }
     
+    return 1;
+}
+//This function checks for the condition in which a CNT segment is traversing a GNP
+bool Generate_Network::Is_cnt_segment_traversing_gnp(const GNP& gnp_i, const vector<Point_3D>& new_cnt, const Point_3D& new_point, const Point_3D& S, const Point_3D& r_hat)const
+{
+    //Calculate the distance of test point T from P0 along vector rhat
+    double alpha = 1.0 - gnp_i.t/(2.0*S.distance_to(new_cnt.back()));
+
+    //Calculate the test point
+    Point_3D T = new_cnt.back() + r_hat*alpha;
+
+    //If test point is inside the GNP, then the CNT segment is traversing the GNP
+    //Otherwise, the CNT segment is not traversing the GNP
+    return gnp_i.Is_point_inside_gnp(T);
+}
+//This function moves a CNT point so that the CNT segment undergoes an initial rotation
+//to prevent it to traverse a GNP
+int Generate_Network::Move_point_for_traversing_cnt_segment(const GNP& gnp_i, const vector<Point_3D>& new_cnt, const Point_3D& r_hat, Point_3D& S, Point_3D& new_point)const
+{
+    //Unit vector normal to the plane that contains the points P0 (last point in new_cnt),
+    //new_point and S
+    Point_3D t_hat = (new_point - new_cnt.back()).cross(r_hat).unit();
+
+    //Unit vector from N to line P0S
+    Point_3D n_hat = t_hat.cross(r_hat);
+
+    //Distance from point N to line P0S
+    double ds = new_point.distance_to(new_cnt.back(), S);
+
+    //Calculate new location of N
+    new_point = new_point + n_hat * 2.0 * ds;
+
+    //Set the flag of S to -1 if new_point is now inside GNP
+    S.flag = (gnp_i.Is_point_inside_gnp(new_point)) ? -1 : 0;
+
     return 1;
 }
 //This function finds the point on a GNP closest to a given point
