@@ -1120,14 +1120,15 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
                 
                 //Set the criterion as weight fraction
                 nanotube_geo.criterion = "wt";
+                gnp_geo.criterion = "wt";
                 
                 //Calculate the weight fraction of (required) CNTs in the sample
                 nanotube_geo.weight_fraction = simu_para.mass_ratio*simu_para.weight_fraction/(simu_para.mass_ratio + 1.0);
-                hout<<"nanotube_geo.weight_fraction="<<nanotube_geo.weight_fraction<<endl;
+                //hout<<"nanotube_geo.weight_fraction="<<nanotube_geo.weight_fraction<<endl;
                 
                 //Calculate the weight fraction of (required) GNPs in the sample
                 gnp_geo.weight_fraction = simu_para.weight_fraction/(simu_para.mass_ratio + 1.0);
-                hout<<"gnp_geo.weight_fraction="<<gnp_geo.weight_fraction<<endl;
+                //hout<<"gnp_geo.weight_fraction="<<gnp_geo.weight_fraction<<endl;
                 
                 //Calculate the denominator used in calculating volume fractions
                 double den = (1.0 - simu_para.weight_fraction)/geom_sample.matrix_density;

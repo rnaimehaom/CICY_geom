@@ -3625,7 +3625,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
         hout << "There are " << (int)gnps.size()<< " GNPs inside the sample domain. ";
         //If there were rejected GNPs, also output that information
         if (gnp_reject_count || gnp_ignored_count) {
-            hout<<"In total "<<(int)gnps.size()+gnp_ignored_count+gnp_reject_count<<" GNPs were generated, from which "<<gnp_reject_count<<" were rejected and "<<gnp_ignored_count<<" were ignored.";
+            hout<<"\nIn total "<<(int)gnps.size()+gnp_ignored_count+gnp_reject_count<<" GNPs were generated, from which "<<gnp_reject_count<<" were rejected and "<<gnp_ignored_count<<" were ignored.";
         }
         hout<< endl << endl ;
     }
