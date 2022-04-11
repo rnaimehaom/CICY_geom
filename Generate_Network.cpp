@@ -3516,7 +3516,7 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
             //Check if the GNP penetrates another GNP
             //hout<<"Deal_with_gnp_interpenetrations"<<endl;
             if (!Deal_with_gnp_interpenetrations(simu_para.MAX_ATTEMPTS_GNP, tot_regions, geom_sample, cutoffs, gnps, n_subregion, gnp, subregions_gnp, sectioned_domain, rejected)) {
-                hout<<"Error in Deal_with_gnp_interpenetrations"<<endl;
+                hout<<"Error in Generate_gnp_network_mt when calling Deal_with_gnp_interpenetrations"<<endl;
                 return 0;
             }
         }
@@ -3784,7 +3784,7 @@ int Generate_Network::Deal_with_gnp_interpenetrations(const int& MAX_ATTEMPTS_GN
         //Find the subregions gnp_new occupies
         //hout<<"attempts="<<attempts<<endl;
         if (!Get_gnp_subregions(tot_regions, geom_sample, gnp_new, n_subregions, subregions_gnp)) {
-            hout<<"Error in Get_gnp_subregions"<<endl;
+            hout<<"Error in Deal_with_gnp_interpenetrations when calling Get_gnp_subregions"<<endl;
             return 0;
         }
         
@@ -3793,7 +3793,7 @@ int Generate_Network::Deal_with_gnp_interpenetrations(const int& MAX_ATTEMPTS_GN
         set<int> gnp_set;
         //hout<<"Get_gnps_in_subregions"<<endl;
         if (!Get_gnps_in_subregions(sectioned_domain, subregions_gnp, gnp_set)) {
-            hout<<"Error in Get_gnps_in_subregions"<<endl;
+            hout<<"Error in Deal_with_gnp_interpenetrations when calling Get_gnps_in_subregions"<<endl;
             return 0;
         }
         //hout<<"gnp_set.size="<<gnp_set.size()<<endl;
@@ -3804,7 +3804,7 @@ int Generate_Network::Deal_with_gnp_interpenetrations(const int& MAX_ATTEMPTS_GN
             //Determine if gnp_new needs to be moved and, if so, move it
             //hout<<"Move_gnps_if_needed"<<endl;
             if (!Move_gnps_if_needed(MAX_ATTEMPTS_GNP, attempts, cutoffs, gnps, gnp_set, gnp_new, displaced)) {
-                hout<<"Error in Move_gnps_if_needed."<<endl;
+                hout<<"Error in Deal_with_gnp_interpenetrations when calling Move_gnps_if_needed."<<endl;
                 return 0;
             }
             
@@ -3908,7 +3908,7 @@ int Generate_Network::Get_gnp_subregions(const int& tot_regions, const Geom_samp
                 //Add the point to the subregion(s) it occupies
                 if (!Add_gnp_subregions_to_set_for_gnp_point(tot_regions, geom_sample, new_point, n_subregions, subregions)) 
                 {
-                    hout<<"Error in Add_gnp_subregions_to_set_for_gnp_point"<<endl;
+                    hout<<"Error in Get_gnp_subregions when calling Add_gnp_subregions_to_set_for_gnp_point"<<endl;
                     return 0;
                 }
             }
@@ -3970,6 +3970,7 @@ int Generate_Network::Add_gnp_subregions_to_set_for_gnp_point(const int& tot_reg
             //hout << "GNPi=" << gnp_i << endl;
             hout << "a=" << a << " b=" << b << " c=" << c << endl;
             hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
+            hout << "n_subregions[0]=" << n_subregions[0] << " n_subregions[1]=" << n_subregions[1] << " n_subregions[2]=" << n_subregions[2] << endl;
             return 0;
         }
 
@@ -3989,6 +3990,7 @@ int Generate_Network::Add_gnp_subregions_to_set_for_gnp_point(const int& tot_reg
             //hout << "GNPi=" << gnp_i << endl;
             hout << "a=" << a << " b=" << b << " c=" << c << endl;
             hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
+            hout << "n_subregions[0]=" << n_subregions[0] << " n_subregions[1]=" << n_subregions[1] << " n_subregions[2]=" << n_subregions[2] << endl;
             return 0;
         }
 
@@ -4008,6 +4010,7 @@ int Generate_Network::Add_gnp_subregions_to_set_for_gnp_point(const int& tot_reg
             //hout << "GNPi=" << gnp_i << endl;
             hout << "a=" << a << " b=" << b << " c=" << c << endl;
             hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
+            hout << "n_subregions[0]=" << n_subregions[0] << " n_subregions[1]=" << n_subregions[1] << " n_subregions[2]=" << n_subregions[2] << endl;
             return 0;
         }
 
@@ -4883,7 +4886,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
                         hout << "Error in Generate_network_threads_mt when calling Check_mixed_interpenetration (CNT initial point)" <<endl;
                         return 0;
                     }
-                    //hout << "Checked" << endl;
+                    //hout << "Mixed penetration checked" << endl;
                 }
                 
                 if (!simu_para.penetration_model_flag || mixed_interpenetration) {
@@ -5166,18 +5169,27 @@ int Generate_Network::Check_mixed_interpenetration(
             }
             else
             {
-                //CNT point is not inside a GNP, so rotate the CNT segment
-                //hout<<"Move_point_by_totating_cnt_segment cnt.back="<<((new_cnt.empty())?" ":new_cnt.back().str())<<endl;
-                //hout<<"new_point="<<new_point.str()<<endl;
-                if (!Move_point_by_totating_cnt_segment(step_length, new_cnt, cutoffs_p, distances, affected_points, new_point))
+                //Decide whether new_point needs to move or the last CNT segment
+                //needs to be rotated
+                //hout << "Move_point_or_rotate_segment (GNP points)" << endl;
+                int status_flag = Move_point_or_rotate_segment(geom_sample, is_prev_in_np, step_length, cutoffs_p, distances, affected_points, new_cnt, new_point);
+
+                //Check the status_flag
+                if (status_flag == -1)
                 {
-                    hout << "Error in Check_mixed_interpenetration when calling Move_point_by_totating_cnt_segment (CNT segment traversing GNP)" << endl;
+                    hout << "Error in Check_mixed_interpenetration when calling Move_point_or_rotate_segment (interpenetration with GNP points)" << endl;
                     hout << "CNTs generated=" << cnts.size() << " Points in new CNT=" << new_cnt.size() << endl;
                     hout << "affected_points.size()=" << affected_points.size() << endl;
                     hout << "new_point=" << new_point.str() << endl;
                     return -1;
                 }
-                //hout<<"new_point="<<new_point.str()<<endl;
+                else if (status_flag == 0)
+                {
+                    //new_point could not be placed in a valid position
+                    //in addition, it cannot be moved again so a new CNT is needed
+                    return 0;
+                }
+                //If status_flag returns 1, that means there is correct execution of the code
             }
 
             //A CNT point has been moved, so check if the segment has a valid orientation, 
@@ -5217,33 +5229,27 @@ int Generate_Network::Check_mixed_interpenetration(
             //Check if there are any penetrating points
             if (affected_points.size()) 
             {
-                //To determine how to move the point, check if:
-                //new_point is a seed point 
-                //OR
-                //the last point in new_cnt is outside the non-penetrating domain
-                if (new_cnt.empty() || !is_prev_in_np) 
+                //Decide whether new_point needs to move or the last CNT segment
+                //needs to be rotated
+                //hout << "Move_point_or_rotate_segment (CNT points)" << endl;
+                int status_flag = Move_point_or_rotate_segment(geom_sample, is_prev_in_np, step_length, cutoffs_p, distances, affected_points, new_cnt, new_point);
+
+                //Check the status_flag
+                if (status_flag == -1)
                 {
-                    //Point is a seed, so then use functions that move the point
-                    //hout<<"Move_point"<<endl;
-                    Move_point(cutoffs_p, distances, affected_points, new_point);
+                    hout << "Error in Check_mixed_interpenetration when calling Move_point_or_rotate_segment (interpenetration with CNT points)" << endl;
+                    hout << "CNTs generated=" << cnts.size() << " Points in new CNT=" << new_cnt.size() << endl;
+                    hout << "affected_points.size()=" << affected_points.size() << endl;
+                    hout << "new_point=" << new_point.str() << endl;
+                    return -1;
                 }
-                else {
-                    
-                    //Point is not a seed nor the last point is outside the non-penetrating domain,
-                    //so use functions that rotate the CNT segment
-                    //In this way CNT segment length is preserved
-                    //hout<<"Move_point_by_totating_cnt_segment cnt.back="<<((new_cnt.empty())?" ":new_cnt.back().str())<<endl;
-                    //hout<<"new_point="<<new_point.str()<<endl;
-                    if (!Move_point_by_totating_cnt_segment(step_length, new_cnt, cutoffs_p, distances, affected_points, new_point)) 
-                    {
-                        hout<<"Error in Check_mixed_interpenetration when calling Move_point_by_totating_cnt_segment"<<endl;
-                        hout << "CNTs generated=" << cnts.size() << " Points in new CNT=" << new_cnt.size() << endl;
-                        hout << "affected_points.size()=" << affected_points.size() << endl; 
-                        hout << "new_point=" << new_point.str() << endl;
-                        return -1;
-                    }
-                    //hout<<"new_point="<<new_point.str()<<endl;
+                else if (status_flag == 0)
+                {
+                    //new_point could not be placed in a valid position
+                    //in addition, it cannot be moved again so a new CNT is needed
+                    return 0;
                 }
+                //If status_flag returns 1, that means there is correct execution of the code
                 
                 //Check if the segment has a valid orientation
                 //hout<<"Check_segment_orientation 2"<<endl;
@@ -5326,7 +5332,7 @@ int Generate_Network::Get_gnp_penetrating_points(const double& step_lenght, cons
                     //CNT segment in a position closer to avoid traversing the GNP.
                     //Otherwise, given the geometry, rotation would result in the CNT segment still
                     //interpenetrating the GNP without getting closer to avoiding the interpenetration.
-                    if (Move_point_for_traversing_cnt_segment(gnps[GNP_i], new_cnt, r_hat, P, new_point))
+                    if (!Move_point_for_traversing_cnt_segment(gnps[GNP_i], new_cnt, r_hat, P, new_point))
                     {
                         hout << "Error in Get_gnp_penetrating_points when calling Move_point_for_traversing_cnt_segment" << endl;
                         return 0;
@@ -5363,6 +5369,45 @@ int Generate_Network::Get_gnp_penetrating_points(const double& step_lenght, cons
         }
     }
     
+    return 1;
+}
+//Decide whether a CNT point needs to be moved or the CNT segment needs to be rotated, then do it
+int Generate_Network::Move_point_or_rotate_segment(const Geom_sample& geom_sample, const bool& is_prev_in_np, const double& step_length, const vector<double>& cutoffs_p, const vector<double>& distances, const vector<Point_3D>& affected_points, vector<Point_3D>& new_cnt, Point_3D& new_point)const
+{
+    //To determine how to move the point, check if:
+    //new_point is a seed point 
+    //OR
+    //the last point in new_cnt is outside the non-penetrating domain
+    if (new_cnt.empty() || !is_prev_in_np)
+    {
+        //Point is a seed, so then use functions that move the point
+        //hout<<"Move_point"<<endl;
+        Move_point(cutoffs_p, distances, affected_points, new_point);
+    }
+    else {
+
+        //Point is not a seed nor the last point is outside the non-penetrating domain,
+        //so use functions that rotate the CNT segment
+        //In this way CNT segment length is preserved
+        //hout<<"Move_point_by_totating_cnt_segment cnt.back="<<((new_cnt.empty())?" ":new_cnt.back().str())<<endl;
+        //hout<<"new_point="<<new_point.str()<<endl;
+        if (!Move_point_by_totating_cnt_segment(step_length, new_cnt, cutoffs_p, distances, affected_points, new_point))
+        {
+            hout << "Error in Move_point_or_rotate_segment when calling Move_point_by_totating_cnt_segment" << endl;
+            return -1;
+        }
+        //hout<<"new_point="<<new_point.str()<<endl;
+    }
+
+    //Check if the segment has a valid orientation
+    //hout<<"Check_segment_orientation 2"<<endl;
+    if (!Check_segment_orientation(new_point, new_cnt))
+    {
+        //When not in a valid position it cannot be moved again so a new CNT is needed
+        //hout<<"Point not in a valid position"<<endl;
+        return 0;
+    }
+
     return 1;
 }
 //This function checks for the condition in which a CNT segment is traversing a GNP
