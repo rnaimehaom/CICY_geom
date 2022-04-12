@@ -5127,7 +5127,7 @@ int Generate_Network::Check_mixed_interpenetration(
     while (attempts <= MAX_ATTEMPTS_CNT) {
         
         //Get the subregion of CNT p, GNP &affected_gnpoint
-        //hout<<"attempts="<<attempts<<endl;
+        //hout<<"attempts="<<attempts<<" new_cnt.size="<<new_cnt.size()<< endl;
         int subregion = Get_cnt_point_subregion_mixed(geom_sample, n_subregions, new_point);
         //hout<<"new_point="<<new_point.str()<<" subregion="<<subregion<<endl;
         if (subregion == -1) {
@@ -5150,6 +5150,7 @@ int Generate_Network::Check_mixed_interpenetration(
             return -1;
         }
         //hout<<"sectioned_domain_gnp[subregion].size="<<sectioned_domain_gnp[subregion].size()<<endl;
+        //hout << "affected_points.size()=" << affected_points.size() << endl;
         
         //First check if there are interpenetrations with GNPs
         if (affected_points.size()) 
@@ -5161,7 +5162,7 @@ int Generate_Network::Check_mixed_interpenetration(
             {
                 //Go to the special case when the CNT point is inside the GNP
                 //hout<<"Deal_with_point_inside_gnp"<<endl;
-                if (!Deal_with_point_inside_gnp(geom_sample, affected_gnp, rad_plus_dvdw, new_cnt, new_point)) 
+                if (!Deal_with_point_inside_gnp(geom_sample, is_prev_in_np, affected_gnp, rad_plus_dvdw, step_length, new_cnt, new_point))
                 {
                     //new_point could not be accomodated so reject it
                     return 0;
@@ -5400,7 +5401,7 @@ int Generate_Network::Move_point_or_rotate_segment(const Geom_sample& geom_sampl
     }
 
     //Check if the segment has a valid orientation
-    //hout<<"Check_segment_orientation 2"<<endl;
+    //hout<<"Check_segment_orientation"<<endl;
     if (!Check_segment_orientation(new_point, new_cnt))
     {
         //When not in a valid position it cannot be moved again so a new CNT is needed
@@ -5738,7 +5739,7 @@ Point_3D Generate_Network::Distance_from_point_to_edge(const Point_3D &P, const 
     return Q;
 }
 //This function finds the new position of a CNT point when it is inside a GNP
-int Generate_Network::Deal_with_point_inside_gnp(const Geom_sample &geom_sample, const GNP &gnp, const double &cutoff, vector<Point_3D> &new_cnt, Point_3D &new_point)const
+int Generate_Network::Deal_with_point_inside_gnp(const Geom_sample& geom_sample, const bool& is_prev_in_np, const GNP& gnp, const double& cutoff, const double& step_length, vector<Point_3D>& new_cnt, Point_3D& new_point)const
 {
     //Check if this is the first point of the CNT
     if (new_cnt.empty()) {
@@ -5752,14 +5753,14 @@ int Generate_Network::Deal_with_point_inside_gnp(const Geom_sample &geom_sample,
     }
     
     //Check if the last point in new_cnt:
-    //is inside the sample (this ensures that the CNT point is outside the GNP)
+    //is inside the non-penetration domain (this ensures that the CNT point is outside the GNP)
     //OR
     //outside the GNP (this is evaluated when the last point in new_cnt is in the boundary layer)
-    if (new_cnt.back().flag || !gnp.Is_point_inside_gnp(new_cnt.back())) {
+    if (is_prev_in_np || !gnp.Is_point_inside_gnp(new_cnt.back())) {
         
         //Find new position of new_point when new_cnt.back() is outside the GNP but
         //new_point is inside the GNP
-        new_point = Find_new_position_one_point_inside_gnp(gnp, new_cnt.back(), new_point, cutoff);
+        new_point = Find_new_position_one_point_inside_gnp(gnp, new_cnt.back(), new_point, cutoff, step_length);
     }
     else {
         
@@ -5853,61 +5854,49 @@ Point_3D Generate_Network::Find_closest_face_and_relocate(const GNP &gnp, const 
 }
 //This function finds the new position of a CNT point when it is inside the GNP
 //Here P1 is the point outside the GNP (new_cnt.back()) and P2 is the point inside the GNP
-Point_3D Generate_Network::Find_new_position_one_point_inside_gnp(const GNP &gnp, const Point_3D &P1, const Point_3D &P2, const double &cutoff)const
+Point_3D Generate_Network::Find_new_position_one_point_inside_gnp(const GNP &gnp, const Point_3D &P1, const Point_3D &P2, const double &cutoff, const double& step_length)const
 {
-    
     //Array of vertices to calculate dot products
     int V[] = {0,4,0,0,1,2};
-    
-    //Vector to store the faces with positive dot product
-    vector<int> close_faces;
-    
-    //Find the faces close to P1
-    for (int i = 0; i < 6; i++) {
-        
-        //Check the sign of the dot product
-        if (gnp.faces[i].N.dot(P1 - gnp.vertices[V[i]]) > 0) {
-            
-            //P1 is above the plane of face i, so add it to the vector of close faces
-            close_faces.push_back(i);
-        }
-    }
-    
-    //Calculate the vector P1P2
-    Point_3D P1P2 = P2 - P1;
-    
-    //Lambda (anonymous) function to calculate the lambda value
-    auto calc_lambda = [](const Point_3D &N, const double &d, const Point_3D &P1, const Point_3D &P1P2){
-        return ((-N.dot(P1) - d)/(N.dot(P1P2)));
-    };
-    
-    //Variable to store the index of the intersected face
+
+    //Index of face I'm looking for
     int idx = 0;
-    
-    //Variable to store the lambda value
-    double lambda = 0.0;
-    
-    //Find the lambda value of all remaining faces and choose the largest
-    //The face with the largest lambda is the intersected face
-    for (int i = 0; i < (int)close_faces.size(); i++) {
-        
-        //Calculate new lambda
-        double new_lambda = calc_lambda(gnp.faces[close_faces[i]].N, gnp.faces[close_faces[i]].coef[3], P1, P1P2);
-        
-        //Check if an update is needed
-        //NOTE: the lambda we need is in [0,1]
-        if (new_lambda - 1.0 <= Zero && new_lambda >= Zero && new_lambda > lambda) {
-            lambda = new_lambda;
-            idx = close_faces[i];
+
+    //Iterate over the faces of the GNP and finde the first face such that P1 lies above it
+    for (int i = 0; i < 6; i++) 
+    {
+        //Check the sign of the dot product
+        if (gnp.faces[i].N.dot(P1 - gnp.vertices[V[i]]) > 0.0) 
+        {
+            //P1 is above the plane of face i, so add it to the vector of close faces
+            idx = i;
+
+            //Break the loop as I'm only looking for the first face
+            break;
         }
     }
     
-    //Calculate the distance fom the point inside the GNP to the intersected face
-    double dist = gnp.faces[idx].distance_to(P2);
-    
-    //Move the point P2 towrads the closest face a distance dist+cutoff, so the it
-    //takes its new position
-    Point_3D P_out = P2 + gnp.faces[idx].N*(dist+cutoff);
+    //Calculate distance from point P1 to face idx
+    double d_T = gnp.faces[idx].distance_to(P1);
+
+    //Calculate coordinates of point T
+    Point_3D T = P1 - gnp.faces[idx].N * d_T;
+
+    //Calculate distance from P2 to face idx
+    double d_SN = gnp.faces[idx].distance_to(P2);
+
+    //Calculate coordinates of point S
+    Point_3D S = P2 + gnp.faces[idx].N * d_SN;
+
+    //Calculate unit vector from T to S
+    Point_3D u_hat = (S - T).unit();
+
+    //Calculate distance from T to the projection of N' onto face idx
+    double tmp = d_T - cutoff;
+    double d_TSp = sqrt(step_length*step_length - tmp* tmp);
+
+    //Calculate new location of P2
+    Point_3D P_out = T + u_hat*d_TSp + gnp.faces[idx].N*cutoff;
     
     return P_out;
 }
