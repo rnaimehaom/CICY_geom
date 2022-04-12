@@ -634,7 +634,7 @@ int Generate_Network::Check_penetration(
     const vector<vector<int> > &global_coordinates, 
     const vector<vector<long int> > &sectioned_domain, 
     const vector<double> &radii, 
-    const vector<Point_3D> &cnt_new, 
+    const vector<Point_3D> &new_cnt, 
     const int n_subregions[], 
     const double &rad_p_dvdw, 
     const double &cnt_cutoff, 
@@ -648,7 +648,8 @@ int Generate_Network::Check_penetration(
 {
     //Get the sub-region the point belongs to
     //hout<<"Get_subregion 0"<<endl;
-    int subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
+    //int subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
+    int subregion = Get_cnt_point_subregion_with_layer(geom_sample, n_subregions, new_point);
     
     //If the sub-region is -1, then the point is in the boundary layer, so there is no need to check penetration
     if (subregion == -1) {
@@ -670,7 +671,7 @@ int Generate_Network::Check_penetration(
     //Check if there are any penetration within the CNT
     //hout<<"Get_penetrating_points_within_cnt 0"<<endl;
     //hout<<"point="<<point.str()<<endl;
-    Get_penetrating_points_within_cnt(subregion, ignr, cnt_cutoff, cnt_cutoff2, new_point, cnt_new, subr_point_map, affected_points, cutoffs_p, distances);
+    Get_penetrating_points_within_cnt(subregion, ignr, cnt_cutoff, cnt_cutoff2, new_point, new_cnt, subr_point_map, affected_points, cutoffs_p, distances);
     //hout<<"2 affected_points.size="<<affected_points.size()<<endl;
     
     //Update the counter of overlapping points only when an overlapping point was found the first time
@@ -679,7 +680,9 @@ int Generate_Network::Check_penetration(
     }
     
     //I move the point up to max_attempts times. If there is still penetration then I delete it
-    for (int attempts = 0; attempts < MAX_ATTEMPTS_CNT; attempts++) {
+    for (int attempts = 0; attempts < MAX_ATTEMPTS_CNT; attempts++) 
+    {
+        //hout << "attempts=" << attempts << " new_CNT=" << new_cnt.size()<< endl;
         
         //--------------------------------------------------------------------------------------------
         //Check if there are any penetrating points
@@ -688,10 +691,10 @@ int Generate_Network::Check_penetration(
             point_overlap_count++;
             
             //Find the new point
-            //hout << "Point " << global_coordinates.size()-1+cnt_new.size() << " in CNT " << cnts.size() << " is overlapping." <<endl;
+            //hout << "Point " << global_coordinates.size()-1+new_cnt.size() << " in CNT " << cnts.size() << " is overlapping." <<endl;
             //hout << "Moved a point from initial position "<<new_point.str()<<" attempts="<<attempts<<endl;
             //Check if seed point
-            if (cnt_new.empty() || !is_prev_in_np) {
+            if (new_cnt.empty() || !is_prev_in_np) {
                 
                 //Point is a seed, so then use functions that move the point
                 //hout << "Move_point" << endl;
@@ -700,9 +703,13 @@ int Generate_Network::Check_penetration(
             else {
                 
                 //If point is not a seed, use functions that rotate the CNT segment
-                //hout << "Move_point_by_totating_cnt_segment" << endl;
-                if (!Move_point_by_totating_cnt_segment(nanotube_geo.step_length, cnt_new, cutoffs_p, distances, affected_points, new_point)) {
-                    hout<<"Error in Check_penetration when calling Move_point_by_totating_cnt_segment"<<endl;
+                //hout << "Move_point_by_rotating_cnt_segment" << endl;
+                if (!Move_point_by_rotating_cnt_segment(nanotube_geo.step_length, new_cnt, cutoffs_p, distances, affected_points, new_point)) {
+                    hout<<"Error in Check_penetration when calling Move_point_by_rotating_cnt_segment"<<endl;
+                    hout << "CNTs generated=" << cnts.size() << " Points in new CNT=" << new_cnt.size() << endl;
+                    hout << "affected_points.size()=" << affected_points.size() << endl;
+                    hout << "new_point=" << new_point.str() << endl;
+                    hout << "is_prev_in_np=" << is_prev_in_np << " subregion_prev="<< Get_cnt_point_subregion_with_layer(geom_sample, n_subregions, new_cnt.back())<< endl;
                     return -1;
                 }
             }
@@ -710,8 +717,8 @@ int Generate_Network::Check_penetration(
             
             //Check that the new point is within the permited orientation repect to the previous segment
             //hout<<"Check_segment_orientation"<<endl;
-            if (!Check_segment_orientation(new_point, cnt_new)) {
-                //hout << "Deleted CNT number " << cnts.size() << " of size " << cnt_new.size();
+            if (!Check_segment_orientation(new_point, new_cnt)) {
+                //hout << "Deleted CNT number " << cnts.size() << " of size " << new_cnt.size();
                 //hout << " (the point is not in a valid orientation)" << endl;
                 //When not in a valid position it cannot be moved again so a new CNT is needed
                 return 0;
@@ -719,7 +726,8 @@ int Generate_Network::Check_penetration(
             
             //Need to update point sub-region as it could be relocated to a new sub-region
             //hout<<"Get_subregion 1 point="<< new_point.str()<<endl;
-            subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
+            //subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
+            subregion = Get_cnt_point_subregion_with_layer(geom_sample, n_subregions, new_point);
             //Check if after moving the point it is now in the boundary layer
             if (subregion == -1) {
                 //If the point is now in the boundary layer, terminate the function
@@ -741,7 +749,7 @@ int Generate_Network::Check_penetration(
             //Check if there are any penetration within the CNT
             //hout<<"Get_penetrating_points_within_cnt"<<endl;
             //hout<<"point="<<point.str()<<endl;
-            Get_penetrating_points_within_cnt(subregion, ignr, cnt_cutoff, cnt_cutoff2, new_point, cnt_new, subr_point_map, affected_points, cutoffs_p, distances);
+            Get_penetrating_points_within_cnt(subregion, ignr, cnt_cutoff, cnt_cutoff2, new_point, new_cnt, subr_point_map, affected_points, cutoffs_p, distances);
             //hout<<"4 affected_points.size="<<affected_points.size()<<endl;
         } else {
             
@@ -776,12 +784,12 @@ int Generate_Network::Get_cnt_point_subregion(const Geom_sample &geom_sample, co
         return -1;
     }
 }
-int Generate_Network::Get_cnt_point_subregion_mixed(const Geom_sample& geom_sample, const int n_subregions[], const Point_3D& point)const
+int Generate_Network::Get_cnt_point_subregion_with_layer(const Geom_sample& geom_sample, const int n_subregions[], const Point_3D& point)const
 {
     //Check point is in non-penetration domain
     if (point.is_outside_cuboid(geom_sample.np_domain))
     {
-        //point is in the boudary but not in the non-penetration layer, so interpenetrations
+        //point is in the boudary layer but not in the non-penetration layer, so interpenetrations
         //are ignored. thus return -1
         return -1;
     }
@@ -865,13 +873,13 @@ void Generate_Network::Get_penetrating_points_within_cnt(const int &subregion, c
         
         //Calculate the index of the previous to last point in the CNT
         int prev_last_idx = (int)cnt_new.size() - ignr;
-        //hout << "prev_last_idx=" << prev_last_idx <<" last_idx="<< cnt_new.size()-1 << endl;
+        //hout << "prev_last_idx=" << prev_last_idx <<" last_idx="<< new_cnt.size()-1 << endl;
         
         //There are points in the sub-region, so check if any of them penetrate
         //the newly generated point
         for (size_t i = 0; i < subr_point_map.at(subregion).size(); i++) {
             
-            //Get the point number within cnt_new
+            //Get the point number within new_cnt
             int Pi = subr_point_map.at(subregion)[i];
             //hout << "Pi=" << Pi << endl;
             
@@ -890,7 +898,7 @@ void Generate_Network::Get_penetrating_points_within_cnt(const int &subregion, c
                     affected_points.push_back(cnt_new[Pi]);
                     cutoffs_p.push_back(cnt_cutoff);
                     distances.push_back(sqrt(dist));
-                    //hout<<"aff_pt"<<cnt_new[Pi].str()<<" dist="<<sqrt(dist)<<" cnt_cutoff="<<cnt_cutoff<<endl;
+                    //hout<<"aff_pt"<<new_cnt[Pi].str()<<" dist="<<sqrt(dist)<<" cnt_cutoff="<<cnt_cutoff<<endl;
                     //hout<<"Pi="<<Pi<<" dist="<<dist<<" cnt_cutoff2="<<cnt_cutoff2<<endl;
                     //hout<<"dist + Zero - cnt_cutoff2="<<dist + Zero - cnt_cutoff2<<endl;
                 }
@@ -902,7 +910,7 @@ void Generate_Network::Get_penetrating_points_within_cnt(const int &subregion, c
 //This function rotates a CNT segment according to the number of points it is penetrating
 //The "rotation" is achieved by moving the point to a location where it does not
 //penetrate any point anymore and keeps all (cutoff) distances
-int Generate_Network::Move_point_by_totating_cnt_segment(const double &step, const vector<Point_3D> &cnt_new, const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, Point_3D &new_point)const
+int Generate_Network::Move_point_by_rotating_cnt_segment(const double &step, const vector<Point_3D> &cnt_new, const vector<double> &cutoffs, const vector<double> &distances, const vector<Point_3D> &affected_points, Point_3D &new_point)const
 {
     //The number of overlapings will determine how the new point is moved
     if (affected_points.size() == 1){
@@ -910,15 +918,15 @@ int Generate_Network::Move_point_by_totating_cnt_segment(const double &step, con
         //Handle the case with only one penetrating point
         //hout << "ovelappings == 1"<<endl;
         if (!One_penetrating_point(step, cutoffs[0], affected_points[0], cnt_new.back(), new_point)) {
-            hout<<"Error in Move_point_by_totating_cnt_segment when calling One_penetrating_point"<<endl;
+            hout<<"Error in Move_point_by_rotating_cnt_segment when calling One_penetrating_point"<<endl;
             return 0;
         }
     } /*else if (affected_points.size() == 2){
         
         //Handle the case with two penetrating points
         hout << "ovelappings == 2"<<endl;
-        if (!Two_penetrating_points(step, cutoffs, affected_points, cnt_new.back(), new_point)) {
-            hout<<"Error in Move_point_by_totating_cnt_segment when calling Two_penetrating_points"<<endl;
+        if (!Two_penetrating_points(step, cutoffs, affected_points, new_cnt.back(), new_point)) {
+            hout<<"Error in Move_point_by_rotating_cnt_segment when calling Two_penetrating_points"<<endl;
             return 0;
         }
     } */
@@ -928,13 +936,13 @@ int Generate_Network::Move_point_by_totating_cnt_segment(const double &step, con
         //This actually finds the two closest point and calls the function
         //that handles the case with two penetrating points
         /*hout << "ovelappings >= 3 (ovelappings="<<affected_points.size()<<")"<<endl;
-        if (!Three_or_more_penetrating_points(step, cutoffs, distances, affected_points, cnt_new.back(), new_point)) {
-            hout<<"Error in Move_point_by_totating_cnt_segment when calling Three_or_more_penetrating_points"<<endl;
+        if (!Three_or_more_penetrating_points(step, cutoffs, distances, affected_points, new_cnt.back(), new_point)) {
+            hout<<"Error in Move_point_by_rotating_cnt_segment when calling Three_or_more_penetrating_points"<<endl;
             return 0;
         }*/
         //hout << "ovelappings >= 2 (ovelappings="<<affected_points.size()<<")"<<endl;
         if (!Two_or_more_penetrating_points(step, cutoffs, distances, affected_points, cnt_new.back(), new_point)) {
-            hout<<"Error in Move_point_by_totating_cnt_segment when calling Two_or_more_penetrating_points"<<endl;
+            hout<<"Error in Move_point_by_rotating_cnt_segment when calling Two_or_more_penetrating_points"<<endl;
             return 0;
         }
     }
@@ -5128,7 +5136,7 @@ int Generate_Network::Check_mixed_interpenetration(
         
         //Get the subregion of CNT p, GNP &affected_gnpoint
         //hout<<"attempts="<<attempts<<" new_cnt.size="<<new_cnt.size()<< endl;
-        int subregion = Get_cnt_point_subregion_mixed(geom_sample, n_subregions, new_point);
+        int subregion = Get_cnt_point_subregion_with_layer(geom_sample, n_subregions, new_point);
         //hout<<"new_point="<<new_point.str()<<" subregion="<<subregion<<endl;
         if (subregion == -1) {
             //If the sub-region is -1, then the point is in te boundary layer,
@@ -5390,11 +5398,11 @@ int Generate_Network::Move_point_or_rotate_segment(const Geom_sample& geom_sampl
         //Point is not a seed nor the last point is outside the non-penetrating domain,
         //so use functions that rotate the CNT segment
         //In this way CNT segment length is preserved
-        //hout<<"Move_point_by_totating_cnt_segment cnt.back="<<((new_cnt.empty())?" ":new_cnt.back().str())<<endl;
+        //hout<<"Move_point_by_rotating_cnt_segment cnt.back="<<((new_cnt.empty())?" ":new_cnt.back().str())<<endl;
         //hout<<"new_point="<<new_point.str()<<endl;
-        if (!Move_point_by_totating_cnt_segment(step_length, new_cnt, cutoffs_p, distances, affected_points, new_point))
+        if (!Move_point_by_rotating_cnt_segment(step_length, new_cnt, cutoffs_p, distances, affected_points, new_point))
         {
-            hout << "Error in Move_point_or_rotate_segment when calling Move_point_by_totating_cnt_segment" << endl;
+            hout << "Error in Move_point_or_rotate_segment when calling Move_point_by_rotating_cnt_segment" << endl;
             return -1;
         }
         //hout<<"new_point="<<new_point.str()<<endl;

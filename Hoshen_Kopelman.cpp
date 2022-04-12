@@ -589,8 +589,6 @@ int Hoshen_Kopelman::Make_gnp_clusters(const cuboid& sample, const vector<int> &
 int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp)
 {
     //new_label will take the value of the newest cluster
-    //Since GNP clusters are made after CNT clusters, the first label for GNPs is equal
-    //to the number of CNT labels
     int new_label = 0;
     
     //Vector to check if a GNP-GNP contact has already been visited
