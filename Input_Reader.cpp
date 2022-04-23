@@ -809,21 +809,42 @@ int Input::Read_nanotube_geo_parameters(Nanotube_Geo &nanotube_geo, ifstream &in
     //CNT close to the boundary
     istringstream istr_min_length(Get_Line(infile));
     istr_min_length>>nanotube_geo.min_length_type;
-    if (nanotube_geo.min_length_type=="length") {
+    if (nanotube_geo.min_length_type=="length") 
+    {
         //Get the input as a double, since it is a length
         double tmp;
         istr_min_length>>tmp;
         //Convert the length to the equivalent number of points
         nanotube_geo.min_points = 1 + (int)(tmp/nanotube_geo.step_length);
+
+        //Check the calculated minimum number of points is at least 2
+        if (nanotube_geo.min_points < 2)
+        {
+            hout << "Error: The minimum CNT length results in less than two CNT points." << endl;
+            hout << "A CNT consists of at least two points, so input should be at least 2." << endl;
+            hout << "Calculated number of points was: " << nanotube_geo.min_points << endl;
+            hout << "Input lenght was: " << nanotube_geo.step_length << endl;
+            return 0;
+        }
     }
-    else if (nanotube_geo.min_length_type=="points") {
+    else if (nanotube_geo.min_length_type=="points") 
+    {
+        //Read the minimum number of points
         istr_min_length>>nanotube_geo.min_points;
+        
+        //Check the minimum number of points is at least 2
+        if (nanotube_geo.min_points < 2) 
+        {
+            hout << "Error: The minimum number of points is less than 2." << endl;
+            hout << "A CNT consists of at least two points, so input should be at least 2." << endl;
+            hout << "Minimum number of points was: " << nanotube_geo.min_points << endl;
+            return 0;
+        }
     }
-    else {
-        hout << "Error: The minimum CNT length can only be specified as 'length' or 'points'. Input was: "<<nanotube_geo.min_length_type<<endl; return 0;
-    }
-    if (nanotube_geo.min_points <= 0) {
-        hout << "Error: The minimum CNT length can only be specified as a non-zero length or number of points. Minimum number of points was: "<<nanotube_geo.min_length_type<<endl; return 0;
+    else 
+    {
+        hout << "Error: The minimum CNT length can only be specified as 'length' or 'points'. Input was: "<<nanotube_geo.min_length_type<<endl; 
+        return 0;
     }
     
 	//----------------------------------------------------------------------

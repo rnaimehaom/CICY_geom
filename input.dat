@@ -172,6 +172,8 @@ uniform 1.000000 1.000000
 %of points using the keyword 'points', followed by the corresponding value.
 %Define the minimum CNT length ('length') or number of points ('points') to keep a CNT close to
 %the boundary
+%The specified length should result in at least two points. If number of points is specified, input should
+%be at least two. A CNT consists of at least two points.
 points 5
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Define the distribution type (uniform or normal) of the nanotube radius (in microns) and its minimum and maximum values

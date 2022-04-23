@@ -302,6 +302,7 @@ int Cutoff_Wins::Add_cnt_segment_to_structure(const string &particle_type, const
     int new_end = end;
     
     //Variables for the (possibly) outside and inside points for the start of the segment
+    //hout << "structure_cnt[CNT].size()=" << structure_cnt[CNT].size() << " new_start=" << new_start << " new_start+1=" << new_start + 1 << endl;
     long int p_out_start = structure_cnt[CNT][new_start];
     long int p_ins_start = structure_cnt[CNT][new_start+1];
     //hout<<"Start=("<<points_cnt[p_out_start].x<<", "<<points_cnt[p_out_start].y<<", "<<points_cnt[p_out_start].z<<") CNT="<<CNT<<endl;
@@ -747,6 +748,7 @@ int Cutoff_Wins::Add_cnt_point_to_boundary_vectors(const cuboid &layer_geom, con
     //int boundary = In_which_boundary(P, layer_geom);
     int boundary = -1;
     string location = Where_is_with_boundary(P, layer_geom, boundary);
+    //hout << boundary << endl;
     
     //Check for error
     if (boundary == -1) {

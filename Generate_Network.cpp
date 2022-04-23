@@ -2107,6 +2107,9 @@ Point_3D Generate_Network::Find_intersection_at_boundary(const cuboid &sample, c
     //as part of the class
     auto calc_lambda = [](double x_plane, double x_out, double x_T) {return (x_plane - x_out)/x_T;};
     
+    //Flags for identifying boundaries
+    //int bx = -1, by = -1, bz = -1;
+
     //Go through each boundary and find the lambda value for those that are intersected for the
     //line segment that goes from p_outside to p_inside
     
@@ -2117,12 +2120,14 @@ Point_3D Generate_Network::Find_intersection_at_boundary(const cuboid &sample, c
         
         //Calculate the lambda value
         lambda_x = calc_lambda(sample.poi_min.x, p_outside.x, T.x);
+        //bx = 4;
     }
     //x-right boundary
     else if ( (sample.max_x - p_outside.x) < Zero ) {
         
         //Calculate the lambda value
         lambda_x = calc_lambda(sample.max_x, p_outside.x, T.x);
+        //bx = 2;
     }
     //hout<<"lambda_x="<<lambda_x<<endl;
     
@@ -2139,12 +2144,14 @@ Point_3D Generate_Network::Find_intersection_at_boundary(const cuboid &sample, c
         
         //Calculate the lambda value
         lambda_y = calc_lambda(sample.poi_min.y, p_outside.y, T.y);
+        //by = 5;
     }
     //y-right boundary
     else if ( (sample.max_y - p_outside.y) < Zero ) {
         
         //Calculate the lambda value
         lambda_y = calc_lambda(sample.max_y, p_outside.y, T.y);
+        //by = 3;
     }
     //hout<<"lambda_y="<<lambda_y<<endl;
     
@@ -2155,14 +2162,26 @@ Point_3D Generate_Network::Find_intersection_at_boundary(const cuboid &sample, c
         
         //Calculate the lambda value
         lambda_z = calc_lambda(sample.poi_min.z, p_outside.z, T.z);
+        //bz = 1;
     }
     //z-right boundary
     else if ( (sample.max_z - p_outside.z) < Zero ) {
         
         //Calculate the lambda value
         lambda_z = calc_lambda(sample.max_z, p_outside.z, T.z);
+        //bz = 0;
     }
     //hout<<"lambda_z="<<lambda_z<<endl;
+
+    /* /Print the boundaries
+    if (bx != -1)
+        hout << bx << ' ';
+    if (by != -1)
+        hout << by << ' ';
+    if (bz != -1)
+        hout << bz << ' ';
+    if (bx != -1 || by != -1 || bz != -1)
+        hout << endl;// */
     
     //Variable to store the coefficient lambda to parameterize the line segment between
     //p_outside (lambda = 0) and p_inside (lambda = 1)
