@@ -664,7 +664,7 @@ int Generate_Network::Check_penetration(
     
     //Iteration 0:
     //Check if there are any penetrations in the corresponding sub-region
-    //hout<<"Get_penetrating_points 0"<<endl;
+    //hout<<endl<<"Get_penetrating_points 0"<<endl;
     Get_penetrating_points(cnts, global_coordinates, sectioned_domain[subregion], radii, rad_p_dvdw, new_point, affected_points, cutoffs_p, distances);
     //hout<<"1 affected_points.size="<<affected_points.size()<<endl;
     
@@ -704,12 +704,39 @@ int Generate_Network::Check_penetration(
                 
                 //If point is not a seed, use functions that rotate the CNT segment
                 //hout << "Move_point_by_rotating_cnt_segment" << endl;
-                if (!Move_point_by_rotating_cnt_segment(nanotube_geo.step_length, new_cnt, cutoffs_p, distances, affected_points, new_point)) {
+                if (!Move_point_by_rotating_cnt_segment(nanotube_geo.step_length, new_cnt, cutoffs_p, distances, affected_points, new_point)) 
+                {
+                    //These variables will give me the region cordinates of the region that a point belongs to
+                    int a, b, c;
+                    
                     hout<<"Error in Check_penetration when calling Move_point_by_rotating_cnt_segment"<<endl;
                     hout << "CNTs generated=" << cnts.size() << " Points in new CNT=" << new_cnt.size() << endl;
                     hout << "affected_points.size()=" << affected_points.size() << endl;
-                    hout << "new_point=" << new_point.str() << endl;
-                    hout << "is_prev_in_np=" << is_prev_in_np << " subregion_prev="<< Get_cnt_point_subregion_with_layer(geom_sample, n_subregions, new_cnt.back())<< endl;
+                    for (size_t i = 0; i < affected_points.size(); i++)
+                    {
+                        //Calculate the subregion-coordinates
+                        Get_subregion_coordinates_with_layer(geom_sample, affected_points[i], n_subregions, a, b, c);
+                        hout << "P="<< affected_points[i].str()<<" a=" << a << " b=" << b << " c=" << c << " subregion=" << Get_cnt_point_subregion_with_layer(geom_sample, n_subregions, affected_points[i])<<endl;
+                    }
+
+                    hout << "new_point=" << new_point.str() << " subregion="<<subregion<<endl;
+
+                    if (Is_point_inside_cuboid(geom_sample.np_domain, new_point))
+                    {
+                        //Calculate the subregion-coordinates
+                        Get_subregion_coordinates_with_layer(geom_sample, new_point, n_subregions, a, b, c);
+                        hout << "new_point coords a=" << a << " b=" << b << " c=" << c << endl;
+                    }
+                    hout << "is_prev_in_np=" << is_prev_in_np << " subregion_prev=" << Get_cnt_point_subregion_with_layer(geom_sample, n_subregions, new_cnt.back()) << endl;
+                    if (Is_point_inside_cuboid(geom_sample.np_domain, new_cnt.back()))
+                    {
+                        //Calculate the subregion-coordinates
+                        Get_subregion_coordinates_with_layer(geom_sample, new_cnt.back(), n_subregions, a, b, c);
+                        hout << "prev point coords a=" << a << " b=" << b << " c=" << c << endl;
+                    }
+
+                    hout << "n_subregions=" << n_subregions[0] * n_subregions[1] * n_subregions[2] << endl;
+
                     return -1;
                 }
             }
@@ -748,10 +775,12 @@ int Generate_Network::Check_penetration(
             
             //Check if there are any penetration within the CNT
             //hout<<"Get_penetrating_points_within_cnt"<<endl;
-            //hout<<"point="<<point.str()<<endl;
+            //hout<<"new_point="<< new_point.str()<<endl;
             Get_penetrating_points_within_cnt(subregion, ignr, cnt_cutoff, cnt_cutoff2, new_point, new_cnt, subr_point_map, affected_points, cutoffs_p, distances);
             //hout<<"4 affected_points.size="<<affected_points.size()<<endl;
-        } else {
+        } 
+        else 
+        {
             
             //If the size of affected_points is zero there are no penetrating points
             //Terminate the function with 1 to indicate succesful relocation of point
@@ -961,6 +990,19 @@ int Generate_Network::One_penetrating_point(const double &d_s, const double &d_c
     
     //Calculate distance of segment P0S
     double d1 = P0.distance_to(S);
+
+    //Check the distance is at least the cutoff distance
+    //If it is below the cutoff distance, penetrations are not being handled properly
+    if (d1 - d_c < Zero)
+    {
+        hout << "Error in One_penetrating_point: Distance (d1) between last point in vector new_cnt and a penetrating point is less than the cutoff distance." << endl;
+        hout << "S=" << S.str() << endl;
+        hout << "P0=" << P0.str() << endl;
+        hout << "N=" << N.str() << endl;
+        hout << "dp=" << N.distance_to(S) << endl;
+        hout << "d_s=" << d_s << " d1=" << d1 << " d_c=" << d_c << endl;
+        return 0;
+    }
     
     //This variable is used twice
     double d_s2 = d_s*d_s;
@@ -972,6 +1014,7 @@ int Generate_Network::One_penetrating_point(const double &d_s, const double &d_c
     
     //Calculate distance from segment P0S to point N'
     double tmp = d_s2 - l1 * l1;
+
     //If the quantity tmp is negative, there is an error
     if (tmp < Zero && abs(tmp) > Zero)
     {
@@ -1497,74 +1540,56 @@ int Generate_Network::Add_cnt_point_to_overlapping_regions_map(const Geom_sample
             }
         }
 
-        //Calculate default region
-        int t = Calculate_t(a, b, c, n_subregions[0], n_subregions[1]);
-        if (t >= tot_regions || t < 0)
-        {
-            hout << "Error in Add_cnt_point_to_overlapping_regions_map. Point belongs to a subregion outside the range of subregions." << endl;
-            hout << "Subregion number (t) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
-            hout << "a=" << a << " b=" << b << " c=" << c << endl;
-            return 0;
-        }
+        //Get all the subregion coordinates in a 2D vector to add P to multiple subregions
+        //Initialize coordinates with zero
+        vector<vector<int> > all_coords(3, vector<int>(1, 0));
 
-        //Add the map from subregion to local point number: t->local_num
-        subr_point_map[t].push_back(local_num);
+        //Set defaul coordinates as first element of each vector in the 2D vector
+        all_coords[0][0] = a;
+        all_coords[1][0] = b;
+        all_coords[2][0] = c;
 
-        //Check if P needs to be added to more regions due to their overlapping
-        //Check the flag for the subregion's a-coordinate
-        if (f_regions[0] != 0) 
+        //Add coordinates for non-zero flags (if any)
+        for (int i = 0; i < 3; i++)
         {
-            //Calculate the region
-            t = Calculate_t(a + f_regions[0], b, c, n_subregions[0], n_subregions[1]);
-            if (t >= tot_regions || t < 0)
+            //Check if flag is non-zero
+            if (f_regions[i] != 0)
             {
-                hout << "Error in Add_cnt_point_to_overlapping_regions_map. Point belongs to a subregion outside the range of subregions." << endl;
-                hout << "Subregion number (t0) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
-                hout << "a=" << a << " b=" << b << " c=" << c << endl;
-                hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
-                return 0;
+                //Add coordinate of overlapping subregion
+                all_coords[i].push_back(all_coords[i][0] + f_regions[i]);
             }
-
-            //Add the map from subregion to local point number: t->local_num
-            subr_point_map[t].push_back(local_num);
         }
 
-        //Check the flag for the subregion's b-coordinate
-        if (f_regions[1] != 0) 
+        //Add point P to all subregions indicated by all_coords
+        for (size_t i = 0; i < all_coords[0].size(); i++)
         {
-            //Calculate the region
-            t = Calculate_t(a, b + f_regions[1], c, n_subregions[0], n_subregions[1]);
-            if (t >= tot_regions || t < 0)
+            for (size_t j = 0; j < all_coords[1].size(); j++)
             {
-                hout << "Error in Add_cnt_point_to_overlapping_regions_map. Point belongs to a subregion outside the range of subregions." << endl;
-                hout << "Subregion number (t1) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
-                hout << "a=" << a << " b=" << b << " c=" << c << endl;
-                hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
-                return 0;
+                //
+                for (size_t k = 0; k < all_coords[2].size(); k++)
+                {
+                    //Calculate subregion
+                    int t = Calculate_t(all_coords[0][i], all_coords[1][j], all_coords[2][k], n_subregions[0], n_subregions[1]);
+
+                    //Check subregion is valid
+                    if (t >= tot_regions || t < 0)
+                    {
+                        hout << "Error in Add_cnt_point_to_overlapping_regions_map. Point belongs to a subregion outside the range of subregions." << endl;
+                        hout << "Subregion number is " << t << ". Maximum number of subregions is " << tot_regions << endl;
+                        hout << "a=" << all_coords[0][i] << " b=" << all_coords[1][j] << " c=" << all_coords[2][k] << endl;
+                        if (!i && !j && !k)
+                        {
+                            hout << "Default subregion is:" << Calculate_t(all_coords[0][0], all_coords[1][0], all_coords[2][0], n_subregions[0], n_subregions[1]) << endl;
+                            hout<<"Default coordinates: a = " << all_coords[0][0] << " b = " << all_coords[1][0] << " c = " << all_coords[2][0] << endl;
+                        }
+                        return 0;
+                    }
+
+                    //Add the map from subregion to local point number: t->local_num
+                    subr_point_map[t].push_back(local_num);
+                }
             }
-
-            //Add the map from subregion to local point number: t->local_num
-            subr_point_map[t].push_back(local_num);
         }
-
-        //Check the flag for the subregion's c-coordinate
-        if (f_regions[2] != 0) 
-        {
-            //Calculate the region
-            t = Calculate_t(a, b, c + f_regions[2], n_subregions[0], n_subregions[1]);
-            if (t >= tot_regions || t < 0)
-            {
-                hout << "Error in Add_cnt_point_to_overlapping_regions_map. Point belongs to a subregion outside the range of subregions." << endl;
-                hout << "Subregion number (t2) is " << t << ". Maximum number of subregions is " << tot_regions << endl;
-                hout << "a=" << a << " b=" << b << " c=" << c << endl;
-                hout << "f_regions[0]=" << f_regions[0] << " f_regions[1]=" << f_regions[1] << " f_regions[2]=" << f_regions[2] << endl;
-                return 0;
-            }
-
-            //Add the map from subregion to local point number: t->local_num
-            subr_point_map[t].push_back(local_num);
-        }
-
     }
     
     return 1;

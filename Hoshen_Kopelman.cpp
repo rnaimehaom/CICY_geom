@@ -253,11 +253,8 @@ int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, co
                 //hout <<"P1="<<P1<<" CNT1="<<CNT1<<" P2="<<P2<<" CNT2="<<CNT2;
                 //hout<<" r1="<<radii[CNT1]<<" r2="<<radii[CNT2]<<endl;
                 
-                //Check if:
-                //The points belong to different CNTs, only when the CNTs are different
+                //Check if the points belong to different CNTs, only when the CNTs are different
                 //the distance between points is calculated
-                //AND
-                //The contact CNT1-CNT2 has not been visited yet
                 if (CNT1 != CNT2) {
                     
                     //Calculate the distance between points
@@ -267,13 +264,16 @@ int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, co
                     //Calculate the junction distance
                     double dist_junc = dist_cnts - radii[CNT1] - radii[CNT2];
                     if (dist_junc < cutoffs.van_der_Waals_dist)
-                    {/* /
-                        hout << "Junction distance too small dist_junc=" << dist_junc << " dist_cnts=" << dist_cnts << endl;
-                        hout<<"P1="<<points_cnt[P1].str()<<" sectioned_domain_cnt[i="<<i<<"][j="<<j<<"]="<<sectioned_domain_cnt[i][j]<<endl;
-                        hout<<"P2="<<points_cnt[P2].str()<<" sectioned_domain_cnt[i="<<i<<"][k="<<k<<"]="<<sectioned_domain_cnt[i][k]<<endl;
-                        hout <<"P1="<<P1<<" CNT1="<<CNT1<<" P2="<<P2<<" CNT2="<<CNT2;
-                        hout<<" r1="<<radii[CNT1]<<" r2="<<radii[CNT2]<<endl;
-                        return 0;// */
+                    {//
+                        if (dist_junc < Zero)
+                        {
+                            hout << "Junction distance too small dist_junc=" << dist_junc << " dist_cnts=" << dist_cnts << endl;
+                            hout << "P1=" << points_cnt[P1].str() << " sectioned_domain_cnt[i=" << i << "][j=" << j << "]=" << sectioned_domain_cnt[i][j] << endl;
+                            hout << "P2=" << points_cnt[P2].str() << " sectioned_domain_cnt[i=" << i << "][k=" << k << "]=" << sectioned_domain_cnt[i][k] << endl;
+                            hout << "P1=" << P1 << " CNT1=" << CNT1 << " P2=" << P2 << " CNT2=" << CNT2;
+                            hout << " r1=" << radii[CNT1] << " r2=" << radii[CNT2] << endl;
+                            return 0;
+                        }// */
 
                         //The distance between points might be less than the van der Waals
                         //distance if penetrations are allowed or Abaqus causes them
