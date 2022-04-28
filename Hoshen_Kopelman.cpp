@@ -264,7 +264,7 @@ int Hoshen_Kopelman::Label_cnts_in_window(const vector<Point_3D> &points_cnt, co
                     //Calculate the junction distance
                     double dist_junc = dist_cnts - radii[CNT1] - radii[CNT2];
                     if (dist_junc < cutoffs.van_der_Waals_dist)
-                    {//
+                    {/* /
                         if (dist_junc < Zero)
                         {
                             hout << "Junction distance too small dist_junc=" << dist_junc << " dist_cnts=" << dist_cnts << endl;

@@ -32,6 +32,8 @@ int Contact_grid::Generate_contact_grid(const int &window, const string &particl
     
     //Calculate the largest overlapping between the one for CNTs and the one for GNPs
     double max_overlapping = max(sample_geom.gs_overlap_cnt, sample_geom.gs_overlap_gnp);
+    //max_overlapping = max_overlapping * 1.05;
+    //hout << "max_overlapping=" << max_overlapping << endl;
     
     //Check if the number of regions needs to be adjusted
     //hout << "Adjust_regions_if_needed" << endl;
@@ -172,11 +174,11 @@ int Contact_grid::Calculate_region_coordinates(const cuboid &window_geom, const 
 int Contact_grid::Calculate_overlapping_flags(const cuboid &window_geom, const Point_3D &point, const double &overlapping, const int &a, const int &b, const int &c, const int n_regions[], const double l_regions[], int f_regions[])
 {
     //Coordinates of non-overlaping region the point belongs to
-    double x1 = a*l_regions[0] + window_geom.poi_min.x;
+    double x1 = (double)a*l_regions[0] + window_geom.poi_min.x;
     double x2 = x1 + l_regions[0];
-    double y1 = b*l_regions[1] +  window_geom.poi_min.y;
+    double y1 = (double)b*l_regions[1] +  window_geom.poi_min.y;
     double y2 = y1 + l_regions[1];
-    double z1 = c*l_regions[2] +  window_geom.poi_min.z;
+    double z1 = (double)c*l_regions[2] +  window_geom.poi_min.z;
     double z2 = z1 + l_regions[2];
     
     //Assign value of flag according to position of point
