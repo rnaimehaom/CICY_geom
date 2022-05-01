@@ -646,15 +646,6 @@ int Generate_Network::Check_penetration(
     int &point_overlap_count_unique, 
     Point_3D &new_point)const
 {
-    //Get the sub-region the point belongs to
-    //hout<<"Get_subregion 0"<<endl;
-    //int subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
-    int subregion = Get_cnt_point_subregion_with_layer(geom_sample, n_subregions, new_point);
-    
-    //If the sub-region is -1, then the point is in the boundary layer, so there is no need to check penetration
-    if (subregion == -1) {
-        return 1;
-    }
     //This vector will store the coordintes of the points that the input "point" is penetrating
     vector<Point_3D> affected_points;
     //This vector stores the distance at which the two points should be
@@ -662,66 +653,85 @@ int Generate_Network::Check_penetration(
     //This vector stores the distance at which the two points actually are
     vector<double> distances;
     
-    //Iteration 0:
-    //Check if there are any penetrations in the corresponding sub-region
-    //hout<<endl<<"Get_penetrating_points 0"<<endl;
-    Get_penetrating_points(cnts, global_coordinates, sectioned_domain[subregion], radii, rad_p_dvdw, new_point, affected_points, cutoffs_p, distances);
-    //hout<<"1 affected_points.size="<<affected_points.size()<<endl;
-    
-    //Check if there are any penetration within the CNT
-    //hout<<"Get_penetrating_points_within_cnt 0"<<endl;
-    //hout<<"point="<<point.str()<<endl;
-    Get_penetrating_points_within_cnt(subregion, ignr, cnt_cutoff, cnt_cutoff2, new_point, new_cnt, subr_point_map, affected_points, cutoffs_p, distances);
-    //hout<<"2 affected_points.size="<<affected_points.size()<<endl;
-    
-    //Update the counter of overlapping points only when an overlapping point was found the first time
-    if (affected_points.size()) {
-        point_overlap_count_unique++;
-    }
-    
-    //I move the point up to max_attempts times. If there is still penetration then I delete it
-    for (int attempts = 0; attempts < MAX_ATTEMPTS_CNT; attempts++) 
+    //Variable to count the number of attempts
+    int attempts = 0;
+
+    //Loop while the maximum numbe of attempts has not been reached
+    while (attempts <= MAX_ATTEMPTS_CNT) 
     {
         //hout << "attempts=" << attempts << " new_CNT=" << new_cnt.size()<< endl;
         
-        //--------------------------------------------------------------------------------------------
+        //Get the sub-region the point belongs to
+        //hout<<"Get_subregion"<<endl;
+        //int subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
+        int subregion = Get_cnt_point_subregion_with_layer(geom_sample, n_subregions, new_point);
+
+        //If the sub-region is -1, then the point is in the boundary layer, so there is no need to check penetration
+        if (subregion == -1) {
+            //If the sub-region is -1, then the point is in te boundary layer,
+            //so there is no need to check penetration
+            return 1;
+        }
+        /* /else if (subregion >= n_subregions[0] * n_subregions[1] * n_subregions[2]) {
+            hout << "Error in Check_mixed_interpenetration. Invalid subregion." << endl;
+            hout << "Subregion number: " << subregion << ". Maximum subregions: " << n_subregions[0] * n_subregions[1] * n_subregions[2] << endl;
+            return 0;
+        }// */
+
+        //Check if there are any penetrations in the corresponding sub-region
+        //hout<<endl<<"Get_penetrating_points"<<endl;
+        Get_penetrating_points(cnts, global_coordinates, sectioned_domain[subregion], radii, rad_p_dvdw, new_point, affected_points, cutoffs_p, distances);
+        //hout<<"affected_points.size="<<affected_points.size()<<endl;
+
+        //Check if there are any penetration within the CNT
+        //hout<<"Get_penetrating_points_within_cnt"<<endl;
+        //hout<<"point="<<point.str()<<endl;
+        Get_penetrating_points_within_cnt(subregion, ignr, cnt_cutoff, cnt_cutoff2, new_point, new_cnt, subr_point_map, affected_points, cutoffs_p, distances);
+        //hout<<"affected_points.size="<<affected_points.size()<<endl;
+        
         //Check if there are any penetrating points
-        if (affected_points.size()) {
+        if (affected_points.size()) 
+        {
+            //Update the counter of overlapping points only when an overlapping point was found the first time
+            if (!attempts) {
+                point_overlap_count_unique++;
+            }
+
             //Update the counter of overlaps
             point_overlap_count++;
 
             //for (size_t i = 0; i < affected_points.size(); i++)
                 //hout << " affected_points["<<i<<"]=" << affected_points[i].str()<<" d="<< affected_points[i].distance_to(new_point) << endl;
-            
+
             //Find the new point
             //hout << "Point " << global_coordinates.size()-1+new_cnt.size() << " in CNT " << cnts.size() << " is overlapping." <<endl;
             //hout << "Moved a point from initial position "<<new_point.str()<<endl;
             //Check if seed point
-            if (new_cnt.empty() || !is_prev_in_np) {
-                
+            if (new_cnt.empty() || !is_prev_in_np) 
+            {
                 //Point is a seed, so then use functions that move the point
                 //hout << "Move_point" << endl;
                 Move_point(cutoffs_p, distances, affected_points, new_point);
             }
-            else {
-                
+            else 
+            {
                 //If point is not a seed, use functions that rotate the CNT segment
                 //hout << "Move_point_by_rotating_cnt_segment" << endl;
-                if (!Move_point_by_rotating_cnt_segment(nanotube_geo.step_length, new_cnt, cutoffs_p, distances, affected_points, new_point)) 
+                if (!Move_point_by_rotating_cnt_segment(nanotube_geo.step_length, new_cnt, cutoffs_p, distances, affected_points, new_point))
                 {
                     //ERROR MESSAGE
                     //These variables will give me the region cordinates of the region that a point belongs to
                     int a, b, c;
-                    hout<<"Error in Check_penetration when calling Move_point_by_rotating_cnt_segment"<<endl;
+                    hout << "Error in Check_penetration when calling Move_point_by_rotating_cnt_segment" << endl;
                     hout << "CNTs generated=" << cnts.size() << " Points in new CNT=" << new_cnt.size() << endl;
                     hout << "affected_points.size()=" << affected_points.size() << endl;
                     for (size_t i = 0; i < affected_points.size(); i++)
                     {
                         //Calculate the subregion-coordinates
                         Get_subregion_coordinates_with_layer(geom_sample, affected_points[i], n_subregions, a, b, c);
-                        hout << "P="<< affected_points[i].str()<<" a=" << a << " b=" << b << " c=" << c << " subregion=" << Get_cnt_point_subregion_with_layer(geom_sample, n_subregions, affected_points[i])<<endl;
+                        hout << "P=" << affected_points[i].str() << " a=" << a << " b=" << b << " c=" << c << " subregion=" << Get_cnt_point_subregion_with_layer(geom_sample, n_subregions, affected_points[i]) << endl;
                     }
-                    hout << "new_point=" << new_point.str() << " subregion="<<subregion<<endl;
+                    hout << "new_point=" << new_point.str() << " subregion=" << subregion << endl;
                     if (Is_point_inside_cuboid(geom_sample.np_domain, new_point))
                     {
                         //Calculate the subregion-coordinates
@@ -741,59 +751,38 @@ int Generate_Network::Check_penetration(
                 }
             }
             //hout << "Moved a point to final position "<<new_point.str()<<endl;
-            
+
             //Check that the new point is within the permited orientation repect to the previous segment
             //hout<<"Check_segment_orientation"<<endl;
-            if (!Check_segment_orientation(new_point, new_cnt)) {
+            if (!Check_segment_orientation(new_point, new_cnt)) 
+            {
                 //hout << "Deleted CNT number " << cnts.size() << " of size " << new_cnt.size();
                 //hout << " (the point is not in a valid orientation)" << endl;
                 //When not in a valid position it cannot be moved again so a new CNT is needed
                 return 0;
             }
-            
-            //Need to update point sub-region as it could be relocated to a new sub-region
-            //hout<<"Get_subregion 1 point="<< new_point.str()<<endl;
-            //subregion = Get_cnt_point_subregion(geom_sample, n_subregions, new_point);
-            subregion = Get_cnt_point_subregion_with_layer(geom_sample, n_subregions, new_point);
-            //Check if after moving the point it is now in the boundary layer
-            if (subregion == -1) {
-                //If the point is now in the boundary layer, terminate the function
-                //there is no need to continue checking
-                return 1;
-            }
-            
-            //Need to clear the vectors affected_points, contact_coordinates and temporal_contacts so they are used again with the new point
-            affected_points.clear();
-            cutoffs_p.clear();
-            distances.clear();
-            
-            //Check if there are any penetrations in the corresponding sub-region
-            //for the point in its new position
-            //hout << "Get_penetrating_points" << endl;
-            //hout<<"sectioned_domain.size=" << sectioned_domain.size() << " sectioned_domain[" << subregion << "].size=" << sectioned_domain[subregion].size() << endl;
-            Get_penetrating_points(cnts, global_coordinates, sectioned_domain[subregion], radii, rad_p_dvdw, new_point, affected_points, cutoffs_p, distances);
-            //hout<<"3 affected_points.size="<<affected_points.size()<<endl;
-            
-            //Check if there are any penetration within the CNT
-            //hout<<"Get_penetrating_points_within_cnt"<<endl;
-            //hout<<"new_point="<< new_point.str()<<endl;
-            Get_penetrating_points_within_cnt(subregion, ignr, cnt_cutoff, cnt_cutoff2, new_point, new_cnt, subr_point_map, affected_points, cutoffs_p, distances);
-            //hout<<"4 affected_points.size="<<affected_points.size()<<endl;
-        } 
-        else 
+        }
+        else
         {
-            
             //If the size of affected_points is zero there are no penetrating points
             //Terminate the function with 1 to indicate succesful relocation of point
             return 1;
         }
-        //hout<<"for end"<<endl;
+
+        //Clear the vectors affected_points, contact_coordinates and temporal_contacts
+        //so they are used in the next iteration
+        affected_points.clear();
+        cutoffs_p.clear();
+        distances.clear();
+
+        //Increase the number of attempts
+        attempts++;
+        //hout<<"while end"<<endl;
     }
     
-    //If the last iteration is reached and there are still affected points
-    //then the point could not be accommodated, so terminate with 0, i.e.,
-    //it will terminate with 0 when affected_points is not empty
-    return affected_points.empty();
+    //The point could not be accomodated so terminate with false
+    //hout<<"Point could not be accomodated"<<endl;
+    return 0;
 }
 //---------------------------------------------------------------------------
 //This function returns the subregion a point belongs to
