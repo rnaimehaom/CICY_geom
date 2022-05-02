@@ -1754,8 +1754,24 @@ int Hoshen_Kopelman::Add_gnp_point_to_vectors_if_not_repeated(const Point_3D& P,
     return 1;
 }
 //This function merges CNT and GNP labels to make mixed clusters
-int Hoshen_Kopelman::Make_mixed_clusters(const int &n_labels, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, vector<int> &labels_cnt, vector<int> &labels_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, int &n_clusters)
+int Hoshen_Kopelman::Make_mixed_clusters(
+    const int &n_labels, 
+    const Cutoff_dist &cutoffs, 
+    const vector<Point_3D> &points_cnt, 
+    const vector<double> &radii, 
+    const vector<vector<long int> > &sectioned_domain_cnt, 
+    const vector<GNP> &gnps, 
+    const vector<vector<int> > &sectioned_domain_gnp, 
+    vector<int> &labels_cnt, 
+    vector<int> &labels_gnp, 
+    vector<vector<long int> > &structure_gnp, 
+    vector<Point_3D> &points_gnp, 
+    int &n_clusters)
 {
+    //Vector of labels of labels for mixed particles
+    vector<int> labels_mixed(labels_cnt.size() + labels_gnp.size(), -1);
+    vector<int> labels_labels_mixed(n_labels, -1);
+
     //Vector to store all GNP points in contact with CNTs before contact segments are compressed
     vector<Point_3D> contact_points_gnp;
     
@@ -1769,31 +1785,41 @@ int Hoshen_Kopelman::Make_mixed_clusters(const int &n_labels, const Cutoff_dist 
     
     //Fill the adjacency matrix and the variables needed to compress contact segments
     //hout<<"Find_adjacent_labels"<<endl;
-    if (!Find_adjacent_labels(labels_cnt, labels_gnp, cutoffs, points_cnt, radii, sectioned_domain_cnt, gnps, sectioned_domain_gnp, contact_points_gnp, point_contacts, point_contacts_dist, gnp_cnt_point_contacts, adj_labels)) {
+    if (!Find_adjacent_labels(n_labels, labels_cnt, labels_gnp, cutoffs, points_cnt, radii, sectioned_domain_cnt, gnps, sectioned_domain_gnp, contact_points_gnp, point_contacts, point_contacts_dist, gnp_cnt_point_contacts, labels_mixed, labels_labels_mixed)) 
+    {
         hout<<"Error in Make_mixed_clusters when calling Find_adjacent_labels"<<endl;
+        return 0;
+    }
+
+    //Clean up the labels to find the proper labels, i.e. merged and consecutive labels starting at 0
+    //hout<<"Cleanup_labels mixed"<<endl;
+    if (!Cleanup_labels(labels_labels_mixed, labels_mixed, n_clusters)) 
+    {
+        hout << "Error in Make_cnt_clusters when calling Cleanup_labels" << endl;
         return 0;
     }
     
     //Compress contacts
     //hout<<"Compress_mixed_contacts"<<endl;
-    if (!Compress_mixed_contacts(cutoffs, point_contacts, point_contacts_dist, gnp_cnt_point_contacts, contact_points_gnp, structure_gnp, points_gnp)) {
+    if (!Compress_mixed_contacts(cutoffs, point_contacts, point_contacts_dist, gnp_cnt_point_contacts, contact_points_gnp, structure_gnp, points_gnp)) 
+    {
         hout<<"Error in Make_mixed_clusters when calling Compress_mixed_contacts"<<endl;
         return 0;
     }
-    
-    //Merge labels
-    //hout<<"Merge_cnt_and_gnp_labels"<<endl;
-    if (!Merge_cnt_and_gnp_labels(n_labels, labels_cnt, labels_gnp, adj_labels, n_clusters)) {
-        hout<<"Error in Make_mixed_clusters when calling Merge_labels"<<endl;
+
+    //Update CNT and GNP labels
+    if (!Update_cnt_and_gnp_labels(labels_mixed, labels_cnt, labels_gnp))
+    {
+        hout << "Error in Make_mixed_clusters when calling Update_cnt_and_gnp_labels" << endl;
         return 0;
     }
-    //hout<<"Make_mixed_clusters end"<<endl;
     
     return 1;
 }
 //This function finds the CNTs in contact with GNPs, then an adjacency matrix is filled to
 //merge the CNT and GNP clusters
 int Hoshen_Kopelman::Find_adjacent_labels(
+    const int& n_labels,
     const vector<int> &labels_cnt, 
     const vector<int> &labels_gnp, 
     const Cutoff_dist &cutoffs, 
@@ -1805,9 +1831,26 @@ int Hoshen_Kopelman::Find_adjacent_labels(
     vector<Point_3D> &contact_points_gnp, 
     map<long int, map<int, long int> > &point_contacts, 
     map<long int, map<int, double> > &point_contacts_dist, 
-    vector<map<int, set<long int> > > &gnp_cnt_point_contacts, 
-    vector<set<int> > &adj_labels)
+    vector<map<int, set<long int> > > &gnp_cnt_point_contacts,
+    vector<int>& labels_mixed,
+    vector<int>& labels_labels_mixed)
 {
+    //Initialize vectors labels_mixed and labels_labels_mixed
+    if (!Initialize_mixed_labels(labels_cnt, labels_gnp, labels_mixed, labels_labels_mixed))
+    {
+        hout << "Error in Find_adjacent_labels when calling Initialize_mixed_labels" << endl;
+        return 0;
+    }
+
+    //new_label will take the value of the newest cluster
+    //When having mixed particles, there is a non-zero number of clusters
+    //Thus new_label is initialized with the size of labels_labels_mixed,
+    //which is the number of CNT clusters plus GNP clusters
+    int new_label = (int)labels_labels_mixed.size();
+
+    //Get the number of CNTs
+    int n_cnts = labels_cnt.size();
+
     //Create a vector of visited contacts
     vector<set<long int> > visited(gnps.size());
     
@@ -1815,18 +1858,22 @@ int Hoshen_Kopelman::Find_adjacent_labels(
     Generate_Network GN;
     
     //Iterate over the subregions
-    for (int i = 0; i < (int)sectioned_domain_gnp.size(); i++) {
+    for (int i = 0; i < (int)sectioned_domain_gnp.size(); i++) 
+    {
         //hout<<"i="<<i<<endl;
         
         //Iterate over the GNPs in the given subregion
-        for (int j = 0; j < (int)sectioned_domain_gnp[i].size(); j++) {
+        for (int j = 0; j < (int)sectioned_domain_gnp[i].size(); j++) 
+        {
             //hout<<"j="<<j<<endl;
             
             //Get the current GNP
             int GNP = sectioned_domain_gnp[i][j];
+            //hout << "GNP"<<GNP<<" sectioned_domain[" << i << "][" << j << "]" << endl;
             
             //Itereate over the points in the given subregion
-            for (int k = 0; k < (int)sectioned_domain_cnt[i].size(); k++) {
+            for (int k = 0; k < (int)sectioned_domain_cnt[i].size(); k++) 
+            {
                 //hout<<"k="<<k<<endl;
                 
                 //Get current point
@@ -1834,9 +1881,12 @@ int Hoshen_Kopelman::Find_adjacent_labels(
                 
                 //Get current CNT
                 int CNT = points_cnt[P].flag;
+                //hout << "CNT"<<CNT<<" sectioned_domain[" << i << "][" << k << "] P["<<P<<"]" << endl;
                 
                 //Check if the GNP-CNT contact at point P has already been visited
-                if (visited[GNP].find(P) != visited[GNP].end()) {
+                if (visited[GNP].find(P) == visited[GNP].end()) 
+                {
+                    //hout <<"Visiting CNT" << CNT << "-" << "GNP" << GNP << endl;
                     
                     //The GNP-CNT contact has not been visited, so calculate the distance
                     //between CNT point and GNP
@@ -1857,39 +1907,84 @@ int Hoshen_Kopelman::Find_adjacent_labels(
                     }
                     
                     //Check if there is tunneling
-                    if (dist_junc - cutoffs.tunneling_dist <= Zero) {
+                    if (dist_junc - cutoffs.tunneling_dist <= Zero) 
+                    {
+                        //hout << "CNT" << CNT << "-" << "GNP" << GNP << endl;
+
+                        //Get the particle number of the GNP for the mixed labels
+                        int particle2 = GNP + n_cnts;
+
+                        //Perform HK76
+                        if (!HK76(CNT, particle2, new_label, labels_mixed, labels_labels_mixed))
+                        {
+                            hout << "Error in Find_adjacent_labels when calling HK76" << endl;
+                            return 0;
+                        }
                         
                         //Get the GNP point number
                         long int P_gnp_num = (long int)contact_points_gnp.size();
                         
                         //Save the correspoding point contacts
                         point_contacts[P][GNP] = P_gnp_num;
+                        //hout << "point_contacts[" << P << "][" << GNP << "] = " << P_gnp_num << endl;
                         
                         //Save the junction distance
                         point_contacts_dist[P][GNP] = dist_junc;
+                        //hout << "point_contacts_dist[" << P << "][" << GNP << "] = " << dist_junc << endl;
                         
                         //Add the point to the vector of GNP points
                         contact_points_gnp.push_back(P_gnp);
                         
                         //Add the CNT point to the GNP-CNT contact
                         gnp_cnt_point_contacts[GNP][CNT].insert(P);
-                        
-                        //Get the CNT and GNP labels
-                        int l_cnt = labels_cnt[CNT];
-                        int l_gnp = labels_gnp[GNP];
-                        
-                        //Fill the adjacency matrix for the labels
-                        adj_labels[l_cnt].insert(l_gnp);
-                        adj_labels[l_gnp].insert(l_cnt);
+                        //hout << "gnp_cnt_point_contacts[" << GNP << "][" << CNT << "].insert(" << P <<")" << endl;
                         
                         //Add the contact to the vector of visited contacts
                         visited[GNP].insert(P);
+                        //hout << "visited[" << GNP << "].insert(" << P << ")" << endl;
                     }
                 }
             }
         }
     }
     
+    return 1;
+}
+//This function initialices the vectors labels_mixed and labels_labels_mixed
+int Hoshen_Kopelman::Initialize_mixed_labels(const vector<int>& labels_cnt, const vector<int>& labels_gnp, vector<int>& labels_mixed, vector<int>& labels_labels_mixed)
+{
+    //Initialized labels_mixed with the CNT labels
+    for (size_t i = 0; i < labels_cnt.size(); i++)
+    {
+        //Set the mixed label i to be the same as the label of CNT i
+        labels_mixed[i] = labels_cnt[i];
+
+        //Check if label of CNT i is actually a label
+        if (labels_cnt[i] != -1)
+        {
+            //Increase the count of nanoparticles with label labels_cnt[i]
+            labels_labels_mixed[labels_cnt[i]] += 1;
+        }
+    }
+
+    //Get the number of CNTs
+    size_t n_cnts = labels_cnt.size();
+
+    //Initialized labels_mixed with the GNP labels
+    for (size_t i = 0; i < labels_gnp.size(); i++)
+    {
+        //Set the mixed label i to be the same as the label of GNP i
+        //Mixed label i is actually i+n_cnts
+        labels_mixed[i + n_cnts] = labels_gnp[i];
+
+        //Check if label of GNP i is actually a label
+        if (labels_gnp[i] != -1)
+        {
+            //Increase the count of nanoparticles with label labels_cnt[i]
+            labels_labels_mixed[labels_gnp[i]] += 1;
+        }
+    }
+
     return 1;
 }
 //This function compresses the "contact segments" for CNT-CNT contacts
@@ -2010,134 +2105,27 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
     
     return 1;
 }
-//This function merges the labels using DFS and then renumbers the CNT and GNP labels with
-//the merged label numbers
-int Hoshen_Kopelman::Merge_cnt_and_gnp_labels(const int &n_labels, vector<int> &labels_cnt, vector<int> &labels_gnp, const vector<set<int> > &adj_labels, int &n_clusters)
+//This functions takes the proper labels from the labels_mixed vector and updates the vectors
+//labels_cnt and labels_gnp
+int Hoshen_Kopelman::Update_cnt_and_gnp_labels(const vector<int>& labels_mixed, vector<int>& labels_cnt, vector<int>& labels_gnp)
 {
-    //Label map for merging CNT and GNP labels
-    vector<int> label_map(n_labels);
-    
-    //Perform a DFS on the adjacency matrix of the labels
-    vector<vector<int> > mixed_clusters;
-    //hout<<"DFS_on_labels"<<endl;
-    if (!DFS_on_labels(n_labels, adj_labels, mixed_clusters)) {
-        hout<<"Error in Merge_labels when calling DFS_on_labels"<<endl;
-        return 0;
+    //Iterate over the CNT labels
+    for (size_t i = 0; i < labels_cnt.size(); i++)
+    {
+        //Copy the label from vector labels_mixed into vector labels_cnt
+        labels_cnt[i] = labels_mixed[i];
     }
-    
-    //The number of clusters is equal to the size of mixed_clusters
-    n_clusters = (int)mixed_clusters.size();
-    
-    //Fill the map for the merged labels
-    for (int i = 0; i < (int)mixed_clusters.size(); i++) {
-        
-        //Iterate over all labels in mixed cluster i
-        for (int j = 0; j < (int)mixed_clusters[i].size(); j++) {
-            
-            //Get the current label of cluster i
-            int label = mixed_clusters[i][j];
-            
-            //Set the label map as label->i
-            label_map[label] = i;
-        }
+
+    //Get the number of CNT labels
+    size_t n_labels_cnt = labels_cnt.size();
+
+    //Iterate over the GNP labels
+    for (size_t i = 0; i < labels_gnp.size(); i++)
+    {
+        //Copy the label from vector labels_mixed into vector labels_gnp
+        labels_gnp[i] = labels_mixed[i + n_labels_cnt];
     }
-    
-    //Renumber the CNT labels with the merged labels using label_map
-    //hout<<"Map_labels CNT"<<endl;
-    if (!Map_labels(label_map, labels_cnt)) {
-        hout<<"Error in Merge_labels when calling Map_labels (CNTs)"<<endl;
-        return 0;
-    }
-    
-    //Renumber the GNP labels with the merged labels using label_map
-    //hout<<"Map_labels GNP"<<endl;
-    if (!Map_labels(label_map, labels_gnp)) {
-        hout<<"Error in Merge_labels when calling Map_labels (GNPs)"<<endl;
-        return 0;
-    }
-    
-    return 1;
-}
-//This function performs DFS on the adjacency matrix of labels to group the CNT and GNP labels
-//that are part of the same cluster of mixed particles
-int Hoshen_Kopelman::DFS_on_labels(const int &n_labels, const vector<set<int> > &adj_labels, vector<vector<int> > &mixed_clusters)
-{
-    //Set up the vector of visited labels fo the DFS
-    vector<int> visited_labels(n_labels, 0);
-    
-    //Iterate over the labels
-    for (int i = 0; i < n_labels; i++) {
-        
-        //Check if label i has already been visited
-        if (!visited_labels[i]) {
-            
-            //Set label i as visited
-            visited_labels[i] = 1;
-            
-            //Increase the size of the vector of mixed clusters to start a new cluster
-            mixed_clusters.push_back(vector<int>());
-            
-            //Add label i to the new cluster
-            mixed_clusters.back().push_back(i);
-            
-            //Explore all labels connected to label i
-            if (!Explore_labels(i, adj_labels, mixed_clusters, visited_labels)) {
-                hout<<"Error in Explore_labels when calling Explore_labels recursively"<<endl;
-                return 0;
-            }
-        }
-    }
-    
-    return 1;
-}
-int Hoshen_Kopelman::Explore_labels(const int &label, const vector<set<int> > &adj_labels, vector<vector<int> > &mixed_clusters, vector<int> &visited_labels)
-{
-    //Go through the labels connected to "label"
-    for (set<int>::const_iterator it = adj_labels[label].begin(); it != adj_labels[label].end(); it++) {
-        
-        //Get current label
-        int new_label = *it;
-        
-        //Check if the connected label has been visited
-        if (!visited_labels[new_label]) {
-            
-            //The label has not been visited, so set it as visited
-            visited_labels[new_label] = 1;
-            
-            //new_label is part of the current mixed cluster, so add it to the last mixed cluster
-            mixed_clusters.back().push_back(new_label);
-            
-            //Explore the labels connected to new_label
-            if (!Explore_labels(new_label, adj_labels, mixed_clusters, visited_labels)) {
-                hout<<"Error in Explore_labels when calling Explore_labels recursively"<<endl;
-                return 0;
-            }
-        }
-    }
-    
-    return 1;
-}
-int Hoshen_Kopelman::Map_labels(const vector<int> label_map, vector<int> &labels)
-{
-    //Renumber the labels with the merged labels using label_map
-    //hout<<"label_map.size="<<label_map.size()<<" labels.size="<<labels.size()<<endl;
-    for (int i = 0; i < (int)labels.size(); i++) {
-        
-        //Check if CNT i has a label assigned
-        if (labels[i] != -1) {
-            
-            //For clarity, get the old label of CNT i
-            int old_label = labels[i];
-            //hout<<"old_label="<<old_label<<endl;
-            
-            //Get the new label number using label_map
-            int new_label = label_map[old_label];
-            
-            //Assign the new label to the CNT
-            labels[i] = new_label;
-        }
-    }
-    
+
     return 1;
 }
 //In this function the clusters are made using the labels assugned by HK76
@@ -2818,12 +2806,18 @@ int Hoshen_Kopelman::Export_clusters(const int &percolation, const int &iter, co
     for (int i = 0; i < (int)clusters_cnt.size(); i++) {
         
         //Prepare filename for cluster i
-        string filename = pref_cl + "cnt_" + to_string(i) + ".vtk";
+        string filename = pref_cl + to_string(i) + "_cnts.vtk";
         
-        //Export cluster i with speficied name
-        if (!VTK_E.Export_cnts_in_cluster(points_cnt, structure_cnt, clusters_cnt[i], filename)) {
-            hout<<"Error in Export_clusters when calling VTK_E.Export_cnts_in_cluster i="<<i<<endl;
-            return 0;
+        //Export cluster i with speficied name if there are CNTs in the cluster
+        //Vector clusters_cnt[i] could be empty in the case of mixed fillers
+        if (clusters_cnt[i].size())
+        {
+            //hout << "CNT cluster i=" << i << " filename=" << filename << endl;
+            if (!VTK_E.Export_cnts_in_cluster(points_cnt, structure_cnt, clusters_cnt[i], filename))
+            {
+                hout << "Error in Export_clusters when calling VTK_E.Export_cnts_in_cluster i=" << i << endl;
+                return 0;
+            }
         }
     }
     
@@ -2849,12 +2843,18 @@ int Hoshen_Kopelman::Export_clusters(const int &percolation, const int &iter, co
     for (int i = 0; i < (int)clusters_gnp.size(); i++) {
         
         //Prepare filename for cluster i
-        string filename = pref_cl + "gnp_" + to_string(i) + ".vtk";
+        string filename = pref_cl + to_string(i) + "_gnps.vtk";
         
-        //Export cluster i with speficied name
-        if (!VTK_E.Export_gnps_in_cluster(gnps, clusters_gnp[i], filename)) {
-            hout<<"Error in Export_clusters when calling VTK_E.Export_gnps_in_cluster i="<<i<<endl;
-            return 0;
+        //Export cluster i with speficied name if there are GNPs in the cluster
+        //Vector clusters_gnp[i] could be empty in the case of mixed fillers
+        if (clusters_gnp[i].size())
+        {
+            //hout << "GNP cluster i=" << i << " filename=" << filename << endl;
+            if (!VTK_E.Export_gnps_in_cluster(gnps, clusters_gnp[i], filename)) 
+            {
+                hout << "Error in Export_clusters when calling VTK_E.Export_gnps_in_cluster i=" << i << endl;
+                return 0;
+            }
         }
     }
     
