@@ -62,7 +62,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(
         
         //There are CNTs, make clusters
         //hout<<"Make_cnt_clusters"<<endl;
-        if (!Make_cnt_clusters(points_cnt, radii, cutoffs, sectioned_domain_cnt, structure_cnt, labels_cnt, n_labels_cnt)) {
+        if (!Make_cnt_clusters(simu_para.particle_type, points_cnt, radii, cutoffs, sectioned_domain_cnt, structure_cnt, labels_cnt, n_labels_cnt)) {
             hout<<"Error in Determine_clusters when calling Make_cnt_clusters"<<endl;
             return 0;
         }
@@ -104,6 +104,13 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(
         //hout<<"Make_mixed_clusters"<<endl;
         if (!Make_mixed_clusters(n_total_labels, cutoffs, points_cnt, radii, sectioned_domain_cnt, gnps, sectioned_domain_gnp, labels_cnt, labels_gnp, structure_gnp, points_gnp, n_clusters)) {
             hout<<"Error in Determine_clusters when calling Make_mixed_clusters"<<endl;
+            return 0;
+        }
+
+        //Add first and last points to the CNT elements
+        //hout<<"Complete_cnt_elements (mix)"<<endl;
+        if (!Complete_cnt_elements(structure_cnt)) {
+            hout << "Error in Determine_clusters when calling Complete_cnt_elements" << endl;
             return 0;
         }
     }
@@ -182,7 +189,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(
     return 1;
 }
 //This functions makes CNT clusters
-int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_cnt, const vector<double> &radii, const Cutoff_dist &cutoffs, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, vector<int> &labels_cnt, int &n_labels_cnt)
+int Hoshen_Kopelman::Make_cnt_clusters(const string& particle_type, const vector<Point_3D> &points_cnt, const vector<double> &radii, const Cutoff_dist &cutoffs, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, vector<int> &labels_cnt, int &n_labels_cnt)
 {
     //Vector of labels of labels
     vector<int> labels_labels_cnt;
@@ -213,11 +220,15 @@ int Hoshen_Kopelman::Make_cnt_clusters(const vector<Point_3D> &points_cnt, const
         return 0;
     }
     
-    //Add first and last points to the elements
-    //hout<<"Complete_cnt_elements"<<endl;
-    if (!Complete_cnt_elements(structure_cnt)) {
-        hout << "Error in Make_cnt_clusters when calling Complete_cnt_elements" << endl;
-        return 0;
+    //Check if mixed or hybrid particles were generated
+    if (particle_type != "GNP_CNT_mix" && particle_type != "Hybrid_particles")
+    {
+        //Add first and last points to the CNT elements
+        //hout<<"Complete_cnt_elements"<<endl;
+        if (!Complete_cnt_elements(structure_cnt)) {
+            hout << "Error in Make_cnt_clusters when calling Complete_cnt_elements" << endl;
+            return 0;
+        }
     }
     
     return 1;
