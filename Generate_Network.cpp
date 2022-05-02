@@ -5357,7 +5357,8 @@ int Generate_Network::Get_gnp_penetrating_points(const double& step_lenght, cons
         }
         
         //Check if distance is below the cutoff
-        if (distance < cutoff) {
+        //Zero is added to avoid possible numerical errors
+        if (distance + Zero < cutoff) {
 
             //Check if the CNT segment length is larger than the GNP thickness
             //Also check this is not the frist point of the CNT (if this is the first CNT
