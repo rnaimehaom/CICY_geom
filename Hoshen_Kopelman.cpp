@@ -2045,6 +2045,7 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                     d_junction = point_contacts_dist.at(Pj1).at(GNPi);
                     
                     //Check if the points are close enough to be in the same segment
+                    //hout << "Pj1 - Pj0=" << Pj1 - Pj0 << endl;
                     if (Pj1 - Pj0 >= cutoffs.min_points) {
                         
                         //A new segment needs to be started
@@ -2061,9 +2062,11 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                         
                         //Add the GNP point number to the structure
                         structure_gnp[GNPi].push_back(P_gnp_num);
+                        //hout << "structure_gnp[" << GNPi << "].push_back(" << P_gnp_num << ")" << endl;
                         
                         //Add the shortest junction found to the vector of junctions
                         Junction j(Pj_junc, CNTj, "CNT", P_gnp_num, GNPi, "GNP", d_junc_min);
+                        //hout << "Pj_junc=" << Pj_junc << " CNTj=" << CNTj << " P_gnp_num=" << P_gnp_num << " GNPi=" << GNPi << endl;
                         junctions_mixed.push_back(j);
                         
                         //Add the junction point on the CNT to the vectors of elements
@@ -2074,6 +2077,9 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                         d_junc_min = d_junction;
                         Pi_junc = Pi1;
                         Pj_junc = Pj1;
+
+                        //Also reset the beginning of the segment to the last point of current segment
+                        Pj0 = Pj1;
                     }
                     else {
                         
@@ -2102,10 +2108,15 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                 
                 //Set the flag of the point
                 points_gnp.back().flag = GNPi;
+
+                //Add the GNP point number to the structure
+                structure_gnp[GNPi].push_back(P_gnp_num);
+                //hout << "structure_gnp[" << GNPi << "].push_back(" << P_gnp_num << ")" << endl;
                 
                 //Add the shortest junction found in the last (or only) segment
                 //to the vector of junctions
                 Junction j(Pj_junc, CNTj, "CNT", P_gnp_num, GNPi, "GNP", d_junc_min);
+                //hout << "Pj_junc=" << Pj_junc << " CNTj=" << CNTj << " P_gnp_num=" << P_gnp_num << " GNPi=" << GNPi << endl;
                 junctions_mixed.push_back(j);
                 
                 //Add the junction point on the CNT to the vectors of elements
@@ -2528,6 +2539,7 @@ int Hoshen_Kopelman::Group_junctions_mix_particle(const vector<Point_3D> &points
         //Get the cluster numbers of the two particles
         int L1 = labels_cnt[Pa1];
         int L2 = labels_gnp[Pa2];
+        //hout << "L1=" << L1 << " L2=" << L2 << endl;
         
         //Check that the two particles belong to the same cluster
         if (L1 != L2) {

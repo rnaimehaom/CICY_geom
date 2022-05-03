@@ -866,18 +866,22 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, con
         
         //Get current junction index
         int idx = cluster_mix_junctions_i[i];
+        //hout << "idx=" << idx << endl;
         
         //Get the point numbers of the mixed juntion
         long int Pcnt = junctions_mixed[idx].P1;
         long int Pgnp = junctions_mixed[idx].P2;
-        
+        //hout << "Pcnt=" << Pcnt << " Pgnp=" << Pgnp << endl;
+
         //Get the particle numbers
         int cnt_n = junctions_mixed[idx].N1;
         int gnp_n = junctions_mixed[idx].N2;
+        //hout << "cnt_n=" << cnt_n << " gnp_n=" << gnp_n << endl;
         
         //Calculate the junction resistance
         double Re_inv = 1.0;
         if (R_flag == 1) {
+            //hout << "Calculate_junction_resistance" << endl;
             if (!Calculate_junction_resistance(junctions_mixed[idx], radii[cnt_n], gnps[gnp_n].t, electric_param, Re_inv)) {
                 hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Calculate_junction_resistance"<<endl;
                 return 0;
@@ -895,8 +899,10 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, con
         }
         
         //Get node numbers
+        //hout << "Get node numbers points_cnt.size()="<<points_cnt.size()<<" points_gnp.size()="<<points_gnp.size() << endl;
         long int node1 = LMM_cnts.at(Pcnt);
         long int node2 = LMM_gnps.at(Pgnp);
+        //hout << "node1=" << node1 << " node2=" << node2 << endl;
         /* /Check for small numbers
         if (Re_inv < 1e-13) {
             hout << "R_inv=" << Re_inv << " d=" << junctions_mixed[idx].junction_dist << " d_P=" << points_gnp[Pgnp].distance_to(points_cnt[Pcnt]) << endl;
@@ -1301,7 +1307,7 @@ int Direct_Electrifying::Initial_guess_for_CG(const int &n_cluster, const long i
 
     //Add the initial guess for the nodes tha correspond to CNT points (if any)
     if (clusters_cnt.size() && clusters_cnt[n_cluster].size()) {
-        hout << "Initial_guess_for_cnt_nodes" << endl;
+        //hout << "Initial_guess_for_cnt_nodes" << endl;
         if (!Initial_guess_for_cnt_nodes(n_cluster, reserved_nodes, family, V_P_coord, max_coord, clusters_cnt, elements_cnt, points_cnt, V_guess))
         {
             hout << "Error in Initial_guess_for_CG when calling Initial_guess_for_cnt_nodes" << endl;
