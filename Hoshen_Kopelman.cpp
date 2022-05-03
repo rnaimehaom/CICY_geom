@@ -2026,7 +2026,8 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                 long int Pi0 = point_contacts.at(Pj0).at(GNPi);
                 
                 //Get the initial junction distance
-                long int d_junction = point_contacts_dist.at(Pj0).at(GNPi);
+                double d_junction = point_contacts_dist.at(Pj0).at(GNPi);
+                //hout << "d_junction0=" << d_junction << endl;
                 
                 //Variables to store the "compress" contact segment
                 long int Pi_junc = Pi0, Pj_junc = Pj0;
@@ -2043,6 +2044,7 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                     
                     //Get the junction distance
                     d_junction = point_contacts_dist.at(Pj1).at(GNPi);
+                    //hout << "d_junction1=" << d_junction << endl;
                     
                     //Check if the points are close enough to be in the same segment
                     //hout << "Pj1 - Pj0=" << Pj1 - Pj0 << endl;
@@ -2066,7 +2068,7 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                         
                         //Add the shortest junction found to the vector of junctions
                         Junction j(Pj_junc, CNTj, "CNT", P_gnp_num, GNPi, "GNP", d_junc_min);
-                        //hout << "Pj_junc=" << Pj_junc << " CNTj=" << CNTj << " P_gnp_num=" << P_gnp_num << " GNPi=" << GNPi << endl;
+                        //hout << "Pj_junc=" << Pj_junc << " CNTj=" << CNTj << " P_gnp_num=" << P_gnp_num << " GNPi=" << GNPi << " d_junc_min=" << d_junc_min << endl;
                         junctions_mixed.push_back(j);
                         
                         //Add the junction point on the CNT to the vectors of elements
@@ -2116,7 +2118,7 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                 //Add the shortest junction found in the last (or only) segment
                 //to the vector of junctions
                 Junction j(Pj_junc, CNTj, "CNT", P_gnp_num, GNPi, "GNP", d_junc_min);
-                //hout << "Pj_junc=" << Pj_junc << " CNTj=" << CNTj << " P_gnp_num=" << P_gnp_num << " GNPi=" << GNPi << endl;
+                //hout << "Pj_junc=" << Pj_junc << " CNTj=" << CNTj << " P_gnp_num=" << P_gnp_num << " GNPi=" << GNPi << " d_junc_min="<< d_junc_min<<endl;
                 junctions_mixed.push_back(j);
                 
                 //Add the junction point on the CNT to the vectors of elements

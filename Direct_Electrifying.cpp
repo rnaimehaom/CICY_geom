@@ -761,7 +761,9 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
             //all_resistors.push_back(Re_inv);
             
             //Calculate inverse of resistance
+            //hout << "Rj=" << Re_inv << " ";
             Re_inv = 1/Re_inv;
+            //hout << "Rj_inv=" << Re_inv << endl;
         }
         else if (R_flag != 0) {
             hout << "Error in Fill_2d_matrices_cnt_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
@@ -891,7 +893,9 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, con
             //all_resistors.push_back(Re_inv);
             
             //Calculate inverse of resistance
+            //hout << "Rj=" << Re_inv << " ";
             Re_inv = 1/Re_inv;
+            //hout << "Rj_inv=" << Re_inv << endl;
         }
         else if (R_flag != 0) {
             hout << "Error in Fill_2d_matrices_mixed_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
