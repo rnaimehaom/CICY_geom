@@ -903,10 +903,11 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, con
         }
         
         //Get node numbers
-        //hout << "Get node numbers points_cnt.size()="<<points_cnt.size()<<" points_gnp.size()="<<points_gnp.size() << endl;
+        //hout << "Get node numbers" << endl;// points_cnt.size() = "<<points_cnt.size()<<" points_gnp.size() = "<<points_gnp.size() << endl;
         long int node1 = LMM_cnts.at(Pcnt);
+        //hout << "node1=" << node1 << endl;
         long int node2 = LMM_gnps.at(Pgnp);
-        //hout << "node1=" << node1 << " node2=" << node2 << endl;
+        //hout << "node2=" << node2 << endl;
         /* /Check for small numbers
         if (Re_inv < 1e-13) {
             hout << "R_inv=" << Re_inv << " d=" << junctions_mixed[idx].junction_dist << " d_P=" << points_gnp[Pgnp].distance_to(points_cnt[Pcnt]) << endl;

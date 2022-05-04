@@ -650,14 +650,28 @@ int Backbone_Network::Find_and_remove_gnp_and_mixed_junctions_below_zero_current
             //Get the GNP number
             int GNP2 = HoKo->junctions_mixed[junc].N2;
 
+            //Get the CNT number
+            int CNT1 = HoKo->junctions_mixed[junc].N1;
+
+            //Get iterator for CNT point
+            set<long int>::iterator it = HoKo->elements_cnt[CNT1].find(P1);
+
             //Get the current passing through the junction as the difference between voltages since
             //unit resistors are assumed
             double Ij = abs(voltages[node1] - voltages[node2]);
 
-            //Check if current is below zero current
-            if (Ij - zero_current < Zero)
+            //Check if the junction needs to be removed, which happens IF:
+            //Current is below zero current
+            //OR
+            //CNT is dead
+            //OR 
+            //Junction point is not in CNT elements (it could have been removed earlier)
+            if (Ij - zero_current < Zero ||
+                HoKo->elements_cnt[CNT1].empty() ||
+                it == HoKo->elements_cnt[CNT1].end())
             {
-                //Junction is below zero current so it needs to be removed
+                //Junction is below zero current or CNT point is not part of the backbone,
+                //so the junction needs to be removed
                 
                 //Remove the point in GNP2 from the structure
                 if (!Remove_point_from_vector(P2, structure_gnp[GNP2])) 
@@ -668,6 +682,13 @@ int Backbone_Network::Find_and_remove_gnp_and_mixed_junctions_below_zero_current
 
                 //Remove junction
                 HoKo->cluster_mix_junctions[n_cluster].erase(HoKo->cluster_mix_junctions[n_cluster].begin() + i);
+
+                //Check if point is in the elements vector
+                if (it != HoKo->elements_cnt[CNT1].end())
+                {
+                    //CNT point is in the elements vector, so remove it
+                    HoKo->elements_cnt[CNT1].erase(it);
+                }
             }
         }
     }
