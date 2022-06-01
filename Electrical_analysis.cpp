@@ -878,9 +878,11 @@ int Electrical_analysis::Calculate_resistances_and_resistivities(const cuboid &w
     
     //Scan each direction
     //Note that matrix_resistances and paralel_resistors have the same size
-    for (int i = 0; i < (int)paralel_resistors.size(); i++) {
-        if (paralel_resistors[i].empty()) {
-            
+    for (int i = 0; i < (int)paralel_resistors.size(); i++) 
+    {
+        //hout << "There are "<< paralel_resistors[i].size() <<" resistors in direction i=" << i << endl;
+        if (paralel_resistors[i].empty()) 
+        {   
             //There are no resistors in direction i
             //The resistivity is the same as the matrix
             resistivities[i] = electric_param.resistivity_matrix;
@@ -890,8 +892,9 @@ int Electrical_analysis::Calculate_resistances_and_resistivities(const cuboid &w
                 hout<<"Error in Calculate_resistances_and_resistivities when calling Calculate_matrix_resistance"<<endl;
                 return 0;
             }
-        } else if (paralel_resistors[i].size() == 1) {
-            
+        } 
+        else if (paralel_resistors[i].size() == 1) 
+        {   
             //If direction i has only one resistor, then that is the resistance in that direction
             resistors[i] = paralel_resistors[i].front();
             
@@ -900,7 +903,9 @@ int Electrical_analysis::Calculate_resistances_and_resistivities(const cuboid &w
                 hout<<"Error in Calculate_resistances_and_resistivities when calling Calculate_resistivity (1 resistor)"<<endl;
                 return 0;
             }
-        } else {
+        } 
+        else
+        {
             //If there is more than one resistor, then calculate the
             //equivalent resistance of parallel resistors
             double R = 0;
