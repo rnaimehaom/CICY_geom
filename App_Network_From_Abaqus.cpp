@@ -106,10 +106,11 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     //Open Abaqus database using the name/path intidated in the input file
     //Use a C string, since that seems to be equivalent to (or able to be cast as) an odb_String
     odb_Odb& odb = openOdb(Init->simu_para.odb_file.c_str());
-    //hout << "open dob=" << Init->simu_para.odb_file.c_str() << endl;
+    //hout << "open odb=" << Init->simu_para.odb_file.c_str() << endl;
 
     //Access the root assembly
     odb_Assembly& root_assy = odb.rootAssembly();
+    //hout << "root_assy" << endl;
 
     //Get all frames from the steps and save them in a (pointer) variable
     odb_SequenceFrame& allFramesInStep = odb.steps()[Init->simu_para.step_name.c_str()].frames();

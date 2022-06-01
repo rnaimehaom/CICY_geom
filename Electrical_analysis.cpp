@@ -87,10 +87,11 @@ int Electrical_analysis::Perform_analysis_on_clusters(const int &iter, const cub
             
             //Set now the R_flag to 1 to indicate that actual resistances will be used
             R_flag = 1;
+            //hout << "R_flag = 1" << endl;
 
             //If there is more than one cluster (i.e., j > 0), clear the triangulations
             //of the previous cluster so that it does not interfere with the current cluster
-            if (j) {
+            if (HoKo->clusters_gnp.size() && j) {
                 //hout << "Clear_triangulations_of_cluster" << endl;
                 if (!Clear_triangulations_of_cluster(HoKo->clusters_gnp[j-1], gnps)) {
                     hout << "Error in Perform_analysis_on_clusters when calling Clear_triangulations_of_cluster" << endl;
