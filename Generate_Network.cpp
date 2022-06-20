@@ -1941,6 +1941,16 @@ int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, con
                     hout<<"Error when adding a CNT segment."<<endl;
                     return 0;
                 }
+
+                //hout << "cstructures.back().size()=" << cstructures.back().size() << " n_points=" << n_points << " min_points=" << min_points << endl;
+                //hout << "start=" << start << " is_first_inside_sample=" << is_first_inside_sample << " end - start=" << end - start << " end - start-1=" << end - start - 1 << endl << endl;
+
+                //Check if the segment is long enough
+                if (!Remove_short_segment(min_points, cpoints, radii_out, cstructures, cnt_count, point_count))
+                {
+                    hout << "Error in Add_cnts_inside_sample when calling Remove_short_segment (1)." << endl;
+                    return 0;
+                }
             }
             //else{hout<<"Segment with "<<n_points<<" points, start="<<start<<" end="<<end<<" cnt_count="<<cnt_count<<endl;}
             
@@ -1966,6 +1976,17 @@ int Generate_Network::Add_cnts_inside_sample(const Geom_sample &geom_sample, con
             hout<<"Error when adding a CNT segment."<<endl;
             return 0;
         }
+
+        //hout << "cstructures.back().size()=" << cstructures.back().size() << " last_inside - start + 1=" << last_inside - start + 1 << " min_points=" << min_points << endl;
+        //hout << "last_inside=" << last_inside << " cnt_points-1=" << cnt_points - 1 << endl;
+
+        //Check if the segment is long enough
+        if (!Remove_short_segment(min_points, cpoints, radii_out, cstructures, cnt_count, point_count))
+        {
+            hout << "Error in Add_cnts_inside_sample when calling Remove_short_segment (2)." << endl;
+            return 0;
+        }
+        //hout << "cstructures.back().size()=" << cstructures.back().size() << endl;
     }
     
     return 1;
@@ -2226,6 +2247,38 @@ Point_3D Generate_Network::Find_intersection_at_boundary(const cuboid &sample, c
     //hout<<"P_boundary = ("<<boundary.x<<", "<<boundary.y<<", "<<boundary.z<<")"<<endl<<endl;
     
     return boundary;
+}
+//(const Geom_sample &geom_sample, const Nanotube_Geo &nano_geo, const double& step_cutoff, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)
+//This function removes the last CNT added to vectors if it turns out to have less than the
+//minimum number of points indicated in the input file
+int Generate_Network::Remove_short_segment(const int& min_points, vector<Point_3D>& cpoints, vector<double>& radii_out, vector<vector<long int> >& cstructures, int& cnt_count, long int& point_count)const
+{
+
+    //Double check that the segment added has at least min_points points
+    if ((int)cstructures.back().size() < min_points)
+    {
+        hout << "cstructures.back().size()=" << cstructures.back().size() << endl;
+
+        //Get the number of points in the last CNT
+        int n_points = (int)cstructures.back().size();
+        
+        //Remove the segment from structure
+        cstructures.pop_back();
+
+        //Decrease the number of CNTs
+        cnt_count--;
+
+        //Remove the radius
+        radii_out.pop_back();
+
+        //Remove the points that were added
+        for (int i = 0; i < n_points; i++)
+        {
+            cpoints.pop_back();
+            point_count--;
+        }
+    }
+    return 1;
 }
 //---------------------------------------------------------------------------
 int Generate_Network::Recalculate_vol_fraction_cnts(const Geom_sample &geom_sample, const Simu_para &simu_para, const Nanotube_Geo &nano_geo, const vector<Point_3D> &cpoints, const vector<double> &radii, const vector<vector<long int> > &cstructures)const

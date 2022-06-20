@@ -82,6 +82,7 @@ public:
     int Add_cnt_segment(const Geom_sample &geom_sample, const bool &is_first_inside_sample, const double& step_cutoff, const int &start, const int &end, const int &CNT_old, vector<Point_3D> &cnt, vector<Point_3D> &cpoints, vector<double> &radii_in, vector<double> &radii_out, vector<vector<long int> > &cstructures, long int &point_count, int &cnt_count)const;
     int Add_boundary_point(const Geom_sample &geom_sample, const Point_3D &p_outside, const Point_3D &p_inside, const int &cnt_count, vector<Point_3D> &cpoints, vector<long int> &struct_temp, long int &point_count)const;
     Point_3D Find_intersection_at_boundary(const cuboid &sample, const Point_3D &p_outside, const Point_3D &p_inside)const;
+    int Remove_short_segment(const int& min_points, vector<Point_3D>& cpoints, vector<double>& radii_out, vector<vector<long int> >& cstructures, int& cnt_count, long int& point_count)const;
     int Recalculate_vol_fraction_cnts(const Geom_sample &geom_sample, const Simu_para &simu_para, const Nanotube_Geo &nano_geo, const vector<Point_3D> &cpoints, const vector<double> &radii, const vector<vector<long int> > &cstructures)const;
     //---------------------------------------------------------------------------
     //---------------------------------------------------------------------------
