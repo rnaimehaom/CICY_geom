@@ -6116,7 +6116,7 @@ int Generate_Network::Output_data_files(const Geom_sample &geom_sample, const Ou
         //Print the GNP data needed to generate them in Abaqus
         Pr.Print_gnp_data(gnps, out_flags.prec_gnp, "gnp_data.csv");
     }
-    else if (out_flags.gnp_data == 2 || out_flags.gnp_data == 3) {
+    if (out_flags.gnp_data == 2 || out_flags.gnp_data == 3) {
 
         //Print the GNP data into a binary file
         Pr.Print_gnp_data_binary(gnps, "gnp_data.dat");
@@ -6133,7 +6133,7 @@ int Generate_Network::Output_data_files(const Geom_sample &geom_sample, const Ou
         //Print the CNT data needed to generated them in Abaqus
         Pr.Print_cnt_points_and_structure(geom_sample.sample, structure, points_cnt, radii_out, out_flags.prec_cnt, "cnt_coordinates.csv", "cnt_struct.csv");
     }
-    else if (out_flags.cnt_data == 2 || out_flags.cnt_data == 3) {
+    if (out_flags.cnt_data == 2 || out_flags.cnt_data == 3) {
 
         //hout << "Print_cnt_points_and_structure_binary" << endl;
         //Print the CNT data into binary files
