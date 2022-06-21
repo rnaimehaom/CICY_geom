@@ -2257,7 +2257,7 @@ int Generate_Network::Remove_short_segment(const int& min_points, vector<Point_3
     //Double check that the segment added has at least min_points points
     if ((int)cstructures.back().size() < min_points)
     {
-        hout << "cstructures.back().size()=" << cstructures.back().size() << endl;
+        //hout << "cstructures.back().size()=" << cstructures.back().size() << endl;
 
         //Get the number of points in the last CNT
         int n_points = (int)cstructures.back().size();
