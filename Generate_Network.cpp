@@ -3718,12 +3718,12 @@ int Generate_Network::Generate_gnp_network_mt(const Simu_para &simu_para, const 
             hout << endl << "The volume fraction of generated GNPs inside the sample is: " << gnp_vol_tot/geom_sample.volume;
             hout << ", the target volume fraction was " << gnp_geo.volume_fraction << endl;
         }
-        
-        hout << "There are " << (int)gnps.size()<< " GNPs inside the sample domain. ";
         //If there were rejected GNPs, also output that information
         if (gnp_reject_count || gnp_ignored_count) {
-            hout<<"\nIn total "<<(int)gnps.size()+gnp_ignored_count+gnp_reject_count<<" GNPs were generated, from which "<<gnp_reject_count<<" were rejected and "<<gnp_ignored_count<<" were ignored.";
+            hout<<"\nIn total "<<(int)gnps.size()+gnp_ignored_count+gnp_reject_count<<" GNPs were generated, from which "<<gnp_reject_count<<" were rejected and "<<gnp_ignored_count<<" were ignored."<<endl;
         }
+
+        hout << "There are " << (int)gnps.size() << " GNPs inside the sample domain. ";
         hout<< endl << endl ;
     }
     
