@@ -4823,11 +4823,6 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
     //Variable to count the number of ignored CNTs
     int cnt_ignore_count = 0;
     
-    //Variable to count the number of times that a point had to be relocated
-    int point_overlap_count = 0;
-    //Variable to count the number of points that were overlapping other points
-    int point_overlap_count_unique = 0;
-    
     //---------------------------------------------------------------------------
     //Vectors for handling CNT penetration
     //global_coordinates[i][0] stores the CNT number of global point i
@@ -5111,8 +5106,7 @@ int Generate_Network::Generate_cnt_network_threads_among_gnps_mt(const Simu_para
         hout << ", the target volume fraction was " << nanotube_geo.volume_fraction << endl << endl;
     }
     
-    hout << "There were " << point_overlap_count_unique << " overlapping points and ";
-    hout << point_overlap_count << " overlaps, " << cnt_reject_count << " CNTs were rejected and "<<cnt_ignore_count<<" were ignored." << endl;
+    hout << "There were " << cnt_reject_count << " CNTs rejected and "<<cnt_ignore_count<<" were ignored." << endl;
     
     
     return 1;
