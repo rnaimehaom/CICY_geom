@@ -36,6 +36,7 @@ public:
     //Member Functions
     int Nanoparticle_resistor_network_from_odb(Input* Init)const;
     int Get_gnps_partially_outside_sample(const Geom_sample& geom_sample, const vector<GNP>& gnps, vector<int> &gnps_outside, vector<vector<int> >& vertices_gnps_out, vector<vector<bool> > &vertex_flags)const;
+    int Is_step_in_odb(const odb_Odb& odb, const string& step_name)const;
     //Generate a network of nanoparticles from the data in the Abaqus database
     int Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, const vector<int>& gnps_outside, const vector<vector<int> >& vertices_gnps_out, const vector<vector<bool> >& vertex_flags, vector<GNP>& gnps0, odb_Assembly& root_assy, odb_Frame& previous_frame, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const;
     int Apply_displacements_to_sample(odb_Assembly& root_assy, odb_FieldOutput& previous_fieldU, odb_FieldOutput& current_fieldU, Geom_sample& geom_sample)const;

@@ -112,6 +112,13 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
     odb_Assembly& root_assy = odb.rootAssembly();
     //hout << "root_assy" << endl;
 
+    //Make sure the step indicated in the input file is in the odb file
+    if (!Is_step_in_odb(odb, Init->simu_para.step_name))
+    {
+        hout << "Error in Nanoparticle_resistor_network_from_odb when calling Is_step_in_odb." << endl;
+        return 0;
+    }
+
     //Get all frames from the steps and save them in a (pointer) variable
     odb_SequenceFrame& allFramesInStep = odb.steps()[Init->simu_para.step_name.c_str()].frames();
     //Get the number of frames in the database
@@ -289,6 +296,37 @@ int App_Network_From_Abaqus::Get_gnps_partially_outside_sample(const Geom_sample
     }
 
     return 1;
+}
+//This function determines if the step indicated in the input file is in the odb file
+int App_Network_From_Abaqus::Is_step_in_odb(const odb_Odb& odb, const string& step_name)const
+{
+    //Check if there is at least one step
+    if (odb.steps().size() < 1)
+    {
+        hout << "Error in Is_step_in_odb: There are no steps in the odb file." << endl;
+        return 0;
+    }
+
+    //Check that the step exists in the odb file
+    odb_StepRepositoryIT stepIter(odb.steps());
+    //hout << "from input file:" << step_name << endl;
+    for (stepIter.first(); !stepIter.isDone(); stepIter.next())
+    {
+        if (step_name == stepIter.currentKey().CStr())
+            return 1;
+        //hout << stepIter.currentKey().CStr() << endl;
+    }
+    //hout << endl;
+
+    hout << "Error in Is_step_in_odb: Step name indicated in input file was not found in odb file." << endl;
+    hout << "Step name in input file is: " << step_name << "." << endl;
+    hout << "This is a list of all steps in odb file:" << endl;
+    for (stepIter.first(); !stepIter.isDone(); stepIter.next())
+    {
+        hout << stepIter.currentKey().CStr() << endl;
+    }
+
+    return 0;
 }
 //This functions adds the displacements to the CNTs, GNPs and sample
 int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& particle_type, const int& n_cnts, const vector<vector<long int> >& structure, const vector<int>& gnps_outside, const vector<vector<int> >& vertices_gnps_out, const vector<vector<bool> >& vertex_flags, vector<GNP>& gnps0, odb_Assembly& root_assy, odb_Frame& previous_frame, odb_Frame& current_frame, Geom_sample& geom_sample, vector<Point_3D>& points_cnt, vector<GNP>& gnps)const
