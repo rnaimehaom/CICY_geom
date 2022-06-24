@@ -375,6 +375,22 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
         istringstream istr_odb_file(Get_Line(infile));
         istr_odb_file >> simu_para.odb_file;
 
+        //Check that the odb file exists
+        if (FILE* file = fopen(simu_para.odb_file.c_str(), "r")) 
+        {
+            //File exists, nothing else to do so just close it
+            fclose(file);
+            //hout << "Odb file found" << endl;
+        }
+        else 
+        {
+            //File does not exists
+            hout << "Error when reading simulation parameters: odb file was not found." << endl;
+            hout << "Please double check odb filename or path." << endl;
+            hout << "Input odb filename/path: " << simu_para.odb_file << endl;
+            return 0;
+        }
+
         //Read the name of the step in the Abaqus simulation
         istringstream istr_step(Get_Line(infile));
         istr_step >> simu_para.step_name;
