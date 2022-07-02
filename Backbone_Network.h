@@ -56,6 +56,7 @@ public:
     int Find_backbone_gnps(const int& n_cluster, const int& avoid_resistance_flag, const int& vtk_flag, const double& zero_current, const vector<double>& voltages, const map<long int, long int>& LMM_cnts, const map<long int, long int>& LMM_gnps, vector<vector<long int> >& structure_gnp, vector<GNP>& gnps, Hoshen_Kopelman* HoKo);
     int Find_and_remove_gnp_and_mixed_junctions_below_zero_current(const int& n_cluster, const double& zero_current, const vector<double>& voltages, const map<long int, long int>& LMM_cnts, const map<long int, long int>& LMM_gnps, vector<vector<long int> >& structure_gnp, Hoshen_Kopelman* HoKo);
     int Clear_structure_of_dead_gnps(const int& n_cluster, vector<GNP>& gnps, vector<vector<long int> >& structure_gnp, int& to_remove, Hoshen_Kopelman* HoKo);
+    int Remove_additional_cnts_from_cluster(const int& n_cluster, Hoshen_Kopelman* HoKo);
     int Calculate_gnp_backbone_volume(const int& n_cluster, const int& vtk_flag, vector<vector<long int> >& structure_gnp, vector<GNP>& gnps, Hoshen_Kopelman* HoKo);
     int Remove_junctions_with_dead_particles_cnts(const int &n_cluster, Hoshen_Kopelman *HoKo);
     int Remove_junctions_with_dead_particles_gnps(const int &n_cluster, vector<vector<long int> > &structure_gnp, vector<GNP> &gnps, Hoshen_Kopelman *HoKo);

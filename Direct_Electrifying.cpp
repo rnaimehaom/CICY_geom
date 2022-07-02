@@ -153,6 +153,12 @@ int Direct_Electrifying::LM_matrix_for_cnts(const int &n_cluster, Hoshen_Kopelma
         
         //Iterator for the elements in set
         set<long int>::iterator j = HoKo->elements_cnt[CNT].begin();
+        if (HoKo->elements_cnt[CNT].size() <= 1)
+        {
+            hout << "Error in LM_matrix_for_cnts: There is a CNT with not enough points to form an element." << endl;
+            hout << "CNT: " << CNT << ", element points: " << HoKo->elements_cnt[CNT].size() << endl;
+            return 0;
+        }
         //hout<<"HoKo->elements_cnt[CNT="<<CNT<<"].size="<<HoKo->elements_cnt[CNT].size()<<endl;
         //hout<<"P_begin="<<*j<<endl;
         

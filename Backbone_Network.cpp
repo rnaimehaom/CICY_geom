@@ -615,6 +615,14 @@ int Backbone_Network::Find_backbone_gnps(const int& n_cluster, const int& avoid_
         }
     }
 
+    //In the case of mixed particles, some CNTs might need to be removed
+    //Removed those CNTs if needed
+    if (!Remove_additional_cnts_from_cluster(n_cluster, HoKo))
+    {
+        hout << "Error in Find_backbone_and_fractions_gnps when calling Remove_additional_cnts_from_cluster" << endl;
+        return 0;
+    }
+
     //Calculate dead and backbone volumes
     //hout << "Calculate_gnp_backbone_volume" << endl;
     if (!Calculate_gnp_backbone_volume(n_cluster, vtk_flag, structure_gnp, gnps, HoKo))
@@ -655,6 +663,7 @@ int Backbone_Network::Find_and_remove_gnp_and_mixed_junctions_below_zero_current
 
             //Get iterator for CNT point
             set<long int>::iterator it = HoKo->elements_cnt[CNT1].find(P1);
+            //hout << "CNT1=" << CNT1 << " P1=" << P1 << " elements_cnt[CNT1].szie=" << HoKo->elements_cnt[CNT1].size() << endl;
 
             //Get the current passing through the junction as the difference between voltages since
             //unit resistors are assumed
@@ -682,12 +691,20 @@ int Backbone_Network::Find_and_remove_gnp_and_mixed_junctions_below_zero_current
 
                 //Remove junction
                 HoKo->cluster_mix_junctions[n_cluster].erase(HoKo->cluster_mix_junctions[n_cluster].begin() + i);
+                //hout << "Removed junction " << i << endl;
 
                 //Check if point is in the elements vector
                 if (it != HoKo->elements_cnt[CNT1].end())
                 {
                     //CNT point is in the elements vector, so remove it
                     HoKo->elements_cnt[CNT1].erase(it);
+
+                    //Check if CNT element still has at least two points
+                    if (HoKo->elements_cnt[CNT1].size() < 2)
+                    {
+                        //Empty CNT as it is now dead
+                        HoKo->elements_cnt[CNT1].clear();
+                    }
                 }
             }
         }
@@ -805,6 +822,29 @@ int Backbone_Network::Clear_structure_of_dead_gnps(const int& n_cluster, vector<
                 hout << "Boundary points=" << NB << endl;
                 hout << "Junctions=" << NJ << endl;
                 return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+//This function removes CNTs that have no elements from the cluster of CNTs
+int Backbone_Network::Remove_additional_cnts_from_cluster(const int& n_cluster, Hoshen_Kopelman* HoKo)
+{
+    //Check that there are CNT clusters
+    if (HoKo->clusters_cnt.size())
+    {
+        //Iterate over the CNTs in the cluster in reverse order
+        for (int i = (int)HoKo->clusters_cnt[n_cluster].size() - 1; i >= 0; i--)
+        {
+            //Get CNT number
+            int CNTi = HoKo->clusters_cnt[n_cluster][i];
+            
+            //Check if the CNT has elements
+            if (HoKo->elements_cnt[CNTi].empty())
+            {
+                //Remove CNt from cluster
+                HoKo->clusters_cnt[n_cluster].erase(HoKo->clusters_cnt[n_cluster].begin() + i);
             }
         }
     }
