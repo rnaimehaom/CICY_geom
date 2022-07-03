@@ -1039,6 +1039,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
                 //Calculate the triangulation resistor, i.e., the resistance of
                 //the "conduction band" in the GNP
                 if (!Calculate_resistance_gnp(points_gnp[v1], points_gnp[v2], rad1, rad2, electric_param, Re_inv)) {
+                    hout << "v1=" << v1 << " v2=" << v2 << endl;
                     hout << "GNP_i=" << gnp_i << endl;
                     hout << "Error in Fill_2d_matrices_gnp when calling Calculate_resistance_gnp" << endl;
                     return 0;

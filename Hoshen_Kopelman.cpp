@@ -1904,6 +1904,18 @@ int Hoshen_Kopelman::Find_adjacent_labels(
                     double dist_cnt_gnp;
                     Point_3D P_gnp = GN.Get_gnp_point_closest_to_point(gnps[GNP], points_cnt[P], dist_cnt_gnp);
 
+                    //Check if the case when the point is inside the GNP
+                    if (P_gnp.flag == -1)
+                    {
+                        hout << "Error in Find_adjacent_labels when calculating the mixed junction point on a GNP." << endl;
+                        hout << "CNT point in the mixed junction is inside the GNP." << endl;
+                        hout << "GNP=" << GNP << endl;
+                        for (size_t i = 0; i < 8; i++)
+                            hout << "    gnps["<<GNP<<"].vertices[" << i << "].str() = " << gnps[GNP].vertices[i].str() << endl;
+                        hout << "CNT=" << CNT << " P=" << P << " points_cnt[P]=" << points_cnt[P].str() << endl;
+                        return 0;
+                    }
+
                     //Calculate the junction distance
                     double dist_junc = dist_cnt_gnp - radii[CNT];
                     //hout << "dist_junc=" << dist_junc <<" dist_cnt_gnp="<< dist_cnt_gnp << endl;
@@ -2052,27 +2064,11 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                         
                         //A new segment needs to be started
                         //But first, "compress" the previous segment
-                        
-                        //Get the actual GNP point number
-                        long int P_gnp_num = (long int)points_gnp.size();
-                        
-                        //Add the GNP point from the vector of GNP contact points
-                        points_gnp.push_back(contact_points_gnp[Pi_junc]);
-                        
-                        //Set the flag of the point
-                        points_gnp.back().flag = GNPi;
-                        
-                        //Add the GNP point number to the structure
-                        structure_gnp[GNPi].push_back(P_gnp_num);
-                        //hout << "structure_gnp[" << GNPi << "].push_back(" << P_gnp_num << ")" << endl;
-                        
-                        //Add the shortest junction found to the vector of junctions
-                        Junction j(Pj_junc, CNTj, "CNT", P_gnp_num, GNPi, "GNP", d_junc_min);
-                        //hout << "Pj_junc=" << Pj_junc << " CNTj=" << CNTj << " P_gnp_num=" << P_gnp_num << " GNPi=" << GNPi << " d_junc_min=" << d_junc_min << endl;
-                        junctions_mixed.push_back(j);
-                        
-                        //Add the junction point on the CNT to the vectors of elements
-                        elements_cnt[CNTj].insert(Pj_junc);
+                        if (!Add_mixed_junction(cutoffs, Pi_junc, Pj_junc, CNTj, GNPi, d_junc_min, contact_points_gnp, structure_gnp, points_gnp))
+                        {
+                            hout << "Error in Compress_mixed_contacts when calling Add_mixed_junction (1)" << endl;
+                            return 0;
+                        }
                         
                         //Start the new segment by resetting the variables to the values
                         //of the junction that starts the new segment
@@ -2101,32 +2097,44 @@ int Hoshen_Kopelman::Compress_mixed_contacts(const Cutoff_dist &cutoffs, map<lon
                 }
                 
                 //"Compress" the last (or only) segment
-                
-                //Get the actual GNP point number
-                long int P_gnp_num = (long int)points_gnp.size();
-                
-                //Add the GNP point from the vector of GNP contact points
-                points_gnp.push_back(contact_points_gnp[Pi_junc]);
-                
-                //Set the flag of the point
-                points_gnp.back().flag = GNPi;
-
-                //Add the GNP point number to the structure
-                structure_gnp[GNPi].push_back(P_gnp_num);
-                //hout << "structure_gnp[" << GNPi << "].push_back(" << P_gnp_num << ")" << endl;
-                
-                //Add the shortest junction found in the last (or only) segment
-                //to the vector of junctions
-                Junction j(Pj_junc, CNTj, "CNT", P_gnp_num, GNPi, "GNP", d_junc_min);
-                //hout << "Pj_junc=" << Pj_junc << " CNTj=" << CNTj << " P_gnp_num=" << P_gnp_num << " GNPi=" << GNPi << " d_junc_min="<< d_junc_min<<endl;
-                junctions_mixed.push_back(j);
-                
-                //Add the junction point on the CNT to the vectors of elements
-                elements_cnt[CNTj].insert(Pj_junc);
+                if (!Add_mixed_junction(cutoffs, Pi_junc, Pj_junc, CNTj, GNPi, d_junc_min, contact_points_gnp, structure_gnp, points_gnp))
+                {
+                    hout << "Error in Compress_mixed_contacts when calling Add_mixed_junction (2)" << endl;
+                    return 0;
+                }
             }
         }
     }
     
+    return 1;
+}
+//This function adds a mixed junctions to the vector of mixed junctions
+//Corresponding vectors are also updated
+int Hoshen_Kopelman::Add_mixed_junction(const Cutoff_dist& cutoffs, const long int& Pi_junc, const long int& Pj_junc, const int& CNTj, const int& GNPi, const double& d_junc_min, const vector<Point_3D>& contact_points_gnp, vector<vector<long int> >& structure_gnp, vector<Point_3D>& points_gnp)
+{
+    //Get the actual GNP point number
+    long int P_gnp_num = (long int)points_gnp.size();
+
+    //Add point to vector of points
+    points_gnp.push_back(contact_points_gnp[Pi_junc]);
+    //hout << "points_gnp.back().str()=" << points_gnp.back().str() << endl;
+
+    //Set the flag of the point
+    points_gnp.back().flag = GNPi;
+
+    //Add the GNP point number to the structure
+    structure_gnp[GNPi].push_back(P_gnp_num);
+    //hout << "structure_gnp[" << GNPi << "].push_back(" << P_gnp_num << ")" << endl;
+
+    //Add the shortest junction found in the last (or only) segment
+    //to the vector of junctions
+    Junction j(Pj_junc, CNTj, "CNT", P_gnp_num, GNPi, "GNP", d_junc_min);
+    //hout << "Pj_junc=" << Pj_junc << " CNTj=" << CNTj << " P_gnp_num=" << P_gnp_num << " GNPi=" << GNPi << " d_junc_min=" << d_junc_min << endl;
+    junctions_mixed.push_back(j);
+
+    //Add the junction point on the CNT to the vectors of elements
+    elements_cnt[CNTj].insert(Pj_junc);
+
     return 1;
 }
 //This functions takes the proper labels from the labels_mixed vector and updates the vectors
