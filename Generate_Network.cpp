@@ -3945,10 +3945,10 @@ int Generate_Network::Deal_with_gnp_interpenetrations(const int& MAX_ATTEMPTS_GN
 int Generate_Network::Get_gnp_subregions(const int& tot_regions, const Geom_sample &geom_sample, const GNP &gnp_new, const int n_subregions[], set<int> &subregions)const
 {
     //Number of points to discretize the GNP along the x direction (of the GNP local coordinates)
-    int n_points_x = max(20, 1 + (int)(gnp_new.l/geom_sample.gs_minx));
+    int n_points_x = max(40, 1 + (int)(gnp_new.l/geom_sample.gs_minx));
     
     //Number of points to discretize the GNP along the y direction (of the GNP local coordinates)
-    int n_points_y = max(20, 1 + (int)(gnp_new.l/geom_sample.gs_miny));
+    int n_points_y = max(40, 1 + (int)(gnp_new.l/geom_sample.gs_miny));
     
     //Number of points to discretize the GNP along the z direction (of the GNP local coordinates)
     //Make sure there are at least two points in the discretization along z
@@ -5213,7 +5213,7 @@ int Generate_Network::Check_mixed_interpenetration(
     
     //Variable to count the number of attempts
     int attempts = 0;
-    
+
     //Loop while the maximum numbe of attempts has not been reached
     while (attempts <= MAX_ATTEMPTS_CNT) {
         
@@ -5235,13 +5235,15 @@ int Generate_Network::Check_mixed_interpenetration(
         //Check if point is too close or penetrating a GNP
         //hout<<"Get_gnp_penetrating_points"<<endl;
         GNP affected_gnp;
+        //affected_gnp.flag = 0;
+        //affected_gnp.flag = -1;
         if (!Get_gnp_penetrating_points(step_length, gnps, sectioned_domain_gnp[subregion], new_cnt, rad_plus_dvdw, affected_points, cutoffs_p, distances, affected_gnp, new_point))
         {
             hout<<"Error in Check_mixed_interpenetration when calling Get_gnp_penetrating_points"<<endl;
             return -1;
         }
         //hout<<"sectioned_domain_gnp[subregion].size="<<sectioned_domain_gnp[subregion].size()<<endl;
-        //hout << "affected_points.size()=" << affected_points.size() << endl;
+        //hout << "affected_points.size()=" << affected_points.size() <<" affected_gnp.flag=" << affected_gnp.flag<< endl;
         
         //First check if there are interpenetrations with GNPs
         if (affected_points.size()) 
@@ -5383,11 +5385,13 @@ int Generate_Network::Get_gnp_penetrating_points(const double& step_lenght, cons
         
         //Get the GNP number of the current subregion
         int GNP_i = subregion_gnp[i];
+        //hout<<"   GNP_i="<< GNP_i<<endl;
         
         //Find the distance from new_point to GNP and the closest point in the GNP
         double distance = 0;
         //hout<<"Get_gnp_point_closest_to_point i="<<i<<endl;
         Point_3D P = Get_gnp_point_closest_to_point(gnps[GNP_i], new_point, distance);
+        //hout << "   P=" << P.str() <<" P.flag="<<P.flag << " distance=" << distance << endl;
         
         //Check if the point is inside the GNP
         if (P.flag == -1) {
