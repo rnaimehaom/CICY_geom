@@ -1907,13 +1907,23 @@ int Hoshen_Kopelman::Find_adjacent_labels(
                     //Check if the case when the point is inside the GNP
                     if (P_gnp.flag == -1)
                     {
-                        hout << "Error in Find_adjacent_labels when calculating the mixed junction point on a GNP." << endl;
-                        hout << "CNT point in the mixed junction is inside the GNP." << endl;
-                        hout << "GNP=" << GNP << endl;
-                        for (size_t i = 0; i < 8; i++)
-                            hout << "    gnps["<<GNP<<"].vertices[" << i << "].str() = " << gnps[GNP].vertices[i].str() << endl;
-                        hout << "CNT=" << CNT << " P=" << P << " points_cnt[P]=" << points_cnt[P].str() << endl;
-                        return 0;
+                        //Check if this error can be ignored
+                        if (ignore_eror_cnt_inside_gnp)
+                        {
+                            //Ignore error by ignoring contact
+                            dist_cnt_gnp = radii[CNT] + 3.0 * cutoffs.tunneling_dist;
+                        }
+                        else 
+                        {
+                            //Error cannot be ignored, so terminate with error
+                            hout << "Error in Find_adjacent_labels when calculating the mixed junction point on a GNP." << endl;
+                            hout << "CNT point in the mixed junction is inside the GNP." << endl;
+                            hout << "GNP=" << GNP << endl;
+                            for (size_t i = 0; i < 8; i++)
+                                hout << "    gnps[" << GNP << "].vertices[" << i << "].str() = " << gnps[GNP].vertices[i].str() << endl;
+                            hout << "CNT=" << CNT << " P=" << P << " points_cnt[P]=" << points_cnt[P].str() << endl;
+                            return 0;
+                        }
                     }
 
                     //Calculate the junction distance

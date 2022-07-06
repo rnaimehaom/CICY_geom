@@ -52,10 +52,18 @@ public:
     
     //Temporary map for determining if a pair of veritces is an edge
     map<int, vector<int> > edge_map;
-    
+
+    //Flag for ignoring errors in mixed contacts where a CNT point is inside a GNP
+    int ignore_eror_cnt_inside_gnp;
     
     //Constructor
-    Hoshen_Kopelman(){};
+    Hoshen_Kopelman()
+    {
+        //Initialize flag for ignoring errors in mixed contacts
+        //where a CNT point is inside a GNP
+        //0 means do not ignore error
+        ignore_eror_cnt_inside_gnp = 0;
+    };
     
     //
     int Determine_clusters_and_percolation(const int &iter, const cuboid &sample, const Simu_para &simu_para, const Cutoff_dist &cutoffs, const Visualization_flags &vis_flags, const vector<int> &cnts_inside, const vector<vector<long int> > &sectioned_domain_cnt, const vector<vector<long int> > &structure_cnt, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<int> > &boundary_cnt, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, vector<GNP> &gnps, const vector<vector<int> > &boundary_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp);
