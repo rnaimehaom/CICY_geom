@@ -455,20 +455,55 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
             //Read the mass ratio
             istr_mixed >> simu_para.mass_ratio;
             if (simu_para.mass_ratio < Zero) {
-                hout << "Error: The CNT/GNP mass ratio must be positive. Input was: " << simu_para.mass_ratio << endl; return 0;
+                hout << "Error: The CNT/GNP mass ratio must be positive. Input was: " << simu_para.mass_ratio << endl; 
+                return 0;
             }
         }
         //Check if volume ratio is defined
         else if (simu_para.mixed == "volume_ratio") {
 
             if (simu_para.criterion != "vol") {
-                hout << "Error: If nanoparticle content is specified in volume fraction, then CNT/GNP volume ratio must specified, not weight faction" << endl; return 0;
+                hout << "Error: If nanoparticle content is specified in volume fraction, then CNT/GNP volume ratio must specified, not weight faction" << endl; 
+                return 0;
             }
 
             //Read the volume ratio
             istr_mixed >> simu_para.volume_ratio;
             if (simu_para.volume_ratio < Zero) {
-                hout << "Error: The CNT/GNP volume ratio must be positive. Input was: " << simu_para.volume_ratio << endl; return 0;
+                hout << "Error: The CNT/GNP volume ratio must be positive. Input was: " << simu_para.volume_ratio << endl; 
+                return 0;
+            }
+        }
+        //Check if relative volume fraction is specified
+        else if (simu_para.mixed == "relative_vol") {
+
+            if (simu_para.criterion != "vol") {
+                hout << "Error: If nanoparticle content is specified in volume fraction, then relative volume fraction must specified." << endl; 
+                return 0;
+            }
+
+            //Read the relative volume fraction
+            istr_mixed >> simu_para.relative_vol;
+            if (simu_para.relative_vol < Zero && simu_para.relative_vol - 1.0 > Zero) {
+                hout << "Error: Relative volume fraction is negative, greater than 1 or too close to 0 or 1." << endl;
+                hout<<"The relative volume fraction must be between 0 and 1. Input was: " << simu_para.relative_vol << endl;
+                return 0;
+            }
+        }
+        //Check if relative weight fraction is specified
+        else if (simu_para.mixed == "relative_wt") {
+
+            if (simu_para.criterion != "wt") {
+                hout << "Error: If nanoparticle content is specified in weight fraction, then relative weight fraction must specified." << endl;
+                return 0;
+            }
+
+            //Read the relative volume fraction
+            istr_mixed >> simu_para.relative_wt;
+            if (simu_para.relative_wt < Zero && simu_para.relative_wt - 1.0 > Zero) {
+                hout << "Error: Relative weight fraction is negative, greater than 1 or too close to 0 or 1." << endl;
+                hout << "The relative weight fraction must be between 0 and 1. Input was: " << simu_para.relative_wt << endl;
+                return 0;
             }
         }
         //Check if CNT density on GNPs is defined
@@ -1215,6 +1250,63 @@ int Input::Read_gnp_geo_parameters(GNP_Geo &gnp_geo, ifstream &infile)
             
             //Calculate the volume of GNPs from volume ratio
             gnp_geo.volume = simu_para.volume_fraction*geom_sample.volume/(simu_para.volume_ratio + 1.0);
+        }
+        else if (simu_para.mixed == "relative_vol") {
+
+            //Set the criterion as volume fraction
+            nanotube_geo.criterion = "vol";
+            gnp_geo.criterion = "vol";
+
+            //Calculate volume of nanoparticles
+            double carbon_vol = simu_para.volume_fraction * geom_sample.volume;
+
+            //Calculate volume fraction of CNTs
+            nanotube_geo.volume_fraction = simu_para.relative_vol * simu_para.volume_fraction;
+
+            //Calculate volume fraction of GNPs
+            gnp_geo.volume_fraction = simu_para.volume_fraction - nanotube_geo.volume_fraction;
+
+            //Calculate the volume of CNTs from relative volume fraction
+            nanotube_geo.volume = simu_para.relative_vol * carbon_vol;
+
+            //Calculate the volume of GNPs from CNT volume
+            gnp_geo.volume = carbon_vol - nanotube_geo.volume;
+        }
+        else if (simu_para.mixed == "relative_wt") {
+
+            //Set the criterion as weight fraction
+            nanotube_geo.criterion = "wt";
+            gnp_geo.criterion = "wt";
+
+            //Calculate the weight fraction of (required) CNTs in the sample
+            nanotube_geo.weight_fraction = simu_para.relative_wt * simu_para.weight_fraction;
+
+            //Calculate the weight fraction of (required) GNPs in the sample
+            gnp_geo.weight_fraction = simu_para.weight_fraction - nanotube_geo.weight_fraction;
+            //hout<<"gnp_geo.weight_fraction="<<gnp_geo.weight_fraction<<endl;
+
+            //Calculate the denominator used in calculating volume fractions
+            double den = (1.0 - simu_para.weight_fraction) / geom_sample.matrix_density;
+            den += nanotube_geo.weight_fraction / nanotube_geo.density;
+            den += gnp_geo.weight_fraction / gnp_geo.density;
+
+            //Calculate the volume fraction of (required) CNTs in the sample
+            nanotube_geo.volume_fraction = nanotube_geo.weight_fraction / (nanotube_geo.density * den);
+
+            //Calculate the volume fraction of (required) GNPs in the sample
+            gnp_geo.volume_fraction = gnp_geo.weight_fraction / (gnp_geo.density * den);
+
+            //Calcualte the total volume of (required) CNTs in the sample
+            nanotube_geo.volume = nanotube_geo.volume_fraction * geom_sample.volume;
+
+            //Calculate the total weight of (required) CNTs in the sample
+            nanotube_geo.weight = nanotube_geo.volume * nanotube_geo.density;
+
+            //Calcualte the total volume of (required) GNPs in the sample
+            gnp_geo.volume = gnp_geo.volume_fraction * geom_sample.volume;
+
+            //Calculate the total weight of (required) GNPs in the sample
+            gnp_geo.weight = gnp_geo.volume * gnp_geo.density;
         }
         //If density is selected, the amount of CNTs is determined at generation time
         else if (simu_para.mixed == "density") {

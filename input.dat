@@ -55,9 +55,11 @@ Create_Network
 %    vol: for volume fraction, specify the value after 'vol', for example: vol 0.01
 %    wt: for weight fraction, specify the value after 'wt', for example: wt 0.005
 %For mixed or hybrid particles, in the next line define the CNT/GNP mass ratio,
-%volume ratio, or CNT density on GNPs
+%volume ratio, relative volume fraction, relative weight fraction, or CNT density on GNPs
 %    mass_ratio: CNT/GNP mass ratio, for example: mass_ratio 1.0
 %    volume_ratio: CNT/GNP volume ratio, for example: volume_ratio 1.0
+%    relative_vol: relative volume fraction calculated as vol_CNT/(vol_CNT + vol_GNP), for example: relative_vol 1.0
+%    relative_wt: relative weight fraction calculated as wt_CNT/(wt_CNT + wt_GNP), for example: relative_wt 1.0
 %    density: number of CNTs per micron squared on GNPs [CNTs/micron2], for example: density 200
 %             NOTE: 'density' option is only valid for Hybrid_particles
 vol 0.001000
