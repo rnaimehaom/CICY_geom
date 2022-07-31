@@ -6107,35 +6107,52 @@ int Generate_Network::Output_data_files(const Geom_sample &geom_sample, const Ou
         return 1; 
     }
         
-    
-    //Check if output data files were requested for generated GNPs
-    if (out_flags.gnp_data == 1 || out_flags.gnp_data == 3) {
-        
-        //Print the GNP data needed to generate them in Abaqus
-        Pr.Print_gnp_data(gnps, out_flags.prec_gnp, "gnp_data.csv");
-    }
-    if (out_flags.gnp_data == 2 || out_flags.gnp_data == 3) {
+    //Check if there are GNPs
+    if (gnps.size())
+    {
+        //There are GNPs, so check if output data files were requested for generated GNPs
+        if (out_flags.gnp_data == 1 || out_flags.gnp_data == 3) {
 
-        //Print the GNP data into a binary file
-        Pr.Print_gnp_data_binary(gnps, "gnp_data.dat");
-    }
-    else if (out_flags.gnp_data == 4) {
-        
-        //Print the four vertices of a GNP needed to generate them in Abaqus
-        Pr.Print_4_vertices_gnps(gnps, out_flags.prec_gnp, "gnp_vertices.csv");
-    }
-    
-    //Check if output data files were requested for generated CNTs
-    if (out_flags.cnt_data == 1 || out_flags.cnt_data == 3) {
-        
-        //Print the CNT data needed to generated them in Abaqus
-        Pr.Print_cnt_points_and_structure(geom_sample.sample, structure, points_cnt, radii_out, out_flags.prec_cnt, "cnt_coordinates.csv", "cnt_struct.csv");
-    }
-    if (out_flags.cnt_data == 2 || out_flags.cnt_data == 3) {
+            //Print the GNP data needed to generate them in Abaqus
+            Pr.Print_gnp_data(gnps, out_flags.prec_gnp, "gnp_data.csv");
+        }
+        if (out_flags.gnp_data == 2 || out_flags.gnp_data == 3) {
 
-        //hout << "Print_cnt_points_and_structure_binary" << endl;
-        //Print the CNT data into binary files
-        Pr.Print_cnt_points_and_structure_binary(geom_sample.sample, structure, points_cnt, radii_out, "cnt_coordinates.dat", "cnt_struct.dat");
+            //Print the GNP data into a binary file
+            Pr.Print_gnp_data_binary(gnps, "gnp_data.dat");
+        }
+        else if (out_flags.gnp_data == 4) {
+
+            //Print the four vertices of a GNP needed to generate them in Abaqus
+            Pr.Print_4_vertices_gnps(gnps, out_flags.prec_gnp, "gnp_vertices.csv");
+        }
+    }
+    //Output a message if data for GNPs was requested but there are no GNPs
+    else if (out_flags.gnp_data)
+    {
+        hout << "WARNING: Output data for GNPs was requested but no GNPs were generated. No csv nor dat file was generated for GNPs." << endl << endl;
+    }
+
+    //Check if there are CNTs
+    if (points_cnt.size())
+    {
+        //There are CNTs, so check if output data files were requested for generated CNTs
+        if (out_flags.cnt_data == 1 || out_flags.cnt_data == 3) {
+
+            //Print the CNT data needed to generated them in Abaqus
+            Pr.Print_cnt_points_and_structure(geom_sample.sample, structure, points_cnt, radii_out, out_flags.prec_cnt, "cnt_coordinates.csv", "cnt_struct.csv");
+        }
+        if (out_flags.cnt_data == 2 || out_flags.cnt_data == 3) {
+
+            //hout << "Print_cnt_points_and_structure_binary" << endl;
+            //Print the CNT data into binary files
+            Pr.Print_cnt_points_and_structure_binary(geom_sample.sample, structure, points_cnt, radii_out, "cnt_coordinates.dat", "cnt_struct.dat");
+        }
+    }
+    //Output a message if data for CNTs was requested but there are no CNTs
+    else if (out_flags.cnt_data)
+    {
+        hout << "WARNING: Output data for CNTs was requested but no CNTs were generated. No csv nor dat file was generated for CNTs." << endl << endl;
     }
     
     return 1;
