@@ -800,8 +800,18 @@ int Backbone_Network::Clear_structure_of_dead_gnps(const int& n_cluster, vector<
         {
             //gnp_i is dead
 
-            //Clear the structure as indication that the GNP is dead
-            structure_gnp[gnp_i].clear();
+            //Check if the structure vector has elements
+            if (structure_gnp[gnp_i].size())
+            {
+                //Structure vector has elements, so clear the structure as indication that the GNP is dead
+                structure_gnp[gnp_i].clear();
+
+                //As the GNP had junction points but needed to be clear, then there are junctions
+                //that need to be removed in a new iteration of the while loop that calls the
+                //function Clear_structure_of_dead_gnps
+                //In that case, increase the variable to_remove
+                to_remove++;
+            }
 
             //Check if the GNP has a junction that needs to be removed
             if (NJ == 1)

@@ -966,7 +966,7 @@ int Direct_Electrifying::Fill_2d_matrices_gnp(const int &R_flag, const Electric_
         //current GNP
         int gnp_i = cluster_gnp[i];
         //hout<<endl<<"gnp_i="<<gnp_i<<" structure_gnp[gnp_i].size="<< structure_gnp[gnp_i].size() << " gnps[gnp_i].triangulation.size()="<< gnps[gnp_i].triangulation.size()<<endl;
-        //for (size_t i = 0; i < structure_gnp[gnp_i].size(); i++) hout << "structure_gnp[gnp_i="<< gnp_i<<"][" << i << "]=" << structure_gnp[gnp_i][i] << endl;
+        //for (size_t i = 0; i < structure_gnp[gnp_i].size(); i++) hout << "structure_gnp[gnp_i="<< gnp_i<<"][" << i << "]=" << structure_gnp[gnp_i][i] <<" points_gnp["<< structure_gnp[gnp_i][i]<<"]="<< points_gnp[structure_gnp[gnp_i][i]].str() << endl;
         
         //Check if the triangulation needs to be performed
         //Triangulation is performed when calculating the backbone (R_flag == 0)
@@ -1183,47 +1183,72 @@ int Direct_Electrifying::Fill_2d_matrices_gnp_junctions(const int &R_flag, const
         //Get the particle numbers
         int GNP1 = junctions_gnp[idx].N1;
         int GNP2 = junctions_gnp[idx].N2;
-        //hout << "Junction: GNP1=" << GNP1 << " GNP2=" << GNP2 << endl;
+        //hout << "Junction: GNP1=" << GNP1 << ", P1="<<P1<<" GNP2=" << GNP2 <<" P2="<<P2 << endl;
+
+        //Variables to store the node numbers
+        long int node1 = -1, node2 = -1;
+
+        //Check if P1 has a node
+        map<long int, long int>::const_iterator node1_it = LMM_gnps.find(P1);
+        if (node1_it != LMM_gnps.end())
+        {
+            //Point P1 has a node number assigned so update node1
+            node1 = node1_it->second;
+            //hout << "node1=" << node1<<endl;
+        }
+
+        //Check if P2 has a node
+        map<long int, long int>::const_iterator node2_it = LMM_gnps.find(P2);
+        if (node2_it != LMM_gnps.end())
+        {
+            //Point P2 has a node number assigned so update node2
+            node2 = node2_it->second;
+            //hout << "node2=" << node2 << endl;
+        }
         
-        //Calculate the junction resistance
-        double Re_inv = 1.0;
-        if (R_flag == 1) {
-            if (!Calculate_junction_resistance(junctions_gnp[idx], gnps[GNP1].t, gnps[GNP2].t, electric_param, Re_inv)) {
-                hout<<"Error in Fill_2d_matrices_gnp_junctions when calling Calculate_junction_resistance"<<endl;
+        //Check if both node numbers are valid
+        if (node1 != -1 && node2 != -1)
+        {
+
+            //Both node numbers are valid, so calculate resistor and add it to the stiffness matrix
+            
+            //Calculate the junction resistance
+            double Re_inv = 1.0;
+            if (R_flag == 1) {
+                if (!Calculate_junction_resistance(junctions_gnp[idx], gnps[GNP1].t, gnps[GNP2].t, electric_param, Re_inv)) {
+                    hout << "Error in Fill_2d_matrices_gnp_junctions when calling Calculate_junction_resistance" << endl;
+                    return 0;
+                }
+
+                //Add resistance to vector of all resistors
+                //all_resistors.push_back(Re_inv);
+
+                //Calculate inverse of resistance
+                //hout << "Rj=" << Re_inv << " ";
+                Re_inv = 1 / Re_inv;
+                //hout << "Rj_inv=" << Re_inv << endl;
+            }
+            else if (R_flag != 0) {
+                hout << "Error in Fill_2d_matrices_gnp_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
                 return 0;
             }
 
-            //Add resistance to vector of all resistors
-            //all_resistors.push_back(Re_inv);
-            
-            //Calculate inverse of resistance
-            //hout << "Rj=" << Re_inv << " ";
-            Re_inv = 1/Re_inv;
-            //hout << "Rj_inv=" << Re_inv << endl;
-        }
-        else if (R_flag != 0) {
-            hout << "Error in Fill_2d_matrices_gnp_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
-            return 0;
-        }
-        
-        //Get node numbers
-        long int node1 = LMM_gnps.at(P1);
-        long int node2 = LMM_gnps.at(P2);
-        /* /Check for small numbers
-        if (Re_inv < 1e-13) {
-            hout << "R_inv=" << Re_inv << " d=" << junctions_gnp[idx].junction_dist <<" d_P="<< points_gnp[P1].distance_to(points_gnp[P2]) << endl;
-            hout << "GNP1=" << GNP1 << " GNP2=" << GNP2 << endl;
-            hout << "l_GNP1=" << gnps[GNP1].l << " t_GNP1=" << gnps[GNP1].t << endl;
-            hout << "l_GNP2=" << gnps[GNP2].l << " t_GNP2=" << gnps[GNP2].t << endl;
-            hout << "node1=" << node1 << " node2=" << node2 << endl;
-            double Re = electric_param.C1 * junctions_gnp[idx].junction_dist * exp(electric_param.C2 * junctions_gnp[idx].junction_dist) / (gnps[GNP1].t* gnps[GNP1].t);
-            hout << "Re=" << Re << " 1/Re=" << 1.0 / Re << endl;
-        }// */
-        
-        //Add junction resistance to sparse stiffness matrix
-        if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
-            hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Add_elements_to_2d_sparse_matrix"<<endl;
-            return 0;
+            /* /Check for small numbers
+            if (Re_inv < 1e-13) {
+                hout << "R_inv=" << Re_inv << " d=" << junctions_gnp[idx].junction_dist <<" d_P="<< points_gnp[P1].distance_to(points_gnp[P2]) << endl;
+                hout << "GNP1=" << GNP1 << " GNP2=" << GNP2 << endl;
+                hout << "l_GNP1=" << gnps[GNP1].l << " t_GNP1=" << gnps[GNP1].t << endl;
+                hout << "l_GNP2=" << gnps[GNP2].l << " t_GNP2=" << gnps[GNP2].t << endl;
+                hout << "node1=" << node1 << " node2=" << node2 << endl;
+                double Re = electric_param.C1 * junctions_gnp[idx].junction_dist * exp(electric_param.C2 * junctions_gnp[idx].junction_dist) / (gnps[GNP1].t* gnps[GNP1].t);
+                hout << "Re=" << Re << " 1/Re=" << 1.0 / Re << endl;
+            }// */
+
+            //Add junction resistance to sparse stiffness matrix
+            if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
+                hout << "Error in Fill_2d_matrices_mixed_junctions when calling Add_elements_to_2d_sparse_matrix" << endl;
+                return 0;
+            }
         }
     }
     

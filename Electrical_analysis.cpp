@@ -234,6 +234,7 @@ int Electrical_analysis::Electrical_resistance_along_each_percolated_direction(c
     //-----------------------------------------------------------------------------------------------------------------------------------------
     //Get the vector of directions
     vector<int> directions;
+    //hout<<"Vector_of_directions"<<endl;
     if (!Vector_of_directions(HoKo->family[n_cluster], simu_param, directions)) {
         hout << "Error in Perform_analysis_on_cluster when calling Vector_of_directions" << endl;
         return 0;
