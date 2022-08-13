@@ -502,19 +502,36 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
         //Get the name of the set
         //Numbering of sets starts at 1
         string set_name = Get_cnt_set_name((int)i+1);
+        //hout << "Set " << set_name << endl;
 
-        //Access set from root assembly
-        odb_Set& cnt_set = root_assy.nodeSets()[set_name.c_str()];
+        //Variables to store displacement objects
+        odb_FieldOutput cnt_disp, cnt_disp_prev;
 
-        //Get the displacement objects of the set
-        odb_FieldOutput cnt_disp = current_fieldU.getSubset(cnt_set);
-        odb_FieldOutput cnt_disp_prev = previous_fieldU.getSubset(cnt_set);
+        //Sometimes abaqus does not generate the set, so catch that error if this happens
+        try {
+            //Access set from root assembly
+            odb_Set& cnt_set = root_assy.nodeSets()[set_name.c_str()];
+
+            //Get the displacement objects of the set
+            cnt_disp = current_fieldU.getSubset(cnt_set);
+            //hout << "current_fieldU" << endl;
+            cnt_disp_prev = previous_fieldU.getSubset(cnt_set);
+            //hout << "previous_fieldU" << endl;
+        }
+        catch (...) {
+            hout << "Error in Apply_displacements_to_cnts." << endl;
+            hout << "Error while accessing set " << set_name.c_str() << endl;
+            return 0;
+        }
+        //hout << "nodeSets" << endl;
 
         //Get the values of the displacement object
         const odb_SequenceFieldValue& vals = cnt_disp.values();
+        //hout << "cnt_disp" << endl;
         const odb_SequenceFieldValue& vals_prev = cnt_disp_prev.values();
+        //hout << "cnt_disp_prev" << endl;
         //Output size of values
-        //cout << "values.size=" << vals.size() << endl;
+        //cout << "values.size=" << vals.size() <<" structure[CNT="<<i<<"].size()="<< structure[i].size() << endl;
 
         //Check there is the same number of points in the CNT and in the set
         if (structure[i].size() != vals.size())
@@ -553,13 +570,14 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
 
             //Get current point number
             long int P = structure[i][idx];
+            //hout << "P=" << P <<" idx="<< idx << endl;
             
             //Get current values
             const odb_FieldValue val = vals[j];
             //Get previous values
             const odb_FieldValue val_prev = vals_prev[j];
             //Output node label
-            //cout << "  Node: " << val.nodeLabel() << endl;
+            //hout << "  Node: " << val.nodeLabel() << endl;
             //Get the data of the displacements
             int numComp = 0; //This integer is needed to call data() in the line below
             const float* const data = val.data(numComp);
@@ -580,7 +598,9 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
             points_cnt[P].x = points_cnt[P].x + (double)data[0] - (double)data_prev[0];
             points_cnt[P].y = points_cnt[P].y + (double)data[1] - (double)data_prev[1];
             points_cnt[P].z = points_cnt[P].z + (double)data[2] - (double)data_prev[2];
+            //hout << "P udated" << endl;
         }
+        //hout << "for-end" << endl;
     }
 
     return 1;
