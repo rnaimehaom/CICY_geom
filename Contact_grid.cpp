@@ -19,9 +19,9 @@ int Contact_grid::Generate_contact_grid(const int &window, const string &particl
 {
     
     //Number of subregions on each direction
-    int sx = 1 + (int)(window_geom.len_x/sample_geom.gs_minx);
-    int sy = 1 + (int)(window_geom.wid_y/sample_geom.gs_miny);
-    int sz = 1 + (int)(window_geom.hei_z/sample_geom.gs_minz);
+    int sx = max(1, (int)(window_geom.len_x/sample_geom.gs_minx));
+    int sy = max(1, (int)(window_geom.wid_y/sample_geom.gs_miny));
+    int sz = max(1, (int)(window_geom.hei_z/sample_geom.gs_minz));
     int n_regions[] = {sx,sy,sz};
     //hout << "sx = " << sx << '\t' << "lx = " << window_geom.len_x << '\t' << "dx = " << sample_geom.gs_minx << "\n";
     //hout << "sy = " << sy << '\t' << "ly = " << window_geom.wid_y << '\t' << "dy = " << sample_geom.gs_miny << "\n";
@@ -127,7 +127,7 @@ int Contact_grid::Fill_sectioned_domain_cnts(const cuboid &window_geom, const ve
             //Calculate the region-coordinates
             int a, b, c;
             //hout << "points_cnt[P="<<P<<"]="<<points_cnt[P].str()<< endl;
-            if (!Calculate_region_coordinates(window_geom, points_cnt[P], l_regions, a, b, c)) {
+            if (!Calculate_region_coordinates(window_geom, points_cnt[P], n_regions, l_regions, a, b, c)) {
                 hout << "Error in Generate_sectioned_domain_cnts when calling Calculate_region_coordinates" << endl;
                 return 0;
             }
@@ -160,13 +160,25 @@ int Contact_grid::Fill_sectioned_domain_cnts(const cuboid &window_geom, const ve
     return 1;
 }
 //This function calculates the subregion coordinates for a given point
-int Contact_grid::Calculate_region_coordinates(const cuboid &window_geom, const Point_3D &point, const double l_regions[], int &a, int &b, int &c)
-{
-    
-    //Calculate the region-coordinates
+int Contact_grid::Calculate_region_coordinates(const cuboid &window_geom, const Point_3D &point, const int n_regions[], const double l_regions[], int &a, int &b, int &c)
+{   
+    //Calculate the region coordinate a
     a = (int)((point.x - window_geom.poi_min.x)/l_regions[0]);
+    //Adjust region coordinate a if needed
+    if (a < 0) a = 0;
+    else if (a >= n_regions[0]) a = n_regions[0] - 1;
+
+    //Calculate the region coordinate b
     b = (int)((point.y - window_geom.poi_min.y)/l_regions[1]);
+    //Adjust region coordinate b if needed
+    if (b < 0) b = 0;
+    else if (b >= n_regions[1]) b = n_regions[1] - 1;
+
+    //Calculate the region coordinate c
     c = (int)((point.z - window_geom.poi_min.z)/l_regions[2]);
+    //Adjust region coordinate c if needed
+    if (c < 0) c = 0;
+    else if (c >= n_regions[2]) c = n_regions[2] - 1;
     
     return 1;
 }
@@ -312,10 +324,10 @@ int Contact_grid::Fill_sectioned_domain_gnps(const cuboid &window_geom, const ve
 int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, const GNP &gnp, const double &overlapping, const int n_regions[], const double l_regions[], const int& tot_regions)
 {
     //Number of points to discretize the GNP along the x direction (of the GNP local coordinates)
-    int n_points_x = max(20, 1 + (int)(gnp.l/l_regions[0]));
+    int n_points_x = max(40, 1 + (int)(gnp.l/l_regions[0]));
     
     //Number of points to discretize the GNP along the y direction (of the GNP local coordinates)
-    int n_points_y = max(20, 1 + (int)(gnp.l/l_regions[1]));
+    int n_points_y = max(40, 1 + (int)(gnp.l/l_regions[1]));
     
     //Number of points to discretize the GNP along the z direction (of the GNP local coordinates)
     //Make sure there are at least two points in the discretization along z
@@ -380,7 +392,7 @@ int Contact_grid::Fill_sectioned_domain_single_gnp(const cuboid &window_geom, co
                     //If the point is inside the window, then calcualte the region coordinates of the point
                     int a, b, c;
                     //hout<<"Calculate_region_coordinates"<<endl;
-                    if (!Calculate_region_coordinates(window_geom, point, l_regions, a, b, c)) {
+                    if (!Calculate_region_coordinates(window_geom, point, n_regions, l_regions, a, b, c)) {
                         hout<<"Error in Fill_sectioned_domain_single_gnp when calling Calculate_region_coordinates"<<endl;
                         return 0;
                     }

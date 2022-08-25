@@ -1538,7 +1538,7 @@ int Generate_Network::Add_cnt_point_to_overlapping_regions_map(const Geom_sample
             }
 
             //Get the overlapping flags
-            if (!Get_overlapping_flags_with_layer(geom_sample, new_point, a, b, c, f_regions))
+            if (!Get_overlapping_flags_with_layer(geom_sample, new_point, a, b, c, n_subregions, f_regions))
             {
                 hout << "Error in Add_cnt_point_to_overlapping_regions_map when calling Get_overlapping_flags_with_layer." << endl;
                 return 0;
@@ -1562,7 +1562,7 @@ int Generate_Network::Add_cnt_point_to_overlapping_regions_map(const Geom_sample
         //Initialize coordinates with zero
         vector<vector<int> > all_coords(3, vector<int>(1, 0));
 
-        //Set defaul coordinates as first element of each vector in the 2D vector
+        //Set default coordinates as first element of each vector in the 2D vector
         all_coords[0][0] = a;
         all_coords[1][0] = b;
         all_coords[2][0] = c;
@@ -4059,7 +4059,7 @@ int Generate_Network::Add_gnp_subregions_to_set_for_gnp_point(const int& tot_reg
     //Initialize flags for overlaping regions
     int f_regions[] = { 0,0,0 };
 
-    if (!Get_overlapping_flags_with_layer(geom_sample, new_point, a, b, c, f_regions))
+    if (!Get_overlapping_flags_with_layer(geom_sample, new_point, a, b, c, n_subregions, f_regions))
     {
         hout << "Error in Add_gnp_subregions_to_set_for_gnp_point when calling Get_overlapping_flags_with_layer." << endl;
         return 0;
@@ -4170,33 +4170,33 @@ int Generate_Network::Get_subregion_coordinates_with_layer(const Geom_sample& ge
 }
 //This function gets the overlapping flags when there is a boundary layer, i.e., there
 //are subregions outside the sample
-int Generate_Network::Get_overlapping_flags_with_layer(const Geom_sample& geom_sample, const Point_3D& new_point, const int& a, const int& b, const int& c, int f_regions[])const
+int Generate_Network::Get_overlapping_flags_with_layer(const Geom_sample& geom_sample, const Point_3D& new_point, const int& a, const int& b, const int& c, const int n_subregions[], int f_regions[])const
 {
     //Coordinates of non-overlaping region the point belongs to
     //Recall that, for generation purposes, doordinate 0 is outside the sample
     //and for coordinate a = 1 we have that x1 = geom_sample.sample.poi_min.x
     //Thus for a = 0 we have that x1 = - geom_sample.sample.poi_min.x
     //Simlarly for b and c
-    double x1 = a * geom_sample.gs_minx - geom_sample.sample.poi_min.x;
+    double x1 = (double)a * geom_sample.gs_minx - geom_sample.sample.poi_min.x;
     double x2 = x1 + geom_sample.gs_minx;
-    double y1 = b * geom_sample.gs_miny - geom_sample.sample.poi_min.y;
+    double y1 = (double)b * geom_sample.gs_miny - geom_sample.sample.poi_min.y;
     double y2 = y1 + geom_sample.gs_miny;
-    double z1 = c * geom_sample.gs_minz - geom_sample.sample.poi_min.z;
+    double z1 = (double)c * geom_sample.gs_minz - geom_sample.sample.poi_min.z;
     double z2 = z1 + geom_sample.gs_minz;
 
     //Assign value of flag according to position of point
     //The first operand eliminates the periodicity on the boundary
     if ((a > 0) && (new_point.x >= x1) && (new_point.x <= x1 + geom_sample.gs_overlap_gnp))
         f_regions[0] = -1;
-    else if ((a < geom_sample.gs_minx - 1) && (new_point.x >= x2 - geom_sample.gs_overlap_gnp) && (new_point.x <= x2))
+    else if ((a < n_subregions[0] - 1) && (new_point.x >= x2 - geom_sample.gs_overlap_gnp) && (new_point.x <= x2))
         f_regions[0] = 1;
     if ((b > 0) && (new_point.y >= y1) && (new_point.y <= y1 + geom_sample.gs_overlap_gnp))
         f_regions[1] = -1;
-    else if ((b < geom_sample.gs_miny - 1) && (new_point.y >= y2 - geom_sample.gs_overlap_gnp) && (new_point.y <= y2))
+    else if ((b < n_subregions[1] - 1) && (new_point.y >= y2 - geom_sample.gs_overlap_gnp) && (new_point.y <= y2))
         f_regions[1] = 1;
     if ((c > 0) && (new_point.z >= z1) && (new_point.z <= z1 + geom_sample.gs_overlap_gnp))
         f_regions[2] = -1;
-    else if ((c < geom_sample.gs_minz - 1) && (new_point.z >= z2 - geom_sample.gs_overlap_gnp) && (new_point.z <= z2))
+    else if ((c < n_subregions[2] - 1) && (new_point.z >= z2 - geom_sample.gs_overlap_gnp) && (new_point.z <= z2))
         f_regions[2] = 1;
 
     return 1;
