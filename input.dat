@@ -259,6 +259,7 @@ Visualization_Flags
 %    then two files are generated, one for CNTs and one for GNPs)
 % 2: same as 1 but one visualization file is generated per CNT or GNP
 % 3: same as 1 but CNTs are exported after the ones that go outside the sample are trimmed
+% 4: same as 2 but CNTs are exported after the ones that go outside the sample are trimmed
 0
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %Flag to export clusters as obtained from the Hoshen-Kopelman algorithm:
