@@ -101,6 +101,12 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
                     string filename = "cnt_" + to_string(i) + ".vtk";
                     vtk_exp.Export_single_cnt(cnts_points[i], filename);
                 }
+                //Move all files to a folder
+                char command[100];
+                sprintf(command, "mkdir Generated_CNTs_single_files");
+                system(command);
+                sprintf(command, "mv cnt_*.vtk Generated_CNTs_single_files");
+                system(command);
             }
             else if (vis_flags.generated_nanoparticles == 1) {
                 
@@ -117,10 +123,16 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
                 //Generate one visualization file with all the GNPs
                 vtk_exp.Export_gnps(gnps, "gnps_generated.vtk");
             }
-            else if (vis_flags.generated_nanoparticles == 2)
+            else if (vis_flags.generated_nanoparticles == 2 || vis_flags.generated_nanoparticles == 4)
             {
                 //Generate one visualization file per GNP
-                vtk_exp.Export_gnps_single_files(gnps, "gnps_generated");
+                vtk_exp.Export_gnps_single_files(gnps, "gnp_");
+                //Move all files to a folder
+                char command[100];
+                sprintf(command, "mkdir GNPs_single_files");
+                system(command);
+                sprintf(command, "mv gnp_*.vtk GNPs_single_files");
+                system(command);
             }
         }
         
@@ -145,6 +157,20 @@ int Generate_Network::Generate_nanoparticle_network(const Simu_para &simu_para, 
     if (vis_flags.generated_nanoparticles == 3) {
         VTK_Export vtk_exp;
         vtk_exp.Export_from_cnt_structure(points_cnt, structure, "cnts_generated_trim.vtk");
+    }
+    else if (vis_flags.generated_nanoparticles == 4) {
+        VTK_Export vtk_exp;
+        //Generate one visualization file per CNT
+        for (size_t i = 0; i < structure.size(); i++) {
+            string filename = "cnt_" + to_string(i) + ".vtk";
+            vtk_exp.Export_single_cnt(points_cnt, structure[i], filename);
+        }
+        //Move all files to a folder
+        char command[100];
+        sprintf(command, "mkdir CNTs_single_files");
+        system(command);
+        sprintf(command, "mv cnt_*.vtk CNTs_single_files");
+        system(command);
     }
     
     //Output data files if requested

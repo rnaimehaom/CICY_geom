@@ -696,68 +696,148 @@ int VTK_Export::Add_connectivity_from_cluster(const vector<vector<long int> > &s
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 //Function to export a single CNT
-int VTK_Export::Export_single_cnt(const vector<Point_3D> &points, const string &filename)const
+int VTK_Export::Export_single_cnt(const vector<Point_3D>& points, const string& filename)const
 {
     //Check that there are at least two points in the CNT
     //(a single point does not make a CNT)
     if (points.size() <= 1) {
-        hout<<"No point in the CNT to export. NO visualization file was exported. Input filename: "<<filename<<endl;
+        hout << "No point in the CNT to export. NO visualization file was exported. Input filename: " << filename << endl;
         return 1;
     }
-    
+
     //Count the number of points
     int n_points = (int)points.size();
-    
+
     //Open the file
     ofstream otec(filename.c_str());
-    
+
     //Add header
     if (!Add_header(otec)) {
-        hout<<"Error in Export_single_cnt when calling Add_header"<<endl;
+        hout << "Error in Export_single_cnt when calling Add_header" << endl;
         return 0;
     }
-    
+
     //Add the line with the number of points
-    otec<<"POINTS "<<n_points<<" float" <<endl;
-    
+    otec << "POINTS " << n_points << " float" << endl;
+
     //Add all the points
     if (!Add_points_from_vector(points, otec)) {
-        hout<<"Error in Export_single_cnt when calling Add_points_from_vector"<<endl;
+        hout << "Error in Export_single_cnt when calling Add_points_from_vector" << endl;
         return 0;
     }
-    
+
     //Add the line indicating number of lines+1 (i.e., 2), and the number of points in that line
-    otec<<"LINES 2 "<<n_points<<endl;
-    
+    otec << "LINES 2 " << n_points << endl;
+
     //Add the offsets
     //Add the line with the OFFSETS command
-    otec<<"OFFSETS vtktypeint64"<<endl;
-    
+    otec << "OFFSETS vtktypeint64" << endl;
+
     //First output a zero, which is required then output the number of points in the line (CNT)
-    otec<<"0 "<<n_points<<endl;
-    
+    otec << "0 " << n_points << endl;
+
     //Add connectivity
     //Add the line with the CONNECTIVITY command
-    otec<<"CONNECTIVITY vtktypeint64"<<endl;
-    
+    otec << "CONNECTIVITY vtktypeint64" << endl;
+
     //Iterate over all points in the CNT
-    otec<<"0 ";
+    otec << "0 ";
     for (size_t j = 1; j < points.size(); j++) {
-        
+
         //Add the consecutive number of point j within the CNT
-        otec<<j<<' ';
-        
+        otec << j << ' ';
+
         //Add a new line every 50 points
-        if ( !(j%50) ) {
-            otec<<endl;
+        if (!(j % 50)) {
+            otec << endl;
         }
     }
     //Add one line at the end
-    otec<<endl;
-    
+    otec << endl;
+
     //Close the file
     otec.close();
-    
+
+    return 1;
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+//Function to export a single CNT
+int VTK_Export::Export_single_cnt(const vector<Point_3D>& points, const vector<long int>& structure_i, const string& filename)const
+{
+    //Check that there are at least two points in the CNT
+    //(a single point does not make a CNT)
+    if (points.size() <= 1 || structure_i.size() <= 1) {
+        hout << "No points in the CNT to export. NO visualization file was exported. Input filename: " << filename << endl;
+        return 1;
+    }
+
+    //Count the number of points
+    int n_points = (int)structure_i.size();
+
+    //Open the file
+    ofstream otec(filename.c_str());
+
+    //Add header
+    if (!Add_header(otec)) {
+        hout << "Error in Export_single_cnt when calling Add_header" << endl;
+        return 0;
+    }
+
+    //Add the line with the number of points
+    otec << "POINTS " << n_points << " float" << endl;
+
+    //Iterate over all the pairs of indices
+    for (int i = 0; i < (int)structure_i.size(); i++) {
+
+        //Check if a new line needs to be started
+        if (!(i+1 % 4)) {
+            otec << endl;
+        }
+
+        //Get current point of the line (CNT)
+        long int P1 = structure_i[i];
+
+        //Append point i to file
+        otec << points[P1].x << ' ' << points[P1].y << ' ' << points[P1].z << ' ';
+    }
+
+    //Start a new line
+    otec << endl;
+
+    //Add the line indicating number of lines+1 (i.e., 2), and the number of points in that line
+    otec << "LINES 2 " << n_points << endl;
+
+    //Add the offsets
+    //Add the line with the OFFSETS command
+    otec << "OFFSETS vtktypeint64" << endl;
+
+    //First output a zero, which is required then output the number of points in the line (CNT)
+    otec << "0 " << n_points << endl;
+
+    //Add connectivity
+    //Add the line with the CONNECTIVITY command
+    otec << "CONNECTIVITY vtktypeint64" << endl;
+
+    //Iterate over all points in the CNT
+    otec << "0 ";
+    for (size_t j = 1; j < structure_i.size(); j++) {
+
+        //Add the consecutive number of point j within the CNT
+        otec << j << ' ';
+
+        //Add a new line every 50 points
+        if (!(j % 50)) {
+            otec << endl;
+        }
+    }
+    //Add one line at the end
+    otec << endl;
+
+    //Close the file
+    otec.close();
+
     return 1;
 }
 //---------------------------------------------------------------------------
