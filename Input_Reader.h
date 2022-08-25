@@ -217,6 +217,9 @@ struct Cutoff_dist{
     //This is the quantity that will actually be used for comparison as squared
     //distances will be calculated to reduce computational time
     double tol_gnp2;
+    //Maximum distance that a GNP is allowed to interpenetrate another GNP
+    //(i.e., maximum distance to ignore interpenetrations)
+    double PD_cutoff;
 };
 //Electrical parameters
 struct Electric_para{

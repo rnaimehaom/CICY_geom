@@ -4326,11 +4326,16 @@ int Generate_Network::Move_gnps_if_needed(const int& MAX_ATTEMPTS_GNP, const int
             }
             //hout<<"EPA PD="<<PD<<" normal="<<N.str()<< " length=" << N.length() << endl;
             
-            //Add to the vector of displacements
-            //hout << "Add_to_vector_of_displacements" << endl;
-            if (!Add_to_vector_of_displacements(PD + cutoffs.van_der_Waals_dist, N, disps, disps_vec)) {
-                hout<<"Error in Move_gnps_if_needed when calling Add_to_vector_of_displacements (1)"<<endl;
-                return 0;
+            //Check if the interpenetration is "small enoguh" so that it can be ignored
+            if (PD - cutoffs.PD_cutoff > Zero)
+            {
+                //PD is greater than the cutoff
+                //Add to the vector of displacements
+                //hout << "Add_to_vector_of_displacements" << endl;
+                if (!Add_to_vector_of_displacements(PD + cutoffs.van_der_Waals_dist, N, disps, disps_vec)) {
+                    hout << "Error in Move_gnps_if_needed when calling Add_to_vector_of_displacements (1)" << endl;
+                    return 0;
+                }
             }
         }
         /*else {

@@ -212,6 +212,7 @@ int Input::Data_Initialization()
 	cutoff_dist.tunneling_dist = 0.0018;
 	cutoff_dist.van_der_Waals_dist = 0.00034;
     cutoff_dist.min_points = 5;
+    cutoff_dist.PD_cutoff = 0.001;
 
 	//Initialize electrical parameters
 	electric_para.keywords = "Electrical_Parameters";
@@ -788,6 +789,8 @@ int Input::Read_cutoff_distances(Cutoff_dist &cutoff_dist, ifstream &infile)
         hout << "Error: min_points must be greater than zero. Input was: "<< cutoff_dist.min_points << endl;
         return 0;
     }
+    //Set the PD cutoff
+    cutoff_dist.PD_cutoff = 0.001;
     
     return 1;
 }
