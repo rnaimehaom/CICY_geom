@@ -75,6 +75,13 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(
         //If GNPs are generated, n_clusters will be updated in Make_mixed_clusters
         n_clusters = n_labels_cnt;
     }
+
+    //Before finding clusters involving GNPs (if any), get the number of GNP points at boundaries
+    long int gnp_pts_bdds = (long int)points_gnp.size();
+
+    //Initialize a vector with size equal to the number of boundary points in GNPs
+    //These will be flags for junctions involving a non-relevant bundary point
+    vector<bool> bp_flags(gnp_pts_bdds, false);
     
     //Check if there are GNPs in the sample and make the GNP clusters accordingly
     if (simu_para.particle_type != "CNT_wires" && simu_para.particle_type != "CNT_deposit") {
@@ -86,7 +93,7 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(
         
         //Make GNP clusters
         //hout<<"Make_gnp_clusters n_total_labels="<<n_total_labels<<endl;
-        if (!Make_gnp_clusters(sample, gnps_inside, sectioned_domain_gnp, gnps, cutoffs, n_labels_cnt, n_total_labels, structure_gnp, points_gnp, labels_gnp)) {
+        if (!Make_gnp_clusters(sample, gnps_inside, sectioned_domain_gnp, gnps, cutoffs, gnp_pts_bdds, n_labels_cnt, n_total_labels, structure_gnp, points_gnp, labels_gnp, bp_flags)) {
             hout<<"Error in Determine_clusters when calling Make_gnp_clusters"<<endl;
             return 0;
         }
@@ -173,8 +180,8 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(
         }
 
         //Remove points in non-relevant boundaries
-        //Remove_gnp_points_in_non_relevant_boundaries(vector<vector<long int> >& structure_gnp, vector<GNP>& gnps)
-        if (!Remove_gnp_points_in_non_relevant_boundaries(structure_gnp, gnps))
+        //hout << "Remove_gnp_points_in_non_relevant_boundaries" << endl;
+        if (!Remove_gnp_points_in_non_relevant_boundaries(bp_flags, structure_gnp, gnps))
         {
             hout << "Error in Find_percolated_clusters when calling Remove_gnp_points_in_non_relevant_boundaries" << endl;
             return 0;
@@ -560,14 +567,14 @@ int Hoshen_Kopelman::Complete_cnt_elements(const vector<vector<long int> > &stru
     return 1;
 }
 //This function makes the GNP clusters
-int Hoshen_Kopelman::Make_gnp_clusters(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, const int &n_labels_cnt, int &n_total_labels, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp)
+int Hoshen_Kopelman::Make_gnp_clusters(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, const long int &gnp_pts_bdds, const int &n_labels_cnt, int &n_total_labels, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<bool> &bp_flags)
 {
     //Vector of labels of labels
     vector<int> labels_labels_gnp;
     
     //Label the GNPs
     //hout<<"Label_gnps_in_window"<<endl;
-    if (!Label_gnps_in_window(sample, gnps_inside, sectioned_domain_gnp, gnps, cutoffs, structure_gnp, points_gnp, labels_gnp, labels_labels_gnp)) {
+    if (!Label_gnps_in_window(sample, gnps_inside, sectioned_domain_gnp, gnps, cutoffs, gnp_pts_bdds, structure_gnp, points_gnp, labels_gnp, labels_labels_gnp, bp_flags)) {
         hout<<"Error in Make_gnp_clusters when calling Label_gnps_in_window"<<endl;
         return 0;
     }
@@ -597,7 +604,7 @@ int Hoshen_Kopelman::Make_gnp_clusters(const cuboid& sample, const vector<int> &
     return 1;
 }
 //This function labels the GNPs so that they can be grouped into clusters
-int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp)
+int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, const long int &gnp_pts_bdds, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp, vector<bool>& bp_flags)
 {
     //new_label will take the value of the newest cluster
     int new_label = 0;
@@ -704,7 +711,7 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                             }
 
                             //Add junction to vector of junctions
-                            if (!Add_gnp_junction(gnps, GNPa, GNPb, p_flag, PointA, PointB, dist, cutoffs.tol_gnp2, points_gnp, structure_gnp))
+                            if (!Add_gnp_junction(gnps, GNPa, GNPb, p_flag, PointA, PointB, dist, cutoffs.tol_gnp2, gnp_pts_bdds, points_gnp, structure_gnp, bp_flags))
                             {
                                 hout << "Error in Label_gnps_in_window when calling Add_gnp_junction" << endl;
                                 return 0;
@@ -1689,7 +1696,7 @@ int Hoshen_Kopelman::Average_point_with_two_interserctions(const vector<Edge> &e
     return 1;
 }
 //Add junction to vector of junctions
-int Hoshen_Kopelman::Add_gnp_junction(const vector<GNP>& gnps, const int& GNPa, const int& GNPb, const bool& p_flag, const Point_3D& PointA, const Point_3D& PointB, const double& dist, const double& tol_gnp, vector<Point_3D>& points_gnp, vector<vector<long int> >& structure_gnp)
+int Hoshen_Kopelman::Add_gnp_junction(const vector<GNP>& gnps, const int& GNPa, const int& GNPb, const bool& p_flag, const Point_3D& PointA, const Point_3D& PointB, const double& dist, const double& tol_gnp, const long int& gnp_pts_bdds, vector<Point_3D>& points_gnp, vector<vector<long int> >& structure_gnp, vector<bool>& bp_flags)
 {
     //Variables to store the GNP point numbers
     long int Pa, Pb;
@@ -1713,6 +1720,18 @@ int Hoshen_Kopelman::Add_gnp_junction(const vector<GNP>& gnps, const int& GNPa, 
 
     //Add the junction to the vector of junctions
     junctions_gnp.push_back(j); 
+    
+    //Check if the junction involves a boundary point
+    if (Pa < gnp_pts_bdds)
+    {
+        //Set the flag for Pa to true
+        bp_flags[Pa] = true;
+    }
+    if (Pb < gnp_pts_bdds)
+    {
+        //Set the flag for Pb to true
+        bp_flags[Pb] = true;
+    }
     
     //hout << "Junction: GNPa=" << GNPa << " Pa=" << Pa << " GNPb=" << GNPb << " Pb=" << Pb << " dist=" << dist << endl;
 
@@ -2580,7 +2599,7 @@ int Hoshen_Kopelman::Group_junctions_mix_particle(const vector<Point_3D> &points
     return 1;
 }
 //This function removes GNP points in non-relevant boundaries from the GNP structure vector
-int Hoshen_Kopelman::Remove_gnp_points_in_non_relevant_boundaries(vector<vector<long int> >& structure_gnp, vector<GNP>& gnps)
+int Hoshen_Kopelman::Remove_gnp_points_in_non_relevant_boundaries(const vector<bool>& bp_flags, vector<vector<long int> >& structure_gnp, vector<GNP>& gnps)
 {
     //Iterate over the GNPs in clusters
     //First iterate over each cluster
@@ -2614,7 +2633,7 @@ int Hoshen_Kopelman::Remove_gnp_points_in_non_relevant_boundaries(vector<vector<
                 //Check if boundary points of gnp_j are in relevant boundaries
                 //If so, add them to relevant_points
                 //If not remove them from the structure vector
-                if (!Check_relevant_boundary_and_remove_if_needed(n_rb, gnp_j, gnps, relevant_boundaries, relevant_points, structure_gnp))
+                if (!Check_relevant_boundary_and_remove_if_needed(bp_flags, n_rb, gnp_j, gnps, relevant_boundaries, relevant_points, structure_gnp))
                 {
                     hout << "Error in Remove_gnp_points_in_non_relevant_boundaries when calling Check_relevant_boundary_and_remove_if_needed" << endl;
                     return 0;
@@ -2691,7 +2710,7 @@ int Hoshen_Kopelman::Get_vector_with_relevant_boundaries(const int& family, vect
 //This function check if boundary points of a GNP are in a relevant boundary
 //If so, they are added to a vector that contains only points in relevant boundaries
 //If not, they are removed from the structure vector
-int Hoshen_Kopelman::Check_relevant_boundary_and_remove_if_needed(const int& n_rb, const int& gnp_j, const vector<GNP>& gnps, const vector<int>& relevant_boundaries, vector<pair<long int, int> >& relevant_points, vector<vector<long int> >& structure_gnp)
+int Hoshen_Kopelman::Check_relevant_boundary_and_remove_if_needed(const vector<bool>& bp_flags, const int& n_rb, const int& gnp_j, const vector<GNP>& gnps, const vector<int>& relevant_boundaries, vector<pair<long int, int> >& relevant_points, vector<vector<long int> >& structure_gnp)
 {
     //Iterate over the boundary points of gnp_j
     //If gnp_j has no boundary points, then the for-loop does nothing
@@ -2700,8 +2719,11 @@ int Hoshen_Kopelman::Check_relevant_boundary_and_remove_if_needed(const int& n_r
         //Get the boundary number
         int bk = gnps[gnp_j].pts_boundary[k].second;
 
-        //Check if bk is a relevant boundary 
-        if (Is_in_relevant_boundary(n_rb, bk, relevant_boundaries))
+        //Get GNP point number
+        long int Pk = gnps[gnp_j].pts_boundary[k].first;
+
+        //Check if boundary bk is a relevant boundary or if point Pk has a junction
+        if (Is_in_relevant_boundary(n_rb, bk, relevant_boundaries) || bp_flags[Pk])
         {
             //Add to vector of relevant points
             relevant_points.push_back(gnps[gnp_j].pts_boundary[k]);
@@ -2709,9 +2731,6 @@ int Hoshen_Kopelman::Check_relevant_boundary_and_remove_if_needed(const int& n_r
         else
         {
             //Point is not in relevant point so remove it from the structure
-
-            //Get GNP point number
-            int Pk = gnps[gnp_j].pts_boundary[k].first;
 
             //Iterate over the structure
             for (size_t m = 0; m < structure_gnp[gnp_j].size(); m++)

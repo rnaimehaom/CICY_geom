@@ -327,6 +327,7 @@ int Direct_Electrifying::LM_matrix_for_gnps(const int &n_cluster, Hoshen_Kopelma
             
             //Get current point number
             long int P = structure_gnp[gnp_i][j];
+            //hout << "P=" << P << endl;
             
             //Check it is not a boundary node with prescribed conditions
             if (LMM_gnps.find(P) == LMM_gnps.end()) {

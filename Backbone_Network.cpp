@@ -16,9 +16,9 @@ int Backbone_Network::Determine_backbone_network(const int &n_cluster, const int
     //Find the "Zero" current of the circuit
     double zero_current;
     //hout << "Find_zero_current" << endl;
-    if (!Find_zero_current(n_cluster, R_flag, voltages, LMM_cnts, LMM_gnps, HoKo, cutoffs, points_cnt, radii, points_gnp, gnps, currents_cnt, zero_current)) 
+    if (!Find_zero_current(n_cluster, R_flag, voltages, LMM_cnts, LMM_gnps, HoKo, cutoffs, points_cnt, radii, points_gnp, gnps, currents_cnt, zero_current))
     {
-        hout<<"Error in Determine_backbone_network when calling Find_zero_current"<<endl;
+        hout << "Error in Determine_backbone_network when calling Find_zero_current" << endl;
         return 0;
     }
     
@@ -67,7 +67,7 @@ int Backbone_Network::Find_zero_current(const int &n_cluster, const int &R_flag,
     double I_max = Zero;
     
     //Vector to store all the currents
-    vector<double> currents;
+    //vector<double> currents;
     
     //Check if there is any CNT cluster and the current n_cluster has CNTs
     if (HoKo->clusters_cnt.size() && HoKo->clusters_cnt[n_cluster].size()) {
@@ -140,17 +140,22 @@ int Backbone_Network::Find_zero_current(const int &n_cluster, const int &R_flag,
             
             //Get current GNP
             int GNPi = HoKo->clusters_gnp[n_cluster][i];
+            //hout << "GNPi=" << GNPi << endl;
             
             //Go trough all triangulation edges of GNPi
             for (int j = 0; j < (int)gnps[GNPi].triangulation.size(); j++) {
                 
                 //Get the to triangulation vertices
                 long int P1 = gnps[GNPi].triangulation[j].v1;
+                //hout << "   P1=" << P1 << endl;
                 long int P2 = gnps[GNPi].triangulation[j].v2;
+                //hout << "   P2=" << P2 << endl;
                 
                 //Get the nodes
                 long int node1 = LMM_gnps.at(P1);
+                //hout << "   node1=" << node1 << endl;
                 long int node2 = LMM_gnps.at(P2);
+                //hout << "   node2=" << node2 << endl;
                 
                 //Calcualte the current as the difference between voltages
                 //If R_flag is added, then resistances need to be calculated
@@ -158,7 +163,7 @@ int Backbone_Network::Find_zero_current(const int &n_cluster, const int &R_flag,
                 //hout << "Edge " << P1 << "-" << P2 << " I=" << I << endl;
                 
                 //Add to the vector of currents
-                currents.push_back(I);
+                //currents.push_back(I);
                 
                 //Check if I is the maximum current so far
                 if (I > I_max) {
@@ -173,6 +178,7 @@ int Backbone_Network::Find_zero_current(const int &n_cluster, const int &R_flag,
     if (HoKo->cluster_gnp_junctions.size() && HoKo->cluster_gnp_junctions[n_cluster].size()) 
     {   
         //Calculate currents in the junctios and update the maximum current if needed
+        //hout << "Zero_current_in_same_particle_junctions_unit_resistor" << endl;
         if (!Zero_current_in_same_particle_junctions_unit_resistor( HoKo->cluster_gnp_junctions[n_cluster], HoKo->junctions_gnp, voltages, LMM_gnps, I_max)) {
         //if (!Zero_current_in_same_particle_junctions_unit_resistor_test( HoKo->cluster_gnp_junctions[n_cluster], HoKo->junctions_gnp, voltages, LMM_gnps, I_max, currents)) {
             hout<<"Error in Find_zero_current when calling Zero_current_in_same_particle_junctions_unit_resistor (GNPs)"<<endl;
@@ -212,7 +218,7 @@ int Backbone_Network::Find_zero_current(const int &n_cluster, const int &R_flag,
     }
     
     //Sort currents
-    sort(currents.begin(),currents.end());
+    //sort(currents.begin(),currents.end());
     
     //The error cutoff seems to work well with a drop in 9 orders of magnitude of the current. So that is how the cutoff is set.
     //This idea comes from Li and Chou's paper of the DEA in which using a voltage of 1V, a drop in 9 orders of magnitude
@@ -239,22 +245,29 @@ int Backbone_Network::Find_zero_current(const int &n_cluster, const int &R_flag,
 int Backbone_Network::Zero_current_in_same_particle_junctions_unit_resistor(const vector<int> &junction_cluster, const vector<Junction> &junctions, const vector<double> &voltages, const map<long int, long int> &LMM, double &I_max)
 {
     //Iterate over the junctions in the cluster
+    //hout << "junction_cluster.size()=" << junction_cluster.size() << endl;
     for (int i = 0; i < (int)junction_cluster.size(); i++) {
         
         //Get current junction
         int junc = junction_cluster[i];
         
         //Get the points in the junction
+        //hout << "N1=" << junctions[junc].N1 << " N2=" << junctions[junc].N2 << endl;
         long int P1 = junctions[junc].P1;
+        //hout << "P1=" << P1 << endl;
         long int P2 = junctions[junc].P2;
+        //hout << "P2=" << P2 << endl;
         
         //Get the node numbers
         long int node1 = LMM.at(P1);
+        //hout << "node1=" << node1 << endl;
         long int node2 = LMM.at(P2);
+        //hout << "node2=" << node2 << endl;
         
         //Calcualte the current as the difference between voltages since
         //unit resistors are assumed
         double I = abs(voltages[node1] - voltages[node2]);
+        //hout << "I=" << I << endl;
         
         //Check if I is the maximum current so far
         if (I > I_max) {

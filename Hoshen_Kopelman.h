@@ -50,7 +50,7 @@ public:
     //6 for XYZ
     vector<int> family;
     
-    //Temporary map for determining if a pair of veritces is an edge
+    //Temporary map for determining if a pair of vertices is an edge
     map<int, vector<int> > edge_map;
 
     //Flag for ignoring errors in mixed contacts where a CNT point is inside a GNP
@@ -73,8 +73,8 @@ public:
     int Renumber_gnp_labels(const int &cnt_labels, vector<int> &labels_gnp);
     int Compress_cnt_cnt_contact_segments(const Cutoff_dist &cutoffs, const map<long int, map<int, long int> > &point_contacts, const map<long int, map<int, double> > &point_contacts_dist, const vector<map<int, set<long int> > > &contact_elements);
     int Complete_cnt_elements(const vector<vector<long int> > &structure_cnt);
-    int Make_gnp_clusters(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, const int &n_labels_cnt, int &n_total_labels, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp);
-    int Label_gnps_in_window(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp);
+    int Make_gnp_clusters(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, const long int &gnp_pts_bdds, const int &n_labels_cnt, int &n_total_labels, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<bool> &bp_flags);
+    int Label_gnps_in_window(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, const long int &gnp_pts_bdds, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp, vector<bool>& bp_flags);
     int Get_distance_between_GNPs(const Cutoff_dist& cutoffs, const vector<GNP>& gnps, const int& GNPa, const int& GNPb, bool& p_flag, Point_3D& disp_tot, Point_3D& N, double& dist, GNP& gnp_B);
     int Find_junction_points_for_gnps(const cuboid &sample, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<Point_3D> &points_gnp, Point_3D& PointA, Point_3D& PointB);
     int Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<int> &simplexA, vector<int> &simplexB, int &v_sumA, int &v_sumB);
@@ -89,7 +89,7 @@ public:
     int Find_point_b_for_face_in_simplex_a(const vector<int> &simplexA, const vector<int> &simplexB, const int &face_sumA, const int &face_sumB, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, Point_3D &PointA, Point_3D &PointB);
     int Get_vertices_inside_face(const vector<int> &simplexA, const vector<Edge> &edgesB, const vector<int> &normalsB, const GNP &GNP_A, const GNP &GNP_B, vector<int> &verticesA_inside);
     int Average_point_with_two_interserctions(const vector<Edge> &edgesA, const vector<int> &normalsA, const GNP &gnpA, const vector<Edge> &edgesB, const vector<int> &normalsB, const GNP &gnpB, const Point_3D &disp, const int &vB, Point_3D &PB);
-    int Add_gnp_junction(const vector<GNP>& gnps, const int& GNPa, const int& GNPb, const bool& p_flag, const Point_3D& PointA, const Point_3D& PointB, const double& dist, const double& tol_gnp, vector<Point_3D>& points_gnp, vector<vector<long int> >& structure_gnp);
+    int Add_gnp_junction(const vector<GNP>& gnps, const int& GNPa, const int& GNPb, const bool& p_flag, const Point_3D& PointA, const Point_3D& PointB, const double& dist, const double& tol_gnp, const long int& gnp_pts_bdds, vector<Point_3D>& points_gnp, vector<vector<long int> >& structure_gnp, vector<bool>& c);
     int Add_gnp_point_to_vectors_if_not_repeated(const Point_3D& P, const double& tol_gnp, const bool& p_flag, long int& Pj, vector<Point_3D>& points_gnp, vector<long int>& structure_gnp);
     int Make_mixed_clusters(const int &n_labels, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, vector<int> &labels_cnt, vector<int> &labels_gnp, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, int &n_clusters);
     int Find_adjacent_labels(const int& n_labels, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const Cutoff_dist &cutoffs, const vector<Point_3D> &points_cnt, const vector<double> &radii, const vector<vector<long int> > &sectioned_domain_cnt, const vector<GNP> &gnps, const vector<vector<int> > &sectioned_domain_gnp, vector<Point_3D> &contact_points_gnp, map<long int, map<int, long int> > &point_contacts, map<long int, map<int, double> > &point_contacts_dist, vector<map<int, set<long int> > > &gnp_cnt_point_contacts, vector<int>& labels_mixed, vector<int>& labels_labels_mixed);
@@ -107,9 +107,9 @@ public:
     int Group_junctions(const vector<Point_3D> &points_cnt, const vector<Point_3D> &points_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const map<int,int> &percolated_labels);
     int Group_junctions_same_particle(const vector<Point_3D> &points, const vector<int> &labels, const vector<Junction> &junctions, const map<int,int> &percolated_labels, vector<vector<int> > &cluster_junction);
     int Group_junctions_mix_particle(const vector<Point_3D> &points_cnt, const vector<Point_3D> &points_gnp, const vector<int> &labels_cnt, const vector<int> &labels_gnp, const map<int,int> &percolated_labels);
-    int Remove_gnp_points_in_non_relevant_boundaries(vector<vector<long int> >& structure_gnp, vector<GNP>& gnps);
+    int Remove_gnp_points_in_non_relevant_boundaries(const vector<bool>& bp_flags, vector<vector<long int> >& structure_gnp, vector<GNP>& gnps);
     int Get_vector_with_relevant_boundaries(const int& family, vector<int> &relevant_boundaries);
-    int Check_relevant_boundary_and_remove_if_needed(const int& n_rb, const int& gnp_j, const vector<GNP>& gnps, const vector<int>& relevant_boundaries, vector<pair<long int, int> >& relevant_points, vector<vector<long int> >& structure_gnp);
+    int Check_relevant_boundary_and_remove_if_needed(const vector<bool>& bp_flags, const int& n_rb, const int& gnp_j, const vector<GNP>& gnps, const vector<int>& relevant_boundaries, vector<pair<long int, int> >& relevant_points, vector<vector<long int> >& structure_gnp);
     bool Is_in_relevant_boundary(const int& n_rb, const int& bk, const vector<int>& relevant_boundaries);
     //-------------------------------------------------------
     //HK76
