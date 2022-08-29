@@ -148,7 +148,7 @@ int App_Network_From_Abaqus::Nanoparticle_resistor_network_from_odb(Input* Init)
                 return 0;
             }
             ct1 = time(NULL);
-            hout << "Apply displacements for current frame time: " << (int)(ct1 - ct0) << " secs." << endl;
+            hout << "Apply all displacements for current frame time: " << (int)(ct1 - ct0) << " secs." << endl;
 
             //Clear the GNP points
             points_gnp.clear();
@@ -349,9 +349,10 @@ int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& parti
         return 0;
     }
 
-    //Check the type of nanoparticle 
-    if (particle_type == "CNT_wires" || particle_type == "CNT_deposit" || particle_type == "GNP_CNT_mix") {
-
+    //Check if there are CNTs
+    if (particle_type == "CNT_wires" || particle_type == "CNT_deposit" || particle_type == "GNP_CNT_mix") 
+    {
+        time_t it0 = time(NULL);
         //Apply displacements to CNT points
         //hout << "Apply_displacements_to_cnts" << endl;
         if (!Apply_displacements_to_cnts(structure, root_assy, previous_fieldU, current_fieldU, n_cnts, points_cnt))
@@ -359,9 +360,19 @@ int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& parti
             hout << "Error in Apply_displacements_from_Abaqus when calling Apply_displacements_to_cnts" << endl;
             return 0;
         }
-    }
-    else if (particle_type == "GNP_cuboids" || particle_type == "GNP_CNT_mix") {
 
+        //If mixed particles, output time for CNTs
+        if (particle_type == "GNP_CNT_mix") 
+        {
+            time_t it1 = time(NULL);
+            hout << "Apply displacements for CNTs: " << (int)(it1 - it0) << " secs." << endl;
+        }
+    }
+
+    //Check if there are GNPs
+    if (particle_type == "GNP_cuboids" || particle_type == "GNP_CNT_mix") 
+    {
+        time_t it0 = time(NULL);
         //Apply displacements to GNP vertices
         //hout << "Apply_displacements_to_gnps" << endl;
         if (!Apply_displacements_to_gnps(gnps_outside, vertices_gnps_out, vertex_flags, gnps0, root_assy, current_fieldU, gnps))
@@ -370,14 +381,12 @@ int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& parti
             return 0;
         }
 
-    }
-    else if (particle_type == "Hybrid_particles") {
-        hout << "Hybrid particles not yet implemented" << endl;
-        return 0;
-    }
-    else {
-        hout << "Error in Apply_displacements_from_Abaqus: the type of particles should be one of the following: CNT_wires, CNT_deposit, GNP_cuboids, or GNP_CNT_mix. Input value was: " << particle_type << endl;
-        return 0;
+        //If mixed particles, output time for CNTs
+        if (particle_type == "GNP_CNT_mix")
+        {
+            time_t it1 = time(NULL);
+            hout << "Apply displacements for GNPs: " << (int)(it1 - it0) << " secs." << endl;
+        }
     }
 
     return 1;
