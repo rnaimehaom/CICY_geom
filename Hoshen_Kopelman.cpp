@@ -168,16 +168,20 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(
     //Check if there is percolation
     if ( clusters_cnt.size() + clusters_gnp.size() ) {
         
-        //There is at least one percoalted cluster
+        //There is at least one percolated cluster
         
         //Group the junctions into the clusters they belong to
         //hout<<"Group_junctions"<<endl;
-        hout << "There are percolated clusters" << endl;
+        hout << "There are percolated clusters:" << endl;
         if (!Group_junctions(points_cnt, points_gnp, labels_cnt, labels_gnp, percolated_labels)) 
         {
             hout<<"Error in Find_percolated_clusters when calling Group_junctions"<<endl;
             return 0;
         }
+
+        //Output the families of percolated clusters
+        for (size_t i = 0; i < family.size(); i++)
+            hout << "    Cluster " << i+1 << ", family: " << family[i] << endl;
 
         //Remove points in non-relevant boundaries
         //hout << "Remove_gnp_points_in_non_relevant_boundaries" << endl;
