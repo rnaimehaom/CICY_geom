@@ -45,15 +45,15 @@ int Backbone_Network::Determine_backbone_network(const int &n_cluster, const int
             return 0;
         }
     }
-    
+
     //Check if resistance will be calcualted to remove the junctions with dead particles
-    if (!avoid_resistance_flag) 
-    {   
+    if (!avoid_resistance_flag)
+    {
         //Remove CNT-CNT junctions with dead particles
         //hout << "Remove_junctions_with_dead_particles_cnts" << endl;
-        if (!Remove_junctions_with_dead_particles_cnts(n_cluster, HoKo)) 
+        if (!Remove_junctions_with_dead_particles_cnts(n_cluster, HoKo))
         {
-            hout<<"Error in Determine_backbone_network when calling Remove_junctions_with_dead_particles_cnts"<<endl;
+            hout << "Error in Determine_backbone_network when calling Remove_junctions_with_dead_particles_cnts" << endl;
             return 0;
         }
     }
@@ -594,6 +594,7 @@ int Backbone_Network::Find_backbone_gnps(const int& n_cluster, const int& avoid_
         hout << "Error in Find_backbone_and_fractions_gnps when calling Find_dead_gnps_first_pass" << endl;
         return 0;
     }
+    //hout << "to_remove="<< to_remove << endl;
 
     //Remove junctions until no more need to be removed (i.e., until to_remove = 0)
     while (to_remove)
@@ -677,11 +678,12 @@ int Backbone_Network::Find_and_remove_gnp_and_mixed_junctions_below_zero_current
 
             //Get iterator for CNT point
             set<long int>::iterator it = HoKo->elements_cnt[CNT1].find(P1);
-            //hout << "CNT1=" << CNT1 << " P1=" << P1 << " elements_cnt[CNT1].szie=" << HoKo->elements_cnt[CNT1].size() << endl;
+            //hout << "CNT1=" << CNT1 << " P1=" << P1 << " elements_cnt[CNT1].size=" << HoKo->elements_cnt[CNT1].size() << endl;
 
             //Get the current passing through the junction as the difference between voltages since
             //unit resistors are assumed
             double Ij = abs(voltages[node1] - voltages[node2]);
+            //hout << "Ij=" << Ij << " (Ij - zero_current < Zero)=" << (Ij - zero_current < Zero) <<" (it == HoKo->elements_cnt[CNT1].end())="<< (it == HoKo->elements_cnt[CNT1].end()) << endl;
 
             //Check if the junction needs to be removed, which happens IF:
             //Current is below zero current
@@ -697,6 +699,7 @@ int Backbone_Network::Find_and_remove_gnp_and_mixed_junctions_below_zero_current
                 //so the junction needs to be removed
                 
                 //Remove the point in GNP2 from the structure
+                //hout << "Remove_point_from_vector" << endl;
                 if (!Remove_point_from_vector(P2, structure_gnp[GNP2])) 
                 {
                     hout << "Error in Find_and_remove_gnp_and_mixed_junctions_below_zero_current when calling Remove_point_from_vector (GNP mixed)" << endl;
@@ -1061,8 +1064,8 @@ int Backbone_Network::Remove_junctions_with_dead_particles_mixed(const int &n_cl
         for (int i = (int)HoKo->cluster_mix_junctions[n_cluster].size() - 1; i >= 0 ; i--) {
             
             //Get the current junction
-            //hout << "i=" << i << endl;
             int junc = HoKo->cluster_mix_junctions[n_cluster][i];
+            //hout << "i=" << i << " junc=" << junc << endl;
             
             //Get the particle numbers
             int CNT1 = HoKo->junctions_mixed[junc].N1;

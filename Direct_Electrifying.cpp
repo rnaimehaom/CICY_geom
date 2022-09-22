@@ -755,64 +755,96 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
         //hout<<"CNT2="<<CNT2<<endl;
         //hout<<"P1="<<P1<<" CNT1="<<CNT1<<" P2="<<P2<<" CNT2="<<CNT2<<endl;
         //hout<<"idx="<<idx<<" junctions_cnt.size="<<junctions_cnt.size()<<endl;
-        
-        //Calculate the junction resistance
-        double Re_inv = 1.0;
-        if (R_flag == 1) {
-            if (!Calculate_junction_resistance(junctions_cnt[idx], radii[CNT1], radii[CNT2], electric_param, Re_inv)) {
-                hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Calculate_junction_resistance"<<endl;
-                return 0;
-            }
 
-            //Add resistance to vector of all resistors
-            //all_resistors.push_back(Re_inv);
-            
-            //Calculate inverse of resistance
-            //hout << "Rj=" << Re_inv << " ";
-            Re_inv = 1/Re_inv;
-            //hout << "Rj_inv=" << Re_inv << endl;
+        //Variables to store the node numbers
+        long int node1 = -1, node2 = -1;
+
+        //Check if P1 has a node
+        map<long int, long int>::const_iterator node1_it = LMM_cnts.find(P1);
+        if (node1_it != LMM_cnts.end())
+        {
+            //Point P1 has a node number assigned so update node1
+            node1 = node1_it->second;
+            //hout << "node1=" << node1<<endl;
         }
-        else if (R_flag != 0) {
-            hout << "Error in Fill_2d_matrices_cnt_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
-            return 0;
+
+        //Check if P2 has a node
+        map<long int, long int>::const_iterator node2_it = LMM_cnts.find(P2);
+        if (node2_it != LMM_cnts.end())
+        {
+            //Point P2 has a node number assigned so update node2
+            node2 = node2_it->second;
+            //hout << "node2=" << node2 << endl;
         }
-        
-        //Get node numbers
-        long int node1 = LMM_cnts.at(P1);
-        long int node2 = LMM_cnts.at(P2);
-        //hout<<"node1="<<node1<<" node2="<<node2<<endl;
-        /* /Check for small numbers
-        if (Re_inv < 1e-13) {
-            hout << "R_inv=" << Re_inv << " d=" << junctions_cnt[idx].junction_dist << " d_P=" << points_cnt[P1].distance_to(points_cnt[P2]) << endl;
+
+        //Check if both node numbers are valid
+        if (node1 == -1 || node2 == -1)
+        {
+
+            //Both node numbers are valid, so calculate resistor and add it to the stiffness matrix
+
+            //Calculate the junction resistance
+            double Re_inv = 1.0;
+            if (R_flag == 1) {
+                if (!Calculate_junction_resistance(junctions_cnt[idx], radii[CNT1], radii[CNT2], electric_param, Re_inv)) {
+                    hout << "Error in Fill_2d_matrices_cnt_junctions when calling Calculate_junction_resistance" << endl;
+                    return 0;
+                }
+
+                //Add resistance to vector of all resistors
+                //all_resistors.push_back(Re_inv);
+
+                //Calculate inverse of resistance
+                //hout << "Rj=" << Re_inv << " ";
+                Re_inv = 1 / Re_inv;
+                //hout << "Rj_inv=" << Re_inv << endl;
+            }
+            else if (R_flag != 0) {
+                hout << "Error in Fill_2d_matrices_cnt_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
+                return 0;
+            }
+            /* /Check for small numbers
+            if (Re_inv < 1e-13) {
+                hout << "R_inv=" << Re_inv << " d=" << junctions_cnt[idx].junction_dist << " d_P=" << points_cnt[P1].distance_to(points_cnt[P2]) << endl;
+                hout << "P1=" << P1 << " CNT1=" << CNT1 << " P2=" << P2 << " CNT2=" << CNT2 << endl;
+                hout << "r_cnt1=" << radii[CNT1] << " r_cnt2=" << radii[CNT2] << endl;
+                hout << "node1=" << node1 << " node2=" << node2 << endl;
+                double Re = electric_param.C1 * junctions_cnt[idx].junction_dist * exp(electric_param.C2 * junctions_cnt[idx].junction_dist) / (radii[CNT1]*radii[CNT2]*4.0);
+                hout << "Re=" << Re << " 1/Re=" << 1.0 / Re << endl;
+            }// */
+
+            //Check if any of the nodes is at a boundary with prescribed voltage
+            if (node1 >= reserved_nodes && node2 >= reserved_nodes) {
+
+                //Add junction resistance to sparse stiffness matrix
+                //hout<<"Add_new_elements_to_2d_sparse_matrix i="<<i<<endl;
+                if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
+                    hout << "Error in Fill_2d_matrices_cnt_junctions when calling Add_elements_to_2d_sparse_matrix" << endl;
+                    return 0;
+                }
+            }
+            //Add the junction resistors when calculating the voltage field and there are more than 2
+            //boundaries with prescribed voltage
+            //Otherwise, the junction is ignored
+            else if (reserved_nodes > 2) {
+
+                //Add junction resistance to existing elements in sparse stiffness matrix
+                //hout<<"Add_new_elements_to_2d_sparse_matrix"<<endl;
+                if (!Add_to_existing_elements_in_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
+                    hout << "Error in Fill_2d_matrices_cnt_junctions when calling Add_to_existing_elements_in_2d_sparse_matrix" << endl;
+                    return 0;
+                }
+            }
+        }
+        /* /Ignore the junction if a node is not valid
+        else
+        {
+            hout << "Error: Junction with invalid nodes" << endl;
+            hout << "junctions_cnt[" << idx << "]" << endl;
             hout << "P1=" << P1 << " CNT1=" << CNT1 << " P2=" << P2 << " CNT2=" << CNT2 << endl;
-            hout << "r_cnt1=" << radii[CNT1] << " r_cnt2=" << radii[CNT2] << endl;
             hout << "node1=" << node1 << " node2=" << node2 << endl;
-            double Re = electric_param.C1 * junctions_cnt[idx].junction_dist * exp(electric_param.C2 * junctions_cnt[idx].junction_dist) / (radii[CNT1]*radii[CNT2]*4.0);
-            hout << "Re=" << Re << " 1/Re=" << 1.0 / Re << endl;
-        }// */
+        } // */
         
-        //Check if any of the nodes is at a boundary with prescribed voltage
-        if (node1 >= reserved_nodes && node2 >= reserved_nodes) {
-            
-            //Add junction resistance to sparse stiffness matrix
-            //hout<<"Add_new_elements_to_2d_sparse_matrix i="<<i<<endl;
-            if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
-                hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Add_elements_to_2d_sparse_matrix"<<endl;
-                return 0;
-            }
-        }
-        //Add the junction resistors when calculating the voltage field and there are more than 2
-        //boundaries with prescribed voltage
-        //Otherwise, the junction is ignored
-        else if (reserved_nodes > 2) {
-            
-            //Add junction resistance to existing elements in sparse stiffness matrix
-            //hout<<"Add_new_elements_to_2d_sparse_matrix"<<endl;
-            if (!Add_to_existing_elements_in_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
-                hout<<"Error in Fill_2d_matrices_cnt_junctions when calling Add_to_existing_elements_in_2d_sparse_matrix"<<endl;
-                return 0;
-            }
-        }
     }
     
     return 1;
@@ -886,71 +918,101 @@ int Direct_Electrifying::Fill_2d_matrices_mixed_junctions(const int &R_flag, con
         int cnt_n = junctions_mixed[idx].N1;
         int gnp_n = junctions_mixed[idx].N2;
         //hout << "cnt_n=" << cnt_n << " gnp_n=" << gnp_n << endl;
-        
-        //Calculate the junction resistance
-        double Re_inv = 1.0;
-        if (R_flag == 1) {
-            //hout << "Calculate_junction_resistance" << endl;
-            if (!Calculate_junction_resistance(junctions_mixed[idx], radii[cnt_n], gnps[gnp_n].t, electric_param, Re_inv)) {
-                hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Calculate_junction_resistance"<<endl;
+
+        //Variables to store the node numbers
+        long int node1 = -1, node2 = -1;
+
+        //Check if Pcnt has a node
+        map<long int, long int>::const_iterator node1_it = LMM_cnts.find(Pcnt);
+        if (node1_it != LMM_cnts.end())
+        {
+            //Point P1 has a node number assigned so update node1
+            node1 = node1_it->second;
+            //hout << "node1=" << node1<<endl;
+        }
+
+        //Check if Pgnp has a node
+        map<long int, long int>::const_iterator node2_it = LMM_gnps.find(Pgnp);
+        if (node2_it != LMM_gnps.end())
+        {
+            //Point P2 has a node number assigned so update node2
+            node2 = node2_it->second;
+            //hout << "node2=" << node2 << endl;
+        }
+
+        //Check if both node numbers are valid
+        if (node1 != -1 && node2 != -1)
+        {
+            //Both node numbers are valid, so calculate resistor and add it to the stiffness matrix
+            
+            //Calculate the junction resistance
+            double Re_inv = 1.0;
+            if (R_flag == 1) {
+                //hout << "Calculate_junction_resistance" << endl;
+                if (!Calculate_junction_resistance(junctions_mixed[idx], radii[cnt_n], gnps[gnp_n].t, electric_param, Re_inv)) {
+                    hout << "Error in Fill_2d_matrices_mixed_junctions when calling Calculate_junction_resistance" << endl;
+                    return 0;
+                }
+
+                //Add resistance to vector of all resistors
+                //all_resistors.push_back(Re_inv);
+
+                //Calculate inverse of resistance
+                //hout << "Rj=" << Re_inv << " ";
+                Re_inv = 1 / Re_inv;
+                //hout << "Rj_inv=" << Re_inv << endl;
+            }
+            else if (R_flag != 0) {
+                hout << "Error in Fill_2d_matrices_mixed_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
                 return 0;
+            }
+            /* /Check for small numbers
+            if (Re_inv < 1e-13) {
+                hout << "R_inv=" << Re_inv << " d=" << junctions_mixed[idx].junction_dist << " d_P=" << points_gnp[Pgnp].distance_to(points_cnt[Pcnt]) << endl;
+                hout << "Pcnt=" << Pcnt << " cnt_n=" << cnt_n << " Pgnp=" << Pgnp << " gnp_n=" << gnp_n << endl;
+                hout << "r_cnt=" << radii[cnt_n] << endl;
+                hout << "l_gnp=" << gnps[gnp_n].l << " t_gnp=" << gnps[gnp_n].t << endl;
+                hout << "node1=" << node1 << " node2=" << node2 << endl;
+                double Re = electric_param.C1 * junctions_mixed[idx].junction_dist * exp(electric_param.C2 * junctions_mixed[idx].junction_dist) / (gnps[gnp_n].t * radii[cnt_n] * 2.0);
+                hout << "Re=" << Re << " 1/Re=" << 1.0 / Re << endl;
+            }// */
+        
+            //Check if any of the nodes is at a boundary with prescribed voltage
+            if (node1 >= reserved_nodes && node2 >= reserved_nodes) {
+
+                //Add junction resistance to sparse stiffness matrix
+                //hout<<"Add_new_elements_to_2d_sparse_matrix i="<<i<<endl;
+                if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
+                    hout << "Error in Fill_2d_matrices_mixed_junctions when calling Add_elements_to_2d_sparse_matrix" << endl;
+                    return 0;
+                }
+            }
+            //Add the junction resistors when calculating the voltage field and there are more than 2
+            //boundaries with prescribed voltage
+            //Otherwise, the junction is ignored
+            else if (reserved_nodes > 2) {
+
+                //Add junction resistance to existing elements in sparse stiffness matrix
+                //hout<<"Add_new_elements_to_2d_sparse_matrix"<<endl;
+                if (!Add_to_existing_elements_in_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
+                    hout << "Error in Fill_2d_matrices_mixed_junctions when calling Add_to_existing_elements_in_2d_sparse_matrix" << endl;
+                    return 0;
+                }
             }
 
-            //Add resistance to vector of all resistors
-            //all_resistors.push_back(Re_inv);
-            
-            //Calculate inverse of resistance
-            //hout << "Rj=" << Re_inv << " ";
-            Re_inv = 1/Re_inv;
-            //hout << "Rj_inv=" << Re_inv << endl;
+            //Add the radius of the CNT that has point P into the set of nodes with CNT radius
+            points_cnt_rad[Pgnp] = radii[cnt_n];
         }
-        else if (R_flag != 0) {
-            hout << "Error in Fill_2d_matrices_mixed_junctions. Invalid resistor flag:" << R_flag << ". Valid flags are 0 and 1 only." << endl;
-            return 0;
-        }
-        
-        //Get node numbers
-        //hout << "Get node numbers" << endl;// points_cnt.size() = "<<points_cnt.size()<<" points_gnp.size() = "<<points_gnp.size() << endl;
-        long int node1 = LMM_cnts.at(Pcnt);
-        //hout << "node1=" << node1 << endl;
-        long int node2 = LMM_gnps.at(Pgnp);
-        //hout << "node2=" << node2 << endl;
-        /* /Check for small numbers
-        if (Re_inv < 1e-13) {
-            hout << "R_inv=" << Re_inv << " d=" << junctions_mixed[idx].junction_dist << " d_P=" << points_gnp[Pgnp].distance_to(points_cnt[Pcnt]) << endl;
-            hout << "Pcnt=" << Pcnt << " cnt_n=" << cnt_n << " Pgnp=" << Pgnp << " gnp_n=" << gnp_n << endl;
-            hout << "r_cnt=" << radii[cnt_n] << endl;
-            hout << "l_gnp=" << gnps[gnp_n].l << " t_gnp=" << gnps[gnp_n].t << endl;
+        /* /Ignore the junction if one of the nodes is not valid
+        else
+        {
+            hout << "Error in Fill_2d_matrices_mixed_junctions: Junction with invalid nodes" << endl;
+            hout << "junctions_mixed[" << idx << "]" << endl;
+            hout << "Pcnt=" << Pcnt << " Pgnp=" << Pgnp << endl;
+            hout << "cnt_n=" << cnt_n << " gnp_n=" << gnp_n << endl;
             hout << "node1=" << node1 << " node2=" << node2 << endl;
-            double Re = electric_param.C1 * junctions_mixed[idx].junction_dist * exp(electric_param.C2 * junctions_mixed[idx].junction_dist) / (gnps[gnp_n].t * radii[cnt_n] * 2.0);
-            hout << "Re=" << Re << " 1/Re=" << 1.0 / Re << endl;
-        }// */
-        
-        //Check if any of the nodes is at a boundary with prescribed voltage
-        if (node1 >= reserved_nodes && node2 >= reserved_nodes) {
-            
-            //Add junction resistance to sparse stiffness matrix
-            //hout<<"Add_new_elements_to_2d_sparse_matrix i="<<i<<endl;
-            if (!Add_new_elements_to_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
-                hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Add_elements_to_2d_sparse_matrix"<<endl;
-                return 0;
-            }
-        }
-        //Add the junction resistors when calculating the voltage field and there are more than 2
-        //boundaries with prescribed voltage
-        //Otherwise, the junction is ignored
-        else if (reserved_nodes > 2) {
-            
-            //Add junction resistance to existing elements in sparse stiffness matrix
-            //hout<<"Add_new_elements_to_2d_sparse_matrix"<<endl;
-            if (!Add_to_existing_elements_in_2d_sparse_matrix(node1, node2, Re_inv, col_values, diagonal)) {
-                hout<<"Error in Fill_2d_matrices_mixed_junctions when calling Add_to_existing_elements_in_2d_sparse_matrix"<<endl;
-                return 0;
-            }
-        }
-        
-        //Add the radius of the CNT that has point P into the set of nodes with CNT radius
-        points_cnt_rad[Pgnp] = radii[cnt_n];
+            return 0;
+        } // */
     }
     
     return 1;
@@ -1494,7 +1556,7 @@ int Direct_Electrifying::Solve_DEA_equations_CG_SSS(const long int &nodes, const
     //vector<double> voltages_sol(nodes-reserved_nodes, 0);
     
     //Maximum number of iterations for the CG
-    long int max_iter = 100*nodes;
+    long int max_iter = 300*nodes;
     //Iteration variable
     long int k;
     //Variable to check the status of the CG
