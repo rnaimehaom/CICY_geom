@@ -778,7 +778,7 @@ int Direct_Electrifying::Fill_2d_matrices_cnt_junctions(const int &R_flag, const
         }
 
         //Check if both node numbers are valid
-        if (node1 == -1 || node2 == -1)
+        if (node1 != -1 && node2 != -1)
         {
 
             //Both node numbers are valid, so calculate resistor and add it to the stiffness matrix
