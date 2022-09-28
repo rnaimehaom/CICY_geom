@@ -737,6 +737,7 @@ int App_Network_From_Abaqus::Apply_displacements_to_gnp_vertices(const vector<in
 
         //Update location of vertex v in GNP i
         gnp_i.vertices[v] = gnp_i.vertices[v] + disp;
+        //hout << "GNP[" << gnp_i.flag << "][" << v << "]=" << gnp_i.vertices[v].str() << endl;
     }
 
     return 1;
