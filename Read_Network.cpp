@@ -157,7 +157,7 @@ int Read_Network::Read_sample_geometry(Geom_sample& geom_sample)const
     ifstream sample_file;
     sample_file.open("sample_geom.csv");
     if (!sample_file) {
-        hout << "Failed to open file with sample geometry data sample_geom.csv." << endl;
+        hout << "Error in Read_sample_geometry: Failed to open file with sample geometry data sample_geom.csv." << endl;
         return 0;
     }
 
@@ -206,7 +206,7 @@ int Read_Network::Read_cnt_data_from_csv(vector<Point_3D>& points_cnt, vector<do
     ifstream struc_file;
     struc_file.open("cnt_struct.csv");
     if (!struc_file) {
-        hout << "Failed to open CNT structure file cnt_struct.csv." << endl;
+        hout << "Error in Read_cnt_data_from_csv: Failed to open CNT structure file cnt_struct.csv." << endl;
         return 0;
     }
 
@@ -472,7 +472,7 @@ int Read_Network::Read_gnp_data_from_csv(const cuboid& sample_geom, vector<GNP>&
     ifstream gnp_file;
     gnp_file.open("gnp_data.csv");
     if (!gnp_file) {
-        hout << "Failed to open file with GNP geometric data gnp_data.csv." << endl;
+        hout << "Error in Read_gnp_data_from_csv: Failed to open file with GNP geometric data gnp_data.csv." << endl;
         return 0;
     }
 

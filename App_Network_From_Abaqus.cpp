@@ -337,7 +337,7 @@ int App_Network_From_Abaqus::Apply_displacements_from_Abaqus(const string& parti
     //Access displacement field ("U") in the current frame
     //hout << "current_fieldU" << endl;
     odb_FieldOutput& current_fieldU = current_frame.fieldOutputs()["U"];
-    //Access displacement field ("U") in the current frame
+    //Access displacement field ("U") in the previous frame
     //hout << "previous_fieldU" << endl;
     odb_FieldOutput& previous_fieldU = previous_frame.fieldOutputs()["U"];
 
@@ -483,7 +483,7 @@ int App_Network_From_Abaqus::Get_displacement_from_single_node_set(const string&
     //Check the size of vals is 1 (since it contains one node)
     if (vals.size() != 1)
     {
-        hout << "Error in Get_displacement_from_single_node_set. The number of node set " << setname << " is not 1. Size is " << vals.size() << endl;
+        hout << "Error in Get_displacement_from_single_node_set. The number of nodes in set " << setname << " is not 1. Size is " << vals.size() << endl;
         return 0;
     }
 
@@ -565,9 +565,10 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
         }
         hout << endl;*/
 
-        //Iterate over the values, i.e., the points in the current CNT
-        //Number used in the loop
+        //Number used in the for-loop
         int v_size1 = vals.size() - 1;
+
+        //Iterate over the values, i.e., the points in the current CNT
         for (int j = 0; j < vals.size(); j++)
         {
             //Note that nodes are actually in reverse order given the way
@@ -597,10 +598,10 @@ int App_Network_From_Abaqus::Apply_displacements_to_cnts(const vector<vector<lon
             //Displacements are in data, where:
             //data[0] corresponds to displacement in x
             //data[1] corresponds to displacement in y
-            //data[2] corresponds to displacement in z            
+            //data[2] corresponds to displacement in z 
             //Add the incremental displacement to point P
             // 
-            //Note data[i] is the displacement for frame i, no the displacement
+            //Note data[i] is the total displacement for a given frame, not the displacement
             //with respect to the previous frame
             //Thus, calculate the increment of displacement with respect to the previous frame
             //Otherwise I would need the initial position of the points for each frame
