@@ -14,6 +14,7 @@ using namespace hns;
 #include "App_Network_3D.h"
 #include "App_Content_Dist.h"
 #include "App_Network_From_Abaqus.h"
+#include "App_Network_From_Displacements.h"
 
 int main(int argc, char** argv)
 {
@@ -99,11 +100,12 @@ int main(int argc, char** argv)
         int count = Init->simu_para.sample_num;
         
         //Implement all samples
-        for(int i=1; i<=count; i++) {
-
+        for(int i=1; i<=count; i++) 
+        {
             //Create an object to call the resistor network application
             App_Network_3D* Network3D = new App_Network_3D;
-            if(!Network3D->Generate_nanoparticle_resistor_network(Init)) {
+            if(!Network3D->Generate_nanoparticle_resistor_network(Init)) 
+            {
                 hout<<"Error in Generate_nanoparticle_resistor_network in sample "<<i<<endl;
                 return 0;
             }
@@ -115,7 +117,8 @@ int main(int argc, char** argv)
         //Create an object to call the application that calculates the content
         //at each observation window
         App_Content_Dist *ContentDist = new App_Content_Dist;
-        if (!ContentDist->Calculate_content_on_each_window(Init)) {
+        if (!ContentDist->Calculate_content_on_each_window(Init)) 
+        {
             hout<<"Error in Calculate_content_on_each_window"<<endl;
             return 0;
         }
@@ -125,11 +128,23 @@ int main(int argc, char** argv)
     {
         //Create an object to call the application that reads a network from an Abaqus database
         App_Network_From_Abaqus* NetworkAbqs = new App_Network_From_Abaqus;
-        if (!NetworkAbqs->Nanoparticle_resistor_network_from_odb(Init)) {
+        if (!NetworkAbqs->Nanoparticle_resistor_network_from_odb(Init)) 
+        {
             hout << "Error in Nanoparticle_resistor_network_from_odb" << endl;
             return 0;
         }
         delete NetworkAbqs;
+    }
+    else if (Init->app_name.str == "Network_From_Displacements")
+    {
+        //Create an object to call the application that reads a displacements from a file
+        App_Network_From_Displacements* NetworkDisps = new App_Network_From_Displacements;
+        if (!NetworkDisps->Nanoparticle_resistor_network_from_displacements(Init))
+        {
+            hout << "Error in Nanoparticle_resistor_network_from_odb" << endl;
+            return 0;
+        }
+        delete NetworkDisps;
     }
     else {
         //Delete Init object and terminate with error

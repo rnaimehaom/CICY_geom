@@ -44,6 +44,9 @@ struct Simu_para{
     string odb_file;
     //Name of the simulation step in Abaqus
     string step_name;
+    //Number of frames in the Abaqus simulation (if reading displacements dirrectly
+    //from a bynary file)
+    int n_frames;
     int sample_num;
     int simulation_scope;
     int resistances[3];

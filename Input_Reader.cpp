@@ -413,6 +413,20 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
             hout << "Error when reading simulation parameters: file type for reading the network is invalid. Only options are 'csv' and 'dat'. Input was: " << simu_para.file_type << endl;
             return 0;
         }
+
+        //Check if the application is the one that reads displacements from files
+        if (app_name.str == "Network_From_Displacements")
+        {
+            //Read the number of frames
+            istr_file_type >> simu_para.n_frames;
+
+            //Check the number of frames is valid
+            if (simu_para.n_frames <= 0)
+            {
+                hout << "Error when reading simulation parameters: Numer of frames is zero or negative. Input was: " << simu_para.n_frames << endl;
+                return 0;
+            }
+        }
     }
 
     //Read the nanoparticle content

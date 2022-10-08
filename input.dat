@@ -8,6 +8,8 @@ Application
 %    observation windows
 %Network_From_Abaqus: Read a network of nanostructures from files and displacements from
 %    an Abaqus database (odb file) and calculate its electrical resistance and resistivity
+%Network_From_Displacements: Read a network of nanostructures from files and displacements from
+%    binary files and calculate its electrical resistance and resistivity
 3D_Electrical_Network
 %
 %
@@ -32,9 +34,12 @@ GNP_CNT_mix
 %------------------------------------------------------------------------------------------------------------------------------------------------------------
 %This keyword defines if the nanoparticle network is created or read from a file.
 %Possible options: 
-%Read_Network: to read a network from files (csv or binary)
-%    In the following line indicate the type of file to be read 'csv' for comma separated value file
-%    or 'dat' for a binary file
+%Read_Network: to read a network from files (csv or binary).
+%       In the following line indicate the type of file to be read 'csv' for comma separated value file
+%       or 'dat' for a binary file.
+%    For application Network_From_Displacements: 
+%       In the same line, after indicating the file type, also indicate the number of 
+%       frames in the Abaqus simulation (including frame 0).
 %Create_Network: to generate a new structure.
 %Network_From_Seeds: to generate a new structure from specific seeds (positive integers) for the
 %    random number generators. All seeds need to be specified in the next line separated by a space
