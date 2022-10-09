@@ -28,7 +28,7 @@ class App_Network_From_Displacements
 public:
 
     //Constructor
-    class App_Network_From_Displacements () {};
+    App_Network_From_Displacements () {};
 
     //Member Functions
     int Nanoparticle_resistor_network_from_displacements(Input* Init)const;

@@ -22,13 +22,13 @@ F77    	=	f77
 	${CC} ${CFLAGS} $< -c
 
 
-objects =  App_Content_Dist.o App_Network_3D.o App_Network_From_Displacements.o \ 
+objects =  App_Content_Dist.o App_Network_3D.o App_Network_From_Displacements.o \
            Backbone_Network.o Collision_detection.o Contact_grid.o Cutoff_Wins.o Direct_Electrifying.o \
            Electrical_analysis.o Generate_Network.o Geometry_3D.o Hns.o Hoshen_Kopelman.o Input_Reader.o \
-           MathMatrix.o Printer.o Shells.o Triangulation.o VTK_Export.o MainPro.o \
+           MathMatrix.o Printer.o Read_Network.o Shells.o Triangulation.o VTK_Export.o MainPro.o \
 	                   
-necn : $(objects)        
-	${C++} ${PARFLAGS} -o necn $(objects)
+cicy_geom : $(objects)        
+	${C++} ${PARFLAGS} -o cicy_geom $(objects)
 	              
 MainPro.o : MainPro.cpp
 	${C++} ${CXXFLAGS} MainPro.cpp -c
@@ -36,4 +36,4 @@ MainPro.o : MainPro.cpp
 # clean
 .PHONY : clean
 clean :
-	-rm necn $(objects)
+	-rm cicy_geom $(objects)

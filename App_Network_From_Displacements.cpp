@@ -129,7 +129,10 @@ int App_Network_From_Displacements::Nanoparticle_resistor_network_from_displacem
             ct0 = time(NULL);
             //hout<<"Extract_observation_window (GNPs only)"<<endl;
             //For the case of reading data from an Abaqus database, window is always 0
-            if (!Cutwins->Extract_observation_window(0, "GNP_cuboids", Init->geom_sample, Init->geom_sample.sample, Init->nanotube_geo, gnps, structure_cnt, vector<double>(), vector<Point_3D>(), vector<vector<int> >(), shell_gnps, structure_gnp, points_gnp)) 
+            vector<double> empty_double;
+            vector<Point_3D> empty_point;
+            vector<vector<int> > empty_int;
+            if (!Cutwins->Extract_observation_window(0, "GNP_cuboids", Init->geom_sample, Init->geom_sample.sample, Init->nanotube_geo, gnps, structure_cnt, empty_double, empty_point, empty_int, shell_gnps, structure_gnp, points_gnp))
             {
                 hout << "Error when extracting observation window " << endl;
                 return 0;
