@@ -288,7 +288,7 @@ int App_Network_From_Displacements::Apply_displacements_from_files(const int& fr
     {
         time_t it0 = time(NULL);
         //Apply displacements to GNP vertices
-        hout << "Apply_displacements_to_gnps" << endl;
+        //hout << "Apply_displacements_to_gnps" << endl;
         if (!Apply_displacements_to_gnps(frame, vertices_gnps_in, gnps))
         {
             hout << "Error in Apply_displacements_from_files when calling Apply_displacements_to_gnps" << endl;
@@ -500,7 +500,7 @@ int App_Network_From_Displacements::Apply_displacements_to_cnts(const int& frame
 int App_Network_From_Displacements::Apply_displacements_to_gnps(const int& frame, const vector<vector<int> >& vertices_gnps_in, vector<GNP>& gnps)const
 {
     //Open the file with sample displacements for the current frame
-    hout << "current_file" << endl;
+    //hout << "current_file" << endl;
     ifstream current_file("GNPs_disp_F" + to_string(frame) + ".dat", ios::in | ios::binary);
     if (!current_file) {
         hout << "Error in Apply_displacements_to_sample: Failed to open file with GNP displacements (GNPs_disp_F" + to_string(frame) + ".dat) for current frame." << endl;
@@ -508,7 +508,7 @@ int App_Network_From_Displacements::Apply_displacements_to_gnps(const int& frame
     }
 
     //Open the file with sample displacements for the previous frame
-    hout << "prev_file" << endl;
+    //hout << "prev_file" << endl;
     ifstream prev_file("GNPs_disp_F" + to_string(frame - 1) + ".dat", ios::in | ios::binary);
     //Ignore for frame 1
     if (frame >= 2 && !prev_file) {
@@ -523,7 +523,7 @@ int App_Network_From_Displacements::Apply_displacements_to_gnps(const int& frame
     vector<int> all_vertices = All_gnp_vertices();
 
     //Iterate over all GNPs
-    hout << "Iterate over all GNPs" << endl;
+    //hout << "Iterate over all GNPs" << endl;
     for (size_t i = 0; i < gnps.size(); i++)
     {
         //Check if end-of-file has been reached
@@ -541,10 +541,10 @@ int App_Network_From_Displacements::Apply_displacements_to_gnps(const int& frame
 
         //Get the vector of vertices
         vector<int> vertices = (vertices_gnps_in[i].empty()) ? all_vertices : vertices_gnps_in[i];
-        hout << "gnp_i=" << i << " vertices.size=" << vertices.size() << endl;
+        //hout << "gnp_i=" << i << " vertices.size=" << vertices.size() << endl;
 
         //Apply displacements to vertices
-        hout << "Apply_displacements_to_vertices" << endl;
+        //hout << "Apply_displacements_to_vertices" << endl;
         if (!Apply_displacements_to_vertices(frame, double_size, vertices, gnps[i], prev_file,current_file))
         {
             hout << "Error in Apply_displacements_to_gnps when calling Apply_displacements_to_vertices." << endl;
@@ -596,9 +596,9 @@ int App_Network_From_Displacements::Apply_displacements_to_vertices(const int& f
     for (int j = 0; j < 8; j++)
     {
         //Get the current vertex in the vertices vector
-        hout << "j=" << j << endl;
+        //hout << "j=" << j << endl;
         int v = vertices[k];
-        hout << "   v=" << v << " k=" << k << endl;
+        //hout << "   v=" << v << " k=" << k << endl;
         
         //Check if vertex i is present
         if (v == j)
@@ -620,7 +620,7 @@ int App_Network_From_Displacements::Apply_displacements_to_vertices(const int& f
                 current.read((char*)&dy, double_size);
                 current.read((char*)&dz, double_size);
             }
-            hout << "dx=" << dx << " dy=" << dy << " dz=" << dz << endl;
+            //hout << "dx=" << dx << " dy=" << dy << " dz=" << dz << endl;
 
             //Accumulate displacement
             avgx += dx;
@@ -652,16 +652,16 @@ int App_Network_From_Displacements::Apply_displacements_to_vertices(const int& f
         avgx = avgx / nv;
         avgy = avgy / nv;
         avgz = avgz / nv;
-        hout << "avgx=" << avgx << " avgy=" << avgy << " avgz=" << avgz << endl;
+        //hout << "avgx=" << avgx << " avgy=" << avgy << " avgz=" << avgz << endl;
     }
 
     //Iterate over the vertices outside the sample and apply average displacements
-    hout << "Apply average displacments" << endl;
+    //hout << "Apply average displacments" << endl;
     for (size_t j = 0; j < v_out.size(); j++)
     {
         //Get vertex outside the sample
         int v = v_out[j];
-        hout << "v=" << v << endl;
+        //hout << "v=" << v << endl;
 
         //Apply average displacements
         gnp_i.vertices[v].x += avgx;
