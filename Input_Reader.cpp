@@ -117,8 +117,13 @@ int Input::Data_Initialization()
 	simu_para.keywords = "Simulation_Parameters";
 	simu_para.mark = false;
 	simu_para.simu_name = "Test";
+    simu_para.n_frames = 0;
+    simu_para.allow_simplex3 = false;
 	simu_para.sample_num = 1;
 	simu_para.create_read_network = "Create_Network";
+    simu_para.particle_type = "CNT_wires";
+    simu_para.criterion = "vol";
+    simu_para.volume_fraction = 0.01;
     simu_para.simulation_scope = 0;
     simu_para.resistances[0] = 1;
     simu_para.resistances[1] = 1;
@@ -288,6 +293,9 @@ int Input::Read_simulation_parameters(Simu_para &simu_para, ifstream &infile)
 		return 0;
 	}
 	else simu_para.mark = true;
+
+    //Get the value of the flag to allow a simplex of size 3 when idintifying junction points on GNPs
+    simu_para.allow_simplex3 = app_name.str == "Network_From_Abaqus" || app_name.str == "Network_From_Displacements";
     
     //Read the name of simulation
     istringstream istr0(Get_Line(infile));

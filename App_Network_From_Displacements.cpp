@@ -413,7 +413,7 @@ double App_Network_From_Displacements::Get_difference(const streamsize& double_s
     //Read values
     previous.read((char*)&d_prev, double_size);
     current.read((char*)&d_curr, double_size);
-    hout << "d_curr=" << d_curr << " d_prev=" << d_prev << endl;
+    //hout << "d_curr=" << d_curr << " d_prev=" << d_prev << endl;
 
     //Return the difference
     return (d_curr - d_prev);

@@ -90,10 +90,10 @@ int Hoshen_Kopelman::Determine_clusters_and_percolation(
         //The size of the vector labels has to be equal to the number of GNPs
         //-1 is the unassigned value for a label
         labels_gnp.assign(gnps.size(), -1);
-        
+
         //Make GNP clusters
         //hout<<"Make_gnp_clusters n_total_labels="<<n_total_labels<<endl;
-        if (!Make_gnp_clusters(sample, gnps_inside, sectioned_domain_gnp, gnps, cutoffs, gnp_pts_bdds, n_labels_cnt, n_total_labels, structure_gnp, points_gnp, labels_gnp, bp_flags)) {
+        if (!Make_gnp_clusters(simu_para.allow_simplex3, sample, gnps_inside, sectioned_domain_gnp, gnps, cutoffs, gnp_pts_bdds, n_labels_cnt, n_total_labels, structure_gnp, points_gnp, labels_gnp, bp_flags)) {
             hout<<"Error in Determine_clusters when calling Make_gnp_clusters"<<endl;
             return 0;
         }
@@ -571,14 +571,27 @@ int Hoshen_Kopelman::Complete_cnt_elements(const vector<vector<long int> > &stru
     return 1;
 }
 //This function makes the GNP clusters
-int Hoshen_Kopelman::Make_gnp_clusters(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, const long int &gnp_pts_bdds, const int &n_labels_cnt, int &n_total_labels, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<bool> &bp_flags)
+int Hoshen_Kopelman::Make_gnp_clusters(
+    const bool& allow_simplex3, 
+    const cuboid& sample, 
+    const vector<int> &gnps_inside, 
+    const vector<vector<int> > &sectioned_domain_gnp, 
+    const vector<GNP> &gnps, 
+    const Cutoff_dist& cutoffs, 
+    const long int &gnp_pts_bdds, 
+    const int &n_labels_cnt, 
+    int &n_total_labels, 
+    vector<vector<long int> > &structure_gnp, 
+    vector<Point_3D> &points_gnp, 
+    vector<int> &labels_gnp, 
+    vector<bool> &bp_flags)
 {
     //Vector of labels of labels
     vector<int> labels_labels_gnp;
     
     //Label the GNPs
     //hout<<"Label_gnps_in_window"<<endl;
-    if (!Label_gnps_in_window(sample, gnps_inside, sectioned_domain_gnp, gnps, cutoffs, gnp_pts_bdds, structure_gnp, points_gnp, labels_gnp, labels_labels_gnp, bp_flags)) {
+    if (!Label_gnps_in_window(allow_simplex3, sample, gnps_inside, sectioned_domain_gnp, gnps, cutoffs, gnp_pts_bdds, structure_gnp, points_gnp, labels_gnp, labels_labels_gnp, bp_flags)) {
         hout<<"Error in Make_gnp_clusters when calling Label_gnps_in_window"<<endl;
         return 0;
     }
@@ -608,7 +621,19 @@ int Hoshen_Kopelman::Make_gnp_clusters(const cuboid& sample, const vector<int> &
     return 1;
 }
 //This function labels the GNPs so that they can be grouped into clusters
-int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int> &gnps_inside, const vector<vector<int> > &sectioned_domain_gnp, const vector<GNP> &gnps, const Cutoff_dist& cutoffs, const long int &gnp_pts_bdds, vector<vector<long int> > &structure_gnp, vector<Point_3D> &points_gnp, vector<int> &labels_gnp, vector<int> &labels_labels_gnp, vector<bool>& bp_flags)
+int Hoshen_Kopelman::Label_gnps_in_window(
+    const bool& allow_simplex3,
+    const cuboid& sample, 
+    const vector<int> &gnps_inside, 
+    const vector<vector<int> > &sectioned_domain_gnp, 
+    const vector<GNP> &gnps, 
+    const Cutoff_dist& cutoffs, 
+    const long int &gnp_pts_bdds, 
+    vector<vector<long int> > &structure_gnp, 
+    vector<Point_3D> &points_gnp, 
+    vector<int> &labels_gnp, 
+    vector<int> &labels_labels_gnp, 
+    vector<bool>& bp_flags)
 {
     //new_label will take the value of the newest cluster
     int new_label = 0;
@@ -687,8 +712,12 @@ int Hoshen_Kopelman::Label_gnps_in_window(const cuboid& sample, const vector<int
                         //Find the points of contact on each GNP, and add them if both
                         //are inside the sample
                         //hout<<"Add_junction_points_for_gnps"<<endl;
-                        if (!Find_junction_points_for_gnps(sample, gnps[GNPa], gnp_B, N, dist, points_gnp, PointA, PointB)) 
+                        if (!Find_junction_points_for_gnps(allow_simplex3, sample, gnps[GNPa], gnp_B, N, dist, points_gnp, PointA, PointB)) 
                         {
+                            //In case it might be useful output the original GNPB
+                            VTK_Export VTK;
+                            VTK.Export_single_gnp(gnps[GNPb], "gnp_B0.vtk");
+                            hout << "Exported original GNPb (gnps[GNPb]) with file name gnp_B0.vtk." << endl;
                             hout << "Error in Label_gnps_in_window when calling Add_junction_points_for_gnps" << endl;
                             return 0;
                         }
@@ -794,12 +823,12 @@ int Hoshen_Kopelman::Get_distance_between_GNPs(const Cutoff_dist& cutoffs, const
 }
 //This function finds the points in two GNPs that will serve as junction points
 //These points are also used to define the GNP resistors
-int Hoshen_Kopelman::Find_junction_points_for_gnps(const cuboid &sample, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<Point_3D> &points_gnp, Point_3D& PointA, Point_3D& PointB)
+int Hoshen_Kopelman::Find_junction_points_for_gnps(const bool& allow_simplex3, const cuboid &sample, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<Point_3D> &points_gnp, Point_3D& PointA, Point_3D& PointB)
 {
     //Vectors to save the simplices in A and B that are closest to each other
     vector<int> simplexA, simplexB;
     int v_sumA = 0, v_sumB = 0;
-    if (!Find_closest_simplices_of_gnps_in_contact(GNP_A, GNP_B, N, distance, simplexA, simplexB, v_sumA, v_sumB)) {
+    if (!Find_closest_simplices_of_gnps_in_contact(allow_simplex3, GNP_A, GNP_B, N, distance, simplexA, simplexB, v_sumA, v_sumB)) {
         hout<<"Error in Add_junction_points_for_gnps when calling Find_closest_simplices_of_gnps_in_contact"<<endl;
         return 0;
     }
@@ -830,7 +859,7 @@ int Hoshen_Kopelman::Find_junction_points_for_gnps(const cuboid &sample, const G
 }
 //This function finds the two simplices that are closest to each other when two GNPs are in
 //electrical contact
-int Hoshen_Kopelman::Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<int> &simplexA, vector<int> &simplexB, int &v_sumA, int &v_sumB)
+int Hoshen_Kopelman::Find_closest_simplices_of_gnps_in_contact(const bool& allow_simplex3, const GNP &GNP_A, const GNP &GNP_B, const Point_3D &N, const double &distance, vector<int> &simplexA, vector<int> &simplexB, int &v_sumA, int &v_sumB)
 {
     //Sets to store the vertices of the simplex in the Minkowski sum
     //Sets are used to avoid repetition of vertices
@@ -902,6 +931,40 @@ int Hoshen_Kopelman::Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A,
     //
     //VTK.Export_single_cnt(cnt_tmp, "cnt_tmp.vtk");
     //VTK.Export_single_cnt(cnt_simplex, "cnt_simplex.vtk");
+
+    //Check if is is allowed to have a simplex of size three
+    if (allow_simplex3)
+    {
+        //Check if setA is of size 3
+        if (setA.size() == 3)
+        {
+            //Complete the set to 4 vertices 
+            if (!Complete_simplex_of_size_three(setA))
+            {
+                hout << "Error in Find_closest_simplices_of_gnps_in_contact when calling Complete_simplex_of_size_three for setA." << endl;
+                hout << "Visualization files for GNPs were geneated: GNP_A=" << GNP_A.flag << ", GNP_B=" << GNP_B.flag << "." << endl;
+                VTK_Export VTK;
+                VTK.Export_single_gnp(GNP_A, "gnp_a.vtk");
+                VTK.Export_single_gnp(GNP_B, "gnp_b.vtk");
+                return 0;
+            }
+        }
+
+        //Check if setA is of size 3
+        if (setB.size() == 3)
+        {
+            //Complete the set to 4 vertices 
+            if (!Complete_simplex_of_size_three(setB))
+            {
+                hout << "Error in Find_closest_simplices_of_gnps_in_contact when calling Complete_simplex_of_size_three for setB." << endl;
+                hout << "Visualization files for GNPs were geneated: GNP_A=" << GNP_A.flag << ", GNP_B=" << GNP_B.flag << "." << endl;
+                VTK_Export VTK;
+                VTK.Export_single_gnp(GNP_A, "gnp_a.vtk");
+                VTK.Export_single_gnp(GNP_B, "gnp_b.vtk");
+                return 0;
+            }
+        }
+    }
     
     //Fill the vectors of the simplices using the sets
     simplexA.assign(setA.begin(), setA.end());
@@ -915,6 +978,77 @@ int Hoshen_Kopelman::Find_closest_simplices_of_gnps_in_contact(const GNP &GNP_A,
         v_sumB = v_sumB + max(1,simplexB[i]);
     }
     
+    return 1;
+}
+//This function completes a simplex of size three so that it has size four and it can correspond
+//to a GNP face
+int Hoshen_Kopelman::Complete_simplex_of_size_three(set<int>& vertex_set)
+{
+    //Construct map that will allow to complete the simplex
+    map<string, int> vertices_map;
+    //Face 0123
+    vertices_map["012"] = 3;
+    vertices_map["013"] = 2;
+    vertices_map["023"] = 1;
+    vertices_map["123"] = 0;
+    //Face 4567
+    vertices_map["456"] = 7;
+    vertices_map["457"] = 6;
+    vertices_map["467"] = 5;
+    vertices_map["567"] = 4;
+    //Face 0145
+    vertices_map["014"] = 5;
+    vertices_map["015"] = 4;
+    vertices_map["045"] = 1;
+    vertices_map["145"] = 0;
+    //Face 1256
+    vertices_map["125"] = 6;
+    vertices_map["126"] = 5;
+    vertices_map["156"] = 2;
+    vertices_map["256"] = 1;
+    //Face 2367
+    vertices_map["236"] = 7;
+    vertices_map["237"] = 6;
+    vertices_map["267"] = 3;
+    vertices_map["367"] = 2;
+    //Face 0347
+    vertices_map["034"] = 7;
+    vertices_map["037"] = 4;
+    vertices_map["047"] = 3;
+    vertices_map["347"] = 0;
+
+    //String for the set
+    string simplex_str = "";
+
+    //Turn the set into a string
+    for (set<int>::iterator it = vertex_set.begin(); it != vertex_set.end(); ++it)
+    {
+        simplex_str += to_string(*it);
+    }
+
+    //Search for the string in the map
+    map<string, int>::iterator it = vertices_map.find(simplex_str);
+
+    //Check if the set was found
+    if (it != vertices_map.end())
+    {
+        //The set was found
+
+        //Get vertex
+        int v = it->second;
+
+        //Add vertex to set
+        vertex_set.insert(v);
+    }
+    else
+    {
+        //The set was not found
+        hout << "Error in Complete_the_simplex_of_size_three: set for simplex was not found in map simplex3->vertex." << endl;
+        hout << "Vertices in simplex3: " << simplex_str << endl;
+
+        return 0;
+    }
+
     return 1;
 }
 //This function finds the two points that define the junction between two GNPs

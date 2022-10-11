@@ -47,6 +47,9 @@ struct Simu_para{
     //Number of frames in the Abaqus simulation (if reading displacements dirrectly
     //from a bynary file)
     int n_frames;
+    //Flag to determine if a simplex of size three might be allowed to happen
+    //when idintifying junction points on GNPs
+    bool allow_simplex3;
     int sample_num;
     int simulation_scope;
     int resistances[3];
